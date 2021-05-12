@@ -18,6 +18,8 @@ import "io/deephaven/proto/table.proto";
 service ConsoleService {
     rpc StartConsole(StartConsoleRequest) returns (StartConsoleResponse) {}
 
+    rpc GetConsoleTypes(GetConsoleTypesRequest) returns (GetConsoleTypesResponse) {}
+
     rpc SubscribeToLogs(LogSubscriptionRequest) returns (stream LogSubscriptionData) {}
 
     rpc ExecuteCommand(ExecuteCommandRequest) returns (ExecuteCommandResponse) {}
@@ -36,6 +38,13 @@ service ConsoleService {
     rpc FetchTableMap(FetchTableMapRequest) returns (FetchTableMapResponse) {}
 }
 
+
+message GetConsoleTypesRequest {
+    // left empty for future compatibility
+}
+message GetConsoleTypesResponse {
+    repeated string console_types = 1;
+}
 
 message StartConsoleRequest {
     io.deephaven.proto.backplane.grpc.Ticket result_id = 1;
