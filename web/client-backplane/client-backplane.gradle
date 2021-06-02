@@ -38,7 +38,7 @@ Docker.registerDockerTask(project, 'regenerateGwtBindings') {
             includeEmptyDirs = false
         }
     }
-    imageName = 'deephaven/jsinterop-generate-grpc-bindings'
+    imageName = 'deephaven/jsinterop-generate-grpc-bindings:local-build'
     dockerfile {
         // Basing our image on node, so we can easily use node and npm
         from 'docker.io/library/node:14.16.0'
