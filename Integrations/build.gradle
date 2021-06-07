@@ -19,6 +19,8 @@ dependencies {
     testRuntime project(':configs'), project(':test-configs'),
             // need these projects so session default imports / generated type wrappers resolve correctly
             project(':Numerics'), project(':Plot')
+
+    compile project(':CompilerTools')
 }
 
 sourceSets {
