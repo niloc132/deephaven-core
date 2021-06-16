@@ -17,11 +17,11 @@ public class StartConsoleRequest {
   @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
   public interface ToObjectReturnType {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface ResultIdFieldType {
+    public interface ResukltIdFieldType {
       @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-      public interface GetIdUnionType {
+      public interface GetTicketUnionType {
         @JsOverlay
-        static StartConsoleRequest.ToObjectReturnType.ResultIdFieldType.GetIdUnionType of(
+        static StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType.GetTicketUnionType of(
             Object o) {
           return Js.cast(o);
         }
@@ -48,30 +48,31 @@ public class StartConsoleRequest {
       }
 
       @JsOverlay
-      static StartConsoleRequest.ToObjectReturnType.ResultIdFieldType create() {
+      static StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType create() {
         return Js.uncheckedCast(JsPropertyMap.of());
       }
 
       @JsProperty
-      StartConsoleRequest.ToObjectReturnType.ResultIdFieldType.GetIdUnionType getId();
+      StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType.GetTicketUnionType getTicket();
 
       @JsProperty
-      void setId(StartConsoleRequest.ToObjectReturnType.ResultIdFieldType.GetIdUnionType id);
+      void setTicket(
+          StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType.GetTicketUnionType ticket);
 
       @JsOverlay
-      default void setId(String id) {
-        setId(
+      default void setTicket(String ticket) {
+        setTicket(
             Js
-                .<StartConsoleRequest.ToObjectReturnType.ResultIdFieldType.GetIdUnionType>
-                    uncheckedCast(id));
+                .<StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType.GetTicketUnionType>
+                    uncheckedCast(ticket));
       }
 
       @JsOverlay
-      default void setId(Uint8Array id) {
-        setId(
+      default void setTicket(Uint8Array ticket) {
+        setTicket(
             Js
-                .<StartConsoleRequest.ToObjectReturnType.ResultIdFieldType.GetIdUnionType>
-                    uncheckedCast(id));
+                .<StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType.GetTicketUnionType>
+                    uncheckedCast(ticket));
       }
     }
 
@@ -81,13 +82,13 @@ public class StartConsoleRequest {
     }
 
     @JsProperty
-    StartConsoleRequest.ToObjectReturnType.ResultIdFieldType getResultId();
+    StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType getResukltId();
 
     @JsProperty
     String getSessionType();
 
     @JsProperty
-    void setResultId(StartConsoleRequest.ToObjectReturnType.ResultIdFieldType resultId);
+    void setResukltId(StartConsoleRequest.ToObjectReturnType.ResukltIdFieldType resukltId);
 
     @JsProperty
     void setSessionType(String sessionType);
@@ -96,11 +97,11 @@ public class StartConsoleRequest {
   @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
   public interface ToObjectReturnType0 {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface ResultIdFieldType {
+    public interface ResukltIdFieldType {
       @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-      public interface GetIdUnionType {
+      public interface GetTicketUnionType {
         @JsOverlay
-        static StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType.GetIdUnionType of(
+        static StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType.GetTicketUnionType of(
             Object o) {
           return Js.cast(o);
         }
@@ -127,30 +128,31 @@ public class StartConsoleRequest {
       }
 
       @JsOverlay
-      static StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType create() {
+      static StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType create() {
         return Js.uncheckedCast(JsPropertyMap.of());
       }
 
       @JsProperty
-      StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType.GetIdUnionType getId();
+      StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType.GetTicketUnionType getTicket();
 
       @JsProperty
-      void setId(StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType.GetIdUnionType id);
+      void setTicket(
+          StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType.GetTicketUnionType ticket);
 
       @JsOverlay
-      default void setId(String id) {
-        setId(
+      default void setTicket(String ticket) {
+        setTicket(
             Js
-                .<StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType.GetIdUnionType>
-                    uncheckedCast(id));
+                .<StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType.GetTicketUnionType>
+                    uncheckedCast(ticket));
       }
 
       @JsOverlay
-      default void setId(Uint8Array id) {
-        setId(
+      default void setTicket(Uint8Array ticket) {
+        setTicket(
             Js
-                .<StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType.GetIdUnionType>
-                    uncheckedCast(id));
+                .<StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType.GetTicketUnionType>
+                    uncheckedCast(ticket));
       }
     }
 
@@ -160,13 +162,13 @@ public class StartConsoleRequest {
     }
 
     @JsProperty
-    StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType getResultId();
+    StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType getResukltId();
 
     @JsProperty
     String getSessionType();
 
     @JsProperty
-    void setResultId(StartConsoleRequest.ToObjectReturnType0.ResultIdFieldType resultId);
+    void setResukltId(StartConsoleRequest.ToObjectReturnType0.ResukltIdFieldType resukltId);
 
     @JsProperty
     void setSessionType(String sessionType);
@@ -182,19 +184,19 @@ public class StartConsoleRequest {
   public static native StartConsoleRequest.ToObjectReturnType toObject(
       boolean includeInstance, StartConsoleRequest msg);
 
-  public native void clearResultId();
+  public native void clearResukltId();
 
-  public native Ticket getResultId();
+  public native Ticket getResukltId();
 
   public native String getSessionType();
 
-  public native boolean hasResultId();
+  public native boolean hasResukltId();
 
   public native Uint8Array serializeBinary();
 
-  public native void setResultId();
+  public native void setResukltId();
 
-  public native void setResultId(Ticket value);
+  public native void setResukltId(Ticket value);
 
   public native void setSessionType(String value);
 
