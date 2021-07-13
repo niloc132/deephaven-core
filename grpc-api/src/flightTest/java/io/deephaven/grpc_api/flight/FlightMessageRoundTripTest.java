@@ -382,6 +382,8 @@ public class FlightMessageRoundTripTest {
         // tell the server we are finished sending data
         putStream.completed();
 
+        Thread.sleep(100);//ensure that the server finished publishing TODO find a better solution
+
         // get the table that was uploaded, and confirm it matches what we originally sent
         CompletableFuture<Table> tableFuture = new CompletableFuture<>();
         SessionState.ExportObject<Table> tableExport = currentSession.getExport(flightDescriptorTicketValue);
