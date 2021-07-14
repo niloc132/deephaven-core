@@ -8,6 +8,10 @@ import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.Message;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.MessageHeader;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.RecordBatch;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Field;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Int;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.KeyValue;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Schema;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.browserflight_pb_service.BrowserFlightServiceClient;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.FlightData;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb_service.FlightServiceClient;
@@ -16,6 +20,7 @@ import io.deephaven.javascript.proto.dhinternal.grpcweb.grpc.Code;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.*;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
 import io.deephaven.javascript.proto.dhinternal.browserheaders.BrowserHeaders;
+import io.deephaven.javascript.proto.dhinternal.flatbuffers.Builder;
 import io.deephaven.javascript.proto.dhinternal.grpcweb.Grpc;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FetchFigureRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FetchTableRequest;
@@ -54,6 +59,8 @@ import jsinterop.base.JsPropertyMap;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -649,6 +656,25 @@ public class WorkerConnection {
                 return;
             }
             dataRef[0] = null;
+
+            // make a schema that we can embed in the first DoPut message
+            Builder fbBuilder = new Builder(1024);
+            Schema.startSchema(fbBuilder);
+            for (int i = 0; i < columnNames.length; i++) {
+                String columnName = columnNames[i];
+                String columnType = types[i];
+                Field.startField(fbBuilder);
+                Field.addName(fbBuilder, fbBuilder.createString(columnName));
+                Field.addNullable(fbBuilder, true);
+
+                Field.addCustomMetadata(fbBuilder, KeyValue.createKeyValue(fbBuilder, fbBuilder.createString("type:deephaven"), fbBuilder.createString(columnType)));
+                Field.addTypeType(fbBuilder, mapType(columnType));
+                Field.addType(fbBuilder, Int.endInt(fbBuilder));
+
+                Schema.addFields(fbBuilder, Field.endField(fbBuilder));
+            }
+
+
 
             final ColumnHolder[] columnHolders = new ColumnHolder[columnNames.length];
             for(int i = 0; i < columnNames.length; i++) {
