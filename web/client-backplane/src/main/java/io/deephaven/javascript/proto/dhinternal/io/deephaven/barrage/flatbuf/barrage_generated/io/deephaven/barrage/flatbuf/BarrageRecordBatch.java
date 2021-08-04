@@ -695,7 +695,7 @@ public class BarrageRecordBatch {
 
   public native Buffer buffers(double index);
 
-  public native double buffersLength();
+  public native int buffersLength();
 
   public native double effectiveColumnSet(double index);
 
@@ -725,7 +725,7 @@ public class BarrageRecordBatch {
 
   public native BarrageFieldNode nodes(double index);
 
-  public native double nodesLength();
+  public native int nodesLength();
 
   public native double removedRows(double index);
 
