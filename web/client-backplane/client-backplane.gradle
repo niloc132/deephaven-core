@@ -33,8 +33,13 @@ Docker.registerDockerTask(project, 'regenerateGwtBindings') {
         from(project(':proto:proto-backplane-grpc').tasks.getByName('generateProtobuf').outputs.files) {
             into 'project/src'
             include "js/**/*.d.ts"
-            exclude '**/legacy*'
-            eachFile { f -> f.path = f.path.replaceFirst('js/', 'dhinternal/')}
+            eachFile { f ->
+                if (f.path.contains('Flight')) {
+                    f.path = f.path.replaceFirst('js/', 'dhinternal/arrow/flight/protocol/')
+                } else {
+                    f.path = f.path.replaceFirst('js/', 'dhinternal/io/')
+                }
+            }
             includeEmptyDirs = false
         }
     }
