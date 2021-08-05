@@ -6,12 +6,13 @@
     "@improbable-eng/grpc-web": "^0.12.0",
     "@types/flatbuffers": "^1.10.0",
     "@types/google-protobuf": "^3.7.2",
+    "apache-arrow": "^5.0.0",
     "google-protobuf": "^3.12.0"
   },
   "devDependencies": {
     "@bazel/typescript": "^1.6.1",
-    "tsickle": "0.35.0",
-    "typescript": "3.8.2"
+    "tsickle": "0.37.0",
+    "typescript": "4.0.2"
   },
   "main": "grpc-web/grpc-web/client/grpc-web/src/index.ts"
 }

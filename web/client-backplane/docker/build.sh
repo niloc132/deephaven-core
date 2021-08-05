@@ -9,7 +9,7 @@ node node_modules/.bin/tsickle --externs=externs.js -- --build
 sed -i '5,10d' externs.js
 
 # prepend missing consts, to be used after we rewrite $s into .s
-consts='browserHeaders grpcWeb.transports.http grpcWeb.transports grpcWeb io.deephaven.proto io.deephaven.barrage.flatbuf flatbuffers io.deephaven.barrage io.deephaven io arrow.flight.protocol arrow.flight arrow'
+consts='browserHeaders grpcWeb.transports.http grpcWeb.transports grpcWeb io.deephaven.proto io.deephaven.barrage.flatbuf flatbuffers io.deephaven.barrage io.deephaven io arrow.flight.protocol arrow.flight.flatbuf arrow.flight arrow'
 for n in $consts
 do
   sed -i "5i/** @const */ dhinternal.$n = {};" externs.js
