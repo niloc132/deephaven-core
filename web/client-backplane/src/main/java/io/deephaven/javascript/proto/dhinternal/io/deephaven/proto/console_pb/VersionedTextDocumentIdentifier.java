@@ -72,7 +72,7 @@ public class VersionedTextDocumentIdentifier {
 
   public native void setUri(String value);
 
-  public native void setVersion(int value);
+  public native void setVersion(double value);
 
   public native VersionedTextDocumentIdentifier.ToObjectReturnType0 toObject();
 
