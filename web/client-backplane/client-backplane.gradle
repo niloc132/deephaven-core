@@ -104,4 +104,6 @@ Docker.registerDockerTask(project, 'regenerateGwtBindings') {
         }
         includeEmptyDirs = false
     }
+}.configure {
+    finalizedBy spotlessApply
 }
