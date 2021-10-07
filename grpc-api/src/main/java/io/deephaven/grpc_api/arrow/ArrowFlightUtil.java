@@ -321,7 +321,8 @@ public class ArrowFlightUtil {
                     }
 
                     if (message.app_metadata.msgPayloadVector() == null) {
-                        throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Subscription request not supplied");
+                        throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                                "Subscription request not supplied");
                     }
                     final BarrageSubscriptionRequest subscriptionRequest = BarrageSubscriptionRequest
                             .getRootAsBarrageSubscriptionRequest(message.app_metadata.msgPayloadAsByteBuffer());
