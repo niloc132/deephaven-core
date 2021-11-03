@@ -21,7 +21,7 @@ RUN set -eux; \
     apt -y autoremove; \
     rm -rf /var/lib/apt/lists/* zulu-repo_${ZULU_REPO_VER}_all.deb
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
-ENV JAVA_HOME=/usr/lib/jvm/zulu17-ca-amd64
+ENV JAVA_HOME=/usr/lib/jvm/zulu17-ca-arm64
 
 FROM java_base as runtime_reqs
 RUN set -eux; \

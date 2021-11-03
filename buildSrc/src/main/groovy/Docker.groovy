@@ -412,6 +412,9 @@ class Docker {
         // Produce a docker image from the copied inputs and provided dockerfile, and tag it
         TaskProvider<DockerBuildImage> makeImage = project.tasks.register(taskName, DockerBuildImage) { buildImage ->
             action.execute(buildImage)
+            if (!buildImage.platform.isPresent()) {
+                buildImage.platform.set 'linux/arm64'
+            }
             if (buildImage.images) {
                 buildImage.images.get().forEach { String imageName -> validateImageName(imageName) }
 
