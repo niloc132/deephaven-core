@@ -304,3 +304,10 @@ tasks.testOutOfBand.maxHeapSize = '6g'
 tasks.test.maxHeapSize = '6g'
 
 Tools.applyAnnotationProcessorPathHacks(project, true)
+
+// log lots of progress of the tests as they run
+tasks.withType(Test) {
+    testLogging {
+        events "PASSED", "SKIPPED", "FAILED", "STANDARD_OUT", "STANDARD_ERROR"
+    }
+}
