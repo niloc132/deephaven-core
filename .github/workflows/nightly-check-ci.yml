@@ -89,8 +89,8 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NIGHTLY_FAILURE }}
 
-      - name: Setup tmate session post
-        if: failure()
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+#      - name: Setup tmate session post
+#        if: failure()
+#        uses: mxschmitt/action-tmate@v3
+#        with:
+#          limit-access-to-actor: true
