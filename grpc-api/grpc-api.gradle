@@ -59,7 +59,7 @@ dependencies {
     Classpaths.inheritSlf4j(project, 'slf4j-simple', 'testRuntimeOnly')
 
     // it is essential that this is only added to the classpath for flightTestCompile
-    Classpaths.inheritArrow(project, 'flight-grpc', 'flightTestCompile')
+    Classpaths.inheritArrow(project, 'flight-core', 'flightTestCompile')
 }
 
 // testOutOfBand: non-parallel, not a engine test, not isolated
