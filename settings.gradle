@@ -113,6 +113,9 @@ project(':log-example-file').projectDir = file('log-factory/examples/example-fil
 include(':grpc-api-server-native')
 project(':grpc-api-server-native').projectDir = file('grpc-api/server/native')
 
+include(':server-test')
+project(':server-test').projectDir = file('server/test')
+
 include(':extensions-barrage')
 project(':extensions-barrage').projectDir = file('extensions/barrage')
 
