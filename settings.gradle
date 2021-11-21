@@ -116,6 +116,9 @@ project(':grpc-api-server-native').projectDir = file('grpc-api/server/native')
 include(':server-test')
 project(':server-test').projectDir = file('server/test')
 
+include(':server-netty')
+project(':server-netty').projectDir = file('server/netty')
+
 include(':extensions-barrage')
 project(':extensions-barrage').projectDir = file('extensions/barrage')
 
