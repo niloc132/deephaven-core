@@ -18,7 +18,6 @@ import io.deephaven.uri.resolver.UriResolversInstance;
 import io.deephaven.util.annotations.VisibleForTesting;
 import io.deephaven.util.process.ProcessEnvironment;
 import io.deephaven.util.process.ShutdownManager;
-import io.grpc.Server;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -31,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 public class DeephavenApiServer {
     private static final Logger log = LoggerFactory.getLogger(DeephavenApiServer.class);
 
-    private final Server server;
+    private final GrpcServer server;
     private final UpdateGraphProcessor ugp;
     private final LogInit logInit;
     private final ConsoleServiceGrpcImpl consoleService;
@@ -41,7 +40,7 @@ public class DeephavenApiServer {
 
     @Inject
     public DeephavenApiServer(
-            final Server server,
+            final GrpcServer server,
             final UpdateGraphProcessor ugp,
             final LogInit logInit,
             final ConsoleServiceGrpcImpl consoleService,
@@ -58,7 +57,7 @@ public class DeephavenApiServer {
     }
 
     @VisibleForTesting
-    public Server server() {
+    public GrpcServer server() {
         return server;
     }
 
