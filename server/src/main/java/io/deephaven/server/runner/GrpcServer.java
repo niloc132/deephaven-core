@@ -11,9 +11,9 @@ import java.util.concurrent.TimeUnit;
  */
 public interface GrpcServer {
 
-    void start() throws IOException;
+    void start() throws Exception;
 
-    void shutdown();
+    void shutdown() throws Exception;
 
     void shutdownNow();
 

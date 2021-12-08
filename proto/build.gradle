@@ -1,5 +1,5 @@
 // keep this in sync w/ shadowed/proto/shadow-proto.gradle
-def grpcVersion = '1.38.0'
+def grpcVersion = '1.42.0'
 
 // TODO(deephaven-core#1685): Create strategy around updating and maintaining protoc version
 def protobufVersion = '3.17.3'
@@ -18,13 +18,14 @@ configure(subprojects.findAll{ it.name.startsWith('proto-') }) { p ->
   dependencies {
     compile "com.google.protobuf:protobuf-java:${protobufVersion}"
 
-    compile "io.grpc:grpc-protobuf:${grpcVersion}"
-    compile "io.grpc:grpc-stub:${grpcVersion}"
-    compile "io.grpc:grpc-services:${grpcVersion}"
+    Classpaths.inheritGrpcPlatform(project, 'compile')
+    compile "io.grpc:grpc-protobuf"
+    compile "io.grpc:grpc-stub"
+    compile "io.grpc:grpc-services"
 
-    compile "io.grpc:grpc-testing:${grpcVersion}"
+    compile "io.grpc:grpc-testing"
 
-    compile "io.grpc:grpc-netty:${grpcVersion}"
+    compile "io.grpc:grpc-netty"
 
     runtimeOnly "io.netty:netty-tcnative-boringssl-static:${boringSslVersion}"
   }

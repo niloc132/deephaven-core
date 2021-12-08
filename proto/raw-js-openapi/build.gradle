@@ -49,3 +49,15 @@ artifacts {
         builtBy webpackSources
     }
 }
+tasks.register('tarOutput', Tar) {
+    from webpackSources.outputs.files
+    into 'jsapi'
+}
+configurations {
+    jsArchive
+}
+artifacts {
+    jsArchive(tarOutput) {
+        classifier 'jsArchive'
+    }
+}

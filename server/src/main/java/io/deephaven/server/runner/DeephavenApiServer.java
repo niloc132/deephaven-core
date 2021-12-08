@@ -71,10 +71,16 @@ public class DeephavenApiServer {
      * @throws ClassNotFoundException thrown if a class can't be found while finding and running an application.
      * @throws InterruptedException thrown if this thread is interrupted while blocking for the server to halt.
      */
-    public void run() throws IOException, ClassNotFoundException, InterruptedException {
+    public void run() throws Exception, ClassNotFoundException, InterruptedException {
         // Stop accepting new gRPC requests.
         ProcessEnvironment.getGlobalShutdownManager().registerTask(ShutdownManager.OrderingCategory.FIRST,
-                server::shutdown);
+                () -> {
+                    try {
+                        server.shutdown();
+                    } catch (Exception ignored) {
+                        // ignore, we're shutting down anyway
+                    }
+                });
 
         // Close outstanding sessions to give any gRPCs closure.
         ProcessEnvironment.getGlobalShutdownManager().registerTask(ShutdownManager.OrderingCategory.MIDDLE,
@@ -126,7 +132,7 @@ public class DeephavenApiServer {
         server.awaitTermination();
     }
 
-    void startForUnitTests() throws IOException {
+    void startForUnitTests() throws Exception {
         log.info().append("Starting server...").endl();
         server.start();
     }

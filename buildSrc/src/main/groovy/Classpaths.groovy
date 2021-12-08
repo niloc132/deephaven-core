@@ -76,13 +76,13 @@ class Classpaths {
 
     static final String LOGBACK_GROUP = 'ch.qos.logback'
     static final String LOGBACK_NAME = 'logback-classic'
-    static final String LOGBACK_VERSION = '1.2.3'
+    static final String LOGBACK_VERSION = '1.3.0-alpha10'
 
     static final String GROOVY_GROUP = 'org.codehaus.groovy'
     static final String GROOVY_VERSION = '3.0.9'
 
     static final String GRPC_GROUP = 'io.grpc'
-    static final String GRPC_VERSION = '1.38.0'
+    static final String GRPC_VERSION = '1.43.0-SNAPSHOT'
 
     static boolean addDependency(Configuration conf, String group, String name, String version, Action<? super DefaultExternalModuleDependency> configure = Actions.doNothing()) {
         if (!conf.dependencies.find { it.name == name && it.group == group}) {
