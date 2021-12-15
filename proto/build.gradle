@@ -1,6 +1,3 @@
-// keep this in sync w/ shadowed/proto/shadow-proto.gradle
-def grpcVersion = '1.42.0'
-
 // TODO(deephaven-core#1685): Create strategy around updating and maintaining protoc version
 def protobufVersion = '3.17.3'
 def protocVersion = protobufVersion
@@ -72,7 +69,7 @@ configure(subprojects.findAll{ it.name.startsWith('proto-') && it.name != 'proto
   protobuf {
     protoc { artifact = "com.google.protobuf:protoc:${protocVersion}" }
     plugins {
-      grpc { artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}" }
+      grpc { artifact = "io.grpc:protoc-gen-grpc-java" }
     }
     generateProtoTasks {
       all().each {
@@ -110,7 +107,7 @@ configure(subprojects.findAll{ it.name.endsWith('-grpc') && it.name != 'proto-ba
 
   protobuf {
     plugins {
-      grpc { artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}" }
+      grpc { artifact = "io.grpc:protoc-gen-grpc-java" }
     }
     generateProtoTasks {
       all().each {

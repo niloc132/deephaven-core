@@ -22,7 +22,6 @@ String[] mods = [
         'python-engine-test',
         'Parquet',
         'server',
-        'grpc-web-socket',
         'table-api',
         'qst'
 ]
@@ -65,6 +64,9 @@ pyMods.each {
         include(name)
         project(":$name").projectDir = file(dir)
 }
+
+include 'grpc:grpc-servlet'
+include 'grpc:grpc-web-socket'
 
 include 'fishconfig-local'
 include 'DHProcess'
