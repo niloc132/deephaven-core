@@ -11,5 +11,5 @@ properties = {
     'jpy.jdlLib': jpyutil._get_module_path('jdl', fail=True)
 }
 
-for key, value in properties.items():
-    print(f'{key}={value}')
+start_options = ' '.join([ f'-D{key}={value}' for key, value in properties.items() ])
+print(start_options)

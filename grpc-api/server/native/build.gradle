@@ -65,6 +65,7 @@ def createStartScript = project.tasks.register('createStartScript', CreateStartS
 
 applicationDistribution.into('bin') {
   from(createStartScript)
+  from('src/main/python')
   fileMode = 0755
 }
 
