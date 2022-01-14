@@ -188,3 +188,6 @@ io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredes
 
 io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.RunChartDownsampleRequest.getPixelCount
 io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.RunChartDownsampleRequest.setPixelCount.value
+
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.GetCompletionItemsRequest.requestId
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.GetCompletionItemsResponse.requestId
