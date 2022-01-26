@@ -21,12 +21,12 @@ public class JsWidgetExportedObject {
     }
 
     @JsProperty
-    String getType() {
+    public String getType() {
         return ticket.getType();
     }
 
     @JsMethod
-    Promise<Object> fetch() {
+    public Promise<Object> fetch() {
         if (!getType().equals("Table")) {
             // TODO (deephaven-core#62) implement fetch for tablemaps
             assert false : getType() + " found in widget, not yet supported";
