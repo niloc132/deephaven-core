@@ -20,7 +20,7 @@ RUN set -eux; \
 
 COPY deephaven-wheel/ /deephaven-wheel
 RUN set -eux; \
-    python -m pip install -q --no-index --no-cache-dir /deephaven-wheel/*.whl; \
+    python -m pip install -q --no-cache-dir /deephaven-wheel/*.whl; \
     rm -r /deephaven-wheel
 
 COPY deephaven2-wheel/ /deephaven2-wheel
