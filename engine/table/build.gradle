@@ -1,3 +1,5 @@
+import groovy.json.JsonBuilder
+
 plugins {
     id 'java-library'
 }
@@ -115,4 +117,39 @@ tasks.testSerial.maxHeapSize = maxHeapSize
 tasks.testOutOfBand.maxHeapSize = maxHeapSize
 tasks.test.maxHeapSize = maxHeapSize
 
+def tier4CompilationExcludes = [
+        'io.deephaven.engine.table.impl.by.ssmpercentile.DoublePercentileTypeMedianHelper':['setResult'],
+        'io.deephaven.engine.table.impl.by.ssmpercentile.FloatPercentileTypeMedianHelper':['setResult'],
+        'io.deephaven.engine.table.impl.by.ssmpercentile.SsmChunkedPercentileOperator':['addChunk'],
+        'io.deephaven.engine.table.impl.by.IncrementalChunkedOperatorAggregationStateManager':['buildTable'],
+        'io.deephaven.engine.table.impl.RightIncrementalChunkedCrossJoinStateManager':['addToIndex', 'decorationProbe'],
+        'io.deephaven.engine.table.impl.IncrementalChunkedNaturalJoinStateManager':['buildTable', 'decorationProbe'],
+]
+def createCompilerDirectives = tasks.register('createCompilerDirectives') {
+    def c2ExcludesFile = project.layout.buildDirectory.file('c2-excludes.txt')
+    it.outputs.file(c2ExcludesFile)
+
+    doFirst {
+        def excludesAsList = []
+        tier4CompilationExcludes.forEach({type, methods ->
+            methods.forEach {method ->
+                excludesAsList += "${type}::${method}"
+            }
+        })
+        def builder = new JsonBuilder()
+        builder([{
+                     match excludesAsList
+                     c2 {
+                         Exclude true
+                     }
+                 }])
+        c2ExcludesFile.get().asFile.text = builder.toPrettyString()
+    }
+}
 tasks.testOutOfBand.jvmArgs '-XX:Tier4CompileThreshold=1000'
+//tasks.testOutOfBand.inputs.files createCompilerDirectives.get().outputs.files
+
+//tasks.testOutOfBand.jvmArgs '-XX:+PrintCompilation'
+//tasks.testOutOfBand.jvmArgs '-XX:+PrintFlagsFinal'
+//tasks.testOutOfBand.jvmArgs '-XX:+UnlockDiagnosticVMOptions'
+//tasks.testOutOfBand.jvmArgs "-XX:CompilerDirectivesFile=${createCompilerDirectives.get().outputs.files.singleFile}"
