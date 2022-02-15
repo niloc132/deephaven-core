@@ -45,32 +45,32 @@ jobs:
           echo "org.gradle.java.installations.paths=${{ steps.setup-java-11.outputs.path }},${{ steps.setup-java-17.outputs.path }}," >> gradle.properties
           cat gradle.properties
 
-      - name: Run gradle {{ matrix.gradle-check }} on java {{ matrix.test-jvm-version }}
+      - name: Run gradle ${{ matrix.gradle-check }} on java ${{ matrix.test-jvm-version }}
         uses: burrunan/gradle-cache-action@v1
         with:
           job-id: check
-          arguments: --scan --continue --rerun-tasks {{ matrix.gradle-check }} -PtestRuntimeVersion={{ matrix.test-jvm-version }}
+          arguments: --scan --continue --rerun-tasks ${{ matrix.gradle-check }} -PtestRuntimeVersion=${{ matrix.test-jvm-version }}
           gradle-version: wrapper
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: nightly-{{ matrix.gradle-check }}-java{{ matrix.test-jvm-version }}-ci-results
+          name: nightly-${{ matrix.gradle-check }}-java${{ matrix.test-jvm-version }}-ci-results
           path: '**/build/test-results/*/TEST-*.xml'
 
       - name: Upload Test Reports
         uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: nightly-{{ matrix.gradle-check }}-java{{ matrix.test-jvm-version }}-ci-reports
+          name: nightly-${{ matrix.gradle-check }}-java${{ matrix.test-jvm-version }}-ci-reports
           path: '**/build/reports/tests/**'
 
       - name: Upload JVM Error Logs
         uses: actions/upload-artifact@v2
         if: failure()
         with:
-          name: nightly-{{ matrix.gradle-check }}-java{{ matrix.test-jvm-version }}-ci-jvm-err
+          name: nightly-${{ matrix.gradle-check }}-java${{ matrix.test-jvm-version }}-ci-jvm-err
           path: '**/*_pid*.log'
           if-no-files-found: ignore
 
@@ -90,6 +90,6 @@ jobs:
         if: ${{ failure() && github.repository_owner == 'deephaven' }}
         with:
           slack-message:
-            Nightly build failure in {{ matrix.gradle-check }} on Java {{ matrix.test-jvm-version }} @ {{ github.event.head_commit.url }}
+            Nightly build failure in ${{ matrix.gradle-check }} on Java ${{ matrix.test-jvm-version }} @ ${{ github.event.head_commit.url }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NIGHTLY_FAILURE }}
