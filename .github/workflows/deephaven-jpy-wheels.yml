@@ -28,7 +28,7 @@ jobs:
           default: ${{ matrix.py }}
           command: pip install -U pip
       - working-directory: py/jpy/
-        run: python setup.py bdist_wheel
+        run: python3 setup.py bdist_wheel
       - uses: actions/upload-artifact@v2
         with:
           name: deephaven_jpy-${{ matrix.py }}-${{ matrix.os }}-${{ matrix.arch }}
