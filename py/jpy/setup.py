@@ -139,6 +139,10 @@ libraries = [jpyutil.JVM_LIB_NAME]
 define_macros = []
 extra_link_args = []
 extra_compile_args = ["-std=c99"]
+# making a big but probably safe assumption here that the compiler used to build Python is the same one we will be using
+compiler_name, compiler_version, *_ = platform.python_compiler().split()
+if compiler_name.upper() == "CLANG" and compiler_version > "10.0.0":
+    extra_compile_args.append("-Wno-error-implicit-function-declaration")
 
 if platform.system() == 'Windows':
     define_macros += [('WIN32', '1')]
