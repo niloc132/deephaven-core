@@ -1,0 +1,35 @@
+name: Deephaven JPY Wheels for publishing
+
+on: push
+
+jobs:
+  build-wheel:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        py:
+         - '3.7'
+         - '3.8'
+         - '3.9'
+#         - '3.10'
+        arch: # TODO support this
+         - 'x86_64'
+#         - 'aarch64'
+
+        exclude:
+          - os:  'windows-latest'
+            arch: 'aarch64'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: gabrielfalcao/pyenv-action@v9
+        with:
+          default: ${{ matrix.py }}
+          command: pip install -U pip
+      - working-directory: py/jpy/
+        run: python setup.py bdist_wheel
+      - uses: actions/upload-artifact@v2
+        with:
+          name: deephaven_jpy-${{ matrix.py }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: py/jpy/dist/*.whl
