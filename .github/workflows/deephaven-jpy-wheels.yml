@@ -15,6 +15,7 @@ jobs:
          - '3.8'
          - '3.9'
 #         - '3.10'
+#         - '3.11'
         arch: # TODO support this
          - 'x86_64'
 #         - 'aarch64'
@@ -24,12 +25,14 @@ jobs:
             arch: 'aarch64'
     steps:
       - uses: actions/checkout@v2
-      - uses: gabrielfalcao/pyenv-action@v9
+      - uses: actions/setup-python@v2
         with:
-          default: ${{ matrix.py }}
-          command: pip3 install -U pip
+          python-version: ${{ matrix.py }} # Version range or exact version of a Python version to use, using SemVer's version range syntax
+#          architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
       - run: python3 --version
-      - run: pip3 install wheel
+      - run: '[[ $(python --version) = "Python ${{ matrix.py }}."* ]] || exit "wrong version, expected ${{ matrix.py }} "'
+      - run: pip install -U pip
+      - run: pip install wheel
       - working-directory: py/jpy/
         run: python3 setup.py bdist_wheel
       - uses: actions/upload-artifact@v2
