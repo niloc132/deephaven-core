@@ -40,3 +40,16 @@ jobs:
         with:
           name: deephaven_jpy-${{ matrix.py }}-${{ matrix.os }}-${{ matrix.arch }}
           path: py/jpy/dist/*.whl
+          retention-days: 1
+  collect-wheels:
+    runs-on: 'ubuntu-latest'
+    needs: ['build-wheel']
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: wheels
+      - run: ls wheels
+      - uses: actions/upload-artifact@v2
+        with:
+          name: deephaven-jpy
+          path: wheels
