@@ -7,6 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         py:
@@ -26,7 +27,9 @@ jobs:
       - uses: gabrielfalcao/pyenv-action@v9
         with:
           default: ${{ matrix.py }}
-          command: pip install -U pip
+          command: pip3 install -U pip
+      - run: python3 --version
+      - run: pip3 install wheel
       - working-directory: py/jpy/
         run: python3 setup.py bdist_wheel
       - uses: actions/upload-artifact@v2
