@@ -66,7 +66,7 @@ jobs:
         with:
           name: nightly-${{ matrix.gradle-task }}-java${{ matrix.test-jvm-version }}-ci-results
           path: |
-            **/build/test-results/*/TEST-*.xml
+            **/build/test-results/**/TEST-*.xml
             **/build/reports/tests/**
 
       - name: Upload JVM Error Logs
@@ -88,7 +88,7 @@ jobs:
           # We have to make a unique report per run https://github.com/ScaCap/action-surefire-report/issues/70
           check_name: check report ${{ matrix.gradle-task }} java${{ matrix.test-jvm-version }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          report_paths: '**/build/test-results/*/TEST-*.xml'
+          report_paths: '**/build/test-results/**/TEST-*.xml'
 
       - name: Slack Nightly Failure
         uses: slackapi/slack-github-action@v1.18.0

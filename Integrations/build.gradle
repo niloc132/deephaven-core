@@ -113,9 +113,10 @@ def runInDocker = { String name, String sourcePath, List<String> command, Closur
             copyFile 'classpath', '/classpath'
         }
         entrypoint = command
+        containerOutPath = '/out/report'
 
         copyOut {
-            into layout.buildDirectory.dir('test-results')
+            into layout.buildDirectory.dir("test-results/$name")
         }
     }
 }
