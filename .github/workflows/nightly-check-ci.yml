@@ -56,7 +56,7 @@ jobs:
       - name: Run gradle ${{ matrix.gradle-task }} on java ${{ matrix.test-jvm-version }}
         uses: burrunan/gradle-cache-action@v1
         with:
-          job-id: gradle-run
+          job-id: gradle-run-${{ matrix.gradle-task }}-${{ matrix.test-jvm-version }}
           arguments: --scan --continue --rerun-tasks ${{ matrix.gradle-task }} -PtestRuntimeVersion=${{ matrix.test-jvm-version }}
           gradle-version: wrapper
 
