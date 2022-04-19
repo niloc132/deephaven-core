@@ -121,11 +121,14 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         ScriptSession session = scriptTypes.get(WORKER_CONSOLE_TYPE).get();
         globalSessionProvider.initializeGlobalScriptSession(session);
 
-
+        // On startup, after JPY is running and happy, start aggressively tracking changes,
+        // even outside the current scope
         new Thread(() -> {
             Object last = null;
             while(true) {
+                System.out.println("prev = " + last);
                 last = session.reproFailure(last);
+                System.out.println("next = " + last);
             }
         }).start();
 

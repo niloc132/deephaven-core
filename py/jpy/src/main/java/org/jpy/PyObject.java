@@ -44,7 +44,8 @@ public class PyObject implements AutoCloseable {
 
     private static final boolean CLEANUP_ON_INIT = Boolean.parseBoolean(System.getProperty("PyObject.cleanup_on_init", "true"));
 
-    private static final boolean CLEANUP_ON_THREAD = Boolean.parseBoolean(System.getProperty("PyObject.cleanup_on_thread", "true"));
+    // Disabled to reduce noise in the py proxy handler
+    private static final boolean CLEANUP_ON_THREAD = Boolean.parseBoolean(System.getProperty("PyObject.cleanup_on_thread", "false"));
 
     private static void startCleanupThread() {
         if (CLEANUP_THREAD.get() == null) {

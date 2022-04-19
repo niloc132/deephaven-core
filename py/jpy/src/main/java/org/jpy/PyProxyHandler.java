@@ -95,6 +95,7 @@ class PyProxyHandler implements InvocationHandler {
                 .invokeWithArguments(args);
         }
 
+        // Set a breakpoint here and check the contents of args
         final long pointer = this.pyObject.getPointer();
 
         if ((PyLib.Diag.getFlags() & PyLib.Diag.F_METH) != 0) {
