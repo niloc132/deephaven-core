@@ -50,6 +50,11 @@ public class DelegatingScriptSession implements ScriptSession {
         return diff;
     }
 
+    @Override
+    public Object reproFailure(Object last) {
+        return delegate.reproFailure(last);
+    }
+
     @NotNull
     @Override
     public Object getVariable(String name) throws QueryScope.MissingVariableException {

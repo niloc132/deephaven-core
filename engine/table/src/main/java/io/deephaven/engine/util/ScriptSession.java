@@ -55,6 +55,8 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
      */
     VariableProvider getVariableProvider();
 
+    Object reproFailure(Object last);
+
     class Changes {
         public RuntimeException error = null;
 

@@ -108,6 +108,20 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
         applyDiff(emptySnapshot(), takeSnapshot(), null);
     }
 
+    @Override
+    public Object reproFailure(Object lastSnapshot) {
+        return incrementalSnapshot((S) lastSnapshot);
+    }
+
+    protected synchronized S incrementalSnapshot(S lastSnapshot) {
+        if (lastSnapshot == null) {
+            lastSnapshot = emptySnapshot();
+        }
+        S currentSnapshot = takeSnapshot();
+        applyDiff(lastSnapshot, currentSnapshot, null);
+        return currentSnapshot;
+    }
+
     interface Snapshot {
 
     }

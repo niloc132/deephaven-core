@@ -118,7 +118,17 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         if (isPythonSession()) {
             JpyInit.init(log);
         }
-        globalSessionProvider.initializeGlobalScriptSession(scriptTypes.get(WORKER_CONSOLE_TYPE).get());
+        ScriptSession session = scriptTypes.get(WORKER_CONSOLE_TYPE).get();
+        globalSessionProvider.initializeGlobalScriptSession(session);
+
+
+        new Thread(() -> {
+            Object last = null;
+            while(true) {
+                last = session.reproFailure(last);
+            }
+        }).start();
+
     }
 
     @Override
