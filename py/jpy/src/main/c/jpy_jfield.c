@@ -36,8 +36,8 @@ JPy_JField* JField_New(JPy_JType* declaringClass, PyObject* fieldName, JPy_JType
     field->isFinal = isFinal;
     field->fid = fid;
 
-    JPy_INCREF(field->name);
-    JPy_INCREF(field->type);
+    Py_INCREF(field->name);
+    Py_INCREF(field->type);
 
     return field;
 }
@@ -47,8 +47,8 @@ JPy_JField* JField_New(JPy_JType* declaringClass, PyObject* fieldName, JPy_JType
  */
 void JField_dealloc(JPy_JField* self)
 {
-    JPy_DECREF(self->name);
-    JPy_DECREF(self->type);
+    Py_DECREF(self->name);
+    Py_DECREF(self->type);
     Py_TYPE(self)->tp_free((PyObject*) self);
 }
 
@@ -77,7 +77,7 @@ PyObject* JField_repr(JPy_JField* self)
  */
 PyObject* JField_str(JPy_JField* self)
 {
-    JPy_INCREF(self->name);
+    Py_INCREF(self->name);
     return self->name;
 }
 
