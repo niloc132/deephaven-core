@@ -1,70 +1,65 @@
 package io.deephaven.jpy.integration;
 
 import io.deephaven.jpy.GcModule;
-import org.jpy.CreateModule;
-import org.jpy.PyObject;
-import org.junit.Assert;
-
+import io.deephaven.jpy.SysModule;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.jpy.PyObject;
+import org.junit.Assert;
 
 public class ReferenceCounting implements AutoCloseable {
 
-    public static ReferenceCounting create(CreateModule createModule) {
-        return new ReferenceCounting(GcModule.create(), RefcountModule.of(createModule));
+    public static ReferenceCounting create() {
+        return new ReferenceCounting(GcModule.create(), SysModule.create());
     }
 
     private final GcModule gc;
-    private final RefcountModule refcountModule;
+    private final SysModule sys;
 
-    private ReferenceCounting(GcModule gc, RefcountModule refcountModule) {
-        this.gc = Objects.requireNonNull(gc);
-        this.refcountModule = Objects.requireNonNull(refcountModule);
+    private ReferenceCounting(GcModule gc, SysModule sys) {
+        this.gc = gc;
+        this.sys = sys;
     }
 
     @Override
     public void close() {
-        refcountModule.close();
         gc.close();
+        sys.close();
     }
 
-    public void check(int expectedReferenceCount, PyObject object) {
-        gc.collect();
-        Assert.assertEquals(expectedReferenceCount, RefcountModule.refcount(refcountModule, object));
-        gc.collect();
-        Assert.assertEquals(expectedReferenceCount, RefcountModule.refcount(refcountModule, object));
-        blackhole(object);
-    }
-
-    public void check(int expectedReferenceCount, Object obj) {
-        if (obj instanceof PyObject) {
-            check(expectedReferenceCount, (PyObject) obj);
-            return;
-        }
+    public void check(int logicalReferenceCount, Object obj) {
         final PyObject pyObject = PyObject.unwrapProxy(obj);
         if (pyObject != null) {
-            check(expectedReferenceCount, pyObject);
-            return;
+            obj = pyObject; // todo: arguably, this is something that the the jpy should be doing itself
         }
-        throw new IllegalStateException(
-                "Should only be checking the python reference count for native PyObjects or proxied PyObjects");
+
+        // the extra ref b/c of the tuple ref-stealing (see PyLib_CallAndReturnObject)
+        final int extraRefFromTupleStealing = obj instanceof PyObject ? 1 : 0;
+        final int extraCount = extraRefFromTupleStealing;
+        // this GC might not be technically necessary since python seems to run destructors asap
+        // but it shouldn't hurt
+        gc.collect();
+        Assert.assertEquals(logicalReferenceCount + extraCount, getrefcount(obj));
+        // this GC might not be technically necessary since python seems to run destructors asap
+        // but it shouldn't hurt
+        gc.collect();
+        // ensure the getrefcount call didn't change the count
+        Assert.assertEquals(logicalReferenceCount + extraCount, getrefcount(obj));
     }
 
     public int getLogicalRefCount(Object obj) {
-        if (obj instanceof PyObject) {
-            return getLogicalRefCount((PyObject) obj);
-        }
-        final PyObject pyObject = PyObject.unwrapProxy(obj);
-        if (pyObject != null) {
-            return getLogicalRefCount(pyObject);
-        }
-        throw new IllegalStateException(
-                "Should only be getting the python reference count for native PyObjects or proxied PyObjects");
+        // the extra ref b/c of the tuple ref-stealing (see PyLib_CallAndReturnObject)
+        final int extraRefFromTupleStealing = obj instanceof PyObject ? 1 : 0;
+        final int extraCount = extraRefFromTupleStealing;
+        return getrefcount(obj) - extraCount;
     }
 
-    public int getLogicalRefCount(PyObject obj) {
-        return RefcountModule.refcount(refcountModule, obj);
+    private int getrefcount(Object o) {
+        if (o instanceof PyObject) {
+            return sys.getrefcount((PyObject) o);
+        }
+        return sys.getrefcount(o);
     }
 
     /**

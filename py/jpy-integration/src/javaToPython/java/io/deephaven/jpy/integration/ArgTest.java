@@ -25,7 +25,7 @@ public class ArgTest extends PythonTest {
     @Before
     public void setUp() {
         noop = NoopModule.create(getCreateModule());
-        ref = ReferenceCounting.create(getCreateModule());
+        ref = ReferenceCounting.create();
         jpy = JpyModule.create();
         // jpy.setFlags(EnumSet.of(Flag.ALL));
     }
