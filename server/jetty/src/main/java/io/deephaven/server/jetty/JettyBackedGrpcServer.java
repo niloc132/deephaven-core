@@ -1,20 +1,22 @@
 package io.deephaven.server.jetty;
 
 import io.deephaven.server.runner.GrpcServer;
-import io.grpc.servlet.web.websocket.WebSocketServerStream;
 import jakarta.servlet.DispatcherType;
-import jakarta.websocket.server.ServerEndpointConfig;
+import org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory;
 import org.eclipse.jetty.http2.parser.RateControl;
 import org.eclipse.jetty.http2.server.HTTP2CServerConnectionFactory;
+import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.util.resource.Resource;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.webapp.WebAppContext;
-import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServletContainerInitializer;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -34,12 +36,30 @@ public class JettyBackedGrpcServer implements GrpcServer {
     public JettyBackedGrpcServer(
             final @Named("http.port") int port,
             final GrpcFilter filter) {
-        jetty = new Server(port);
-        ServerConnector sc = (ServerConnector) jetty.getConnectors()[0];
-        HTTP2CServerConnectionFactory factory =
-                new HTTP2CServerConnectionFactory(new HttpConfiguration());
-        factory.setRateControlFactory(new RateControl.Factory() {});
-        sc.addConnectionFactory(factory);
+        jetty = new Server();
+
+        // https://www.eclipse.org/jetty/documentation/jetty-11/programming-guide/index.html#pg-server-http-connector-protocol-http2-tls
+        HttpConfiguration httpConfig = new HttpConfiguration();
+        httpConfig.addCustomizer(new SecureRequestCustomizer());
+
+//        HttpConnectionFactory http11 = new HttpConnectionFactory(httpConfig);
+
+        // note: java client breaking when using HTTP2CServerConnectionFactory
+        HTTP2ServerConnectionFactory h2 = new HTTP2ServerConnectionFactory(httpConfig);
+        ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
+//        alpn.setDefaultProtocol(http11.getProtocol());
+        alpn.setDefaultProtocol(h2.getProtocol());
+
+        SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+        sslContextFactory.setKeyStorePath("/home/devin/dev/deephaven/deephaven-core/data/felian.fish-moth.ts.net.chain.p12");
+        sslContextFactory.setKeyStorePassword("test");
+
+        SslConnectionFactory tls = new SslConnectionFactory(sslContextFactory, alpn.getProtocol());
+
+//        ServerConnector sc = new ServerConnector(jetty, tls, alpn, h2, http11);
+        ServerConnector sc = new ServerConnector(jetty, tls, alpn, h2);
+        sc.setPort(8443);
+        jetty.addConnector(sc);
 
         final WebAppContext context =
                 new WebAppContext(null, "/", null, null, null, new ErrorPageErrorHandler(), SESSIONS);
@@ -71,17 +91,17 @@ public class JettyBackedGrpcServer implements GrpcServer {
         context.addFilter(new FilterHolder(filter), "/*", EnumSet.noneOf(DispatcherType.class));
 
         // Set up websocket for grpc-web
-        JakartaWebSocketServletContainerInitializer.configure(context, (servletContext, container) -> {
-            container.addEndpoint(
-                    ServerEndpointConfig.Builder.create(WebSocketServerStream.class, "/{service}/{method}")
-                            .configurator(new ServerEndpointConfig.Configurator() {
-                                @Override
-                                public <T> T getEndpointInstance(Class<T> endpointClass) throws InstantiationException {
-                                    return (T) filter.create(WebSocketServerStream::new);
-                                }
-                            })
-                            .build());
-        });
+//        JakartaWebSocketServletContainerInitializer.configure(context, (servletContext, container) -> {
+//            container.addEndpoint(
+//                    ServerEndpointConfig.Builder.create(WebSocketServerStream.class, "/{service}/{method}")
+//                            .configurator(new ServerEndpointConfig.Configurator() {
+//                                @Override
+//                                public <T> T getEndpointInstance(Class<T> endpointClass) throws InstantiationException {
+//                                    return (T) filter.create(WebSocketServerStream::new);
+//                                }
+//                            })
+//                            .build());
+//        });
 
         jetty.setHandler(context);
 

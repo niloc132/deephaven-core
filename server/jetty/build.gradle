@@ -15,6 +15,14 @@ dependencies {
     implementation('org.eclipse.jetty:jetty-servlet:11.0.8')
     implementation 'org.eclipse.jetty:jetty-webapp:11.0.8'
     implementation 'org.eclipse.jetty.http2:http2-server:11.0.8'
+    implementation 'org.eclipse.jetty:jetty-alpn-server:11.0.8'
+
+    runtimeOnly 'org.eclipse.jetty:jetty-alpn-java-server:11.0.8'
+
+    // todo: this should be better, but has error
+    // Could not accept java.nio.channels.SocketChannel[closed]: java.lang.IllegalStateException: Connection rejected: No ALPN Processor for sun.security.ssl.SSLEngineImpl from [org.eclipse.jetty.alpn.conscrypt.server.ConscryptServerALPNProcessor@3872f37f]
+    // https://github.com/eclipse/jetty.project/issues/2950
+    // runtimeOnly 'org.eclipse.jetty:jetty-alpn-conscrypt-server:11.0.8'
 
 //    implementation 'io.grpc:grpc-servlet-jakarta'
     implementation project(':grpc-java:grpc-servlet-jakarta')
