@@ -1,7 +1,6 @@
 package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb;
 
 import elemental2.core.Uint8Array;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.gettablesrequest.KeysCase;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -197,7 +196,7 @@ public class GetTablesRequest {
 
     public native void clearTicket();
 
-    public native KeysCase getKeysCase();
+    public native int getKeysCase();
 
     public native Ticket getResultId();
 
