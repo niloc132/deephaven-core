@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+ */
+
+syntax = "proto3";
+
+package io.deephaven.proto.backplane.grpc;
+
+option java_multiple_files = true;
+option optimize_for = SPEED;
+
+import "deephaven/proto/object.proto";
+import "deephaven/proto/table.proto";
+import "deephaven/proto/ticket.proto";
+
+/*
+ * This service offers methods to manipulate the contents of input tables.
+ */
+service PartitionedTableService {
+  /*
+   * Transforms a table into a partitioned table, consisting of many separate table, each individually
+   * addressable. The result will be a FetchObjectResponse populated with a PartitionedTable.
+   */
+  rpc PartitionBy(PartitionByRequest) returns (PartitionByResponse);
+  /*
+   * Given a partitioned table, returns a table with the contents of all of the constituent tables.
+   */
+  rpc Merge(MergeRequest) returns (ExportedTableCreationResponse);
+  /*
+   * Given a partitioned table and a row indicated by position or by the values of a 1-row table,
+   * returns a table that matched that row, if any. If none is present, NOT_FOUND will be sent in
+   * response.
+   */
+  rpc GetTable(GetTablesRequest) returns (ExportedTableCreationResponse);
+}
+
+message PartitionByRequest {
+  Ticket table_id = 1;
+  Ticket result_id = 2;
+  repeated string key_column_names = 3;
+  bool drop_keys = 4;
+}
+message PartitionByResponse {
+
+}
+
+message MergeRequest {
+  Ticket partitioned_table = 1;
+  Ticket result_id = 2;
+}
+
+message GetTablesRequest {
+  oneof keys {
+    Ticket ticket = 1;// Reference to a one-row table to use as keys
+    sint64 row = 2;// key-space position of the table to fetch
+  }
+  Ticket result_id = 3;
+}
+
+/*
+ * A message that describes a partitioned table, able to be sent as a plugin object to a client.
+ * This object will also come with a ticket to the underlying table that can be used to get the
+ * constituent tables by key.
+ */
+message PartitionedTableDescriptor {
+  repeated string key_column_names = 1;
+  bool unique_keys = 2;
+
+  bytes constituent_definition_schema = 3;
+  string constituent_column_name = 4;
+
+  bool constituent_changes_permitted = 5;
+}
