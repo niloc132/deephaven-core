@@ -3,6 +3,7 @@ package io.deephaven.web.client.api.widget.plot;
 import elemental2.core.JsArray;
 import elemental2.core.JsObject;
 import elemental2.dom.CustomEventInit;
+import elemental2.dom.DomGlobal;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FigureDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.AxisDescriptor;
@@ -676,7 +677,8 @@ public class JsFigure extends HasEventHandling {
                     partitionedTableRequest.setSourceId(p0);
                     connection.objectServiceClient().fetchObject(partitionedTableRequest, connection.metadata(), c::apply);
                 }).then(object -> {
-                    JsPartitionedTable partitionedTable = new JsPartitionedTable(connection, new JsWidget(connection, callback -> callback.apply(null, object)));
+                    DomGlobal.console.log(p0.getTicket());
+                    JsPartitionedTable partitionedTable = new JsPartitionedTable(connection, new JsWidget(connection, callback -> callback.handleResponse(null, object, p0.getTicket())));
                     tableMaps[tableMaps.length] = partitionedTable;
                     return partitionedTable.refetch();
                 });

@@ -805,16 +805,16 @@ public class WorkerConnection {
             throw new IllegalArgumentException("Can't load as a figure: " + varDef.getType());
         }
         return whenServerReady("get a figure")
-                .then(server -> new JsFigure(this, c -> fetchObject(varDef, c)).refetch());
+                .then(server -> new JsFigure(this, c -> fetchObject(varDef, (fail, success, ignore) -> c.apply(fail, success))).refetch());
     }
 
-    private void fetchObject(JsVariableDefinition varDef, JsBiConsumer<Object, FetchObjectResponse> c) {
+    private void fetchObject(JsVariableDefinition varDef, JsWidget.WidgetFetchCallback c) {
         FetchObjectRequest request = new FetchObjectRequest();
         TypedTicket typedTicket = new TypedTicket();
         typedTicket.setTicket(TableTicket.createTicket(varDef));
         typedTicket.setType(varDef.getType());
         request.setSourceId(typedTicket);
-        objectServiceClient().fetchObject(request, metadata(), c::apply);
+        objectServiceClient().fetchObject(request, metadata(), (fail, success) -> c.handleResponse(fail, success, typedTicket.getTicket()));
     }
 
     public Promise<JsWidget> getWidget(JsVariableDefinition varDef) {

@@ -4,9 +4,7 @@ import elemental2.core.Uint8Array;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
-import io.deephaven.web.client.api.Callbacks;
 import io.deephaven.web.client.api.WorkerConnection;
-import io.deephaven.web.shared.fu.JsBiConsumer;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsMethod;
@@ -18,8 +16,12 @@ public class JsWidget {
     private Ticket ticket;
 
     @JsFunction
+    public interface WidgetFetchCallback {
+        void handleResponse(Object error, FetchObjectResponse response, Ticket requestedTicket);
+    }
+    @JsFunction
     public interface WidgetFetch {
-        void fetch(JsBiConsumer<Object, FetchObjectResponse> callback);
+        void fetch(WidgetFetchCallback callback);
     }
 
     private FetchObjectResponse response;
@@ -33,11 +35,22 @@ public class JsWidget {
 
     @JsIgnore
     public Promise<JsWidget> refetch() {
-        return Callbacks.grpcUnaryPromise(fetch::fetch)
-                .then(response -> {
+        return new Promise<>((resolve, reject) -> {
+            fetch.fetch((err, response, ticket) -> {
+                if (err != null) {
+                    reject.onInvoke(err);
+                } else {
                     this.response = response;
-                    return Promise.resolve(this);
-                });
+                    this.ticket = ticket;
+                    resolve.onInvoke(this);
+                }
+            });
+        });
+    }
+
+    @JsIgnore
+    public Ticket getTicket() {
+        return ticket;
     }
 
     @JsProperty

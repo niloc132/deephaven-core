@@ -96,7 +96,7 @@ public class JsPartitionedTable extends HasEventHandling {
             // If we've entered this lambda, the JsLazy is being used, so we need to go ahead and get the tablehandle
             final ClientTableState entry = connection.newState((c, cts, metadata) -> {
                         GetTableRequest getTableRequest = new GetTableRequest();
-
+                        getTableRequest.setPartitionedTable(widget.getTicket());
                         getTableRequest.setRow("" + index);
                         getTableRequest.setResultId(cts.getHandle().makeTicket());
                         connection.partitionedTableServiceClient().getTable(getTableRequest, connection.metadata(), c::apply);
@@ -136,7 +136,7 @@ public class JsPartitionedTable extends HasEventHandling {
     public Promise<JsTable> getMergedTable() {
         return connection.newState((c, cts, metadata) -> {
                     MergeRequest requestMessage = new MergeRequest();
-//                    requestMessage.setPartitionedTable(widget.getTicket());//TODO
+                    requestMessage.setPartitionedTable(widget.getTicket());
                     requestMessage.setResultId(cts.getHandle().makeTicket());
                     connection.partitionedTableServiceClient().merge(requestMessage, connection.metadata(), c::apply);
                 }, "tablemap merged table")
