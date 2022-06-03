@@ -11,9 +11,9 @@ import jsinterop.base.JsPropertyMap;
 
 @JsType(
         isNative = true,
-        name = "dhinternal.io.deephaven.proto.partitionedtable_pb.GetTablesRequest",
+        name = "dhinternal.io.deephaven.proto.partitionedtable_pb.GetTableRequest",
         namespace = JsPackage.GLOBAL)
-public class GetTablesRequest {
+public class GetTableRequest {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -21,7 +21,7 @@ public class GetTablesRequest {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static GetTablesRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType of(Object o) {
+                static GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType of(Object o) {
                     return Js.cast(o);
                 }
 
@@ -47,33 +47,33 @@ public class GetTablesRequest {
             }
 
             @JsOverlay
-            static GetTablesRequest.ToObjectReturnType.TicketFieldType create() {
+            static GetTableRequest.ToObjectReturnType.TicketFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            GetTablesRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType getTicket();
+            GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
-            void setTicket(GetTablesRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType ticket);
+            void setTicket(GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<GetTablesRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<GetTablesRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
 
         @JsOverlay
-        static GetTablesRequest.ToObjectReturnType create() {
+        static GetTableRequest.ToObjectReturnType create() {
             return Js.uncheckedCast(JsPropertyMap.of());
         }
 
@@ -81,19 +81,19 @@ public class GetTablesRequest {
         Object getResultId();
 
         @JsProperty
-        double getRow();
+        String getRow();
 
         @JsProperty
-        GetTablesRequest.ToObjectReturnType.TicketFieldType getTicket();
+        GetTableRequest.ToObjectReturnType.TicketFieldType getTicket();
 
         @JsProperty
         void setResultId(Object resultId);
 
         @JsProperty
-        void setRow(double row);
+        void setRow(String row);
 
         @JsProperty
-        void setTicket(GetTablesRequest.ToObjectReturnType.TicketFieldType ticket);
+        void setTicket(GetTableRequest.ToObjectReturnType.TicketFieldType ticket);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -103,8 +103,7 @@ public class GetTablesRequest {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static GetTablesRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType of(
-                        Object o) {
+                static GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType of(Object o) {
                     return Js.cast(o);
                 }
 
@@ -130,34 +129,33 @@ public class GetTablesRequest {
             }
 
             @JsOverlay
-            static GetTablesRequest.ToObjectReturnType0.TicketFieldType create() {
+            static GetTableRequest.ToObjectReturnType0.TicketFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            GetTablesRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType getTicket();
+            GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
-            void setTicket(
-                    GetTablesRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType ticket);
+            void setTicket(GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<GetTablesRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<GetTablesRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
 
         @JsOverlay
-        static GetTablesRequest.ToObjectReturnType0 create() {
+        static GetTableRequest.ToObjectReturnType0 create() {
             return Js.uncheckedCast(JsPropertyMap.of());
         }
 
@@ -165,30 +163,30 @@ public class GetTablesRequest {
         Object getResultId();
 
         @JsProperty
-        double getRow();
+        String getRow();
 
         @JsProperty
-        GetTablesRequest.ToObjectReturnType0.TicketFieldType getTicket();
+        GetTableRequest.ToObjectReturnType0.TicketFieldType getTicket();
 
         @JsProperty
         void setResultId(Object resultId);
 
         @JsProperty
-        void setRow(double row);
+        void setRow(String row);
 
         @JsProperty
-        void setTicket(GetTablesRequest.ToObjectReturnType0.TicketFieldType ticket);
+        void setTicket(GetTableRequest.ToObjectReturnType0.TicketFieldType ticket);
     }
 
-    public static native GetTablesRequest deserializeBinary(Uint8Array bytes);
+    public static native GetTableRequest deserializeBinary(Uint8Array bytes);
 
-    public static native GetTablesRequest deserializeBinaryFromReader(
-            GetTablesRequest message, Object reader);
+    public static native GetTableRequest deserializeBinaryFromReader(
+            GetTableRequest message, Object reader);
 
-    public static native void serializeBinaryToWriter(GetTablesRequest message, Object writer);
+    public static native void serializeBinaryToWriter(GetTableRequest message, Object writer);
 
-    public static native GetTablesRequest.ToObjectReturnType toObject(
-            boolean includeInstance, GetTablesRequest msg);
+    public static native GetTableRequest.ToObjectReturnType toObject(
+            boolean includeInstance, GetTableRequest msg);
 
     public native void clearResultId();
 
@@ -200,7 +198,7 @@ public class GetTablesRequest {
 
     public native Ticket getResultId();
 
-    public native double getRow();
+    public native String getRow();
 
     public native Ticket getTicket();
 
@@ -216,13 +214,13 @@ public class GetTablesRequest {
 
     public native void setResultId(Ticket value);
 
-    public native void setRow(double value);
+    public native void setRow(String value);
 
     public native void setTicket();
 
     public native void setTicket(Ticket value);
 
-    public native GetTablesRequest.ToObjectReturnType0 toObject();
+    public native GetTableRequest.ToObjectReturnType0 toObject();
 
-    public native GetTablesRequest.ToObjectReturnType0 toObject(boolean includeInstance);
+    public native GetTableRequest.ToObjectReturnType0 toObject(boolean includeInstance);
 }

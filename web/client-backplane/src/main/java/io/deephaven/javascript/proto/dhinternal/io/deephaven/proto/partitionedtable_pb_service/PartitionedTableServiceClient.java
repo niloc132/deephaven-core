@@ -1,7 +1,7 @@
 package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb_service;
 
 import io.deephaven.javascript.proto.dhinternal.browserheaders.BrowserHeaders;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.GetTablesRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.GetTableRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.MergeRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.PartitionByRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.PartitionByResponse;
@@ -307,7 +307,7 @@ public class PartitionedTableServiceClient {
 
     @JsOverlay
     public final UnaryResponse getTable(
-            GetTablesRequest requestMessage,
+            GetTableRequest requestMessage,
             BrowserHeaders metadata_or_callback,
             PartitionedTableServiceClient.GetTableCallbackFn callback) {
         return getTable(
@@ -319,7 +319,7 @@ public class PartitionedTableServiceClient {
 
     @JsOverlay
     public final UnaryResponse getTable(
-            GetTablesRequest requestMessage, BrowserHeaders metadata_or_callback) {
+            GetTableRequest requestMessage, BrowserHeaders metadata_or_callback) {
         return getTable(
                 requestMessage,
                 Js.<PartitionedTableServiceClient.GetTableMetadata_or_callbackUnionType>uncheckedCast(
@@ -328,7 +328,7 @@ public class PartitionedTableServiceClient {
 
     @JsOverlay
     public final UnaryResponse getTable(
-            GetTablesRequest requestMessage,
+            GetTableRequest requestMessage,
             PartitionedTableServiceClient.GetTableMetadata_or_callbackFn metadata_or_callback,
             PartitionedTableServiceClient.GetTableCallbackFn callback) {
         return getTable(
@@ -340,7 +340,7 @@ public class PartitionedTableServiceClient {
 
     @JsOverlay
     public final UnaryResponse getTable(
-            GetTablesRequest requestMessage,
+            GetTableRequest requestMessage,
             PartitionedTableServiceClient.GetTableMetadata_or_callbackFn metadata_or_callback) {
         return getTable(
                 requestMessage,
@@ -349,12 +349,12 @@ public class PartitionedTableServiceClient {
     }
 
     public native UnaryResponse getTable(
-            GetTablesRequest requestMessage,
+            GetTableRequest requestMessage,
             PartitionedTableServiceClient.GetTableMetadata_or_callbackUnionType metadata_or_callback,
             PartitionedTableServiceClient.GetTableCallbackFn callback);
 
     public native UnaryResponse getTable(
-            GetTablesRequest requestMessage,
+            GetTableRequest requestMessage,
             PartitionedTableServiceClient.GetTableMetadata_or_callbackUnionType metadata_or_callback);
 
     @JsOverlay
