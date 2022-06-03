@@ -9,7 +9,7 @@ import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.proto.backplane.grpc.ExportedTableCreationResponse;
 import io.deephaven.proto.backplane.grpc.FetchObjectResponse;
-import io.deephaven.proto.backplane.grpc.GetTablesRequest;
+import io.deephaven.proto.backplane.grpc.GetTableRequest;
 import io.deephaven.proto.backplane.grpc.MergeRequest;
 import io.deephaven.proto.backplane.grpc.PartitionByRequest;
 import io.deephaven.proto.backplane.grpc.PartitionByResponse;
@@ -82,7 +82,7 @@ public class PartitionedTableServiceGrpcImpl extends PartitionedTableServiceGrpc
     }
 
     @Override
-    public void getTable(GetTablesRequest request, StreamObserver<ExportedTableCreationResponse> responseObserver) {
+    public void getTable(GetTableRequest request, StreamObserver<ExportedTableCreationResponse> responseObserver) {
         GrpcUtil.rpcWrapper(log, responseObserver, () -> {
             final SessionState session = sessionService.getCurrentSession();
 

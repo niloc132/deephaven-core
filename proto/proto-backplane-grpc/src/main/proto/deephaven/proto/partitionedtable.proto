@@ -9,7 +9,6 @@ package io.deephaven.proto.backplane.grpc;
 option java_multiple_files = true;
 option optimize_for = SPEED;
 
-import "deephaven/proto/object.proto";
 import "deephaven/proto/table.proto";
 import "deephaven/proto/ticket.proto";
 
@@ -31,7 +30,7 @@ service PartitionedTableService {
    * returns a table that matched that row, if any. If none is present, NOT_FOUND will be sent in
    * response.
    */
-  rpc GetTable(GetTablesRequest) returns (ExportedTableCreationResponse);
+  rpc GetTable(GetTableRequest) returns (ExportedTableCreationResponse);
 }
 
 message PartitionByRequest {
@@ -49,10 +48,10 @@ message MergeRequest {
   Ticket result_id = 2;
 }
 
-message GetTablesRequest {
+message GetTableRequest {
   oneof keys {
     Ticket ticket = 1;// Reference to a one-row table to use as keys
-    sint64 row = 2;// key-space position of the table to fetch
+    sint64 row = 2  [jstype=JS_STRING];// key-space position of the table to fetch
   }
   Ticket result_id = 3;
 }
