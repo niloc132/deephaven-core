@@ -1415,7 +1415,7 @@ public class WorkerConnection {
                 LogItem logItem = new LogItem();
                 logItem.setLogLevel(data.getLogLevel());
                 logItem.setMessage(data.getMessage());
-                logItem.setMicros(data.getMicros());
+                logItem.setMicros((double) java.lang.Long.parseLong(data.getMicros()));
 
                 notifyLog(logItem);
             });

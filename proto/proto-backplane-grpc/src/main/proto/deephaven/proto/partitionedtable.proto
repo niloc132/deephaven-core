@@ -49,11 +49,13 @@ message MergeRequest {
 }
 
 message GetTableRequest {
+  Ticket partitioned_table = 1;
+
   oneof keys {
-    Ticket ticket = 1;// Reference to a one-row table to use as keys
-    sint64 row = 2  [jstype=JS_STRING];// key-space position of the table to fetch
+    Ticket ticket = 2;// Reference to a one-row table to use as keys
+    sint64 row = 3  [jstype=JS_STRING];// key-space position of the table to fetch
   }
-  Ticket result_id = 3;
+  Ticket result_id = 4;
 }
 
 /*

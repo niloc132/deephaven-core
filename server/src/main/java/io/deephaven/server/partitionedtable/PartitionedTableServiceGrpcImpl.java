@@ -87,7 +87,7 @@ public class PartitionedTableServiceGrpcImpl extends PartitionedTableServiceGrpc
             final SessionState session = sessionService.getCurrentSession();
 
             SessionState.ExportObject<PartitionedTable> partitionedTable =
-                    ticketRouter.resolve(session, request.getTicket(), "partitionedTable");
+                    ticketRouter.resolve(session, request.getPartitionedTable(), "partitionedTable");
             if (!request.hasRow()) {
                 throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Only row is supported to fetch a table from a partitionedtable");
             }

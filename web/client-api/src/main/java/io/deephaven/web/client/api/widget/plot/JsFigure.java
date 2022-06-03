@@ -203,7 +203,7 @@ public class JsFigure extends HasEventHandling {
 
     @JsProperty
     public double getUpdateInterval() {
-        return descriptor.getUpdateInterval();
+        return Long.parseLong(descriptor.getUpdateInterval());
     }
 
     @JsProperty

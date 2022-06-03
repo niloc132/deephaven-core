@@ -6,7 +6,7 @@ import elemental2.dom.CustomEvent;
 import elemental2.dom.CustomEventInit;
 import elemental2.dom.Event;
 import elemental2.promise.Promise;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.GetTablesRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.GetTableRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.MergeRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.PartitionedTableDescriptor;
 import io.deephaven.web.client.api.subscription.SubscriptionTableData;
@@ -95,10 +95,11 @@ public class JsPartitionedTable extends HasEventHandling {
         tables.put(key, JsLazy.of(() -> {
             // If we've entered this lambda, the JsLazy is being used, so we need to go ahead and get the tablehandle
             final ClientTableState entry = connection.newState((c, cts, metadata) -> {
-                        GetTablesRequest getTablesRequest = new GetTablesRequest();
-                        getTablesRequest.setRow(index);
-                        getTablesRequest.setResultId(cts.getHandle().makeTicket());
-                        connection.partitionedTableServiceClient().getTable(getTablesRequest, c::apply);
+                        GetTableRequest getTableRequest = new GetTableRequest();
+
+                        getTableRequest.setRow("" + index);
+                        getTableRequest.setResultId(cts.getHandle().makeTicket());
+                        connection.partitionedTableServiceClient().getTable(getTableRequest, connection.metadata(), c::apply);
                     },
                     "tablemap key " + key);
 
@@ -135,9 +136,9 @@ public class JsPartitionedTable extends HasEventHandling {
     public Promise<JsTable> getMergedTable() {
         return connection.newState((c, cts, metadata) -> {
                     MergeRequest requestMessage = new MergeRequest();
-//                    requestMessage.setPartitionedTable(widget.getTicket());
+//                    requestMessage.setPartitionedTable(widget.getTicket());//TODO
                     requestMessage.setResultId(cts.getHandle().makeTicket());
-                    connection.partitionedTableServiceClient().merge(requestMessage, c::apply);
+                    connection.partitionedTableServiceClient().merge(requestMessage, connection.metadata(), c::apply);
                 }, "tablemap merged table")
                 .refetch(this, connection.metadata())
                 .then(cts -> Promise.resolve(new JsTable(cts.getConnection(), cts)));
