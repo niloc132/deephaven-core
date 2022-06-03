@@ -17,11 +17,12 @@ public class GetTableRequest {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface TicketFieldType {
+        public interface PartitionedTableFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType of(Object o) {
+                static GetTableRequest.ToObjectReturnType.PartitionedTableFieldType.GetTicketUnionType of(
+                        Object o) {
                     return Js.cast(o);
                 }
 
@@ -47,27 +48,28 @@ public class GetTableRequest {
             }
 
             @JsOverlay
-            static GetTableRequest.ToObjectReturnType.TicketFieldType create() {
+            static GetTableRequest.ToObjectReturnType.PartitionedTableFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType getTicket();
+            GetTableRequest.ToObjectReturnType.PartitionedTableFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
-            void setTicket(GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType ticket);
+            void setTicket(
+                    GetTableRequest.ToObjectReturnType.PartitionedTableFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType.PartitionedTableFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<GetTableRequest.ToObjectReturnType.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType.PartitionedTableFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -78,13 +80,20 @@ public class GetTableRequest {
         }
 
         @JsProperty
+        GetTableRequest.ToObjectReturnType.PartitionedTableFieldType getPartitionedTable();
+
+        @JsProperty
         Object getResultId();
 
         @JsProperty
         String getRow();
 
         @JsProperty
-        GetTableRequest.ToObjectReturnType.TicketFieldType getTicket();
+        Object getTicket();
+
+        @JsProperty
+        void setPartitionedTable(
+                GetTableRequest.ToObjectReturnType.PartitionedTableFieldType partitionedTable);
 
         @JsProperty
         void setResultId(Object resultId);
@@ -93,17 +102,18 @@ public class GetTableRequest {
         void setRow(String row);
 
         @JsProperty
-        void setTicket(GetTableRequest.ToObjectReturnType.TicketFieldType ticket);
+        void setTicket(Object ticket);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType0 {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface TicketFieldType {
+        public interface PartitionedTableFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType of(Object o) {
+                static GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType.GetTicketUnionType of(
+                        Object o) {
                     return Js.cast(o);
                 }
 
@@ -129,27 +139,28 @@ public class GetTableRequest {
             }
 
             @JsOverlay
-            static GetTableRequest.ToObjectReturnType0.TicketFieldType create() {
+            static GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType getTicket();
+            GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
-            void setTicket(GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType ticket);
+            void setTicket(
+                    GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<GetTableRequest.ToObjectReturnType0.TicketFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -160,13 +171,20 @@ public class GetTableRequest {
         }
 
         @JsProperty
+        GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType getPartitionedTable();
+
+        @JsProperty
         Object getResultId();
 
         @JsProperty
         String getRow();
 
         @JsProperty
-        GetTableRequest.ToObjectReturnType0.TicketFieldType getTicket();
+        Object getTicket();
+
+        @JsProperty
+        void setPartitionedTable(
+                GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType partitionedTable);
 
         @JsProperty
         void setResultId(Object resultId);
@@ -175,7 +193,7 @@ public class GetTableRequest {
         void setRow(String row);
 
         @JsProperty
-        void setTicket(GetTableRequest.ToObjectReturnType0.TicketFieldType ticket);
+        void setTicket(Object ticket);
     }
 
     public static native GetTableRequest deserializeBinary(Uint8Array bytes);
@@ -188,6 +206,8 @@ public class GetTableRequest {
     public static native GetTableRequest.ToObjectReturnType toObject(
             boolean includeInstance, GetTableRequest msg);
 
+    public native void clearPartitionedTable();
+
     public native void clearResultId();
 
     public native void clearRow();
@@ -196,11 +216,15 @@ public class GetTableRequest {
 
     public native int getKeysCase();
 
+    public native Ticket getPartitionedTable();
+
     public native Ticket getResultId();
 
     public native String getRow();
 
     public native Ticket getTicket();
+
+    public native boolean hasPartitionedTable();
 
     public native boolean hasResultId();
 
@@ -209,6 +233,10 @@ public class GetTableRequest {
     public native boolean hasTicket();
 
     public native Uint8Array serializeBinary();
+
+    public native void setPartitionedTable();
+
+    public native void setPartitionedTable(Ticket value);
 
     public native void setResultId();
 
