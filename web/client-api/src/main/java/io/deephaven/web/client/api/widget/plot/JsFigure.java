@@ -3,19 +3,16 @@ package io.deephaven.web.client.api.widget.plot;
 import elemental2.core.JsArray;
 import elemental2.core.JsObject;
 import elemental2.dom.CustomEventInit;
-import elemental2.dom.DomGlobal;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FigureDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.AxisDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.TypedTicket;
 import io.deephaven.web.client.api.Callbacks;
 import io.deephaven.web.client.api.HasEventHandling;
 import io.deephaven.web.client.api.JsPartitionedTable;
 import io.deephaven.web.client.api.JsTable;
-import io.deephaven.web.client.api.TableMap;
 import io.deephaven.web.client.api.WorkerConnection;
 import io.deephaven.web.client.api.widget.JsWidget;
 import io.deephaven.web.client.fu.JsLog;
@@ -614,24 +611,20 @@ public class JsFigure extends HasEventHandling {
         private JsTable[] tables;
 
         private JsPartitionedTable[] tableMaps;
-        private Map<Integer, JsPartitionedTable> plotHandlesToTableMaps;
         private FigureClose onClose;
 
         public FigureTableFetchData(
                 JsTable[] tables,
-                JsPartitionedTable[] tableMaps,
-                Map<Integer, JsPartitionedTable> plotHandlesToTableMaps) {
-            this(tables, tableMaps, plotHandlesToTableMaps, null);
+                JsPartitionedTable[] tableMaps) {
+            this(tables, tableMaps, null);
         }
 
         public FigureTableFetchData(
                 JsTable[] tables,
                 JsPartitionedTable[] tableMaps,
-                Map<Integer, JsPartitionedTable> plotHandlesToTableMaps,
                 FigureClose onClose) {
             this.tables = tables;
             this.tableMaps = tableMaps;
-            this.plotHandlesToTableMaps = plotHandlesToTableMaps;
 
             // Called when the figure is being closed
             this.onClose = onClose;
@@ -677,7 +670,6 @@ public class JsFigure extends HasEventHandling {
                     partitionedTableRequest.setSourceId(p0);
                     connection.objectServiceClient().fetchObject(partitionedTableRequest, connection.metadata(), c::apply);
                 }).then(object -> {
-                    DomGlobal.console.log(p0.getTicket());
                     JsPartitionedTable partitionedTable = new JsPartitionedTable(connection, new JsWidget(connection, callback -> callback.handleResponse(null, object, p0.getTicket())));
                     tableMaps[tableMaps.length] = partitionedTable;
                     return partitionedTable.refetch();
@@ -685,41 +677,12 @@ public class JsFigure extends HasEventHandling {
                 return null;
             });
 
-             // iterate through the tablemaps we're supposed to have, fetch keys for them, and construct them
-//             Promise<?>[] tableMapPromises = new Promise[response.getTablemapsList().length];
-            Map<Integer, JsPartitionedTable> plotHandlesToTableMaps = new HashMap<>();
-            // for (int i = 0; i < descriptor.getTablemapsList().length; i++) {
-            // final int index = i;
-            // tableMapPromises[i] = Callbacks
-            // .<ColumnData, String>promise(null, c -> {
-            //// connection.getServer().getTableMapKeys(descriptor.getTableMaps()[index], c);
-            // throw new UnsupportedOperationException("getTableMapKeys");
-            // })
-            // .then(keys -> {
-            // TableMapDeclaration decl = new TableMapDeclaration();
-            // decl.setKeys(keys);
-            // decl.setHandle(descriptor.getTablemapsList().getAt(index));
-            // TableMap tableMap = new TableMap(connection, c -> c.onSuccess(decl));
-            //
-            // // never attempt a reconnect, we'll get a new tablemap with the figure when it reconnects
-            // tableMap.addEventListener(TableMap.EVENT_DISCONNECT, ignore -> tableMap.close());
-            //
-            // JsArray<Double> plotIds = descriptor.getTablemapidsList().getAt(index).getIdsList();
-            // for (int j = 0; j < plotIds.length; j++) {
-            // plotHandlesToTableMaps.put((int) (double) plotIds.getAt(j), tableMap);
-            // }
-            // tableMaps[index] = tableMap;
-            // return tableMap.refetch();
-            // });
-            // }
-
             return Promise.all(promises)
                     .then(ignore -> {
                         connection.registerFigure(figure);
 
                         return Promise.resolve(
-                                new FigureTableFetchData(tables, tableMaps, plotHandlesToTableMaps,
-                                        f -> this.connection.releaseFigure(f)));
+                                new FigureTableFetchData(tables, tableMaps, f -> this.connection.releaseFigure(f)));
                     });
         }
     }

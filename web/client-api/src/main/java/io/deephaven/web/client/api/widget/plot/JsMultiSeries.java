@@ -2,10 +2,8 @@ package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.dom.CustomEvent;
 import elemental2.dom.CustomEventInit;
-import elemental2.dom.DomGlobal;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.*;
 import io.deephaven.web.client.api.JsPartitionedTable;
-import io.deephaven.web.client.api.TableMap;
 import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsProperty;
 
@@ -33,14 +31,11 @@ public class JsMultiSeries {
                 // TODO assert only one at this stage
                 .forEach(plotHandle -> {
                     JsPartitionedTable tableMap = plotHandlesToTableMaps.get(plotHandle);
-                    DomGlobal.console.log(tableMap.getKeys().toString());
                     tableMap.getKeys().forEach((p0, p1, p2) -> {
-                        DomGlobal.console.log(tableMap.getKeys().toString());
                         requestTable(tableMap, p0);
                         return null;
                     });
                     tableMap.addEventListener(JsPartitionedTable.EVENT_KEYADDED, event -> {
-                        DomGlobal.console.log(tableMap.getKeys().toString());
                         requestTable(tableMap, ((CustomEvent) event).detail);
                     });
 
