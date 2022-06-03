@@ -7,6 +7,7 @@ import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FigureDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.*;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectResponse;
+import io.deephaven.web.client.api.JsPartitionedTable;
 import io.deephaven.web.client.api.JsTable;
 import io.deephaven.web.client.api.TableMap;
 import io.deephaven.web.shared.fu.RemoverFn;
@@ -100,7 +101,7 @@ public class JsFigureFactory {
 
                                 return Promise.resolve(new JsFigure.FigureTableFetchData(
                                         tableCopies,
-                                        new TableMap[0],
+                                        new JsPartitionedTable[0],
                                         Collections.emptyMap()));
                             }).refetch();
                 });

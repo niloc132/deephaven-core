@@ -6,13 +6,17 @@ import elemental2.dom.CustomEventInit;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FigureDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.AxisDescriptor;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.TypedTicket;
 import io.deephaven.web.client.api.Callbacks;
 import io.deephaven.web.client.api.HasEventHandling;
+import io.deephaven.web.client.api.JsPartitionedTable;
 import io.deephaven.web.client.api.JsTable;
 import io.deephaven.web.client.api.TableMap;
 import io.deephaven.web.client.api.WorkerConnection;
+import io.deephaven.web.client.api.widget.JsWidget;
 import io.deephaven.web.client.fu.JsLog;
 import io.deephaven.web.client.fu.LazyPromise;
 import io.deephaven.web.client.state.ClientTableState;
@@ -105,8 +109,8 @@ public class JsFigure extends HasEventHandling {
     private JsTable[] tables;
     private Map<Integer, JsTable> plotHandlesToTables;
 
-    private TableMap[] tableMaps;
-    private Map<Integer, TableMap> plotHandlesToTableMaps;
+    private JsPartitionedTable[] tableMaps;
+    private Map<Integer, JsPartitionedTable> plotHandlesToTableMaps;
 
     private final Map<AxisDescriptor, DownsampledAxisDetails> downsampled = new HashMap<>();
 
@@ -128,6 +132,7 @@ public class JsFigure extends HasEventHandling {
     @JsIgnore
     public Promise<JsFigure> refetch() {
         plotHandlesToTables = new HashMap<>();
+        plotHandlesToTableMaps = new HashMap<>();
 
         return Callbacks.grpcUnaryPromise(fetch::fetch).then(response -> {
             this.descriptor = FigureDescriptor.deserializeBinary(response.getData_asU8());
@@ -141,12 +146,15 @@ public class JsFigure extends HasEventHandling {
             // all tables are wired up, need to map them to the series instances
             tables = tableFetchData.tables;
             tableMaps = tableFetchData.tableMaps;
-            plotHandlesToTableMaps = tableFetchData.plotHandlesToTableMaps;
             onClose = tableFetchData.onClose;
 
             for (int i = 0; i < tables.length; i++) {
                 JsTable table = tables[i];
                 registerTableWithId(table, Js.cast(JsArray.of((double) i)));
+            }
+            for (int i = 0; i < tableMaps.length; i++) {
+                JsPartitionedTable partitionedTable = tableMaps[i];
+                registerTableMapWithId(partitionedTable, Js.cast(JsArray.of((double) i)));
             }
             Arrays.stream(charts)
                     .flatMap(c -> Arrays.stream(c.getSeries()))
@@ -163,7 +171,8 @@ public class JsFigure extends HasEventHandling {
         }, err -> {
             final FigureFetchError fetchError = new FigureFetchError(ofObject(err),
                     this.descriptor != null ? this.descriptor.getErrorsList() : new JsArray<>());
-            final CustomEventInit init = CustomEventInit.create();
+            //noinspection unchecked
+            final CustomEventInit<FigureFetchError> init = CustomEventInit.create();
             init.setDetail(fetchError);
             unsuppressEvents();
             fireEvent(EVENT_RECONNECTFAILED, init);
@@ -526,7 +535,7 @@ public class JsFigure extends HasEventHandling {
             Arrays.stream(tables).filter(jsTable -> !jsTable.isClosed()).forEach(JsTable::close);
         }
         if (tableMaps != null) {
-            Arrays.stream(tableMaps).forEach(TableMap::close);
+            Arrays.stream(tableMaps).forEach(JsPartitionedTable::close);
         }
     }
 
@@ -540,6 +549,11 @@ public class JsFigure extends HasEventHandling {
     private void registerTableWithId(JsTable table, JsArray<Double> plotTableHandles) {
         for (int j = 0; j < plotTableHandles.length; j++) {
             plotHandlesToTables.put((int) (double) plotTableHandles.getAt(j), table);
+        }
+    }
+    private void registerTableMapWithId(JsPartitionedTable table, JsArray<Double> plotTableHandles) {
+        for (int j = 0; j < plotTableHandles.length; j++) {
+            plotHandlesToTableMaps.put((int) (double) plotTableHandles.getAt(j), table);
         }
     }
 
@@ -598,21 +612,21 @@ public class JsFigure extends HasEventHandling {
     public static class FigureTableFetchData {
         private JsTable[] tables;
 
-        private TableMap[] tableMaps;
-        private Map<Integer, TableMap> plotHandlesToTableMaps;
+        private JsPartitionedTable[] tableMaps;
+        private Map<Integer, JsPartitionedTable> plotHandlesToTableMaps;
         private FigureClose onClose;
 
         public FigureTableFetchData(
                 JsTable[] tables,
-                TableMap[] tableMaps,
-                Map<Integer, TableMap> plotHandlesToTableMaps) {
+                JsPartitionedTable[] tableMaps,
+                Map<Integer, JsPartitionedTable> plotHandlesToTableMaps) {
             this(tables, tableMaps, plotHandlesToTableMaps, null);
         }
 
         public FigureTableFetchData(
                 JsTable[] tables,
-                TableMap[] tableMaps,
-                Map<Integer, TableMap> plotHandlesToTableMaps,
+                JsPartitionedTable[] tableMaps,
+                Map<Integer, JsPartitionedTable> plotHandlesToTableMaps,
                 FigureClose onClose) {
             this.tables = tables;
             this.tableMaps = tableMaps;
@@ -634,39 +648,44 @@ public class JsFigure extends HasEventHandling {
         @Override
         public Promise fetch(JsFigure figure, FetchObjectResponse response) {
             JsTable[] tables = new JsTable[0];
-            TableMap[] tableMaps = new TableMap[0];
+            JsPartitionedTable[] tableMaps = new JsPartitionedTable[0];
 
             Promise<?>[] promises = new Promise[response.getTypedExportIdList().length];
 
             response.getTypedExportIdList().forEach((p0, p1, p2) -> {
-                if (!p0.getType().equals("Table")) {
-                    // TODO (deephaven-core#62) implement fetch for tablemaps
-                    assert false : p0.getType() + " found in figure, not yet supported";
+                if (p0.getType().equals("Table")) {
+                    // Note that creating a CTS like this means we can't actually refetch it, but that's okay, we can't
+                    // reconnect in this way without refetching the entire figure anyway.
+                    promises[p1] = Callbacks.<ExportedTableCreationResponse, Object>grpcUnaryPromise(c -> {
+                        connection.tableServiceClient().getExportedTableCreationResponse(p0.getTicket(),
+                                connection.metadata(),
+                                c::apply);
+                    }).then(etcr -> {
+                        ClientTableState cts = connection.newStateFromUnsolicitedTable(etcr, "table for figure");
+                        JsTable table = new JsTable(connection, cts);
+                        // never attempt a reconnect, since we might have a different figure schema entirely
+                        table.addEventListener(JsTable.EVENT_DISCONNECT, ignore -> table.close());
+                        tables[tables.length] = table;
+                        return Promise.resolve(table);
+                    });
                     return null;
                 }
 
-
-                // Note that creating a CTS like this means we can't actually refetch it, but that's okay, we can't
-                // reconnect in this way without refetching the entire figure anyway.
-                promises[p1] = Callbacks.<ExportedTableCreationResponse, Object>grpcUnaryPromise(c -> {
-                    connection.tableServiceClient().getExportedTableCreationResponse(p0.getTicket(),
-                            connection.metadata(),
-                            c::apply);
-                }).then(etcr -> {
-                    ClientTableState cts = connection.newStateFromUnsolicitedTable(etcr, "table for figure");
-                    JsTable table = new JsTable(connection, cts);
-                    // never attempt a reconnect, since we might have a different figure schema entirely
-                    table.addEventListener(JsTable.EVENT_DISCONNECT, ignore -> table.close());
-                    tables[tables.length] = table;
-                    return Promise.resolve(table);
+                promises[p1] = Callbacks.<FetchObjectResponse, Object>grpcUnaryPromise(c -> {
+                    FetchObjectRequest partitionedTableRequest = new FetchObjectRequest();
+                    partitionedTableRequest.setSourceId(p0);
+                    connection.objectServiceClient().fetchObject(partitionedTableRequest, connection.metadata(), c::apply);
+                }).then(object -> {
+                    JsPartitionedTable partitionedTable = new JsPartitionedTable(connection, new JsWidget(connection, callback -> callback.apply(null, object)));
+                    tableMaps[tableMaps.length] = partitionedTable;
+                    return partitionedTable.refetch();
                 });
                 return null;
             });
 
-            // TODO (deephaven-core#62) implement fetch for tablemaps
-            // // iterate through the tablemaps we're supposed to have, fetch keys for them, and construct them
-            // Promise<?>[] tableMapPromises = new Promise[descriptor.getTablemapsList().length];
-            Map<Integer, TableMap> plotHandlesToTableMaps = new HashMap<>();
+             // iterate through the tablemaps we're supposed to have, fetch keys for them, and construct them
+//             Promise<?>[] tableMapPromises = new Promise[response.getTablemapsList().length];
+            Map<Integer, JsPartitionedTable> plotHandlesToTableMaps = new HashMap<>();
             // for (int i = 0; i < descriptor.getTablemapsList().length; i++) {
             // final int index = i;
             // tableMapPromises[i] = Callbacks

@@ -3,6 +3,7 @@ package io.deephaven.web.client.api;
 import elemental2.core.JsArray;
 import elemental2.core.JsSet;
 import elemental2.dom.CustomEvent;
+import elemental2.dom.CustomEventInit;
 import elemental2.dom.Event;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.GetTablesRequest;
@@ -24,6 +25,11 @@ import java.util.Map;
 
 @JsType(namespace = "dh", name = "PartitionedTable")
 public class JsPartitionedTable extends HasEventHandling {
+    public static final String EVENT_KEYADDED = "keyadded",
+            EVENT_DISCONNECT = JsTable.EVENT_DISCONNECT,
+            EVENT_RECONNECT = JsTable.EVENT_RECONNECT,
+            EVENT_RECONNECTFAILED = JsTable.EVENT_RECONNECTFAILED;
+
     private final WorkerConnection connection;
     private final JsWidget widget;
     private PartitionedTableDescriptor descriptor;
@@ -78,15 +84,21 @@ public class JsPartitionedTable extends HasEventHandling {
         added.indexIterator().forEachRemaining((long index) -> {
             // extract the key to use
             JsArray<Any> key = eventData.getColumns().map((c, p1, p2) -> eventData.getData(index, c));
-            populateLazyTable(key);
+            populateLazyTable(key, index);
+            CustomEventInit init = CustomEventInit.create();
+            init.setDetail(key);
+            fireEvent(EVENT_KEYADDED, init);
         });
     }
 
-    private void populateLazyTable(JsArray<Any> key) {
+    private void populateLazyTable(JsArray<Any> key, long index) {
         tables.put(key, JsLazy.of(() -> {
             // If we've entered this lambda, the JsLazy is being used, so we need to go ahead and get the tablehandle
             final ClientTableState entry = connection.newState((c, cts, metadata) -> {
-                        connection.partitionedTableServiceClient().getTable(new GetTablesRequest(), c::apply);
+                        GetTablesRequest getTablesRequest = new GetTablesRequest();
+                        getTablesRequest.setRow(index);
+                        getTablesRequest.setResultId(cts.getHandle().makeTicket());
+                        connection.partitionedTableServiceClient().getTable(getTablesRequest, c::apply);
                     },
                     "tablemap key " + key);
 
@@ -94,7 +106,7 @@ public class JsPartitionedTable extends HasEventHandling {
             entry.onRunning(ignore -> {
             }, ignore -> {
             }, () -> {
-                populateLazyTable(key);
+                populateLazyTable(key, index);
             });
 
             // we'll make a table to return later, this func here just produces the JsLazy of the CTS
