@@ -16,6 +16,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
 
+/**
+ * Protobuf serialization of all PartitionedTable subtypes. This sends the basic metadata of the partitioned
+ * table, and a ticket to the underlying table that tracks the keys and the actual table objects.
+ */
 @AutoService(ObjectType.class)
 public class PartitionedTableTypePlugin extends ObjectTypeBase {
 

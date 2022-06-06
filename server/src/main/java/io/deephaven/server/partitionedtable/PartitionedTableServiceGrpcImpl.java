@@ -88,14 +88,16 @@ public class PartitionedTableServiceGrpcImpl extends PartitionedTableServiceGrpc
 
             SessionState.ExportObject<PartitionedTable> partitionedTable =
                     ticketRouter.resolve(session, request.getPartitionedTable(), "partitionedTable");
-            if (!request.hasRow()) {
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Only row is supported to fetch a table from a partitionedtable");
-            }
+            SessionState.ExportObject<Table> keys =
+                    ticketRouter.resolve(session, request.getKeyTableTicket(), "keyTableTicket");
+
             session.newExport(request.getResultId(), "resultId")
+                    .requiresSerialQueue()
                     .require(partitionedTable)
                     .onError(responseObserver)
                     .submit(() -> {
-                        Table table = (Table) partitionedTable.get().table().getColumnSource(partitionedTable.get().constituentColumnName()).get(request.getRow());//TODO not this
+                        Table requestedRow = partitionedTable.get().table().whereIn(keys.get());
+                        Table table = (Table) requestedRow.getColumnSource(partitionedTable.get().constituentColumnName()).get(requestedRow.getRowSet().firstRowKey());
                         safelyExecute(() -> {
                             responseObserver.onNext(ExportUtil.buildTableCreationResponse(request.getResultId(), table));
                             responseObserver.onCompleted();

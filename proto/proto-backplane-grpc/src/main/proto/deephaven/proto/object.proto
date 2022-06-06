@@ -19,6 +19,10 @@ message FetchObjectRequest {
     io.deephaven.proto.backplane.grpc.TypedTicket source_id = 1;
 }
 
+message FetchObjectInTableRequest {
+    //ticket, index, column, result_id
+}
+
 message FetchObjectResponse {
     string type = 1;
     bytes data = 2;

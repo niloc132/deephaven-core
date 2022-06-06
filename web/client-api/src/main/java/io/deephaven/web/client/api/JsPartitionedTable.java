@@ -6,9 +6,16 @@ import elemental2.dom.CustomEvent;
 import elemental2.dom.CustomEventInit;
 import elemental2.dom.Event;
 import elemental2.promise.Promise;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.Message;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.MessageHeader;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Field;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Schema;
+import io.deephaven.javascript.proto.dhinternal.flatbuffers.ByteBuffer;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.GetTableRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.MergeRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb.PartitionedTableDescriptor;
+import io.deephaven.web.client.api.barrage.BarrageUtils;
+import io.deephaven.web.client.api.barrage.def.ColumnDefinition;
 import io.deephaven.web.client.api.subscription.SubscriptionTableData;
 import io.deephaven.web.client.api.subscription.TableSubscription;
 import io.deephaven.web.client.api.widget.JsWidget;
@@ -19,8 +26,10 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 import jsinterop.base.Any;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @JsType(namespace = "dh", name = "PartitionedTable")
@@ -32,6 +41,7 @@ public class JsPartitionedTable extends HasEventHandling {
 
     private final WorkerConnection connection;
     private final JsWidget widget;
+    private List<String> keyColumnTypes;
     private PartitionedTableDescriptor descriptor;
     private JsTable keys;
     private TableSubscription subscription;
@@ -63,6 +73,16 @@ public class JsPartitionedTable extends HasEventHandling {
         }
         return widget.refetch().then(w -> {
             descriptor = PartitionedTableDescriptor.deserializeBinary(w.getDataAsU8());
+
+            keyColumnTypes = new ArrayList<>();
+            ColumnDefinition[] columnDefinitions = BarrageUtils.readColumnDefinitions(BarrageUtils.readSchemaMessage(descriptor.getConstituentDefinitionSchema_asU8()));
+            for (int i = 0; i < columnDefinitions.length; i++) {
+                ColumnDefinition columnDefinition = columnDefinitions[i];
+                if (descriptor.getKeyColumnNamesList().indexOf(columnDefinition.getName()) != -1) {
+                    keyColumnTypes.add(columnDefinition.getType());
+                }
+            }
+
             return w.getExportedObjects()[0].fetch();
         }).then(result -> {
             keys = (JsTable) result;
@@ -95,20 +115,32 @@ public class JsPartitionedTable extends HasEventHandling {
         tables.put(key, JsLazy.of(() -> {
             // If we've entered this lambda, the JsLazy is being used, so we need to go ahead and get the tablehandle
             final ClientTableState entry = connection.newState((c, cts, metadata) -> {
-                        GetTableRequest getTableRequest = new GetTableRequest();
-                        getTableRequest.setPartitionedTable(widget.getTicket());
-                        getTableRequest.setRow("" + index);
-                        getTableRequest.setResultId(cts.getHandle().makeTicket());
-                        connection.partitionedTableServiceClient().getTable(getTableRequest, connection.metadata(), c::apply);
-                    },
-                    "tablemap key " + key);
+
+                //TODO make this parallel
+                //TODO stop leaking this table
+                connection.newTable(
+                        descriptor.getKeyColumnNamesList().asArray(new String[0]),
+                        keyColumnTypes.toArray(new String[0]),
+                        key.map((p0, p1, p2) -> JsArray.of((Object)p0).asArray(new Object[0])).asArray(new Object[0][]),
+                        null,
+                        this
+                ).then(table -> {
+                    GetTableRequest getTableRequest = new GetTableRequest();
+                    getTableRequest.setPartitionedTable(widget.getTicket());
+                    getTableRequest.setTicket(table.getHandle().makeTicket());
+                    getTableRequest.setResultId(cts.getHandle().makeTicket());
+                    connection.partitionedTableServiceClient().getTable(getTableRequest, connection.metadata(), c::apply);
+                    return null;
+                });
+            },
+            "tablemap key " + key);
 
             // later, when the CTS is released, remove this "table" from the map and replace with an unresolved JsLazy
-            entry.onRunning(ignore -> {
-            }, ignore -> {
-            }, () -> {
-                populateLazyTable(key, index);
-            });
+            entry.onRunning(
+                    ignore -> {},
+                    ignore -> {},
+                    () -> populateLazyTable(key, index)
+            );
 
             // we'll make a table to return later, this func here just produces the JsLazy of the CTS
             return entry.refetch(this, connection.metadata());
