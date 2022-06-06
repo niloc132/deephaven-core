@@ -8,7 +8,6 @@ import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.proto.backplane.grpc.ExportedTableCreationResponse;
-import io.deephaven.proto.backplane.grpc.FetchObjectResponse;
 import io.deephaven.proto.backplane.grpc.GetTableRequest;
 import io.deephaven.proto.backplane.grpc.MergeRequest;
 import io.deephaven.proto.backplane.grpc.PartitionByRequest;
@@ -92,11 +91,19 @@ public class PartitionedTableServiceGrpcImpl extends PartitionedTableServiceGrpc
                     ticketRouter.resolve(session, request.getKeyTableTicket(), "keyTableTicket");
 
             session.newExport(request.getResultId(), "resultId")
+                    // Due to the multiple operations running and the explicit size check, explicit contents read, we run under the lock
                     .requiresSerialQueue()
                     .require(partitionedTable)
                     .onError(responseObserver)
                     .submit(() -> {
-                        Table requestedRow = partitionedTable.get().table().whereIn(keys.get());
+                        Table requestedRow = partitionedTable.get().table().whereIn(keys.get(), partitionedTable.get().keyColumnNames().toArray(String[]::new));
+                        if (requestedRow.size() != 1) {
+                            if (requestedRow.isEmpty()) {
+                                throw GrpcUtil.statusRuntimeException(Code.NOT_FOUND, "Key matches zero rows in the partitioned table");
+                            } else {
+                                throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION, "Key matches more than one entry in the partitioned table: " + requestedRow.size());
+                            }
+                        }
                         Table table = (Table) requestedRow.getColumnSource(partitionedTable.get().constituentColumnName()).get(requestedRow.getRowSet().firstRowKey());
                         safelyExecute(() -> {
                             responseObserver.onNext(ExportUtil.buildTableCreationResponse(request.getResultId(), table));

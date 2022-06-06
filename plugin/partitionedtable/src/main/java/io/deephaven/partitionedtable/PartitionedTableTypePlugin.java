@@ -37,17 +37,14 @@ public class PartitionedTableTypePlugin extends ObjectTypeBase {
     public void writeCompatibleObjectTo(Exporter exporter, Object object, OutputStream out) throws IOException {
         PartitionedTable partitionedTable = (PartitionedTable) object;
         exporter.reference(partitionedTable.table(), false, true);
+
         // Send Schema wrapped in Message
-        final FlatBufferBuilder builder = new FlatBufferBuilder();
-        final int schemaOffset = BarrageUtil.makeSchemaPayload(builder, partitionedTable.constituentDefinition(),
-                Collections.emptyMap());
-        builder.finish(MessageHelper.wrapInMessage(builder, schemaOffset,
-                org.apache.arrow.flatbuf.MessageHeader.Schema));
+        ByteString schemaWrappedInMessage = BarrageUtil.schemaBytesFromTable(partitionedTable.constituentDefinition(), Collections.emptyMap());
 
         PartitionedTableDescriptor result = PartitionedTableDescriptor.newBuilder()
                 .addAllKeyColumnNames(partitionedTable.keyColumnNames())
                 .setUniqueKeys(partitionedTable.uniqueKeys())
-                .setConstituentDefinitionSchema(ByteString.copyFrom(builder.dataBuffer()))
+                .setConstituentDefinitionSchema(schemaWrappedInMessage)
                 .setConstituentColumnName(partitionedTable.constituentColumnName())
                 .setConstituentChangesPermitted(partitionedTable.constituentChangesPermitted())
                 .build();

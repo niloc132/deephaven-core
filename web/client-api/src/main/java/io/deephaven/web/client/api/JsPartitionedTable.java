@@ -127,7 +127,7 @@ public class JsPartitionedTable extends HasEventHandling {
                 ).then(table -> {
                     GetTableRequest getTableRequest = new GetTableRequest();
                     getTableRequest.setPartitionedTable(widget.getTicket());
-                    getTableRequest.setTicket(table.getHandle().makeTicket());
+                    getTableRequest.setKeyTableTicket(table.getHandle().makeTicket());
                     getTableRequest.setResultId(cts.getHandle().makeTicket());
                     connection.partitionedTableServiceClient().getTable(getTableRequest, connection.metadata(), c::apply);
                     return null;
