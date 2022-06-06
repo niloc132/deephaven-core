@@ -80,16 +80,16 @@ public class GetTableRequest {
         }
 
         @JsProperty
+        Object getKeyTableTicket();
+
+        @JsProperty
         GetTableRequest.ToObjectReturnType.PartitionedTableFieldType getPartitionedTable();
 
         @JsProperty
         Object getResultId();
 
         @JsProperty
-        String getRow();
-
-        @JsProperty
-        Object getTicket();
+        void setKeyTableTicket(Object keyTableTicket);
 
         @JsProperty
         void setPartitionedTable(
@@ -97,12 +97,6 @@ public class GetTableRequest {
 
         @JsProperty
         void setResultId(Object resultId);
-
-        @JsProperty
-        void setRow(String row);
-
-        @JsProperty
-        void setTicket(Object ticket);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -171,16 +165,16 @@ public class GetTableRequest {
         }
 
         @JsProperty
+        Object getKeyTableTicket();
+
+        @JsProperty
         GetTableRequest.ToObjectReturnType0.PartitionedTableFieldType getPartitionedTable();
 
         @JsProperty
         Object getResultId();
 
         @JsProperty
-        String getRow();
-
-        @JsProperty
-        Object getTicket();
+        void setKeyTableTicket(Object keyTableTicket);
 
         @JsProperty
         void setPartitionedTable(
@@ -188,12 +182,6 @@ public class GetTableRequest {
 
         @JsProperty
         void setResultId(Object resultId);
-
-        @JsProperty
-        void setRow(String row);
-
-        @JsProperty
-        void setTicket(Object ticket);
     }
 
     public static native GetTableRequest deserializeBinary(Uint8Array bytes);
@@ -206,33 +194,29 @@ public class GetTableRequest {
     public static native GetTableRequest.ToObjectReturnType toObject(
             boolean includeInstance, GetTableRequest msg);
 
+    public native void clearKeyTableTicket();
+
     public native void clearPartitionedTable();
 
     public native void clearResultId();
 
-    public native void clearRow();
-
-    public native void clearTicket();
-
-    public native int getKeysCase();
+    public native Ticket getKeyTableTicket();
 
     public native Ticket getPartitionedTable();
 
     public native Ticket getResultId();
 
-    public native String getRow();
-
-    public native Ticket getTicket();
+    public native boolean hasKeyTableTicket();
 
     public native boolean hasPartitionedTable();
 
     public native boolean hasResultId();
 
-    public native boolean hasRow();
-
-    public native boolean hasTicket();
-
     public native Uint8Array serializeBinary();
+
+    public native void setKeyTableTicket();
+
+    public native void setKeyTableTicket(Ticket value);
 
     public native void setPartitionedTable();
 
@@ -241,12 +225,6 @@ public class GetTableRequest {
     public native void setResultId();
 
     public native void setResultId(Ticket value);
-
-    public native void setRow(String value);
-
-    public native void setTicket();
-
-    public native void setTicket(Ticket value);
 
     public native GetTableRequest.ToObjectReturnType0 toObject();
 
