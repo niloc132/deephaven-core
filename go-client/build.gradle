@@ -1,0 +1,11 @@
+
+
+// generate, compare the go proto output, fail if it doesnt match
+
+// start a grpc-api server
+// pass host/post to the golang test, as we do for python tests
+//DH_PORT, DH_HOST
+// go test -v ./...
+
+
+// consider a smoke test of the main.go binary

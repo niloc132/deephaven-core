@@ -53,6 +53,10 @@ tasks.withType(License) {
 
 TaskProvider<Task> generateProtobuf = Docker.registerDockerTask(project, 'generateProtobuf') {
   copyIn {
+    from(rootDir) {
+      include 'protoc-gen-go'
+      include 'protoc-gen-go-grpc'
+    }
     from(project.projectDir) {
       exclude 'build'
       exclude 'build.gradle'

@@ -1,5 +1,12 @@
 FROM deephaven/protoc-base:local-build
 
+#ADD https://github.com/protocolbuffers/protobuf-go/releases/download/v1.27.1/protoc-gen-go.v1.27.1.linux.amd64.tar.gz /opt/
+#RUN set -eux; \
+#    tar -C /opt/ -xzvf /opt/protoc-gen-go*
+
+ADD protoc-gen-go-grpc /opt/
+ADD protoc-gen-go /opt/
+
 COPY src/main/proto /includes
 
 COPY dependencies /dependencies
@@ -8,6 +15,7 @@ RUN set -eux; \
   mkdir -p /generated/java; \
   mkdir -p /generated/grpc; \
   mkdir -p /generated/js; \
+  mkdir -p /generated/go; \
   mkdir -p /generated/python; \
   /opt/protoc/bin/protoc \
     --plugin=protoc-gen-grpc=/opt/protoc-gen-grpc-java \
@@ -51,4 +59,20 @@ RUN set -eux; \
     /includes/deephaven/proto/table.proto \
     /includes/deephaven/proto/application.proto \
     /includes/deephaven/proto/inputtable.proto \
+    /includes/deephaven/proto/partitionedtable.proto; \
+  /opt/protoc/bin/protoc \
+    --plugin=protoc-gen-go=/opt/protoc-gen-go \
+    --plugin=protoc-gen-go-grpc=/opt/protoc-gen-go-grpc \
+    --go_out=/generated/go \
+    --go-grpc_out=/generated/go \
+    --go_opt=module=github.com/deephaven/deephaven-core/go-client \
+    --go-grpc_opt=module=github.com/deephaven/deephaven-core/go-client \
+    -I/includes \
+    /includes/deephaven/proto/ticket.proto \
+    /includes/deephaven/proto/console.proto \
+    /includes/deephaven/proto/object.proto \
+    /includes/deephaven/proto/session.proto \
+    /includes/deephaven/proto/table.proto \
+    /includes/deephaven/proto/application.proto \
+    /includes/deephaven/proto/inputtable.proto; \
     /includes/deephaven/proto/partitionedtable.proto;
