@@ -10,6 +10,7 @@ import io.deephaven.ssl.config.ProtocolsIntermediate;
 import io.deephaven.ssl.config.SSLConfig;
 import io.deephaven.ssl.config.TrustJdk;
 import io.deephaven.ssl.config.impl.KickstartUtils;
+import io.grpc.servlet.web.websocket.MultiplexedWebSocketServerStream;
 import io.grpc.servlet.web.websocket.WebSocketServerStream;
 import jakarta.servlet.DispatcherType;
 import jakarta.websocket.server.ServerEndpointConfig;
@@ -84,13 +85,23 @@ public class JettyBackedGrpcServer implements GrpcServer {
         // Set up websocket for grpc-web
         if (config.websockets()) {
             JakartaWebSocketServletContainerInitializer.configure(context, (servletContext, container) -> {
+//                container.addEndpoint(
+//                        ServerEndpointConfig.Builder.create(WebSocketServerStream.class, "/{service}/{method}")
+//                                .configurator(new ServerEndpointConfig.Configurator() {
+//                                    @Override
+//                                    public <T> T getEndpointInstance(Class<T> endpointClass)
+//                                            throws InstantiationException {
+//                                        return (T) filter.create(WebSocketServerStream::new);
+//                                    }
+//                                })
+//                                .build());
                 container.addEndpoint(
-                        ServerEndpointConfig.Builder.create(WebSocketServerStream.class, "/{service}/{method}")
+                        ServerEndpointConfig.Builder.create(MultiplexedWebSocketServerStream.class, "/{service}/{method}")
                                 .configurator(new ServerEndpointConfig.Configurator() {
                                     @Override
                                     public <T> T getEndpointInstance(Class<T> endpointClass)
                                             throws InstantiationException {
-                                        return (T) filter.create(WebSocketServerStream::new);
+                                        return (T) filter.create(MultiplexedWebSocketServerStream::new);
                                     }
                                 })
                                 .build());
