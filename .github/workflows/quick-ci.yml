@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          # Fetch the base revision as well, so reviewdog can see what changed in a PR
+          fetch-depth: 2
 
       - name: Check gitignore rules
         run: .github/scripts/check-gitignore-rules.sh
@@ -33,6 +36,11 @@ jobs:
           echo "org.gradle.java.installations.paths=${{ steps.setup-java-11.outputs.path }}" >> gradle.properties
           cat gradle.properties
 
+      - name: Setup ReviewDog to suggest simple fixes
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
       - name: Quick Task
         uses: burrunan/gradle-cache-action@v1
         with:
@@ -48,3 +56,20 @@ jobs:
           name: quick-ci-jvm-err
           path: '**/*_pid*.log'
           if-no-files-found: ignore
+      - name: On build failure, make a diff with fixes, propose them in the pull request
+        if: failure() && github.event_name == 'pull_request'
+        uses: burrunan/gradle-cache-action@v1
+        with:
+          job-id: create-patch
+          arguments: spotlessApply license
+          gradle-version: wrapper
+      - name: Create review comments based on diff
+        if: github.event_name == 'pull_request'
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eux
+          TMPFILE=$(mktemp)
+          git diff > "${TMPFILE}"
+          git reset --hard
+          reviewdog -f=diff -f.diff.strip=1 -reporter=github-pr-review < "${TMPFILE}"
