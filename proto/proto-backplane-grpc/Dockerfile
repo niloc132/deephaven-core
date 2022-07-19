@@ -74,5 +74,5 @@ RUN set -eux; \
     /includes/deephaven/proto/session.proto \
     /includes/deephaven/proto/table.proto \
     /includes/deephaven/proto/application.proto \
-    /includes/deephaven/proto/inputtable.proto; \
+    /includes/deephaven/proto/inputtable.proto \
     /includes/deephaven/proto/partitionedtable.proto;

@@ -1,6 +1,91 @@
+import org.gradle.api.internal.file.DefaultFileLookup
+
+import java.nio.file.Path
+
+plugins {
+    id 'com.bmuschko.docker-remote-api'
+    id 'io.deephaven.project.register'
+}
+
+//TODO produce a registryProject
+//evaluationDependsOn Docker.registryProject('go')
 
 
-// generate, compare the go proto output, fail if it doesnt match
+// The Go convention is to check in generated sources - while there is a "central repo server" for Go, it is a proxy
+// that merely polls each proxy several times an hour, but doesn't allow contents to be deployed to it. As such,
+// any generated code must exist in git, and will be downloaded from there. As part of the build then, we generate and
+// compare/overwrite protobuf sources.
+configurations {
+    go {}
+}
+dependencies {
+    go project(path: ':proto:proto-backplane-grpc', configuration: 'go')
+}
+def compare = tasks.register('compareProtobuf') {
+    doLast {
+        def resolver = new DefaultFileLookup().getFileResolver(project.projectDir)
+        // for each file in the generated go output, make sure it exists and matches contents
+        Set<Path> changed = []
+        Set<Path> removed = []
+        Set<Path> existingFiles = []
+        layout.projectDirectory.dir('internal').dir('proto').asFileTree.visit { details ->
+            if (details.isDirectory()) {
+                return;
+            }
+            existingFiles.add(details.file.toPath())
+        }
+        configurations.go.asFileTree.visit { details ->
+            if (details.isDirectory()) {
+                return;
+            }
+
+            // note the relative path of each generated file
+            def pathString = details.relativePath.pathString
+
+            def sourceFile = resolver.resolve(pathString)
+            // if the file does not exist in our source dir, add an error
+            if (!sourceFile.exists()) {
+                removed.add(sourceFile.toPath())
+            } else {
+                // remove this from the "existing" collection so we can detect extra files later
+                existingFiles.remove(sourceFile.toPath())
+
+                // verify that the contents match
+                if (sourceFile.text != details.file.text) {
+                    changed.add(sourceFile.toPath())
+                }
+            }
+        }
+
+        if (!changed.isEmpty() || !removed.isEmpty() || !existingFiles.isEmpty()) {
+            logger.error("Go sources do not match protobuf files:")
+            changed.each {
+                logger.error("File has changes: $it")
+            }
+            removed.each {
+                logger.error("File is missing: $it")
+            }
+            existingFiles.each {
+                logger.error("File should not exist: $it")
+            }
+            throw new RuntimeException("Go sources do not match protobuf files, re-run :go-client:updateProtobuf")
+        }
+    }
+
+    // TODO validate that no files were in internal/proto that were expected
+
+}
+// fail a "check" build if these are out of date
+tasks.check.dependsOn(compare)
+
+def update = tasks.register('updateProtobuf', Copy) {
+    from configurations.go
+    into project.projectDir
+    eachFile {
+        println it
+    }
+}
+
 
 // start a grpc-api server
 // pass host/post to the golang test, as we do for python tests
