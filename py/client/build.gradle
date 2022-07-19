@@ -3,6 +3,7 @@ import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
 import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
+import io.deephaven.tools.docker.DiffTask
 import io.deephaven.tools.docker.WaitForHealthyContainer
 import org.gradle.api.internal.file.DefaultFileLookup
 

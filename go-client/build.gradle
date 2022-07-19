@@ -1,3 +1,5 @@
+import io.deephaven.tools.docker.DiffTask
+
 plugins {
     id 'com.bmuschko.docker-remote-api'
     id 'io.deephaven.project.register'
