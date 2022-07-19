@@ -31,7 +31,7 @@ tasks.getByName('quick').dependsOn(compare)
 
 def update = tasks.register('updateProtobuf', Sync) {
     from configurations.go
-    into project.projectDir
+    into layout.projectDirectory
     preserve {
         exclude 'internal/proto/**'
     }

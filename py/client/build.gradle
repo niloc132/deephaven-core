@@ -51,56 +51,14 @@ def updatePyNamespaces = tasks.register('updatePyNamespaces', Sync) {
     into generatedProtoDir
 }
 
-def compare = tasks.register('compareProtobuf') {
+def compare = tasks.register('compareProtobuf', DiffTask) {
     dependsOn updatePyNamespaces
-    doLast {
-        def resolver = new DefaultFileLookup().getFileResolver(project.projectDir)
-        // for each file in the generated output, make sure it exists and matches contents
-        Set<java.nio.file.Path> changed = []
-        Set<java.nio.file.Path> removed = []
-        Set<java.nio.file.Path> existingFiles = []
-        layout.projectDirectory.dir('internal/proto').asFileTree.visit { details ->
-            if (details.isDirectory()) {
-                return;
-            }
-            existingFiles.add(details.file.toPath())
-        }
-        configurations.python.asFileTree.visit { details ->
-            if (details.isDirectory()) {
-                return;
-            }
 
-            // note the relative path of each generated file
-            def pathString = details.relativePath.pathString
-
-            def sourceFile = resolver.resolve(pathString)
-            // if the file does not exist in our source dir, add an error
-            if (!sourceFile.exists()) {
-                removed.add(sourceFile.toPath())
-            } else {
-                // remove this from the "existing" collection so we can detect extra files later
-                existingFiles.remove(sourceFile.toPath())
-
-                // verify that the contents match
-                if (sourceFile.text != details.file.text) {
-                    changed.add(sourceFile.toPath())
-                }
-            }
-        }
-
-        if (!changed.isEmpty() || !removed.isEmpty() || !existingFiles.isEmpty()) {
-            logger.error("Go sources do not match protobuf files:")
-            changed.each {
-                logger.error("File has changes: $it")
-            }
-            removed.each {
-                logger.error("File is missing: $it")
-            }
-            existingFiles.each {
-                logger.error("File should not exist: $it")
-            }
-            throw new RuntimeException("Python sources do not match protobuf files, re-run :py-client:updateProtobuf")
-        }
+    expectedContents.set generatedProtoDir.get().dir('pydeephaven/proto')
+    actualContents.set layout.projectDirectory.dir('pydeephaven/proto')
+    generateTask.set ':py-client:updateProto'
+    ignore {
+        include '__init__.py'
     }
 }
 // fail a "check" build if these are out of date

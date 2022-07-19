@@ -1,13 +1,9 @@
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.FileTreeElement
-import org.gradle.api.internal.file.DefaultFileLookup
 import org.gradle.api.internal.file.FileLookup
 import org.gradle.api.provider.Property
-import org.gradle.api.specs.Spec
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.util.PatternFilterable
 import org.gradle.api.tasks.util.PatternSet
