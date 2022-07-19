@@ -111,6 +111,7 @@ def updateProtobuf = tasks.register('updateProtobuf', Sync) {
     from generatedProtoDir
     into layout.projectDirectory
     preserve {
+        include '**'
         exclude 'pydeephaven/proto/**'
         include 'pydeephaven/proto/__init__.py'
     }
