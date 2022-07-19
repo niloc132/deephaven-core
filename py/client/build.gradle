@@ -37,7 +37,7 @@ def updatePyNamespaces = tasks.register('updatePyNamespaces', Sync) {
             def lines = []
             while (scanner.hasNextLine()) {
                 def line = scanner.nextLine();
-                if (line.startsWith('  \'__module__\' :')) {
+                if (line.trim().startsWith('\'__module__\' :')) {
                     line = line.replace('\'deephaven.', '\'pydeephaven.')
                 } else if (line.startsWith('from deephaven.proto')) {
                     line = line.replace('from deephaven.proto', 'from pydeephaven.proto')
