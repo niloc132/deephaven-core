@@ -30,6 +30,7 @@ def compare = tasks.register('compareProtobuf', DiffTask) {
 tasks.getByName('quick').dependsOn(compare)
 
 def update = tasks.register('updateProtobuf', Sync) {
+    finalizedBy compare
     from configurations.go
     into layout.projectDirectory
     preserve {

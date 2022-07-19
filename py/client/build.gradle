@@ -62,10 +62,11 @@ def compare = tasks.register('compareProtobuf', DiffTask) {
     }
 }
 // fail a "check" build if these are out of date
-//tasks.getByName('quick').dependsOn(compare)
+tasks.getByName('quick').dependsOn(compare)
 
 def updateProtobuf = tasks.register('updateProtobuf', Sync) {
     dependsOn(updatePyNamespaces)
+    finalizedBy compare
     from generatedProtoDir.get().dir('pydeephaven/proto')
     into layout.projectDirectory.dir('pydeephaven/proto')
     preserve {
