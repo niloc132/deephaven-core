@@ -1,7 +1,3 @@
-import org.gradle.api.internal.file.DefaultFileLookup
-
-import java.nio.file.Path
-
 plugins {
     id 'com.bmuschko.docker-remote-api'
     id 'io.deephaven.project.register'
@@ -21,55 +17,13 @@ configurations {
 dependencies {
     go project(path: ':proto:proto-backplane-grpc', configuration: 'go')
 }
-def compare = tasks.register('compareProtobuf') {
-    doLast {
-        def resolver = new DefaultFileLookup().getFileResolver(project.projectDir)
-        // for each file in the generated go output, make sure it exists and matches contents
-        Set<Path> changed = []
-        Set<Path> removed = []
-        Set<Path> existingFiles = []
-        layout.projectDirectory.dir('internal/proto').asFileTree.visit { details ->
-            if (details.isDirectory()) {
-                return;
-            }
-            existingFiles.add(details.file.toPath())
-        }
-        configurations.go.asFileTree.visit { details ->
-            if (details.isDirectory()) {
-                return;
-            }
+def compare = tasks.register('compareProtobuf', DiffTask) {
+    expectedContents.set configurations.go
+    actualContents.set layout.projectDirectory
+    generateTask.set ':go-client:updateProtobuf'
 
-            // note the relative path of each generated file
-            def pathString = details.relativePath.pathString
-
-            def sourceFile = resolver.resolve(pathString)
-            // if the file does not exist in our source dir, add an error
-            if (!sourceFile.exists()) {
-                removed.add(sourceFile.toPath())
-            } else {
-                // remove this from the "existing" collection so we can detect extra files later
-                existingFiles.remove(sourceFile.toPath())
-
-                // verify that the contents match
-                if (sourceFile.text != details.file.text) {
-                    changed.add(sourceFile.toPath())
-                }
-            }
-        }
-
-        if (!changed.isEmpty() || !removed.isEmpty() || !existingFiles.isEmpty()) {
-            logger.error("Go sources do not match protobuf files:")
-            changed.each {
-                logger.error("File has changes: $it")
-            }
-            removed.each {
-                logger.error("File is missing: $it")
-            }
-            existingFiles.each {
-                logger.error("File should not exist: $it")
-            }
-            throw new RuntimeException("Go sources do not match protobuf files, re-run :go-client:updateProtobuf")
-        }
+    ignore {
+        exclude 'internal/proto/**'
     }
 }
 // fail a "check" build if these are out of date
