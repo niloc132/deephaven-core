@@ -108,12 +108,10 @@ def compare = tasks.register('compareProtobuf') {
 
 def updateProtobuf = tasks.register('updateProtobuf', Sync) {
     dependsOn(updatePyNamespaces)
-    from generatedProtoDir
-    into layout.projectDirectory
+    from generatedProtoDir.get().dir('pydeephaven/proto')
+    into layout.projectDirectory.dir('pydeephaven/proto')
     preserve {
-        include '**'
-        exclude 'pydeephaven/proto/**'
-        include 'pydeephaven/proto/__init__.py'
+        include '__init__.py'
     }
 }
 
