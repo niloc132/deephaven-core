@@ -4,6 +4,7 @@ import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
 import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
 import io.deephaven.tools.docker.WaitForHealthyContainer
+import org.gradle.api.internal.file.DefaultFileLookup
 
 plugins {
     id 'com.bmuschko.docker-remote-api'
@@ -14,6 +15,104 @@ wheel {
     src 'pydeephaven'
     src 'examples'
     src 'tests'
+}
+
+configurations {
+    python {}
+}
+
+dependencies {
+    python project(path: ':proto:proto-backplane-grpc', configuration: 'python')
+}
+
+def generatedProtoDir = layout.buildDirectory.dir('generatedProto')
+
+def updatePyNamespaces = tasks.register('updatePyNamespaces', Sync) {
+    from(configurations.python) {
+        // change directory from deephaven to pydeephaven
+        eachFile { it.path = 'pydeephaven/' + it.path.substring('deephaven/'.length()) }
+        // rewrite specific imports/namespaces from deephaven to pydeephaven
+        filter { contents ->
+            def scanner = new Scanner(contents)
+            def lines = []
+            while (scanner.hasNextLine()) {
+                def line = scanner.nextLine();
+                if (line.startsWith('  \'__module__\' :')) {
+                    line = line.replace('\'deephaven.', '\'pydeephaven.')
+                } else if (line.startsWith('from deephaven.proto')) {
+                    line = line.replace('from deephaven.proto', 'from pydeephaven.proto')
+                }
+                lines.add(line)
+            }
+            return lines.join(System.lineSeparator());
+        }
+    }
+
+    into generatedProtoDir
+}
+
+def compare = tasks.register('compareProtobuf') {
+    dependsOn updatePyNamespaces
+    doLast {
+        def resolver = new DefaultFileLookup().getFileResolver(project.projectDir)
+        // for each file in the generated output, make sure it exists and matches contents
+        Set<java.nio.file.Path> changed = []
+        Set<java.nio.file.Path> removed = []
+        Set<java.nio.file.Path> existingFiles = []
+        layout.projectDirectory.dir('internal/proto').asFileTree.visit { details ->
+            if (details.isDirectory()) {
+                return;
+            }
+            existingFiles.add(details.file.toPath())
+        }
+        configurations.python.asFileTree.visit { details ->
+            if (details.isDirectory()) {
+                return;
+            }
+
+            // note the relative path of each generated file
+            def pathString = details.relativePath.pathString
+
+            def sourceFile = resolver.resolve(pathString)
+            // if the file does not exist in our source dir, add an error
+            if (!sourceFile.exists()) {
+                removed.add(sourceFile.toPath())
+            } else {
+                // remove this from the "existing" collection so we can detect extra files later
+                existingFiles.remove(sourceFile.toPath())
+
+                // verify that the contents match
+                if (sourceFile.text != details.file.text) {
+                    changed.add(sourceFile.toPath())
+                }
+            }
+        }
+
+        if (!changed.isEmpty() || !removed.isEmpty() || !existingFiles.isEmpty()) {
+            logger.error("Go sources do not match protobuf files:")
+            changed.each {
+                logger.error("File has changes: $it")
+            }
+            removed.each {
+                logger.error("File is missing: $it")
+            }
+            existingFiles.each {
+                logger.error("File should not exist: $it")
+            }
+            throw new RuntimeException("Python sources do not match protobuf files, re-run :py-client:updateProtobuf")
+        }
+    }
+}
+// fail a "check" build if these are out of date
+//tasks.getByName('quick').dependsOn(compare)
+
+def updateProtobuf = tasks.register('updateProtobuf', Sync) {
+    dependsOn(updatePyNamespaces)
+    from generatedProtoDir
+    into layout.projectDirectory
+    preserve {
+        exclude 'pydeephaven'
+    }
 }
 
 // Start up a docker container for the grpc server, then run pydeephaven test

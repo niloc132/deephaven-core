@@ -28,7 +28,7 @@ def compare = tasks.register('compareProtobuf') {
         Set<Path> changed = []
         Set<Path> removed = []
         Set<Path> existingFiles = []
-        layout.projectDirectory.dir('internal').dir('proto').asFileTree.visit { details ->
+        layout.projectDirectory.dir('internal/proto').asFileTree.visit { details ->
             if (details.isDirectory()) {
                 return;
             }
@@ -71,18 +71,15 @@ def compare = tasks.register('compareProtobuf') {
             throw new RuntimeException("Go sources do not match protobuf files, re-run :go-client:updateProtobuf")
         }
     }
-
-    // TODO validate that no files were in internal/proto that were expected
-
 }
 // fail a "check" build if these are out of date
-tasks.check.dependsOn(compare)
+tasks.getByName('quick').dependsOn(compare)
 
-def update = tasks.register('updateProtobuf', Copy) {
+def update = tasks.register('updateProtobuf', Sync) {
     from configurations.go
     into project.projectDir
-    eachFile {
-        println it
+    preserve {
+        exclude 'internal/proto/**'
     }
 }
 
