@@ -8,9 +8,8 @@ import (
 	"github.com/deephaven/deephaven-core/go-client/internal/test_tools"
 )
 
-// Typically, you don't have to worry about this,
-// but if you want to access tables from previous sessions or from the web UI,
-// you will need to do a table fetch.
+// If you want to access tables from previous sessions or from the web UI,
+// you will need to use OpenTable.
 //
 // This example requires a Deephaven server running on localhost:10000, so it will not work on pkg.go.dev.
 func Example_fetchTable() {
@@ -18,10 +17,9 @@ func Example_fetchTable() {
 	// If you don't have any specific requirements, context.Background() is a good default.
 	ctx := context.Background()
 
-	// When starting a client connection, the client script language
-	// must match the language the server was started with,
-	// even if the client does not execute any scripts.
-	cl, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	// Let's start a client connection using python as the script language ("groovy" is the other option).
+	// Note that the client language must match the language the server was started with.
+	cl, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("python"))
 	if err != nil {
 		fmt.Println("error when connecting to server:", err.Error())
 		return
@@ -46,19 +44,9 @@ func Example_fetchTable() {
 	cl.Close()
 
 	// Now let's make a new connection, completely unrelated to the old one.
-	cl, err = client.NewClient(ctx, "localhost", "10000", "python")
+	cl, err = client.NewClient(ctx, "localhost", "10000")
 	if err != nil {
 		fmt.Println("error when connecting to localhost port 10000:", err.Error())
-		return
-	}
-
-	// Now we have to fetch the list of tables.
-	// We use FetchTablesOnce here rather than FetchTablesRepeating because we
-	// are going to immediately open the table afterwards and we don't care about
-	// what other changes may happen in the future.
-	err = cl.FetchTablesOnce(ctx)
-	if err != nil {
-		fmt.Println("error when fetching tables:", err.Error())
 		return
 	}
 

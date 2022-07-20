@@ -18,10 +18,7 @@ func Example_importTable() {
 	// If you don't have any specific requirements, context.Background() is a good default.
 	ctx := context.Background()
 
-	// When starting a client connection, the client script language
-	// must match the language the server was started with,
-	// even if the client does not execute any scripts.
-	cl, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	cl, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
 	if err != nil {
 		fmt.Println("error when connecting to server:", err.Error())
 		return
@@ -96,7 +93,7 @@ func Example_importTable() {
 	//        metadata: ["deephaven:isRowStyle": "false", "deephaven:type": "float", "deephaven:isNumberFormat": "false", "deephaven:isStyle": "false", "deephaven:isRollupColumn": "false", "deephaven:isDateFormat": "false"]
 	//     - Volume: type=int32, nullable
 	//         metadata: ["deephaven:isRowStyle": "false", "deephaven:type": "int", "deephaven:isNumberFormat": "false", "deephaven:isStyle": "false", "deephaven:isRollupColumn": "false", "deephaven:isDateFormat": "false"]
-	//   metadata: ["deephaven:attribute.SortedColumns": "Close=Ascending", "deephaven:attribute.DoNotMakeRemote": "true", "deephaven:attribute.AddOnly": "true"]
+	//   metadata: ["deephaven:attribute.SortedColumns": "Close=Ascending", "deephaven:attribute_type.SortedColumns": "java.lang.String", "deephaven:attribute_type.AddOnly": "java.lang.Boolean", "deephaven:attribute.AddOnly": "true"]
 	//   rows: 5
 	//   col[0][Ticker]: ["IBM" "XRX" "XYZZY" "GME" "ZNGA"]
 	//   col[1][Close]: [38.7 53.8 88.5 453 544.9]

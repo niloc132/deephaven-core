@@ -12,7 +12,7 @@ import (
 func TestConnectError(t *testing.T) {
 	ctx := context.Background()
 
-	_, err := client.NewClient(ctx, "foobar", "1234", "python")
+	_, err := client.NewClient(ctx, "foobar", "1234")
 	if err == nil {
 		t.Fatalf("client did not fail to connect")
 	}
@@ -21,7 +21,7 @@ func TestConnectError(t *testing.T) {
 func TestClosedClient(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
 	}
@@ -40,7 +40,7 @@ func TestClosedClient(t *testing.T) {
 func TestMismatchedScript(t *testing.T) {
 	ctx := context.Background()
 
-	_, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "groovy")
+	_, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("groovy"))
 	if err == nil {
 		t.Fatalf("client did not fail to connect")
 	}
@@ -52,7 +52,7 @@ func TestEmptyTable(t *testing.T) {
 
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
 	}
@@ -73,12 +73,17 @@ func TestEmptyTable(t *testing.T) {
 	if rows != expectedRows || cols != expectedCols {
 		t.Errorf("Record had wrong size (expected %d x %d, got %d x %d)", expectedRows, expectedCols, rows, cols)
 	}
+
+	err = tbl.Release(ctx)
+	if err != nil {
+		t.Errorf("Release err %s", err.Error())
+	}
 }
 
 func TestTimeTable(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
 	}
@@ -93,6 +98,11 @@ func TestTimeTable(t *testing.T) {
 		t.Error("time table should not be static")
 		return
 	}
+
+	err = tbl.Release(ctx)
+	if err != nil {
+		t.Errorf("Release err %s", err.Error())
+	}
 }
 
 func TestTableUpload(t *testing.T) {
@@ -100,20 +110,23 @@ func TestTableUpload(t *testing.T) {
 	defer r.Release()
 
 	ctx := context.Background()
-	s, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	s, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
+		return
 	}
 	defer s.Close()
 
 	tbl, err := s.ImportTable(ctx, r)
 	if err != nil {
 		t.Errorf("ImportTable err %s", err.Error())
+		return
 	}
 
 	rec, err := tbl.Snapshot(ctx)
 	if err != nil {
 		t.Errorf("Snapshot err %s", err.Error())
+		return
 	}
 	defer rec.Release()
 
@@ -134,6 +147,14 @@ func TestTableUpload(t *testing.T) {
 			t.Error("DataType differed", expCol.DataType(), " and ", actCol.DataType())
 		}
 	}
+
+	rec.Release()
+	err = tbl.Release(ctx)
+
+	if err != nil {
+		t.Errorf("Release err %s", err.Error())
+		return
+	}
 }
 
 func contains(slice []string, elem string) bool {
@@ -145,112 +166,37 @@ func contains(slice []string, elem string) bool {
 	return false
 }
 
-func TestFieldSyncOnce(t *testing.T) {
-	ctx := context.Background()
-
-	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
-	test_tools.CheckError(t, "NewClient", err)
-	defer client1.Close()
-
-	err = client1.RunScript(ctx,
-		`
-gotesttable = None
-`)
-	test_tools.CheckError(t, "RunScript", err)
-
-	client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
-	test_tools.CheckError(t, "NewClient", err)
-	defer client2.Close()
-
-	err = client2.FetchTablesOnce(ctx)
-	test_tools.CheckError(t, "FetchTables", err)
-
-	if contains(client2.ListOpenableTables(), "gotesttable") {
-		t.Errorf("test table should not exist")
-		return
-	}
-
-	err = client1.RunScript(ctx,
-		`
-from deephaven import empty_table
-gotesttable = empty_table(10)
-`)
-	test_tools.CheckError(t, "RunScript", err)
-
-	timer := time.After(time.Second)
-	for {
-		err = client2.FetchTablesOnce(ctx)
-		if err != nil {
-			t.Error("FetchTables error", err)
-			return
-		}
-
-		if contains(client2.ListOpenableTables(), "gotesttable") {
-			break
-		}
-
-		select {
-		case <-timer:
-			t.Errorf("timeout: test table should exist")
-			return
-		default:
-		}
-	}
-}
-
-func TestFieldSyncRepeatingCanceled(t *testing.T) {
-	ctx := context.Background()
-
-	client, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
-	test_tools.CheckError(t, "NewClient", err)
-
-	errChan1 := client.FetchTablesRepeating(ctx)
-	test_tools.CheckError(t, "FetchTables", err)
-
-	errChan2 := client.FetchTablesRepeating(ctx)
-	test_tools.CheckError(t, "FetchTables", err)
-
-	client.Close()
-
-	err, ok := <-errChan1
-	if ok {
-		t.Error("error in first FetchTablesRepeating:", err)
-	}
-
-	err, ok = <-errChan2
-	if ok {
-		t.Error("error in second FetchTablesRepeating:", err)
-	}
-}
-
 // waitForTable attempts to find all of the given tables in the client's list of openable tables.
 // It will check repeatedly until the timeout expires.
-func waitForTable(cl *client.Client, names []string, timeout time.Duration) bool {
+func waitForTable(ctx context.Context, cl *client.Client, names []string, timeout time.Duration) (bool, error) {
 	timer := time.After(time.Second)
 	for {
 		ok := true
 		for _, name := range names {
-			if !contains(cl.ListOpenableTables(), name) {
-				ok = false
-				break
+			tbls, err := cl.ListOpenableTables(ctx)
+			if err != nil {
+				return false, err
+			}
+			if !contains(tbls, name) {
+				return false, nil
 			}
 		}
 		if ok {
-			return true
+			return true, nil
 		}
 
 		select {
 		case <-timer:
-			return false
+			return false, nil
 		default:
 		}
 	}
 }
 
-func TestFieldSyncRepeating(t *testing.T) {
+func TestFieldSync(t *testing.T) {
 	ctx := context.Background()
 
-	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("python"))
 	test_tools.CheckError(t, "NewClient", err)
 	defer client1.Close()
 
@@ -260,11 +206,9 @@ gotesttable1 = None
 `)
 	test_tools.CheckError(t, "RunScript", err)
 
-	client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "python")
+	client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("python"))
 	test_tools.CheckError(t, "NewClient", err)
 	defer client2.Close()
-
-	errChan := client2.FetchTablesRepeating(ctx)
 
 	err = client1.RunScript(ctx,
 		`
@@ -273,13 +217,12 @@ gotesttable1 = empty_table(10)
 `)
 	test_tools.CheckError(t, "RunScript", err)
 
-	if !waitForTable(client2, []string{"gotesttable1"}, time.Second) {
+	ok, err := waitForTable(ctx, client2, []string{"gotesttable1"}, time.Second)
+	if err != nil {
+		t.Error("error when checking for gotesttable1:", err)
+	}
+	if !ok {
 		t.Error("timeout: gotesttable1 should exist")
-
-		client2.Close() // Explicitly close the client so that the error channel closes
-		for err := range errChan {
-			t.Error("FetchTablesRepeating error:", err)
-		}
 		return
 	}
 
@@ -293,13 +236,12 @@ gotesttable2 = empty_table(20)
 `)
 	test_tools.CheckError(t, "RunScript", err)
 
-	if !waitForTable(client2, []string{"gotesttable1", "gotesttable2"}, time.Second) {
+	ok, err = waitForTable(ctx, client2, []string{"gotesttable1", "gotesttable2"}, time.Second)
+	if err != nil {
+		t.Error("error when checking for gotesttable1 and gotesttable2:", err)
+	}
+	if !ok {
 		t.Error("timeout: gotesttable1 and gotesttable2 should exist")
-
-		client2.Close() // Explicitly close the client so that the error channel closes
-		for err := range errChan {
-			t.Error("FetchTablesRepeating error:", err)
-		}
 		return
 	}
 
@@ -307,9 +249,4 @@ gotesttable2 = empty_table(20)
 	test_tools.CheckError(t, "OpenTable", err)
 	err = tbl.Release(ctx)
 	test_tools.CheckError(t, "Release", err)
-
-	client2.Close() // Explicitly close the client so that the error channel closes
-	for err := range errChan {
-		t.Error("FetchTablesRepeating error:", err)
-	}
 }

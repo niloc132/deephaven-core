@@ -4,7 +4,7 @@
 // To get started, use client.NewClient to connect to the server. The Client can then be used to perform operations.
 // See the provided examples in the examples/ folder or the individual code documentation for more.
 //
-// Online docs for the client can be found at /* TODO: deephaven.io link goes here once docs are hosted. */
+// Online docs for the client can be found at https://pkg.go.dev/github.com/deephaven/deephaven-core/go/client
 //
 // The Go API uses Records from the Apache Arrow package as tables.
 // The docs for the Arrow package can be found at the following link:
@@ -16,13 +16,14 @@ package client
 import (
 	"context"
 	"errors"
+	"log"
+	"sync"
+
 	apppb2 "github.com/deephaven/deephaven-core/go-client/internal/proto/application"
 	consolepb2 "github.com/deephaven/deephaven-core/go-client/internal/proto/console"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"log"
-	"sync"
 )
 
 // ErrClosedClient is returned as an error when trying to perform a network operation on a client that has been closed.
@@ -32,13 +33,15 @@ var ErrClosedClient = errors.New("client is closed")
 // It can be used to run scripts, create new tables, execute queries, etc.
 // Check the various methods of Client to learn more.
 type Client struct {
-	// This lock guards isClosed.
+	// This lock guards isOpen.
 	// Other functionality does not need a lock, since the gRPC interface is already thread-safe,
 	// the tables array has its own lock, and the session token also has its own lock.
-	lock     sync.Mutex
-	isClosed bool // True if Close has been called (i.e. the client can no longer perform operations).
+	lock   sync.Mutex
+	isOpen bool // False if Close has been called (i.e. the client can no longer perform operations).
 
 	grpcChannel *grpc.ClientConn
+
+	allowLeakedTables bool // When true, this disables TableHandle finalizers.
 
 	sessionStub
 	consoleStub
@@ -48,24 +51,28 @@ type Client struct {
 
 	appServiceClient apppb2.ApplicationServiceClient
 	ticketFact       ticketFactory
-	fieldMan         fieldManager
 }
 
 // NewClient starts a connection to a Deephaven server.
-//
-// scriptLanguage can be either "python" or "groovy", and must match the language used on the server. Python is the default.
 //
 // The client should be closed using Close() after it is done being used.
 //
 // Keepalive messages are sent automatically by the client to the server at a regular interval (~30 seconds)
 // so that the connection remains open. The provided context is saved and used to send keepalive messages.
-func NewClient(ctx context.Context, host string, port string, scriptLanguage string) (*Client, error) {
+//
+// The option arguments can be used to specify other settings for the client.
+// See the "WithXYZ" methods (e.g. WithConsole) for details on what options are available.
+func NewClient(ctx context.Context, host string, port string, options ...ClientOption) (*Client, error) {
 	grpcChannel, err := grpc.Dial(host+":"+port, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
 
-	client := &Client{grpcChannel: grpcChannel, isClosed: false}
+	opts := newClientOptions(options...)
+
+	client := &Client{grpcChannel: grpcChannel, isOpen: true}
+
+	client.allowLeakedTables = opts.allowLeakedTables
 
 	client.ticketFact = newTicketFactory()
 
@@ -75,7 +82,7 @@ func NewClient(ctx context.Context, host string, port string, scriptLanguage str
 		return nil, err
 	}
 
-	client.consoleStub, err = newConsoleStub(ctx, client, scriptLanguage)
+	client.consoleStub, err = newConsoleStub(ctx, client, opts.scriptLanguage)
 	if err != nil {
 		client.Close()
 		return nil, err
@@ -93,55 +100,12 @@ func NewClient(ctx context.Context, host string, port string, scriptLanguage str
 
 	client.appServiceClient = apppb2.NewApplicationServiceClient(client.grpcChannel)
 
-	client.fieldMan = newFieldManager(client)
-
 	return client, nil
 }
 
 // Closed checks if the client is closed, i.e. it can no longer perform operations on the server.
 func (client *Client) Closed() bool {
-	return client.isClosed
-}
-
-// FetchTablesOnce fetches the list of tables from the server.
-// This allows the client to see the list of named global tables on the server,
-// and thus allows the client to open them using OpenTable.
-// Tables created in scripts run by the current client are immediately visible and do not require a FetchTables call.
-func (client *Client) FetchTablesOnce(ctx context.Context) error {
-	ctx, err := client.withToken(ctx)
-	if err != nil {
-		return err
-	}
-
-	return client.fieldMan.FetchTablesOnce(ctx, client.appServiceClient)
-}
-
-// FetchTablesRepeating starts up a goroutine that fetches the list of tables from the server continuously.
-// This allows the client to see the list of named global tables on the server,
-// and thus allows the client to open them using OpenTable.
-// Tables created in scripts run by the current client are immediately visible and do not require a FetchTables call.
-// The returned error channel is guaranteed to send zero or one errors and then close,
-// however it is not specified at what time this will occur.
-func (client *Client) FetchTablesRepeating(ctx context.Context) <-chan error {
-	ctx, err := client.withToken(ctx)
-	if err != nil {
-		chanError := make(chan error, 1)
-		chanError <- err
-		close(chanError)
-		return chanError
-	}
-
-	return client.fieldMan.FetchTablesRepeating(ctx, client.appServiceClient)
-}
-
-// ListOpenableTables returns a list of the (global) tables that can be opened with OpenTable.
-// Tables that are created by other clients or in the web UI are not listed here automatically.
-// Tables that are created in scripts run by this client, however, are immediately available,
-// and will be added to/removed from the list as soon as the script finishes.
-// FetchTablesOnce or FetchTablesRepeating can be used to update the list
-// to reflect what tables are currently available from other clients or the web UI.
-func (client *Client) ListOpenableTables() []string {
-	return client.fieldMan.ListOpenableTables()
+	return !client.isOpen
 }
 
 // ExecSerial executes several table operations on the server and returns the resulting tables.
@@ -183,13 +147,11 @@ func (client *Client) Close() error {
 	client.lock.Lock()
 	defer client.lock.Unlock()
 
-	if client.isClosed {
+	if client.Closed() {
 		return nil
 	}
 
-	client.isClosed = true
-
-	client.fieldMan.Close()
+	client.isOpen = false
 
 	client.sessionStub.Close()
 
@@ -220,25 +182,77 @@ func (client *Client) withToken(ctx context.Context) (context.Context, error) {
 }
 
 // RunScript executes a script on the deephaven server.
-// The script language depends on the scriptLanguage argument passed when creating the client.
+//
+// The script language depends on the argument passed to WithConsole when creating the client.
+// If WithConsole was not provided when creating the client, this will return ErrNoConsole.
 func (client *Client) RunScript(ctx context.Context, script string) error {
+	if client.consoleStub.consoleId == nil {
+		return ErrNoConsole
+	}
+
 	ctx, err := client.consoleStub.client.withToken(ctx)
 	if err != nil {
 		return err
 	}
 
-	f := func() (*apppb2.FieldsChangeUpdate, error) {
-		// TODO: This might fall victim to the double-responses problem if a FetchTablesRepeating
-		// request is already active.
-
-		req := consolepb2.ExecuteCommandRequest{ConsoleId: client.consoleStub.consoleId, Code: script}
-		rst, err := client.consoleStub.stub.ExecuteCommand(ctx, &req)
-		if err != nil {
-			return nil, err
-		} else {
-			return rst.Changes, nil
-		}
+	req := consolepb2.ExecuteCommandRequest{ConsoleId: client.consoleStub.consoleId, Code: script}
+	_, err = client.consoleStub.stub.ExecuteCommand(ctx, &req)
+	if err != nil {
+		return err
 	}
 
-	return client.fieldMan.ExecAndUpdate(f)
+	return nil
+}
+
+// clientOptions holds a set of configurable options to use when creating a client with NewClient.
+type clientOptions struct {
+	scriptLanguage    string // The language to use for server-side scripts. Empty string means no scripts can be run.
+	allowLeakedTables bool   // When true, disables TableHandle finalizers.
+}
+
+func newClientOptions(opts ...ClientOption) clientOptions {
+	options := clientOptions{}
+	for _, opt := range opts {
+		opt.apply(&options)
+	}
+	return options
+}
+
+// A ClientOption configures some aspect of a client connection when passed to NewClient.
+// See the WithXYZ methods for possible client options.
+type ClientOption interface {
+	// apply sets the relevant option in the clientOptions struct.
+	apply(opts *clientOptions)
+}
+
+// A funcDialOption wraps a function that will apply a client option.
+// Inspiration from the grpc-go package.
+type funcDialOption struct {
+	f func(opts *clientOptions)
+}
+
+func (opt funcDialOption) apply(opts *clientOptions) {
+	opt.f(opts)
+}
+
+// WithConsole allows the client to run scripts on the server using the RunScript method and bind tables to variables using BindToVariable.
+//
+// The script language can be either "python" or "groovy", and must match the language used on the server.
+func WithConsole(scriptLanguage string) ClientOption {
+	return funcDialOption{func(opts *clientOptions) {
+		opts.scriptLanguage = scriptLanguage
+	}}
+}
+
+// WithTableLeaksAllowed disables the automatic TableHandle leak check.
+//
+// Normally, a warning is printed whenever a TableHandle is forgotten without calling Release on it,
+// and a GC finalizer automatically frees the table.
+// However, TableHandles are automatically released by the server whenever a client connection closes.
+// So, it can be okay for short-lived clients that don't create large tables to forget their TableHandles
+// and rely on them being freed when the client closes.
+func WithTableLeaksAllowed() ClientOption {
+	return funcDialOption{func(opts *clientOptions) {
+		opts.allowLeakedTables = true
+	}}
 }
