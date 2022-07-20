@@ -6,5 +6,6 @@ WORKDIR /project
 
 RUN go mod download
 
-RUN go test ./...
-
+# Note that we don't run tests this way, but leave it as an entrypoint
+# to more easily collect results
+#RUN go test ./...

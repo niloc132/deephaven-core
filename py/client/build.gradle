@@ -1,11 +1,4 @@
-import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
-import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
-import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
 import io.deephaven.tools.docker.DiffTask
-import io.deephaven.tools.docker.WaitForHealthyContainer
-import org.gradle.api.internal.file.DefaultFileLookup
 
 plugins {
     id 'com.bmuschko.docker-remote-api'
@@ -92,7 +85,6 @@ tasks.getByName('check').dependsOn(Docker.registerDockerTask(project, 'testPyCli
             into 'project/tests'
         }
     }
-//    parentContainers = [  ]
     containerDependencies.dependsOn = [deephavenDocker.healthyTask]
     containerDependencies.finalizedBy = deephavenDocker.endTask
     network = deephavenDocker.networkName.get()
