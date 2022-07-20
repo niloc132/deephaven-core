@@ -45,12 +45,9 @@ def update = tasks.register('updateProtobuf', Sync) {
 // start a grpc-api server
 String randomSuffix = UUID.randomUUID().toString();
 deephavenDocker {
-    containerName.set "go-client-server-test-container-${randomSuffix}"
-    networkName.set "go-client-test-network-${randomSuffix}"
+    containerName.set "dh-server-for-go-${randomSuffix}"
+    networkName.set "go-test-network-${randomSuffix}"
 }
-// pass host/post to the golang test, as we do for python tests
-//DH_PORT, DH_HOST
-// go test -v ./...
 def testGoClient = Docker.registerDockerTask(project, 'testGoClient') {
     copyIn {
         from(layout.projectDirectory) {
@@ -58,22 +55,27 @@ def testGoClient = Docker.registerDockerTask(project, 'testGoClient') {
             include 'internal/**'
             include 'go.mod'
             include 'go.sum'
+            include 'go-test-to-junit.sh'
         }
     }
-    copyOut {}
+    copyOut {
+        into layout.buildDirectory.dir('test-results')
+    }
     dockerfile {
         from('golang:1.18.1')
-        copyFile('.', '/project')
-        workingDir('/project')
         environmentVariable 'DH_HOST', deephavenDocker.containerName.get()
         environmentVariable 'DH_PORT', '8080'
+        copyFile('.', '/project')
+        workingDir('/project')
+        runCommand('''set -eux; \\
+                      mkdir /out; \\
+                      go mod download; \\
+                      go install github.com/jstemmer/go-junit-report/v2@latest
+                      ''')
     }
-    network = deephavenDocker.networkName.get()
     containerDependencies.dependsOn = [deephavenDocker.healthyTask]
     containerDependencies.finalizedBy = deephavenDocker.endTask
     network = deephavenDocker.networkName.get()
-    entrypoint = ['go', 'test', '-vet=all', '-v', './...']
+    entrypoint = ['./go-test-to-junit.sh', '/out/go-test.xml', '/out/go.log']
 }
-
-
-// consider a smoke test of the main.go binary
+tasks.check.dependsOn(testGoClient)
