@@ -6,6 +6,8 @@ plugins {
     id 'io.deephaven.deephaven-in-docker'
 }
 
+evaluationDependsOn Docker.registryProject('python')
+
 wheel {
     src 'pydeephaven'
     src 'examples'

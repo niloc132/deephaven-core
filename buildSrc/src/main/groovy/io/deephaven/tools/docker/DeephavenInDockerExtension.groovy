@@ -1,8 +1,8 @@
 package io.deephaven.tools.docker
 
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
 import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
@@ -12,8 +12,15 @@ import org.gradle.api.Task
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.TaskProvider
 
-import javax.inject.Inject;
+import javax.inject.Inject
 
+/**
+ * Extension to manage tasks around starting and stopping a Deephaven Core instance. Presently, to enable support for
+ * python in the server, this uses docker.
+ *
+ * This isn't very configurable at this time, but the kinds of projects that will use this don't yet need a lot of
+ * flexibility.
+ */
 @CompileStatic
 public abstract class DeephavenInDockerExtension {
     final TaskProvider<? extends Task> startTask
@@ -71,13 +78,13 @@ public abstract class DeephavenInDockerExtension {
             task.containerId.set containerName.get()
         }
 
-        endTask = project.tasks.register('stopDeephaven', DockerStopContainer) { task ->
+        endTask = project.tasks.register('stopDeephaven', DockerRemoveContainer) { task ->
             task.dependsOn createDeephavenGrpcApi
             task.finalizedBy removeDeephavenGrpcApiNetwork
 
             task.targetContainerId containerName.get()
-//            task.force.set true
-//            task.removeVolumes.set true
+            task.force.set true
+            task.removeVolumes.set true
         }
     }
 }

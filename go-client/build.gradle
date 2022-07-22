@@ -6,8 +6,7 @@ plugins {
     id 'io.deephaven.deephaven-in-docker'
 }
 
-//TODO produce a registryProject
-//evaluationDependsOn Docker.registryProject('go')
+evaluationDependsOn Docker.registryProject('go')
 
 
 // The Go convention is to check in generated sources - while there is a "central repo server" for Go, it is a proxy
@@ -62,7 +61,7 @@ def testGoClient = Docker.registerDockerTask(project, 'testGoClient') {
         into layout.buildDirectory.dir('test-results')
     }
     dockerfile {
-        from('golang:1.18.1')
+        from('deephaven/go:local-build')
         environmentVariable 'DH_HOST', deephavenDocker.containerName.get()
         environmentVariable 'DH_PORT', '8080'
         copyFile('.', '/project')
@@ -76,6 +75,7 @@ def testGoClient = Docker.registerDockerTask(project, 'testGoClient') {
     containerDependencies.dependsOn = [deephavenDocker.healthyTask]
     containerDependencies.finalizedBy = deephavenDocker.endTask
     network = deephavenDocker.networkName.get()
+    parentContainers = [ Docker.registryTask(project, 'go') ]
     entrypoint = ['./go-test-to-junit.sh', '/out/go-test.xml', '/out/go.log']
 }
 tasks.check.dependsOn(testGoClient)
