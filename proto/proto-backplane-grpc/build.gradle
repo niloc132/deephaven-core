@@ -19,8 +19,8 @@ configurations {
   testCompile.extendsFrom junit
 
   js {}
-  go {}
   python {}
+  go {}
 }
 
 dependencies {
