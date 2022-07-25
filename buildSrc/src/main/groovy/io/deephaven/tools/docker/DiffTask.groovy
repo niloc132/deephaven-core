@@ -3,11 +3,13 @@ package io.deephaven.tools.docker
 import groovy.transform.CompileStatic
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileVisitDetails
 import org.gradle.api.internal.file.FileLookup
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.util.PatternFilterable
 import org.gradle.api.tasks.util.PatternSet
@@ -54,8 +56,21 @@ abstract class DiffTask extends DefaultTask {
         throw new UnsupportedOperationException();
     }
 
+    @Internal
+    ConfigurableFileCollection getExpectedContentsFiles() {
+        project.files(getExpectedContents().get())
+    }
+
+    DiffTask() {
+        project.afterEvaluate {
+            outputs.dir(expectedContentsFiles)
+        }
+    }
+
     @TaskAction
     void diff() {
+//        outputs.dir(expectedContentsFiles)
+
         def resolver = getFileLookup().getFileResolver(getActualContents().asFile.get())
         // for each file in the generated go output, make sure it exists and matches contents
         Set<Path> changed = []
@@ -74,7 +89,7 @@ abstract class DiffTask extends DefaultTask {
             existingFiles.add(details.file.toPath());
         }
 
-        project.files(getExpectedContents().get()).asFileTree.visit { FileVisitDetails details ->
+        expectedContentsFiles.asFileTree.visit { FileVisitDetails details ->
             if (details.isDirectory()) {
                 return;
             }
