@@ -22,7 +22,7 @@ dependencies {
 def compare = tasks.register('compareProtobuf', DiffTask) {
     expectedContents.set configurations.go
     actualContents.set layout.projectDirectory
-    generateTask.set ':go-client:updateProtobuf'
+    generateTask.set ':go:updateProtobuf'
 
     ignore {
         exclude 'internal/proto/**'

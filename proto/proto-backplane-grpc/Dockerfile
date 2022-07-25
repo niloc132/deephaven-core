@@ -65,8 +65,8 @@ RUN set -eux; \
     --plugin=protoc-gen-go-grpc=/opt/protoc-gen-go-grpc \
     --go_out=/generated/go \
     --go-grpc_out=/generated/go \
-    --go_opt=module=github.com/deephaven/deephaven-core/go-client \
-    --go-grpc_opt=module=github.com/deephaven/deephaven-core/go-client \
+    --go_opt=module=github.com/deephaven/deephaven-core/go \
+    --go-grpc_opt=module=github.com/deephaven/deephaven-core/go \
     -I/includes \
     /includes/deephaven/proto/ticket.proto \
     /includes/deephaven/proto/console.proto \
