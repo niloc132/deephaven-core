@@ -31,7 +31,7 @@ def compare = tasks.register('compareProtobuf', DiffTask) {
 // fail a "check" build if these are out of date
 tasks.getByName('quick').dependsOn(compare)
 
-def update = tasks.register('updateProtobuf', Sync) {
+tasks.register('updateProtobuf', Sync) {
     finalizedBy compare
     from configurations.go
     into layout.projectDirectory

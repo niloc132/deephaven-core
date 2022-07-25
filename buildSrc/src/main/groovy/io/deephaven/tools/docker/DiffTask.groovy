@@ -62,12 +62,6 @@ abstract class DiffTask extends DefaultTask {
         project.files(getExpectedContents().get())
     }
 
-//    DiffTask() {
-//        project.afterEvaluate {
-//            outputs.dir(expectedContentsFiles)
-//        }
-//    }
-
     @TaskAction
     void diff() {
         def resolver = getFileLookup().getFileResolver(getActualContents().asFile.get())
