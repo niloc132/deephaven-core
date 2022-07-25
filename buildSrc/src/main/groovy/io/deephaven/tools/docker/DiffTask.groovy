@@ -9,6 +9,7 @@ import org.gradle.api.file.FileVisitDetails
 import org.gradle.api.internal.file.FileLookup
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.util.PatternFilterable
@@ -27,7 +28,7 @@ abstract class DiffTask extends DefaultTask {
     // This is an Object because Gradle doesn't define an interface for getAsFileTree(), so we
     // will resolve it when we execute the task. This allows us to read from various sources,
     // such as configurations.
-    @Input
+    @InputFiles
     abstract Property<Object> getExpectedContents()
     // In contrast, this is assumed to be a source directory, to easily allow some Sync action
     // to easily be the "fix this mistake" counterpart to this task
@@ -61,16 +62,14 @@ abstract class DiffTask extends DefaultTask {
         project.files(getExpectedContents().get())
     }
 
-    DiffTask() {
-        project.afterEvaluate {
-            outputs.dir(expectedContentsFiles)
-        }
-    }
+//    DiffTask() {
+//        project.afterEvaluate {
+//            outputs.dir(expectedContentsFiles)
+//        }
+//    }
 
     @TaskAction
     void diff() {
-//        outputs.dir(expectedContentsFiles)
-
         def resolver = getFileLookup().getFileResolver(getActualContents().asFile.get())
         // for each file in the generated go output, make sure it exists and matches contents
         Set<Path> changed = []
