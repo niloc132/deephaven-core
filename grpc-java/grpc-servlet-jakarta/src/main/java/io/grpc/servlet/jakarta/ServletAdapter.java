@@ -18,7 +18,6 @@ import io.grpc.Attributes;
 import io.grpc.ExperimentalApi;
 import io.grpc.Grpc;
 import io.grpc.InternalLogId;
-import io.grpc.InternalMetadata;
 import io.grpc.Metadata;
 import io.grpc.ServerStreamTracer;
 import io.grpc.Status;
@@ -38,11 +37,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -181,25 +179,26 @@ public final class ServletAdapter {
         Enumeration<String> headerNames = req.getHeaderNames();
         checkNotNull(
                 headerNames, "Servlet container does not allow HttpServletRequest.getHeaderNames()");
-        List<byte[]> byteArrays = new ArrayList<>();
+        Metadata metadata = new Metadata();
         while (headerNames.hasMoreElements()) {
             String headerName = headerNames.nextElement();
             Enumeration<String> values = req.getHeaders(headerName);
             if (values == null) {
                 continue;
             }
+            headerName = headerName.toLowerCase(Locale.ROOT);
+            boolean isBinaryHeader = headerName.endsWith(Metadata.BINARY_HEADER_SUFFIX);
             while (values.hasMoreElements()) {
                 String value = values.nextElement();
-                if (headerName.endsWith(Metadata.BINARY_HEADER_SUFFIX)) {
-                    byteArrays.add(headerName.getBytes(StandardCharsets.US_ASCII));
-                    byteArrays.add(BaseEncoding.base64().decode(value));
+                if (isBinaryHeader) {
+                    metadata.put(Metadata.Key.of(headerName, Metadata.BINARY_BYTE_MARSHALLER),
+                            BaseEncoding.base64().decode(value));
                 } else {
-                    byteArrays.add(headerName.getBytes(StandardCharsets.US_ASCII));
-                    byteArrays.add(value.getBytes(StandardCharsets.US_ASCII));
+                    metadata.put(Metadata.Key.of(headerName, Metadata.ASCII_STRING_MARSHALLER), value);
                 }
             }
         }
-        return InternalMetadata.newMetadata(byteArrays.toArray(new byte[][] {}));
+        return metadata;
     }
 
     // This method must use HttpRequest#getRequestURL or HttpUtils#getRequestURL, both of which
