@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io;
 
 import io.deephaven.io.log.*;
@@ -17,9 +16,9 @@ public class ExerciseLogSink {
         LogSink sink = new LogSinkImpl<LogEntry>("/tmp/test1.log", 5000, entryPool);
 
         int entries = 0;
-        for ( int i = 0; i < 10000; ++i ) {
+        for (int i = 0; i < 10000; ++i) {
             int n = (int) (Math.random() * 10) + 1;
-            for ( int j = 0; j < n; ++j  ) {
+            for (int j = 0; j < n; ++j) {
                 LogEntry e = entryPool.take().start(sink, LogLevel.INFO);
                 e.append("Log: iteration ").append(i).append(" entry ").append(j);
                 e.endl();
@@ -27,12 +26,11 @@ public class ExerciseLogSink {
             }
             try {
                 Thread.sleep(10);
-            }
-            catch ( InterruptedException x ) {
+            } catch (InterruptedException x) {
                 // ignore
             }
         }
-        System.out.println("ExerciseLogSink: wrote "+entries+" entries");
+        System.out.println("ExerciseLogSink: wrote " + entries + " entries");
         sink.shutdown();
     }
 }

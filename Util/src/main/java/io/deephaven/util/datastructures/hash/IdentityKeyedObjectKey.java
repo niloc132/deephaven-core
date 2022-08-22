@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.datastructures.hash;
 
 import io.deephaven.hash.KeyedObjectKey;
@@ -10,12 +13,11 @@ public final class IdentityKeyedObjectKey<KV> implements KeyedObjectKey<KV, KV> 
     private static final KeyedObjectKey<?, ?> INSTANCE = new IdentityKeyedObjectKey<>();
 
     public static <KV> KeyedObjectKey<KV, KV> getInstance() {
-        //noinspection unchecked
+        // noinspection unchecked
         return (KeyedObjectKey<KV, KV>) INSTANCE;
     }
 
-    private IdentityKeyedObjectKey() {
-    }
+    private IdentityKeyedObjectKey() {}
 
     @Override
     public KV getKey(final KV kv) {

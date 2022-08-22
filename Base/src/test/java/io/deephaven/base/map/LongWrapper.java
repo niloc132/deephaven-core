@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.map;
 
 import io.deephaven.base.Copyable;
@@ -49,12 +48,15 @@ class LongWrapper implements Comparable<LongWrapper>, Externalizable, Copyable<L
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof LongWrapper)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof LongWrapper))
+            return false;
 
         LongWrapper that = (LongWrapper) o;
 
-        if (val != that.val) return false;
+        if (val != that.val)
+            return false;
 
         return true;
     }

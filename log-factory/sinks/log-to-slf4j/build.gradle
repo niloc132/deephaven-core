@@ -1,6 +1,6 @@
 plugins {
 	id 'java-library'
-	id 'com.diffplug.spotless'
+	id 'io.deephaven.project.register'
 }
 
 dependencies {
@@ -8,12 +8,7 @@ dependencies {
 	// internal logger, that is in service of the ServiceLoader - and if consumers should not need
 	// access to the internal logger.
 	implementation project(':log-factory')
-	compileOnly 'org.slf4j:slf4j-api:1.7.30' // users must provide their own impl and slf4j config
-	compileOnly 'ch.qos.logback:logback-classic:1.2.3' // so we can attach an interceptor, if supported
-}
-
-spotless {
-	java {
-		eclipse().configFile("${rootDir}/style/eclipse-java-google-style.xml")
-	}
+	Classpaths.inheritSlf4j(project, 'slf4j-api', 'compileOnly') // users must provide their own impl and slf4j config
+	Classpaths.inheritLogbackClassic(project, 'compileOnly') // so we can attach an interceptor, if supported
+	Classpaths.inheritAutoService(project)
 }

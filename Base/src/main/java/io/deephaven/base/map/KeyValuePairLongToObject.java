@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.map;
 
 import io.deephaven.base.Copyable;
@@ -14,8 +13,7 @@ public class KeyValuePairLongToObject<V extends Externalizable & Copyable<V>>
     private long key;
     private V value;
 
-    public KeyValuePairLongToObject() {
-    }
+    public KeyValuePairLongToObject() {}
 
     public KeyValuePairLongToObject(long key, V value) {
         if (value == null) {
@@ -43,13 +41,17 @@ public class KeyValuePairLongToObject<V extends Externalizable & Copyable<V>>
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof KeyValuePairLongToObject)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof KeyValuePairLongToObject))
+            return false;
 
         KeyValuePairLongToObject that = (KeyValuePairLongToObject) o;
 
-        if (key != that.key) return false;
-        if (value != null ? !value.equals(that.value) : that.value != null) return false;
+        if (key != that.key)
+            return false;
+        if (value != null ? !value.equals(that.value) : that.value != null)
+            return false;
 
         return true;
     }

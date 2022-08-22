@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2018. Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.modelfarm;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
@@ -12,7 +11,8 @@ import java.io.IOException;
 public class TestModelInputSerializerDeserializer extends BaseArrayTestCase {
 
     public void testSerializeDeserialize() throws IOException, ClassNotFoundException {
-        final String filename = Configuration.getInstance().getTempPath("test") + "TestModelInputSerializerDeserializer.ser";
+        final String filename =
+                Configuration.getInstance().getTempPath("test") + "TestModelInputSerializerDeserializer.ser";
 
         final ModelInputSerializer<Integer> serializer = new ModelInputSerializer<>(filename);
 
@@ -34,7 +34,7 @@ public class TestModelInputSerializerDeserializer extends BaseArrayTestCase {
             deserializer.next();
             fail("Should have thrown an exception");
         } catch (IOException e) {
-            //pass
+            // pass
         }
     }
 

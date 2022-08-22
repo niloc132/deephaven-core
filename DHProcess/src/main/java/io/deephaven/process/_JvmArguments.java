@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import java.lang.management.RuntimeMXBean;
@@ -6,7 +9,8 @@ import org.immutables.value.Value;
 /**
  * Represents the JVM input arguments as collected via {@link RuntimeMXBean#getInputArguments()}.
  */
-@Value.Immutable @Wrapped
+@Value.Immutable
+@Wrapped
 abstract class _JvmArguments extends StringListWrapper {
 
     static JvmArguments of(RuntimeMXBean bean) {

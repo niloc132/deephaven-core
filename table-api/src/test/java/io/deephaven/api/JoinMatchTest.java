@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,7 +12,7 @@ public class JoinMatchTest {
 
     public static final JoinMatch FOO = ColumnName.of("Foo");
     public static final JoinMatch FOO_BAR =
-        JoinMatch.of(ColumnName.of("Foo"), ColumnName.of("Bar"));
+            JoinMatch.of(ColumnName.of("Foo"), ColumnName.of("Bar"));
 
     @Test
     void left() {

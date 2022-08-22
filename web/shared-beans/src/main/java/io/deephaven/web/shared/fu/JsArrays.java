@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.fu;
 
 import com.google.gwt.core.client.JavaScriptObject;
@@ -13,8 +16,8 @@ public class JsArrays {
     public static void setArray(Object args, JsConsumer<String[]> setter) {
         if (args == null || args instanceof String[]) {
             setter.apply((String[]) args);
-        } else if (args instanceof JavaScriptObject){
-            // this is actually javascript.  We can do terrible things here and it's ok
+        } else if (args instanceof JavaScriptObject) {
+            // this is actually javascript. We can do terrible things here and it's ok
             final int length = Array.getLength(args);
             final String[] typed = new String[length];
             System.arraycopy(args, 0, typed, 0, length);

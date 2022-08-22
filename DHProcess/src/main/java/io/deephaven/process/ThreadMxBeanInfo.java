@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import io.deephaven.properties.PropertySet;
@@ -17,12 +20,12 @@ public abstract class ThreadMxBeanInfo implements PropertySet {
 
     public static ThreadMxBeanInfo of(ThreadMXBean bean) {
         return ImmutableThreadMxBeanInfo.builder()
-            .isCurrentThreadCpuTimeSupported(bean.isCurrentThreadCpuTimeSupported())
-            .isObjectMonitorUsageSupported(bean.isObjectMonitorUsageSupported())
-            .isSynchronizerUsageSupported(bean.isSynchronizerUsageSupported())
-            .isThreadContentionMonitoringSupported(bean.isThreadContentionMonitoringSupported())
-            .isThreadCpuTimeSupported(bean.isThreadCpuTimeSupported())
-            .build();
+                .isCurrentThreadCpuTimeSupported(bean.isCurrentThreadCpuTimeSupported())
+                .isObjectMonitorUsageSupported(bean.isObjectMonitorUsageSupported())
+                .isSynchronizerUsageSupported(bean.isSynchronizerUsageSupported())
+                .isThreadContentionMonitoringSupported(bean.isThreadContentionMonitoringSupported())
+                .isThreadCpuTimeSupported(bean.isThreadCpuTimeSupported())
+                .build();
     }
 
     @Value.Parameter

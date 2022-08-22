@@ -1,10 +1,13 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.calendar.enums;
 
 import elemental2.core.JsObject;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsType;
 
-@JsType(name = "DayOfWeek", namespace="dh.calendar")
+@JsType(name = "DayOfWeek", namespace = "dh.calendar")
 @SuppressWarnings("unusable-by-js")
 public class JsDayOfWeek {
     public static final String SUNDAY = "SUNDAY";

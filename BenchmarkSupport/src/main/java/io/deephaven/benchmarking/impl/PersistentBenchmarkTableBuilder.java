@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.impl;
 
 import io.deephaven.base.StringUtils;
@@ -18,7 +21,7 @@ public class PersistentBenchmarkTableBuilder extends AbstractBenchmarkTableBuild
     }
 
     public PersistentBenchmarkTableBuilder addGroupingColumns(String... columns) {
-        if(columns == null || columns.length == 0) {
+        if (columns == null || columns.length == 0) {
             throw new IllegalArgumentException("Columns must not be null or empty");
         }
 
@@ -48,11 +51,13 @@ public class PersistentBenchmarkTableBuilder extends AbstractBenchmarkTableBuild
         final Set<String> missingGroupingColumns = new HashSet<>(groupingColumns);
         columns.keySet().forEach(missingGroupingColumns::remove);
 
-        if(!missingGroupingColumns.isEmpty()) {
-            throw new IllegalStateException("Grouping requested on the following nonexistant columns " + StringUtils.joinStrings(missingGroupingColumns,", "));
+        if (!missingGroupingColumns.isEmpty()) {
+            throw new IllegalStateException("Grouping requested on the following nonexistant columns "
+                    + StringUtils.joinStrings(missingGroupingColumns, ", "));
         }
 
-        // TODO (deephaven/deephaven-core/issues/147): Replace this with a Parquet-backed table, or delete this entirely and use in-memory always
+        // TODO (deephaven/deephaven-core/issues/147): Replace this with a Parquet-backed table, or delete this entirely
+        // and use in-memory always
         return new InMemoryBenchmarkTable(name, size, rngSeed, getColumnGenerators());
     }
 }

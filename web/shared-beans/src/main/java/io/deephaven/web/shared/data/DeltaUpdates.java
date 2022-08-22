@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data;
 
 import io.deephaven.web.shared.data.columns.ColumnData;
@@ -9,8 +12,7 @@ public class DeltaUpdates implements Serializable {
         private int columnIndex;
         private ColumnData values;
 
-        public ColumnAdditions() {
-        }
+        public ColumnAdditions() {}
 
         public ColumnAdditions(int colIndex, ColumnData values) {
             setColumnIndex(colIndex);
@@ -36,15 +38,12 @@ public class DeltaUpdates implements Serializable {
     public static class ColumnModifications implements Serializable {
         private int columnIndex;
         private RangeSet rowsIncluded;
-        private RangeSet rowsModified;
         public ColumnData values;
 
-        public ColumnModifications() {
-        }
+        public ColumnModifications() {}
 
-        public ColumnModifications(int columnIndex, RangeSet modifiedRows, RangeSet includedModifications, ColumnData columnData) {
+        public ColumnModifications(int columnIndex, RangeSet includedModifications, ColumnData columnData) {
             setColumnIndex(columnIndex);
-            setRowsModified(modifiedRows);
             setRowsIncluded(includedModifications);
             setValues(columnData);
         }
@@ -63,14 +62,6 @@ public class DeltaUpdates implements Serializable {
 
         public void setRowsIncluded(final RangeSet rowsIncluded) {
             this.rowsIncluded = rowsIncluded;
-        }
-
-        public RangeSet getRowsModified() {
-            return rowsModified;
-        }
-
-        public void setRowsModified(final RangeSet rowsModified) {
-            this.rowsModified = rowsModified;
         }
 
         public ColumnData getValues() {
@@ -96,10 +87,10 @@ public class DeltaUpdates implements Serializable {
     private ColumnAdditions[] serializedAdditions;
     private ColumnModifications[] serializedModifications;
 
-    public DeltaUpdates() {
-    }
+    public DeltaUpdates() {}
 
-    public DeltaUpdates(RangeSet added, RangeSet removed, ShiftedRange[] shifted, RangeSet includedAdditions, ColumnAdditions[] addedColumnData, ColumnModifications[] modifiedColumnData) {
+    public DeltaUpdates(RangeSet added, RangeSet removed, ShiftedRange[] shifted, RangeSet includedAdditions,
+            ColumnAdditions[] addedColumnData, ColumnModifications[] modifiedColumnData) {
         setAdded(added);
         setRemoved(removed);
         setShiftedRanges(shifted);

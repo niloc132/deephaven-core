@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data;
 
 import jsinterop.annotations.JsProperty;
@@ -5,8 +8,7 @@ import jsinterop.annotations.JsProperty;
 import java.io.Serializable;
 
 /**
- * Represents a serialized fishlib LogRecord,
- * suitable for display on javascript clients.
+ * Represents a serialized fishlib LogRecord, suitable for display on javascript clients.
  */
 public class LogItem implements Serializable {
 

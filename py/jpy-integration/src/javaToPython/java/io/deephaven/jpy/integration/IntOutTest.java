@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy.integration;
 
 import io.deephaven.jpy.JpyModule;
@@ -16,8 +19,11 @@ public class IntOutTest extends PythonTest {
 
     interface IntOut extends IdentityOut {
         int identity(int object);
+
         int identity(Integer object);
+
         int identity(PyObject object);
+
         int identity(Object object);
     }
 
@@ -28,14 +34,14 @@ public class IntOutTest extends PythonTest {
     @Before
     public void setUp() {
         out = IdentityOut.create(getCreateModule(), IntOut.class);
-        ref = ReferenceCounting.create();
+        ref = ReferenceCounting.create(getCreateModule());
         jpy = JpyModule.create();
-        //jpy.setFlags(EnumSet.of(Flag.ALL));
+        // jpy.setFlags(EnumSet.of(Flag.ALL));
     }
 
     @After
     public void tearDown() {
-        //jpy.setFlags(EnumSet.of(Flag.OFF));
+        // jpy.setFlags(EnumSet.of(Flag.OFF));
         jpy.close();
         ref.close();
         out.close();
@@ -71,7 +77,7 @@ public class IntOutTest extends PythonTest {
     public void implicitPyObjectToInt() {
         try (final PyObject in = expr(UNIQ_INT)) {
             check(1, in);
-            Assert.assertEquals(UNIQ_INT, out.identity((Object)in));
+            Assert.assertEquals(UNIQ_INT, out.identity((Object) in));
             check(1, in);
         }
     }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.modelfarm;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
@@ -18,8 +21,7 @@ public class ConditonalModelsTest extends BaseArrayTestCase {
     private static class TModel implements Model<EquityFitDataOptionPrices> {
 
         @Override
-        public void exec(EquityFitDataOptionPrices data) {
-        }
+        public void exec(EquityFitDataOptionPrices data) {}
     }
 
     private static class EquityFitDataOptionPrices {
@@ -40,10 +42,10 @@ public class ConditonalModelsTest extends BaseArrayTestCase {
 
         m1 = new TModel();
         m2 = new TModel();
-        //noinspection unchecked
-        models = new Model[]{m1, m2};
-        //noinspection unchecked
-        predicates = new BiPredicate[]{
+        // noinspection unchecked
+        models = new Model[] {m1, m2};
+        // noinspection unchecked
+        predicates = new BiPredicate[] {
                 (BiPredicate<EquityFitDataOptionPrices, Boolean>) (d, s) -> d.getUnderlyingId() == 3 && s,
                 (BiPredicate<EquityFitDataOptionPrices, Boolean>) (d, s) -> s
         };

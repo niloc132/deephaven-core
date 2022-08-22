@@ -1,12 +1,15 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.runner;
 
-import io.deephaven.db.tables.ColumnDefinition;
-import io.deephaven.db.tables.Table;
-import io.deephaven.db.tables.TableDefinition;
-import io.deephaven.db.tables.utils.ParquetTools;
-import io.deephaven.db.tables.utils.TableTools;
-import io.deephaven.db.v2.parquet.ParquetTableWriter;
-import io.deephaven.db.v2.utils.TableBuilder;
+import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.table.Table;
+import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.parquet.table.ParquetTools;
+import io.deephaven.engine.util.TableTools;
+import io.deephaven.parquet.table.ParquetTableWriter;
+import io.deephaven.engine.table.impl.util.TableBuilder;
 import io.deephaven.benchmarking.BenchmarkTools;
 import org.openjdk.jmh.infra.BenchmarkParams;
 
@@ -17,7 +20,8 @@ import java.nio.file.Paths;
 import java.util.Collections;
 
 public class TableBenchmarkState {
-    private static final TableDefinition RESULT_DEF = BenchmarkTools.getLogDefinitionWithExtra(Collections.singletonList(ColumnDefinition.ofString("Fingerprint")));
+    private static final TableDefinition RESULT_DEF = BenchmarkTools
+            .getLogDefinitionWithExtra(Collections.singletonList(ColumnDefinition.ofString("Fingerprint")));
 
     private final String benchmarkName;
     private final TableBuilder outputBuilder;
@@ -30,7 +34,7 @@ public class TableBenchmarkState {
 
     public TableBenchmarkState(String benchmarkName, int expectedWarmups) {
         this.benchmarkName = benchmarkName;
-        this.outputBuilder = new TableBuilder(RESULT_DEF,1024);
+        this.outputBuilder = new TableBuilder(RESULT_DEF, 1024);
         this.expectedWarmups = expectedWarmups;
     }
 
@@ -40,10 +44,10 @@ public class TableBenchmarkState {
 
     public void logOutput() throws IOException {
         final Path outputPath = Paths.get(BenchmarkTools.getLogPath())
-                                     .resolve(BenchmarkTools.getDetailOutputPath(benchmarkName) + ParquetTableWriter.PARQUET_FILE_EXTENSION);
+                .resolve(BenchmarkTools.getDetailOutputPath(benchmarkName) + ParquetTableWriter.PARQUET_FILE_EXTENSION);
 
         final Table output = outputBuilder.build();
-        ParquetTools.writeTable(output, RESULT_DEF, outputPath.toFile());
+        ParquetTools.writeTable(output, outputPath.toFile(), RESULT_DEF);
     }
 
     public void reset() {
@@ -51,7 +55,7 @@ public class TableBenchmarkState {
     }
 
     public void processResult(BenchmarkParams params) throws IOException {
-        if(warmups < expectedWarmups) {
+        if (warmups < expectedWarmups) {
             warmups++;
             return;
         }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util;
 
 import java.util.Objects;
@@ -37,12 +40,14 @@ public class SafeCloseablePair<A extends SafeCloseable, B extends SafeCloseable>
         }
     }
 
-    public static <AP extends SafeCloseable, BP extends SafeCloseable, A extends AP, B extends BP> SafeCloseablePair<AP, BP> downcast(SafeCloseablePair<A, B> self) {
+    public static <AP extends SafeCloseable, BP extends SafeCloseable, A extends AP, B extends BP> SafeCloseablePair<AP, BP> downcast(
+            SafeCloseablePair<A, B> self) {
         // noinspection unchecked
-        return (SafeCloseablePair<AP, BP>)self;
+        return (SafeCloseablePair<AP, BP>) self;
     }
 
-    public static <A extends SafeCloseable, B extends SafeCloseable> SafeCloseablePair<A, B> of(final A first, final B second) {
+    public static <A extends SafeCloseable, B extends SafeCloseable> SafeCloseablePair<A, B> of(final A first,
+            final B second) {
         return new SafeCloseablePair<>(first, second);
     }
 

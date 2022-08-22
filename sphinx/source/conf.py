@@ -19,12 +19,16 @@
 project = 'Deephaven'
 copyright = '2021, Deephaven Data Labs'
 author = 'Deephaven Data Labs'
+
+# The full version, including alpha/beta/rc tags
+#release = '0.0.1'
+
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.todo', 'sphinx.ext.viewcode', "sphinx_autodoc_typehints"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -39,7 +43,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'furo'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -61,109 +65,43 @@ html_theme_options = {
 
 # A boolean that decides whether module names are prepended to all object names (for object types where a “module” of some kind is defined), e.g. for py:function directives. Default is True.
 add_module_names = False
+# if we allow sphinx to generate type hints for signatures (default), it would make the generated doc cluttered and hard to read
+autodoc_typehints = 'none'
 
 #########################################################################################################################################################################
 
+
+# Turn on jpy so the modern deephaven API can reference Java types.
+# The Deephaven wheel can't be used without the JVM running and the
+# server classpath being present, so we must at least set this much
+# up.
+from glob import glob
 import os
-import shutil
-import pkgutil
 
-def glob_package_names(packages):
-    rst = []
+workspace = os.environ.get('DEEPHAVEN_WORKSPACE', '.')
+devroot = os.environ.get('DEEPHAVEN_DEVROOT', '.')
+propfile = os.environ.get('DEEPHAVEN_PROPFILE', 'dh-defaults.prop')
+jvm_properties = {
+            'Configuration.rootFile': propfile,
+            'devroot': os.path.realpath(devroot),
+            'workspace': os.path.realpath(workspace),
+        }
 
-    for package in packages:
-        rst.append(package.__name__)
+from deephaven_internal import jvm
+jvm.init_jvm(
+    jvm_classpath=glob(os.environ.get('DEEPHAVEN_CLASSPATH')),
+    jvm_properties=jvm_properties,
+)
 
-        if hasattr(package,"__path__"):
-            for importer, modname, ispkg in pkgutil.walk_packages(path=package.__path__, prefix=package.__name__+'.', onerror=lambda x: None):
-                rst.append(modname)
-
-    return rst
-
-
-def _add_package(tree, package):
-    n = package[0]
-
-    if n not in tree:
-        tree[n] = {}
-
-    if len(package) > 1:
-        _add_package(tree[n],package[1:])
-
-
-def package_tree(package_names):
-    rst = {}
-    for pn in package_names:
-        spn = pn.split('.')
-        _add_package(rst, spn)
-    return rst
-
-
-def make_rst_tree(package, tree):
-    package_name = ".".join(package)
-
-    if len(tree) == 0:
-        toctree = ""
-    else:
-        toctree = ".. toctree::\n"
-        for k in tree:
-            p = package.copy()
-            p.append(k)
-            pn = ".".join(p)
-            toctree += "%s%s <%s>\n"%(" "*4,k,pn)
-
-    rst = "%s\n%s\n\n%s\n.. automodule:: %s\n    :members:\n    :undoc-members:\n\n"%(package_name,"="*len(package_name),toctree,package_name)
-
-    if len(package) > 0:
-        filename = f"code/{package_name}.rst"
-
-        with open(filename,"w") as file:
-            file.write(rst)
-
-    for k,v in tree.items():
-        p = package.copy()
-        p.append(k)
-        make_rst_tree(p, v)
-
-
-_rst_modules = '''
-Python Modules
-##############
-
-Deephaven python modules.
-
-.. toctree::
-    :glob:
-
-'''
-
-def make_rst_modules(package_roots):
-    rst = _rst_modules
-
-    for pr in package_roots:
-        rst += "\n%s./code/%s"%(" "*4,pr.__name__)
-
-    filename = "modules.rst"
-
-    with open(filename,"w") as file:
-        file.write(rst)
-
-
+import jpy
+py_scope_jpy = jpy.get_type("io.deephaven.engine.util.PythonScopeJpyImpl").ofMainGlobals()
+py_dh_session = jpy.get_type("io.deephaven.integrations.python.PythonDeephavenSession")(py_scope_jpy)
+jpy.get_type("io.deephaven.engine.table.lang.QueryScope").setScope(py_dh_session.newQueryScope())
 
 import deephaven
-import jpy
+docs_title = "Deephaven python modules."
 package_roots = [jpy, deephaven]
-pn = glob_package_names(package_roots)
-# remove private modules
-pn = [p for p in pn if not '._' in p]
-pt = package_tree(pn)
+package_excludes = ['._']
 
-if os.path.exists("code"):
-    shutil.rmtree("code")
-os.mkdir("code")
-
-make_rst_modules(package_roots)
-make_rst_tree([],pt)
-
-
-
+import dh_sphinx
+dh_sphinx.gen_sphinx_modules(docs_title, package_roots, package_excludes)

@@ -1,7 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api.agg;
 
 import io.deephaven.api.ColumnName;
-import io.deephaven.api.SimpleStyle;
+import io.deephaven.annotations.SimpleStyle;
 import org.immutables.value.Value.Check;
 import org.immutables.value.Value.Immutable;
 import org.immutables.value.Value.Parameter;
@@ -27,7 +30,7 @@ abstract class PairImpl implements Pair, Serializable {
             // To make sure that Pair#equals() works as we would expect, we should always use
             // canonical ColumnName when applicable.
             throw new IllegalArgumentException(
-                "Should not construct PairImpl with the same columns, use the ColumnName directly");
+                    "Should not construct PairImpl with the same columns, use the ColumnName directly");
         }
     }
 }

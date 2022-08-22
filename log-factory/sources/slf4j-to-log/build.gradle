@@ -1,16 +1,10 @@
 plugins {
 	id 'java-library'
-	id 'com.diffplug.spotless'
+	id 'io.deephaven.project.register'
 }
 
 dependencies {
 	implementation project(':log-factory')
-
-	compileOnly 'org.slf4j:slf4j-api:1.7.30' // users must provide their own api hooks
-}
-
-spotless {
-	java {
-		eclipse().configFile("${rootDir}/style/eclipse-java-google-style.xml")
-	}
+	Classpaths.inheritSlf4j(project, 'slf4j-api', 'compileOnly') // users must provide their own api hooks
+	Classpaths.inheritAutoService(project)
 }

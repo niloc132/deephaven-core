@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsArray;
@@ -16,7 +19,8 @@ public class DataUpdateEvent {
     public static final DataUpdateEvent empty(JsSeries... series) {
         return new DataUpdateEvent(series, null, null) {
             @Override
-            public JsArray<Any> getArray(JsSeries series, int sourceType, @JsOptional JsFunction<Any, Any> mappingFunc) {
+            public JsArray<Any> getArray(JsSeries series, int sourceType,
+                    @JsOptional JsFunction<Any, Any> mappingFunc) {
                 return new JsArray<>();
             }
         };

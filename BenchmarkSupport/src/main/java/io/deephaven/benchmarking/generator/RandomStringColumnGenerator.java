@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.generator;
 
 import io.deephaven.benchmarking.generator.random.ExtendedRandom;
@@ -9,7 +12,7 @@ public class RandomStringColumnGenerator extends AbstractStringColumnGenerator {
     private StringGenerator generator;
 
     public RandomStringColumnGenerator(String name, int minLength, int maxLength) {
-        super(name, minLength,  maxLength);
+        super(name, minLength, maxLength);
     }
 
     @Override

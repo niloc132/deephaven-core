@@ -1,20 +1,50 @@
-configurations {
-    compile.extendsFrom dhPlot
+plugins {
+    id 'io.deephaven.project.register'
+    id 'java-library'
+}
 
-    testCompile.extendsFrom dhDbTest, fishIoTest
+configurations {
+    implementation.extendsFrom dhPlot
+
+    testImplementation.extendsFrom fishIoTest
 }
 
 dependencies {
 
-    compile project(':DB')
+    api project(':engine-api')
+    implementation project(':engine-table')
+    implementation project(':engine-function')
+    implementation project(':engine-tuple')
+    implementation project(':log-factory')
+
+    Classpaths.inheritGroovy(project, 'groovy', 'implementation')
+    Classpaths.inheritGroovy(project, 'groovy-json', 'implementation')
+    Classpaths.inheritAutoService(project)
 
     compileOnly 'javax.inject:javax.inject:1'
 
-    testCompile TestTools.projectDependency(project, 'Util'),
-                TestTools.projectDependency(project, 'DB')
+    implementation 'com.google.guava:guava:19.0'
 
-    testRuntime project(path: ':configs'), project(path: ':test-configs'), project(':Numerics')
+    testImplementation TestTools.projectDependency(project, 'Util')
+    testImplementation TestTools.projectDependency(project, 'engine-table')
+
+    testRuntimeOnly project(path: ':configs')
+    testRuntimeOnly project(path: ':test-configs')
+    testRuntimeOnly project(':Numerics')
 
     testRuntimeOnly project(':log-to-slf4j')
-    testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.30'
+    Classpaths.inheritSlf4j(project, 'slf4j-simple', 'testRuntimeOnly')
+}
+
+spotless {
+    java {
+        targetExclude(
+                'src/main/java/io/deephaven/plot/Axes.java',
+                'src/main/java/io/deephaven/plot/AxesImpl.java',
+                'src/main/java/io/deephaven/plot/Figure.java',
+                'src/main/java/io/deephaven/plot/FigureImpl.java',
+                'src/main/java/io/deephaven/plot/PlottingConvenience.java',
+                'src/main/java/io/deephaven/plot/datasets/multiseries/**'
+        )
+    }
 }

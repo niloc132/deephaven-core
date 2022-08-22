@@ -1,5 +1,7 @@
-apply from: "$rootDir/gradle/web-common.gradle"
+plugins {
+    id 'io.deephaven.project.register'
+}
 
-GwtTools.gwtLib project
+apply from: "$rootDir/gradle/web-common.gradle"
 
 // Contains all general purpose utilities used across all open-api modules.

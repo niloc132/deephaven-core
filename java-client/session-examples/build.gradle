@@ -1,0 +1,52 @@
+plugins {
+    id 'application'
+    id 'io.deephaven.project.register'
+}
+
+dependencies {
+    implementation project(':java-client-session-dagger')
+    implementation project(':java-client-example-utilities')
+
+    Classpaths.inheritGrpcPlatform(project)
+    runtimeOnly 'io.grpc:grpc-netty'
+
+    Classpaths.inheritJUnitPlatform(project)
+    Classpaths.inheritAssertJ(project)
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    Classpaths.inheritLogbackClassic(project)
+}
+
+test {
+    useJUnitPlatform()
+}
+
+startScripts.enabled = false
+
+def createApplication = { String name, String mainClass ->
+    project.tasks.register("create-${name}", CreateStartScripts) {script ->
+        script.mainClass.set mainClass
+        script.applicationName = name
+        script.outputDir = project.layout.buildDirectory.dir(name).get().asFile
+        script.classpath = startScripts.classpath
+        script.defaultJvmOpts = [
+                '-server',
+                '-XX:+UseG1GC',
+                '-XX:MaxGCPauseMillis=100',
+                '-XX:+UseStringDeduplication' ]
+    }
+}
+
+applicationDistribution.into('bin') {
+    from(createApplication('hammer-sessions', 'io.deephaven.client.examples.HammerSessions'))
+    from(createApplication('publish-tables', 'io.deephaven.client.examples.PublishTables'))
+    from(createApplication('write-qsts', 'io.deephaven.client.examples.WriteExampleQsts'))
+    from(createApplication('table-manager', 'io.deephaven.client.examples.TableManagerExample'))
+    from(createApplication('execute-script', 'io.deephaven.client.examples.ExecuteScript'))
+    from(createApplication('execute-code', 'io.deephaven.client.examples.ExecuteCode'))
+    from(createApplication('subscribe-fields', 'io.deephaven.client.examples.SubscribeToFields'))
+    from(createApplication('connect-check', 'io.deephaven.client.examples.ConnectCheck'))
+    from(createApplication('fetch-object', 'io.deephaven.client.examples.FetchObject'))
+    fileMode = 0755
+}
+

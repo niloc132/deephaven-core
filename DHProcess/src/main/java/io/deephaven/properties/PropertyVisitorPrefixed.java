@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.properties;
 
 import java.util.Objects;
@@ -41,6 +44,6 @@ class PropertyVisitorPrefixed implements PropertyVisitor {
     @Override
     public void visitProperties(String key, PropertySet properties) {
         new PropertyVisitorPrefixed(prefix + key + SEPARATOR, delegate)
-            .visitProperties(properties);
+                .visitProperties(properties);
     }
 }

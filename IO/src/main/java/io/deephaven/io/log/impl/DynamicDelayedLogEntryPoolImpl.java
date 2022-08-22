@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.log.impl;
 
 import io.deephaven.base.Function;
@@ -16,7 +15,9 @@ public class DynamicDelayedLogEntryPoolImpl extends ThreadSafeLenientFixedSizePo
     public DynamicDelayedLogEntryPoolImpl(String name, int entryCount, final LoggerTimeSource timeSource) {
         super(name, entryCount,
                 new Function.Nullary<LogEntry>() {
-                    public LogEntry call() { return new DelayedLogEntryImpl(timeSource); }
+                    public LogEntry call() {
+                        return new DelayedLogEntryImpl(timeSource);
+                    }
                 }, null);
         this.timeSource = timeSource;
     }

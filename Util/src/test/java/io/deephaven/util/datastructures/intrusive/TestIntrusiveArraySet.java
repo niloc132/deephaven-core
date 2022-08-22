@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.datastructures.intrusive;
 
 import junit.framework.TestCase;
@@ -11,7 +14,7 @@ public class TestIntrusiveArraySet extends TestCase {
             this.sentinel = sentinel;
         }
 
-        private static List<IntrusiveValue> make(int ... sentinel) {
+        private static List<IntrusiveValue> make(int... sentinel) {
             return Arrays.stream(sentinel).mapToObj(IntrusiveValue::new).collect(Collectors.toList());
         }
 
@@ -72,7 +75,7 @@ public class TestIntrusiveArraySet extends TestCase {
         set.add(nineteen);
         assertEquals(values.size(), set.size());
 
-        for (final Iterator<IntrusiveValue> it = set.iterator(); it.hasNext(); ) {
+        for (final Iterator<IntrusiveValue> it = set.iterator(); it.hasNext();) {
             final IntrusiveValue next = it.next();
             if (next.sentinel == 1 || next.sentinel == 7 || next.sentinel == 19) {
                 it.remove();

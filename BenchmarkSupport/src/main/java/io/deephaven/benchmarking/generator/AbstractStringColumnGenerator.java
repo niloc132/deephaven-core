@@ -1,6 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.generator;
 
-import io.deephaven.db.tables.ColumnDefinition;
+import io.deephaven.engine.table.ColumnDefinition;
 
 /**
  * The basic implementation of a {@link ColumnGenerator<String>}.
@@ -23,7 +26,7 @@ public abstract class AbstractStringColumnGenerator implements ColumnGenerator<S
 
     @Override
     public String getUpdateString(String varName) {
-        return def.getName()+"=(String)"+varName+".get()";
+        return def.getName() + "=(String)" + varName + ".get()";
     }
 
     @Override

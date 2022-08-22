@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.fu;
 
 import java.util.Iterator;
@@ -5,12 +8,12 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.function.Supplier;
 
-public class ReverseListIterable <T> implements MappedIterable<T> {
+public class ReverseListIterable<T> implements MappedIterable<T> {
 
     private final Supplier<ListIterator<T>> itrSource;
 
     public ReverseListIterable(List<T> items) {
-        itrSource = ()->items.listIterator(items.size());
+        itrSource = () -> items.listIterator(items.size());
     }
 
     @Override

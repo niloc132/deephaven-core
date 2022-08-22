@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import org.immutables.value.Value;
@@ -7,11 +10,12 @@ import org.immutables.value.Value.Style.ImplementationVisibility;
 // or on package/top-level class
 // This is just an example, adapt to your taste however you like
 @Value.Style(
-    // Detect names starting with underscore
-    typeAbstract = "_*",
-    // Generate without any suffix, just raw detected name
-    typeImmutable = "*",
-    // Make generated public, leave underscored as package private
-    visibility = ImplementationVisibility.PUBLIC,
-    defaults = @Value.Immutable(copy = false, builder = false))
-@interface Wrapped {}
+        // Detect names starting with underscore
+        typeAbstract = "_*",
+        // Generate without any suffix, just raw detected name
+        typeImmutable = "*",
+        // Make generated public, leave underscored as package private
+        visibility = ImplementationVisibility.PUBLIC,
+        defaults = @Value.Immutable(copy = false, builder = false))
+@interface Wrapped {
+}

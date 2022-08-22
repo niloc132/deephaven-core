@@ -12,158 +12,243 @@ to that data, and build rich queries, dashboards, and representations with the r
 Deephaven Community Core is an open version of [Deephaven Enterprise](https://deephaven.io),
 which functions as the data backbone for prominent hedge funds, banks, and financial exchanges.
 
+[![Join the chat at https://gitter.im/deephaven/deephaven](https://badges.gitter.im/deephaven/deephaven.svg)](https://gitter.im/deephaven/deephaven?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 ![Build CI](https://github.com/deephaven/deephaven-core/actions/workflows/build-ci.yml/badge.svg?branch=main)
-![Check CI](https://github.com/deephaven/deephaven-core/actions/workflows/check-ci.yml/badge.svg?branch=main)
+![Quick CI](https://github.com/deephaven/deephaven-core/actions/workflows/quick-ci.yml/badge.svg?branch=main)
 ![Docs CI](https://github.com/deephaven/deephaven-core/actions/workflows/docs-ci.yml/badge.svg?branch=main)
-![Long Check CI](https://github.com/deephaven/deephaven-core/actions/workflows/long-check-ci.yml/badge.svg?branch=main)
+![Check CI](https://github.com/deephaven/deephaven-core/actions/workflows/check-ci.yml/badge.svg?branch=main)
 ![Nightly Check CI](https://github.com/deephaven/deephaven-core/actions/workflows/nightly-check-ci.yml/badge.svg?branch=main)
 ![Nightly Benchmarks](https://github.com/deephaven/deephaven-core/actions/workflows/nightly-benchmarks.yml/badge.svg?branch=main)
 
 ## Supported Languages
 
-| Language      | Server Application | Client Application (OpenAPI) |
-| ------------- | ------------------ | ---------------------------- |
-| Python        | Yes                | No                           |
-| Java / Groovy | Yes                | No                           |
-| JavaScript    | No                 | Yes                          |
-| gRPC          | -                  | Yes                          |
+| Language      | Server Application | Client Application |
+| ------------- | ------------------ | ------------------ |
+| Python        | Yes                | Yes                |
+| Java / Groovy | Yes                | Yes                |
+| C++           | No                 | Yes                |
+| JavaScript    | No                 | Yes                |
+| gRPC          | -                  | Yes                |
 
-## Running Deephaven
+## Run Deephaven
+
+This section is a quick start guide for running Deephaven from pre-built images.  Almost all users will want to run Deephaven using pre-built images.  It is the easiest way to deploy.  For detailed instructions, see [Launch Deephaven from pre-built images](https://deephaven.io/core/docs/tutorials/quickstart).
+
+Developers interested in tinkering with and modifying source code should build from the source code. For detailed instructions on how to do this, see [Build and launch Deephaven](https://deephaven.io/core/docs/how-to-guides/launch-build).
+
+If you are not sure which of the two is right for you, use the pre-built images.
+
+> :warning: **On M1 Macs, you must [build and launch from source code](https://deephaven.io/core/docs/how-to-guides/launch-build).  A Docker-emulation bug leads to failures when running pre-built images.**
 
 ### Required Dependencies
 
-Building and running Deephaven requires a few software packages.
-1. `git`
-2. `java`
-3. `docker`
-4. `docker-compose`
-5. (Windows) [WSL 2](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
+Running Deephaven requires a few software packages.
+
+| Package        | Version                       | OS           |
+| -------------- | ----------------------------- | ------------ |
+| docker         | ^20.10.8                      | All          |
+| docker-compose | ^1.29.0                       | All          |
+| Windows        | 10 (OS build 20262 or higher) | Only Windows |
+| WSL            | 2                             | Only Windows |
 
 You can check if these packages are installed and functioning by running:
 ```
-git version
-java -version
+docker version
 docker-compose version
 docker run hello-world
 ```
 
-<details>
-  <summary>Installing Java...</summary>
+> :warning: **On Windows, all commands must be run inside a WSL 2 terminal.**
 
-  Deephaven can be built with either [Oracle JDK](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html)
-   or [OpenJDK](https://openjdk.java.net/install/).  Java 8 is required.  To install Java, run
-  * Mac
-      ```
-      brew install openjdk@8
-      ```
-      OpenJDK 8 may need to be added to your path:
-      ```
-      echo 'export PATH="/usr/local/opt/openjdk@8/bin:$PATH"' >> ~/.zshrc
-      ```
-  * Windows WSL2 - Ubuntu
-      ```
-      sudo apt update
-      sudo apt install openjdk-8-jdk-headless
-      ```
-  * Linux
-      ```
-      sudo apt update
-      sudo apt install openjdk-8-jdk
-      ```
-    or
-      ```
-      sudo yum install java-1.8.0-openjdk
-      ```
-</details>
-
-<details>
-  <summary>Installing Docker...</summary>
-
-  Instructions for installing and configuring Docker can be found at
-  [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/).  Windows users should follow the WSL2
-  instructions.
-
-  Instructions for installing and configuring `docker-compose` can be found at
-  [https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/).
-  Version 1.29 (or newer) is required.
-</details>
-
-<details>
-  <summary>Docker RAM settings...</summary>
-
-  Tests run as part of the build process require at least 4GB of Docker RAM.  To check your Docker configuration, run:
-  ```
-  docker info | grep Memory
-  ```
-
-  By default, Docker on Mac is configured with 2 GB of RAM.  If you need to increase the memory on your Mac, click
-  on the Docker icon on the top bar and navigate to `Preferences->Resources->Memory`.
-
-  ![alt_text](docs/images/DockerConfigMac.png "Docker Configuration on a Mac")
-</details>
-
-<details>
-  <summary>If <code>docker run hello-world</code> does not work...</summary>
-
-  If `docker run hello-world` does not work, try the following:
-  1. [Is Docker running?](https://docs.docker.com/config/daemon/#check-whether-docker-is-running)
-      ```
-      docker info
-     ```
-  2. (Linux) [Are you in the `docker` user group?](https://docs.docker.com/engine/install/linux-postinstall/)
-      ```
-      sudo groupadd docker
-      sudo usermod -aG docker $USER
-      ```
-</details>
+If any dependencies are missing or unsupported versions are installed, see [Launch Deephaven from pre-built images](https://deephaven.io/core/docs/tutorials/quickstart#prerequisites) for installation instructions.
 
 
-### Checkout & Build Deephaven
+### Create deployment
 
-Once all of the required dependencies are installed and functioning, run:
+A directory must be created to store files and mount points for your deployment.  Here, we are using the `deephaven-deployment` directory.  
+
+You will need to `cd` into the deployment directory to launch or interact with the deployment.
+
+```bash
+mkdir deephaven-deployment
+cd deephaven-deployment
 ```
-    git clone git@github.com:deephaven/deephaven-core.git
-    cd deephaven-core
-    ./gradlew prepareCompose
-    docker-compose build
+
+> :warning: **Commands in the following sections for interacting with a deployment must be run from the deployment directory.**
+
+### Launch: Python
+
+Run the following commands to launch Deephaven for Python server applications. 
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python/base/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
 ```
-These commands will create:
- 1. a `deephaven-core` directory containing the source code.
- 2. Docker images containing everything needed to launch Deephaven.
 
-### Run Deephaven Database (Python)
+### Launch: Python with NLTK
 
-From the `deephaven-core` directory, run
+Run the following commands to launch Deephaven for Python server applications with the [NLTK](https://nltk.org/) module pre-installed.
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python/NLTK/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
 ```
-    docker-compose up
+
+### Launch: Python with PyTorch
+
+Run the following commands to launch Deephaven for Python server applications with the [PyTorch](https://pytorch.org/) module pre-installed.
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python/PyTorch/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
 ```
-This will start the database.  The console will fill with status and logging output.
 
-Killing the process (e.g. `Ctrl+C`) will stop Deephaven.
+### Launch: Python with SciKit-Learn
 
-### Run Deephaven Database (Groovy)
+Run the following commands to launch Deephaven for Python server applications with the [SciKit-Learn](https://scikit-learn.org/stable/) module pre-installed.
 
-From the `deephaven-core` directory, run
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python/SciKit-Learn/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
 ```
-    docker-compose --env-file default_groovy.env up
+
+### Launch: Python with TensorFlow
+
+Run the following commands to launch Deephaven for Python server applications with the [TensorFlow](https://www.tensorflow.org/) module pre-installed.
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python/TensorFlow/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
 ```
-This will start the database.  The console will fill with status and logging output.
 
-Killing the process (e.g. `Ctrl+C`) will stop Deephaven.
+### Launch: Python with example data
 
-### Run Deephaven IDE
+Run the following commands to launch Deephaven for Python server applications, with example data.
 
-Once Deephaven Database is running, you can launch a Deephaven IDE in your web browser.  Deephaven IDE allows you
-to interactively analyze data and develop new analytics.
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python-examples/base/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
+```
 
-- If Deephaven Database is running locally,
-navigate to [http://localhost:10000/ide/](http://localhost:10000/ide/).
-- If Deephaven Database is running remotely, navigate
-to `http://<hostname>:10000/ide/`, where `<hostname>` is the address of the machine Deephaven Database is running on.
+### Launch: Python with example data and NLTK
+
+Run the following commands to launch Deephaven for Python server applications, with example data and [NLTK](https://nltk.org/).
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python-examples/NLTK/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
+```
+
+### Launch: Python with example data and PyTorch
+
+Run the following commands to launch Deephaven for Python server applications, with example data and [PyTorch](https://pytorch.org/).
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python-examples/PyTorch/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
+```
+
+### Launch: Python with example data and SciKit-Learn
+
+Run the following commands to launch Deephaven for Python server applications, with example data and [SciKit-Learn](https://scikit-learn.org/stable/).
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python-examples/SciKit-Learn/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
+```
+
+### Launch: Python with example data and TensorFlow
+
+Run the following commands to launch Deephaven for Python server applications, with example data and [TensorFlow](https://www.tensorflow.org/).
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/python-examples/TensorFlow/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
+```
+
+### Launch: Groovy / Java
+
+Run the following commands to launch Deephaven for Groovy / Java server applications. 
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/groovy/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
+```
+
+### Launch: Groovy / Java with example data
+
+Run the following commands to launch Deephaven for Groovy / Java server applications, with example data.
+
+```bash
+curl https://raw.githubusercontent.com/deephaven/deephaven-core/main/containers/groovy-examples/docker-compose.yml -O
+docker-compose pull
+docker-compose up -d
+```
+
+### Monitor logs
+
+The `-d` option to `docker-compose` causes the containers to run in the background, in detached mode.  This option allows you to use your shell after Docker launches the containers.
+
+Since the container is running detached, you will not see any logs. However, you can follow the logs by running:
+
+```bash
+docker-compose logs -f
+```
+
+Use CTRL+C to stop monitoring the logs and return to a prompt.
+
+### Shutdown
+
+The deployment can be brought down by running:
+
+```bash
+docker-compose down
+```
+
+### Manage example data
+
+[Deephaven's examples repository](https://github.com/deephaven/examples) contains data sets that are useful when learning 
+to use Deephaven. These data sets are used extensively in Deephaven's documentation and are needed to run some examples. [Deephaven's examples repository](https://github.com/deephaven/examples) contains documentation on the available data sets and how to manage them. 
+
+If you have chosen a deployment with example data, the example data sets will be downloaded. Production deployments containing your own data will not need the example data sets.
+
+
+To upgrade a deployment to the latest example data, run:
+
+```bash
+docker-compose run examples download
+```
+
+To see what other example data management commands are available, run:
+
+```bash
+docker-compose run examples
+```
+
+If your deployment does not have example data, these commands will fail with `ERROR: No such service`.
+
+
+## Run Deephaven IDE
+
+Once Deephaven is running, you can launch a Deephaven IDE in your web browser.  Deephaven IDE allows you to interactively analyze data.
+
+- If Deephaven is running locally, navigate to [http://localhost:10000/ide/](http://localhost:10000/ide/).
+- If Deephaven is running remotely, navigate to `http://<hostname>:10000/ide/`, where `<hostname>` is the address of the machine Deephaven is running on.
 
 ![alt_text](docs/images/ide_startup.png "Deephaven IDE")
 
-# First Query
+# First query
 
 From the Deephaven IDE, you can perform your first query.
 
@@ -195,7 +280,10 @@ t = left.join(right, "DeptID", "DeptName,DeptTelephone=Telephone")
 
 
 ## Resources
-* [deephaven.io](https://deephaven.io)
+
+* [Help!](https://github.com/deephaven/deephaven-core/discussions/969)
+* [Deephaven Community Slack](https://deephaven.io/slack)
+* [Discussions](https://github.com/deephaven/deephaven-core/discussions)
 * [Deephaven Community Core docs](https://deephaven.io/core/docs/)
 * [Java API docs](https://deephaven.io/core/javadoc/)
 * [Python API docs](https://deephaven.io/core/pydoc/)

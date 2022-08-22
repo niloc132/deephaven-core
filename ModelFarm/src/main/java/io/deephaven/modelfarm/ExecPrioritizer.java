@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.modelfarm;
 
 /**
@@ -16,8 +15,8 @@ public interface ExecPrioritizer<KEYTYPE, DATATYPE, ROWDATAMANAGERTYPE extends R
      * Compute the priority for processing the data at the indicated table index.
      *
      * @param dataManager interface for accessing and querying data contained in rows of a dynamic table.
-     * @param index       index of the data in the fit data manager source table.
-     * @return priority of processing the data at the indicated index.  Higher numbers are higher priority.
+     * @param index index of the data in the fit data manager source table.
+     * @return priority of processing the data at the indicated index. Higher numbers are higher priority.
      */
     int priority(final ROWDATAMANAGERTYPE dataManager, final long index);
 

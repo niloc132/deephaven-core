@@ -1,11 +1,17 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api;
 
+import elemental2.core.JsArray;
 import elemental2.core.JsSet;
+import elemental2.dom.CustomEventInit;
 import elemental2.dom.DomGlobal;
 import elemental2.promise.Promise;
 import io.deephaven.ide.shared.IdeSession;
-import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.Ticket;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.StartConsoleRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.*;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
+import io.deephaven.web.client.api.barrage.stream.ResponseStreamWrapper;
 import io.deephaven.web.client.fu.CancellablePromise;
 import io.deephaven.web.client.fu.JsLog;
 import io.deephaven.web.client.fu.LazyPromise;
@@ -17,6 +23,7 @@ import io.deephaven.web.shared.fu.RemoverFn;
 import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsProperty;
+import jsinterop.base.JsPropertyMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,15 +32,16 @@ import java.util.function.Supplier;
 import static io.deephaven.web.shared.fu.PromiseLike.CANCELLATION_MESSAGE;
 
 /**
- * JS-exposed supertype handling details about connecting to a deephaven query worker. Wraps the
- * WorkerConnection instance, which manages the connection to the API server.
+ * JS-exposed supertype handling details about connecting to a deephaven query worker. Wraps the WorkerConnection
+ * instance, which manages the connection to the API server.
  */
-public abstract class QueryConnectable <Self extends QueryConnectable<Self>> extends HasEventHandling {
+public abstract class QueryConnectable<Self extends QueryConnectable<Self>> extends HasEventHandling {
     public interface AuthTokenPromiseSupplier extends Supplier<Promise<ConnectToken>> {
         default AuthTokenPromiseSupplier withInitialToken(ConnectToken initialToken) {
             AuthTokenPromiseSupplier original = this;
             return new AuthTokenPromiseSupplier() {
                 boolean usedInitialToken = false;
+
                 @Override
                 public Promise<ConnectToken> get() {
                     if (!usedInitialToken) {
@@ -44,10 +52,12 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
                 }
             };
         }
+
         static AuthTokenPromiseSupplier oneShot(ConnectToken initialToken) {
-            //noinspection unchecked
-            return ((AuthTokenPromiseSupplier) () -> (Promise) Promise.reject("Only one token provided, cannot reconnect"))
-                    .withInitialToken(initialToken);
+            // noinspection unchecked
+            return ((AuthTokenPromiseSupplier) () -> (Promise) Promise
+                    .reject("Only one token provided, cannot reconnect"))
+                            .withInitialToken(initialToken);
         }
     }
 
@@ -62,15 +72,33 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
     @JsProperty(namespace = "dh.QueryInfo")
     public static final String EVENT_CONNECT = "connect";
 
+    @JsProperty(namespace = "dh.IdeConnection")
+    public static final String HACK_CONNECTION_FAILURE = "hack-connection-failure";
+
     private final List<IdeSession> sessions = new ArrayList<>();
     private final JsSet<Ticket> cancelled = new JsSet<>();
 
     private boolean connected;
     private boolean closed;
     private boolean hasDisconnected;
+    private boolean notifiedConnectionError = false;
 
     public QueryConnectable(Supplier<Promise<ConnectToken>> authTokenPromiseSupplier) {
         this.connection = JsLazy.of(() -> new WorkerConnection(this, authTokenPromiseSupplier));
+    }
+
+    public void notifyConnectionError(ResponseStreamWrapper.Status status) {
+        if (notifiedConnectionError) {
+            return;
+        }
+        notifiedConnectionError = true;
+
+        CustomEventInit event = CustomEventInit.create();
+        event.setDetail(JsPropertyMap.of(
+                "status", status.getCode(),
+                "details", status.getDetails(),
+                "metadata", status.getMetadata()));
+        fireEvent(HACK_CONNECTION_FAILURE, event);
     }
 
     @Override
@@ -81,16 +109,15 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
 
     private Promise<Void> onConnected() {
         if (connected) {
-            return Promise.resolve((Void)null);
+            return Promise.resolve((Void) null);
         }
         if (closed) {
-            return (Promise)Promise.reject("Connection already closed");
+            return (Promise) Promise.reject("Connection already closed");
         }
 
         return new Promise<>((resolve, reject) -> addEventListenerOneShot(
-                EventPair.of(EVENT_CONNECT, e -> resolve.onInvoke((Void)null)),
-                EventPair.of(EVENT_DISCONNECT, e -> reject.onInvoke("Connection disconnected"))
-        ));
+                EventPair.of(EVENT_CONNECT, e -> resolve.onInvoke((Void) null)),
+                EventPair.of(EVENT_DISCONNECT, e -> reject.onInvoke("Connection disconnected"))));
     }
 
     @JsIgnore
@@ -107,14 +134,14 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
         final JsRunnable DO_NOTHING = JsRunnable.doNothing();
         // we'll use this array to handle async nature of connections.
         JsRunnable[] cancel = {DO_NOTHING};
-        connect.onOpen((s,f)->{
+        connect.onOpen((s, f) -> {
             // if the open did not fail, and the cancel array has not been modified...
-            if (f == null && cancel[0] == DO_NOTHING){
+            if (f == null && cancel[0] == DO_NOTHING) {
                 // then go ahead and subscribe, plus stash the removal callback.
                 cancel[0] = connect.subscribeToLogs(callback);
             }
         });
-        return ()-> {
+        return () -> {
             if (cancel[0] != null) {
                 // if we have subscribed, this will cancel that subscription.
                 cancel[0].run();
@@ -130,9 +157,9 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
         LazyPromise<Ticket> promise = new LazyPromise<>();
         final ClientConfiguration config = connection.get().getConfig();
         final Ticket ticket = new Ticket();
-        ticket.setTicket(config.newTicket());
+        ticket.setTicket(config.newTicketRaw());
 
-        final JsRunnable closer = ()-> {
+        final JsRunnable closer = () -> {
             boolean run = !cancelled.has(ticket);
             if (run) {
                 cancelled.add(ticket);
@@ -148,12 +175,12 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
         })).then(result -> {
             promise.succeed(ticket);
             return null;
-        },error -> {
+        }, error -> {
             promise.fail(error);
             return null;
         });
 
-        return promise.asPromise(result-> {
+        return promise.asPromise(result -> {
             if (cancelled.has(ticket)) {
                 // this is caught and turned into a promise failure.
                 // a bit hacky, but it works...
@@ -164,6 +191,28 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
             sessions.add(session);
             return session;
         }, closer);
+    }
+
+    @JsMethod
+    public Promise<JsArray<String>> getConsoleTypes() {
+        Promise<GetConsoleTypesResponse> promise = Callbacks.grpcUnaryPromise(callback -> {
+            GetConsoleTypesRequest request = new GetConsoleTypesRequest();
+            connection.get().consoleServiceClient().getConsoleTypes(request, connection.get().metadata(),
+                    callback::apply);
+        });
+
+        return promise.then(result -> Promise.resolve(result.getConsoleTypesList()));
+    }
+
+    @JsMethod
+    public Promise<JsWorkerHeapInfo> getWorkerHeapInfo() {
+        Promise<GetHeapInfoResponse> promise = Callbacks.grpcUnaryPromise(callback -> {
+            GetHeapInfoRequest request = new GetHeapInfoRequest();
+            connection.get().consoleServiceClient().getHeapInfo(request, connection.get().metadata(),
+                    callback::apply);
+        });
+
+        return promise.then(result -> Promise.resolve(new JsWorkerHeapInfo(result)));
     }
 
     public void connected() {
@@ -182,7 +231,8 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
             if (hasListeners(EVENT_RECONNECT)) {
                 fireEvent(EVENT_RECONNECT);
             } else {
-                DomGlobal.console.log(logPrefix() + "Query reconnected (to prevent this log message, handle the EVENT_RECONNECT event)");
+                DomGlobal.console.log(logPrefix()
+                        + "Query reconnected (to prevent this log message, handle the EVENT_RECONNECT event)");
             }
         }
     }
@@ -210,7 +260,8 @@ public abstract class QueryConnectable <Self extends QueryConnectable<Self>> ext
         if (hasListeners(EVENT_DISCONNECT)) {
             this.fireEvent(QueryConnectable.EVENT_DISCONNECT);
         } else {
-            DomGlobal.console.log(logPrefix() + "Query disconnected (to prevent this log message, handle the EVENT_DISCONNECT event)");
+            DomGlobal.console.log(logPrefix()
+                    + "Query disconnected (to prevent this log message, handle the EVENT_DISCONNECT event)");
         }
     }
 }

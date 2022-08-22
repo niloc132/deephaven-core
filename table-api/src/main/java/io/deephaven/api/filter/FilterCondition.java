@@ -1,6 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api.filter;
 
-import io.deephaven.api.BuildableStyle;
+import io.deephaven.annotations.BuildableStyle;
 import io.deephaven.api.ColumnName;
 import io.deephaven.api.value.Value;
 import org.immutables.value.Value.Immutable;
@@ -8,8 +11,8 @@ import org.immutables.value.Value.Immutable;
 import java.io.Serializable;
 
 /**
- * Evaluates to true based on the specific {@link #operator() operator} applied to the {@link #lhs()
- * left-hand side} and {@link #rhs() right-hand side}.
+ * Evaluates to true based on the specific {@link #operator() operator} applied to the {@link #lhs() left-hand side} and
+ * {@link #rhs() right-hand side}.
  */
 @Immutable
 @BuildableStyle
@@ -164,12 +167,12 @@ public abstract class FilterCondition extends FilterBase implements Serializable
     }
 
     /**
-     * {@link #transpose() Transpose} the filter if the {@link #lhs() left-hand side} is not a
-     * {@link ColumnName} and the {@link #rhs() right-hand side} is a {@link ColumnName}.
+     * {@link #transpose() Transpose} the filter if the {@link #lhs() left-hand side} is not a {@link ColumnName} and
+     * the {@link #rhs() right-hand side} is a {@link ColumnName}.
      *
      * <p>
-     * Useful in cases where a visitor wants to walk the sides, and prefers to have a
-     * {@link ColumnName} on the {@link #lhs() left-hand side}.
+     * Useful in cases where a visitor wants to walk the sides, and prefers to have a {@link ColumnName} on the
+     * {@link #lhs() left-hand side}.
      *
      * @return the filter, potentially transposed
      */
@@ -184,7 +187,7 @@ public abstract class FilterCondition extends FilterBase implements Serializable
     }
 
     /**
-     * The logically inversion of {@link this}.
+     * The logically inversion of {@code this}.
      *
      * @return the inverted filter
      */

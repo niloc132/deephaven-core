@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import io.deephaven.properties.PropertySet;
@@ -14,9 +17,9 @@ public abstract class MemoryMxBeanInfo implements PropertySet {
 
     public static MemoryMxBeanInfo of(MemoryMXBean bean) {
         return ImmutableMemoryMxBeanInfo.builder()
-          .heap(MemoryUsageInfo.of(bean.getHeapMemoryUsage()))
-          .nonHeap(MemoryUsageInfo.of(bean.getNonHeapMemoryUsage()))
-          .build();
+                .heap(MemoryUsageInfo.of(bean.getHeapMemoryUsage()))
+                .nonHeap(MemoryUsageInfo.of(bean.getNonHeapMemoryUsage()))
+                .build();
     }
 
     @Value.Parameter

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.locks;
 
 import java.util.concurrent.locks.ReentrantLock;
@@ -7,8 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class FunctionalReentrantLock extends ReentrantLock implements FunctionalLock {
 
-    public FunctionalReentrantLock() {
-    }
+    public FunctionalReentrantLock() {}
 
     public FunctionalReentrantLock(final boolean fair) {
         super(fair);

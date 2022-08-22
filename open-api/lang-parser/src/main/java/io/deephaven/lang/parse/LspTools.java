@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.lang.parse;
 
 import io.deephaven.proto.backplane.script.grpc.DocumentRange;
@@ -7,13 +10,16 @@ import io.deephaven.proto.backplane.script.grpc.PositionOrBuilder;
 
 /**
  * LspTools:
- * <p><p>
- *     This class is where we'll dump all the static "manipulate lsp-related objects".
- * <p><p>
- *     These methods used to be instance methods on hand-maintained mutable objects,
  * <p>
- *     Now, they are static utilities operating on grpc-generated immutable objects/builders.
- * <p><p>
+ * <p>
+ * This class is where we'll dump all the static "manipulate lsp-related objects".
+ * <p>
+ * <p>
+ * These methods used to be instance methods on hand-maintained mutable objects,
+ * <p>
+ * Now, they are static utilities operating on grpc-generated immutable objects/builders.
+ * <p>
+ * <p>
  */
 public class LspTools {
 
@@ -40,7 +46,8 @@ public class LspTools {
     }
 
     public static boolean lessOrEqual(PositionOrBuilder p, PositionOrBuilder start) {
-        return p.getLine() == start.getLine() ? p.getCharacter() <= start.getCharacter() : p.getLine() < start.getLine();
+        return p.getLine() == start.getLine() ? p.getCharacter() <= start.getCharacter()
+                : p.getLine() < start.getLine();
     }
 
     public static boolean greaterThan(PositionOrBuilder p, PositionOrBuilder end) {
@@ -57,7 +64,8 @@ public class LspTools {
 
     public static int extend(Position.Builder p, PositionOrBuilder requested) {
         if (p.getLine() != requested.getLine()) {
-            throw new IllegalArgumentException("Can only extend on same-line; " + p + " and " + requested + " are not on same line");
+            throw new IllegalArgumentException(
+                    "Can only extend on same-line; " + p + " and " + requested + " are not on same line");
         }
         p.setCharacter(requested.getCharacter()).build();
         return requested.getCharacter() - p.getCharacter();
@@ -76,9 +84,12 @@ public class LspTools {
     }
 
 
-    public static boolean isInside(DocumentRangeOrBuilder range, PositionOrBuilder innerStart, PositionOrBuilder innerEnd) {
-        return innerStart.getLine() >= range.getStart().getLine() && innerStart.getCharacter() >= range.getStart().getCharacter()
-                && innerEnd.getLine() <= range.getEnd().getLine() && innerEnd.getCharacter() <= range.getEnd().getCharacter();
+    public static boolean isInside(DocumentRangeOrBuilder range, PositionOrBuilder innerStart,
+            PositionOrBuilder innerEnd) {
+        return innerStart.getLine() >= range.getStart().getLine()
+                && innerStart.getCharacter() >= range.getStart().getCharacter()
+                && innerEnd.getLine() <= range.getEnd().getLine()
+                && innerEnd.getCharacter() <= range.getEnd().getCharacter();
     }
 
     public static DocumentRange.Builder rangeFromSource(String source, int start, int length) {
@@ -86,8 +97,7 @@ public class LspTools {
         range.setStart(getPositionFromOffset(source, start));
         range.setEnd(getPositionFromOffset(
                 source,
-                start + length
-        ));
+                start + length));
         return range;
     }
 
@@ -118,13 +128,13 @@ public class LspTools {
             if (nextLineOffset >= 0) {
                 position.setLine(position.getLine() + 1);
                 position.setCharacter(0);
-                offset -= (1+nextLineOffset - pos);
+                offset -= (1 + nextLineOffset - pos);
             } else {
                 position.setCharacter(offset);
                 break;
             }
 
-            pos = nextLineOffset+1;
+            pos = nextLineOffset + 1;
         }
         return position;
     }

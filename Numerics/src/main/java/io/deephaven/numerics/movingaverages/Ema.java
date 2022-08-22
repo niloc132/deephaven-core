@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.numerics.movingaverages;
 
 import java.io.Serializable;
@@ -18,8 +17,8 @@ public class Ema extends AbstractMa implements Serializable {
     /**
      * Constructs a new EMA which use the given timescale.
      *
-     * @param type      type of EMA
-     * @param mode      compute the ema by tick or time
+     * @param type type of EMA
+     * @param mode compute the ema by tick or time
      * @param timeScale timescale for the EMAs.
      */
     public Ema(Type type, Mode mode, double timeScale) {

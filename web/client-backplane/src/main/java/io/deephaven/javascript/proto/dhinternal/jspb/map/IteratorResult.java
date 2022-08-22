@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.jspb.map;
 
 import jsinterop.annotations.JsOverlay;
@@ -9,20 +12,20 @@ import jsinterop.base.JsPropertyMap;
 
 @JsType(isNative = true, name = "dhinternal.jspb.Map.IteratorResult", namespace = JsPackage.GLOBAL)
 public interface IteratorResult<T> {
-  @JsOverlay
-  static IteratorResult create() {
-    return Js.uncheckedCast(JsPropertyMap.of());
-  }
+    @JsOverlay
+    static IteratorResult create() {
+        return Js.uncheckedCast(JsPropertyMap.of());
+    }
 
-  @JsProperty
-  T getValue();
+    @JsProperty
+    T getValue();
 
-  @JsProperty
-  boolean isDone();
+    @JsProperty
+    boolean isDone();
 
-  @JsProperty
-  void setDone(boolean done);
+    @JsProperty
+    void setDone(boolean done);
 
-  @JsProperty
-  void setValue(T value);
+    @JsProperty
+    void setValue(T value);
 }

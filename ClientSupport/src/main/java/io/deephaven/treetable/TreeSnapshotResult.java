@@ -1,13 +1,16 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.treetable;
 
 import io.deephaven.datastructures.util.CollectionUtil;
 import io.deephaven.base.Pair;
-import io.deephaven.db.tables.ColumnDefinition;
-import io.deephaven.db.tables.Table;
-import io.deephaven.db.v2.QueryTable;
-import io.deephaven.db.v2.sources.ArrayBackedColumnSource;
-import io.deephaven.db.v2.sources.ColumnSource;
-import io.deephaven.db.v2.utils.Index;
+import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.table.Table;
+import io.deephaven.engine.table.impl.QueryTable;
+import io.deephaven.engine.table.ColumnSource;
+import io.deephaven.engine.rowset.RowSetFactory;
+import io.deephaven.engine.table.impl.sources.InMemoryColumnSource;
 import io.deephaven.util.annotations.TestUseOnly;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -15,16 +18,16 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 /**
- * The result of the {@link TreeSnapshotQuery}.  It contains
+ * The result of the {@link TreeSnapshotQuery}. It contains
  * <ul>
- *     <li>The total tree size</li>
- *     <li>The start and end indices of the snapshot</li>
- *     <li>The data for the snapshot</li>
- *     <li>A list up updated {@link TableDetails} containing updated expanded children</li>
- *     <li>A boolean indicating whether the tree table was ready to process the request</li>
+ * <li>The total tree size</li>
+ * <li>The start and end indices of the snapshot</li>
+ * <li>The data for the snapshot</li>
+ * <li>A list up updated {@link TableDetails} containing updated expanded children</li>
+ * <li>A boolean indicating whether the tree table was ready to process the request</li>
  * </ul>
  *
- * @implNote If wasReady is false,  clients should re-issue the snapshot query.
+ * @implNote If wasReady is false, clients should re-issue the snapshot query.
  */
 public class TreeSnapshotResult {
     private static final TableDetails[] ZERO_LENGTH_TD_ARRAY = new TableDetails[0];
@@ -48,7 +51,7 @@ public class TreeSnapshotResult {
         treeSize = snapshotStart = snapshotEnd = -1;
         updatedSource = null;
         data = CollectionUtil.ZERO_LENGTH_OBJECT_ARRAY;
-        tableData  = ZERO_LENGTH_TD_ARRAY;
+        tableData = ZERO_LENGTH_TD_ARRAY;
         tableKeyColumn = CollectionUtil.ZERO_LENGTH_OBJECT_ARRAY;
         childPresenceColumn = null;
         constituentData = null;
@@ -57,7 +60,7 @@ public class TreeSnapshotResult {
     /**
      * Create a result populated with data, and potentially a new source table.
      *
-     * @param updatedSource An updated source table.  Should be set to null if it hasn't changed.
+     * @param updatedSource An updated source table. Should be set to null if it hasn't changed.
      * @param treeSize The total size of tree taking into account currently expanded rows.
      * @param data An array of arrays containing each data column for the snapshot.
      * @param tableData The list of {@link TableDetails} describing the state of the tree as of this TSQ.
@@ -67,14 +70,14 @@ public class TreeSnapshotResult {
      * @param end The actual end of the snapshot in viewport coordinates.
      */
     TreeSnapshotResult(@Nullable Table updatedSource,
-                       long treeSize,
-                       Object[] data,
-                       TableDetails[] tableData,
-                       Object[] tableKeyColumn,
-                       BitSet childPresenceColumn,
-                       long start,
-                       long end,
-                       Pair<String, Object>[] constituentData) {
+            long treeSize,
+            Object[] data,
+            TableDetails[] tableData,
+            Object[] tableKeyColumn,
+            BitSet childPresenceColumn,
+            long start,
+            long end,
+            Pair<String, Object>[] constituentData) {
         this.tableData = tableData;
         this.data = data;
         this.treeSize = treeSize;
@@ -129,22 +132,26 @@ public class TreeSnapshotResult {
         final List<String> columnNames = originalTree.getDefinition().getColumnNames();
         final Map<String, ColumnSource<?>> sources = new LinkedHashMap<>();
 
-        if(data == null) {
+        if (data == null) {
             return null;
         }
 
-        for(int i = 0; i < data.length; i++) {
-            if(data[i] != null) {
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] != null) {
                 final ColumnDefinition<?> colDef = originalTree.getDefinition().getColumn(columnNames.get(i));
-                //noinspection unchecked
-                sources.put(columnNames.get(i), ArrayBackedColumnSource.getImmutableMemoryColumnSource(data[i], colDef.getDataType(), colDef.getComponentType()));
+                // noinspection unchecked
+                sources.put(columnNames.get(i), InMemoryColumnSource.getImmutableMemoryColumnSource(data[i],
+                        colDef.getDataType(), colDef.getComponentType()));
             }
         }
 
-        sources.put(TreeTableConstants.TABLE_KEY_COLUMN, ArrayBackedColumnSource.getImmutableMemoryColumnSource(tableKeyColumn));
+        sources.put(TreeTableConstants.TABLE_KEY_COLUMN,
+                InMemoryColumnSource.getImmutableMemoryColumnSource(tableKeyColumn));
         sources.put(TreeTableConstants.CHILD_PRESENCE_COLUMN, new BitSetColumnSource(childPresenceColumn));
 
-        return new QueryTable(Index.FACTORY.getFlatIndex((snapshotEnd - snapshotStart) + 1), sources);
+        return new QueryTable(
+                RowSetFactory.flat((snapshotEnd - snapshotStart) + 1).toTracking(),
+                sources);
     }
 
     public Table getUpdatedSource() {
@@ -164,8 +171,9 @@ public class TreeSnapshotResult {
         private final Table updatedSource;
         private final Pair<String, Object>[] constituentData;
 
-        Descriptor(long treeSize, Object[] data, TableDetails[] tableData, long start, long end, Object[] tableKeyColumn,
-                   BitSet childPresenceColumn, Table updatedSource, Pair<String, Object>[] constituentData) {
+        Descriptor(long treeSize, Object[] data, TableDetails[] tableData, long start, long end,
+                Object[] tableKeyColumn,
+                BitSet childPresenceColumn, Table updatedSource, Pair<String, Object>[] constituentData) {
             this.treeSize = treeSize;
             this.data = data;
             this.tableData = tableData;

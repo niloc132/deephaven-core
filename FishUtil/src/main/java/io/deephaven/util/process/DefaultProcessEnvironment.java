@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util.process;
 
 import io.deephaven.configuration.Configuration;
@@ -31,7 +30,8 @@ public class DefaultProcessEnvironment extends BaseProcessEnvironment {
     static class Factory implements ProcessEnvironment.Factory {
 
         @Override
-        public ProcessEnvironment make(@NotNull final Configuration configuration, @NotNull final String mainClassName, @NotNull final Logger log) {
+        public ProcessEnvironment make(@NotNull final Configuration configuration, @NotNull final String mainClassName,
+                @NotNull final Logger log) {
             return new DefaultProcessEnvironment(mainClassName, log);
         }
     }

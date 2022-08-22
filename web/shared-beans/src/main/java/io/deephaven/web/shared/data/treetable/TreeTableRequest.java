@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data.treetable;
 
 import io.deephaven.web.shared.data.FilterDescriptor;
@@ -10,11 +13,7 @@ import java.util.BitSet;
 
 public class TreeTableRequest implements Serializable {
     public enum TreeRequestOperation {
-        Expand,
-        Contract,
-        FilterChanged,
-        SortChanged,
-        Close
+        Expand, Contract, FilterChanged, SortChanged, Close
     }
 
     private long viewportStart;

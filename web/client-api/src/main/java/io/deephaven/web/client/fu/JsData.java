@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.fu;
 
 import elemental2.core.JsArray;
@@ -18,7 +21,7 @@ public class JsData {
                 return Js.uncheckedCast(new double[0]);
             case "float":
                 return Js.uncheckedCast(new float[0]);
-            case "io.deephaven.db.tables.utils.DBDateTime":
+            case "io.deephaven.time.DateTime":
             case "long":
                 return Js.uncheckedCast(new long[0]);
             case "int":
@@ -37,6 +40,7 @@ public class JsData {
 
     /**
      * Gets a required property from a JsPropertyMap. Will throw if the value isn't set
+     * 
      * @param source The property map to get the value from
      * @param propertyName The property to get value for
      * @return The value
@@ -45,7 +49,7 @@ public class JsData {
         if (!source.has(propertyName)) {
             throw new IllegalArgumentException("Property '" + propertyName + "' must be specified.");
         }
-        Any value = source.getAny(propertyName);
+        Any value = source.getAsAny(propertyName);
         if (value == null) {
             throw new IllegalArgumentException("Property '" + propertyName + "' must not be null.");
         }
@@ -58,7 +62,7 @@ public class JsData {
 
     public static Any getProperty(JsPropertyMap<Object> source, String propertyName, Any defaultValue) {
         if (source.has(propertyName)) {
-            return source.getAny(propertyName);
+            return source.getAsAny(propertyName);
         }
 
         return defaultValue;
@@ -107,7 +111,8 @@ public class JsData {
         return getNullableDoubleProperty(source, propertyName, null);
     }
 
-    public static Double getNullableDoubleProperty(JsPropertyMap<Object> source, String propertyName, Double defaultValue) {
+    public static Double getNullableDoubleProperty(JsPropertyMap<Object> source, String propertyName,
+            Double defaultValue) {
         Any value = getProperty(source, propertyName, Js.asAny(defaultValue));
         return value == null ? null : value.asDouble();
     }
@@ -129,7 +134,8 @@ public class JsData {
         return getNullableBooleanProperty(source, propertyName, null);
     }
 
-    public static Boolean getNullableBooleanProperty(JsPropertyMap<Object> source, String propertyName, Boolean defaultValue) {
+    public static Boolean getNullableBooleanProperty(JsPropertyMap<Object> source, String propertyName,
+            Boolean defaultValue) {
         Any value = getProperty(source, propertyName, Js.asAny(defaultValue));
         return value == null ? null : value.asBoolean();
     }

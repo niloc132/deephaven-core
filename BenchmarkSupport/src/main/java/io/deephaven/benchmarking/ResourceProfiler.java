@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking;
 
 import org.openjdk.jmh.infra.BenchmarkParams;
@@ -9,9 +12,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /*
-    Collects resource utilization stats once, at the end of the iteration. Since CPU Load is averaged
-    over the last minute (by Java), this profiler doesn't provide much different CPU information than sampling
-    concurrently on another thread as is done in the ConcurrentResourceProfiler.
+ * Collects resource utilization stats once, at the end of the iteration. Since CPU Load is averaged over the last
+ * minute (by Java), this profiler doesn't provide much different CPU information than sampling concurrently on another
+ * thread as is done in the ConcurrentResourceProfiler.
  */
 public class ResourceProfiler implements InternalProfiler {
 
@@ -27,13 +30,14 @@ public class ResourceProfiler implements InternalProfiler {
 
     @Override
     public Collection<? extends Result> afterIteration(BenchmarkParams benchmarkParams, IterationParams iterationParams,
-                                                       IterationResult result) {
+            IterationResult result) {
 
         final long totalHeap = Runtime.getRuntime().totalMemory();
         final long freeHeap = Runtime.getRuntime().freeMemory();
         final long usedHeap = java.lang.management.ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
         final long activeThreads = java.lang.Thread.activeCount();
-        final double cpuLoad = java.lang.management.ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage() /
+        final double cpuLoad = java.lang.management.ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage()
+                /
                 java.lang.management.ManagementFactory.getOperatingSystemMXBean().getAvailableProcessors() * 100.0;
 
         final Collection<ScalarResult> results = new ArrayList<>();

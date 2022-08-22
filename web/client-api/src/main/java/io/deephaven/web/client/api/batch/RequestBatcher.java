@@ -1,15 +1,17 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.batch;
 
 import elemental2.dom.CustomEventInit;
-import elemental2.dom.DomGlobal;
 import elemental2.promise.Promise;
 import elemental2.promise.Promise.PromiseExecutorCallbackFn.RejectCallbackFn;
-import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.Ticket;
-import io.deephaven.javascript.proto.dhinternal.grpcweb.grpc.Code;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.BatchTableRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.TableReference;
 import io.deephaven.web.client.api.*;
+import io.deephaven.web.client.api.barrage.stream.ResponseStreamWrapper;
 import io.deephaven.web.client.api.batch.BatchBuilder.BatchOp;
 import io.deephaven.web.client.api.filter.FilterCondition;
 import io.deephaven.web.client.fu.JsLog;
@@ -25,12 +27,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * A bucket for queuing up requests on Tables to be sent all at once.
  *
- * Currently scoped to a single table, but we should be able to refactor
- * this to handle multiple tables at once (by pushing table/handles into method signatures)
+ * Currently scoped to a single table, but we should be able to refactor this to handle multiple tables at once (by
+ * pushing table/handles into method signatures)
  *
  * TODO fix core#80
  */
@@ -64,7 +70,8 @@ public class RequestBatcher {
         createOps();
         final ClientTableState state = builder.getOp().getState();
         return new Promise<>(((resolve, reject) -> {
-            state.onRunning(ignored->resolve.onInvoke(table), reject::onInvoke, () -> reject.onInvoke("Table failed, or was closed"));
+            state.onRunning(ignored -> resolve.onInvoke(table), reject::onInvoke,
+                    () -> reject.onInvoke("Table failed, or was closed"));
         }));
     }
 
@@ -84,7 +91,8 @@ public class RequestBatcher {
     private void doCreateOps() {
         BatchOp op = builder.getOp();
         ClientTableState appendTo = table.state();
-        assert appendTo.getBinding(table).isActive() : "Table state " + appendTo +" did not have " + table + " actively bound to it";
+        assert appendTo.getBinding(table).isActive()
+                : "Table state " + appendTo + " did not have " + table + " actively bound to it";
         rollbackTo = appendTo.getActiveBinding(table);
 
         while (!appendTo.isCompatible(op.getSorts(), op.getFilters(), op.getCustomColumns(), op.isFlat())) {
@@ -106,7 +114,7 @@ public class RequestBatcher {
             // but we'll still keep it around to process as an active state
             builder.doNextOp(op);
         } else {
-            // Create new states.  If we are adding both filters and sorts, we'll want an intermediate table
+            // Create new states. If we are adding both filters and sorts, we'll want an intermediate table
             final BatchOp newOp = maybeInsertInterimTable(op, appendTo);
 
             // Insert the final operation
@@ -132,13 +140,14 @@ public class RequestBatcher {
     private MappedIterable<ClientTableState> allStates() {
         return builder.getOps().mapped(BatchOp::getState).filterNonNull();
     }
+
     private MappedIterable<JsTable> allInterestedTables() {
         IdentityHashMap<JsTable, JsTable> tables = new IdentityHashMap<>();
         if (!table.isAlive()) {
             tables.put(table, table);
         }
         for (ClientTableState state : allStates()) {
-            state.getBoundTables().forEach(table-> {
+            state.getBoundTables().forEach(table -> {
                 if (!tables.containsKey(table)) {
                     // now, lets make sure this client still cares about the given state...
                     // (a table may be holding a paused binding to this state)
@@ -180,7 +189,7 @@ public class RequestBatcher {
     }
 
     public Promise<Void> sendRequest() {
-        return new Promise<>((resolve, reject)->{
+        return new Promise<>((resolve, reject) -> {
 
             // calling buildRequest will change the state of each table, so we first check what the state was
             // of each table before we do that, in case we are actually not making a call to the server
@@ -220,7 +229,8 @@ public class RequestBatcher {
 
                 orphans.forEach(ClientTableState::cleanup);
                 resolve.onInvoke((Void) null);
-                // if there's no outgoing operation, user may have removed an operation and wants to return to where they left off
+                // if there's no outgoing operation, user may have removed an operation and wants to return to where
+                // they left off
                 table.maybeReviveSubscription();
                 finished = true;
                 return;
@@ -234,9 +244,9 @@ public class RequestBatcher {
             JsLog.debug("Sending request", LazyString.of(request), request, " based on ", this);
 
 
-            ResponseStreamWrapper<ExportedTableCreationResponse> batchStream = ResponseStreamWrapper.of(connection.tableServiceClient().batch(request, connection.metadata()));
+            ResponseStreamWrapper<ExportedTableCreationResponse> batchStream =
+                    ResponseStreamWrapper.of(connection.tableServiceClient().batch(request, connection.metadata()));
             batchStream.onData(response -> {
-                DomGlobal.console.log("onData", this, request.toObject(), response.toObject());
                 TableReference resultid = response.getResultId();
                 if (!resultid.hasTicket()) {
                     // thanks for telling us, but we don't at this time have a nice way to indicate this
@@ -247,7 +257,16 @@ public class RequestBatcher {
                     String fail = response.getErrorInfo();
 
                     // any table which has that state active should fire a failed event
-                    ClientTableState state = allStates().filter(cts -> cts.getHandle().makeTicket().getTicket_asB64().equals(ticket.getTicket_asB64())).first();
+                    ClientTableState state = allStates().filter(
+                            cts -> cts.getHandle().makeTicket().getTicket_asB64().equals(ticket.getTicket_asB64()))
+                            .first();
+
+                    if (state.isEmpty()) {
+                        // nobody cares about this state anymore
+                        JsLog.debug("Ignoring empty state", state);
+                        return;
+                    }
+
                     state.getHandle().setState(TableTicket.State.FAILED);
                     for (JsTable table : allInterestedTables().filter(t -> t.state() == state)) {
                         // fire the failed event
@@ -260,17 +279,34 @@ public class RequestBatcher {
                     return;
                 }
 
-                // any table which has that state active should fire a failed event
-                ClientTableState state = allStates().filter(cts -> cts.getHandle().makeTicket().getTicket_asB64().equals(ticket.getTicket_asB64())).first();
-//                state.getHandle().setState(TableTicket.State.EXPORTED);
-                for (JsTable table : allInterestedTables().filter(t -> t.state() == state)) {
-                    // check what state it was in previously to use for firing an event
-                    ClientTableState lastVisibleState = table.lastVisibleState();
+                // find the state that applies to this ticket
+                ClientTableState state = allStates()
+                        .filter(cts -> cts.getHandle().makeTicket().getTicket_asB64().equals(ticket.getTicket_asB64()))
+                        .first();
 
-                    // mark the table as ready to go
-                    state.applyTableCreationResponse(response);
-                    state.forActiveTables(t -> t.maybeRevive(state));
-                    state.setResolution(ClientTableState.ResolutionState.RUNNING);
+                if (state.isEmpty()) {
+                    // we are no longer interested in this update, ignore it - assume that the release was racing the
+                    // response.
+                    return;
+                }
+
+                // Before we mark it as successfully running and give it its new schema, track the previous CTS
+                // that each table was using. Identify which table to watch based on its current state, even if
+                // not visible, but then track the last visible state, so we know which events to fire.
+                Map<JsTable, ClientTableState> activeTablesAndStates =
+                        StreamSupport.stream(allInterestedTables().spliterator(), false)
+                                .filter(JsTable::isAlive)
+                                .filter(t -> t.state() == state)
+                                .collect(Collectors.toMap(Function.identity(), JsTable::lastVisibleState));
+
+                // Mark the table as ready to go
+                state.applyTableCreationResponse(response);
+                state.forActiveTables(t -> t.maybeRevive(state));
+                state.setResolution(ClientTableState.ResolutionState.RUNNING);
+
+                // Let each table know that what has changed since it has a previous state
+                for (JsTable table : activeTablesAndStates.keySet()) {
+                    ClientTableState lastVisibleState = activeTablesAndStates.get(table);
 
                     // fire any events that are necessary
                     boolean sortChanged = !lastVisibleState.getSorts().equals(state.getSorts());
@@ -292,13 +328,15 @@ public class RequestBatcher {
             });
 
             batchStream.onEnd(status -> {
-                DomGlobal.console.log("onEnd", this, request.toObject(), status);
                 // request is complete
-                if (status.getCode() == Code.OK) {
+                if (status.isOk()) {
                     resolve.onInvoke((Void) null);
                 } else {
                     failed(reject, status.getDetails());
                 }
+
+                // Tell anybody who was orphaned to check if they should release their subscriptions / handles
+                orphans.forEach(ClientTableState::cleanup);
             });
         });
     }
@@ -315,12 +353,13 @@ public class RequestBatcher {
 
         event.setDetail(JsPropertyMap.of(
                 "errorMessage", failureMessage,
-                "configuration", best.toJs()
-        ));
+                "configuration", best.toJs()));
         try {
             t.rollback();
         } catch (Exception e) {
-            JsLog.warn("An exception occurred trying to rollback the table. This means that there will be no ticking data until the table configuration is applied again in a way that makes sense. See IDS-5199 for more detail.", e);
+            JsLog.warn(
+                    "An exception occurred trying to rollback the table. This means that there will be no ticking data until the table configuration is applied again in a way that makes sense. See IDS-5199 for more detail.",
+                    e);
         }
         t.fireEvent(HasEventHandling.EVENT_REQUEST_FAILED, event);
     }
@@ -341,6 +380,7 @@ public class RequestBatcher {
     public void setSort(Sort[] newSort) {
         builder.setSort(Arrays.asList(newSort));
     }
+
     public void sort(List<Sort> newSort) {
         builder.setSort(newSort);
     }
@@ -349,6 +389,7 @@ public class RequestBatcher {
     public void setFilter(FilterCondition[] newFilter) {
         builder.setFilter(Arrays.asList(newFilter));
     }
+
     public void filter(List<FilterCondition> newFilter) {
         builder.setFilter(newFilter);
     }
@@ -357,6 +398,7 @@ public class RequestBatcher {
     public void setCustomColumns(String[] newColumns) {
         builder.setCustomColumns(CustomColumnDescriptor.from(newColumns));
     }
+
     public void customColumns(List<CustomColumnDescriptor> newColumns) {
         builder.setCustomColumns(newColumns);
     }

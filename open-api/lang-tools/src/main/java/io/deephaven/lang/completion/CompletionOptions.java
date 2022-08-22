@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.lang.completion;
 
 import java.util.Arrays;
@@ -7,8 +10,8 @@ import java.util.Set;
 /**
  * Various context-sensitive options to use when generating completions.
  *
- * This includes information like "result will have quotes around it",
- * or "result should have a comma after it" or "result should have space before it".
+ * This includes information like "result will have quotes around it", or "result should have a comma after it" or
+ * "result should have space before it".
  */
 public class CompletionOptions {
 
@@ -63,7 +66,7 @@ public class CompletionOptions {
         return nextTokens;
     }
 
-    public CompletionOptions setNextTokens(String ... nextTokens) {
+    public CompletionOptions setNextTokens(String... nextTokens) {
         this.nextTokens = nextTokens;
         return this;
     }
@@ -72,7 +75,7 @@ public class CompletionOptions {
         return prevTokens;
     }
 
-    public CompletionOptions setPrevTokens(String ... prevTokens) {
+    public CompletionOptions setPrevTokens(String... prevTokens) {
         this.prevTokens = prevTokens;
         return this;
     }
@@ -84,7 +87,7 @@ public class CompletionOptions {
         return stopTokens;
     }
 
-    public CompletionOptions setStopTokens(String ... stopTokens) {
+    public CompletionOptions setStopTokens(String... stopTokens) {
         getStopTokens().addAll(Arrays.asList(stopTokens));
         return this;
     }

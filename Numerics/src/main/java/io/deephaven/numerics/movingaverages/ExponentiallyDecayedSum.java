@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.numerics.movingaverages;
 
 import java.io.Serializable;
@@ -21,8 +20,8 @@ public class ExponentiallyDecayedSum implements Serializable {
      * Creates a new exponentially decayed sum.
      *
      * @param decayRate rate in milliseconds to decay the sum.
-     * @param enableTimestepOutOfOrderException
-     *                  true to allow an exception to be thrown when timesteps are not sequential.
+     * @param enableTimestepOutOfOrderException true to allow an exception to be thrown when timesteps are not
+     *        sequential.
      */
     public ExponentiallyDecayedSum(double decayRate, boolean enableTimestepOutOfOrderException) {
         this.decayRate = decayRate;
@@ -33,7 +32,8 @@ public class ExponentiallyDecayedSum implements Serializable {
         long dt = Math.max(timestamp - lastTimestamp, 0);
 
         if (enableTimestepOutOfOrderException && lastTimestamp != Long.MIN_VALUE && dt < 0) {
-            throw new IllegalStateException("Timesteps are out of order: timestamps=" + lastTimestamp + "," + timestamp);
+            throw new IllegalStateException(
+                    "Timesteps are out of order: timestamps=" + lastTimestamp + "," + timestamp);
         }
 
         double weight = Math.exp(-dt / decayRate);

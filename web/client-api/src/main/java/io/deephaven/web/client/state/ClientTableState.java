@@ -1,15 +1,21 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.state;
 
 import elemental2.core.JsMap;
 import elemental2.core.JsObject;
 import elemental2.core.JsSet;
+import elemental2.core.Uint8Array;
 import elemental2.promise.Promise;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Schema;
 import io.deephaven.javascript.proto.dhinternal.browserheaders.BrowserHeaders;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.schema_generated.io.deephaven.barrage.flatbuf.Field;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.schema_generated.io.deephaven.barrage.flatbuf.KeyValue;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.schema_generated.io.deephaven.barrage.flatbuf.Schema;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
 import io.deephaven.web.client.api.*;
+import io.deephaven.web.client.api.barrage.BarrageUtils;
+import io.deephaven.web.client.api.barrage.def.ColumnDefinition;
+import io.deephaven.web.client.api.barrage.def.InitialTableDefinition;
+import io.deephaven.web.client.api.barrage.def.TableAttributesDefinition;
 import io.deephaven.web.client.api.batch.TableConfig;
 import io.deephaven.web.client.api.filter.FilterCondition;
 import io.deephaven.web.client.api.lifecycle.HasLifecycle;
@@ -27,41 +33,39 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+import static io.deephaven.web.client.api.barrage.BarrageUtils.keyValuePairs;
 import static io.deephaven.web.client.fu.JsItr.iterate;
 
 /**
  * Container for state information pertaining to a given {@link TableHandle}.
  *
- * Where JsTable is a mutable object which can point to any given ClientTableState,
- * each ClientTableState represents an immutable table configuration / handle
- * which can have zero or more JsTable objects bound to it.
+ * Where JsTable is a mutable object which can point to any given ClientTableState, each ClientTableState represents an
+ * immutable table configuration / handle which can have zero or more JsTable objects bound to it.
  *
- * This type is used to replace Table#StackEntry,
- * and works with TableList to form an arbitrary
- * "chain of table mutations leading to table state at handle N".
+ * This type is used to replace Table#StackEntry, and works with TableList to form an arbitrary "chain of table
+ * mutations leading to table state at handle N".
  *
- * Each JsTable maintains their own TableList / linking structure of ClientTableState instances,
- * and each CTS holds maps of "the state each bound JsTable holds -for this particular handle-".
+ * Each JsTable maintains their own TableList / linking structure of ClientTableState instances, and each CTS holds maps
+ * of "the state each bound JsTable holds -for this particular handle-".
  *
- * Being mutable, a JsTable can change its binding to any given CTS instance,
- * and will need to temporarily abandon it's current state when transitioning to a new one.
- * We need to be able to reinstate the last good active state whenever a request fails,
- * otherwise we will releaseTable from the given state.
+ * Being mutable, a JsTable can change its binding to any given CTS instance, and will need to temporarily abandon it's
+ * current state when transitioning to a new one. We need to be able to reinstate the last good active state whenever a
+ * request fails, otherwise we will releaseTable from the given state.
  *
- * Once no JsTable is making any use of any ClientTableState, that state should
- * be released on the server and discarded by the client (an interim state which
- * an active state is based on must always be retained).
+ * Once no JsTable is making any use of any ClientTableState, that state should be released on the server and discarded
+ * by the client (an interim state which an active state is based on must always be retained).
  *
- * By making the JsTable read it's state from a ClientTableState, switching to another
- * state should be relatively seamless; JsTable is mutable and as stateless as possible,
- * with as much state as possible shoved into CTS (so it can go away and be restored sanely).
+ * By making the JsTable read it's state from a ClientTableState, switching to another state should be relatively
+ * seamless; JsTable is mutable and as stateless as possible, with as much state as possible shoved into CTS (so it can
+ * go away and be restored sanely).
  *
  * Consider making this a js type with restricted, read-only property access.
  */
 public final class ClientTableState extends TableConfig {
     public enum ResolutionState {
         /**
-         * Table has been created on the client, but client does not yet have a handle ID referring to the table on the server
+         * Table has been created on the client, but client does not yet have a handle ID referring to the table on the
+         * server
          */
         UNRESOLVED,
         /**
@@ -126,9 +130,11 @@ public final class ClientTableState extends TableConfig {
     private Double queuedSize;
 
     // Leftovers from Table.StackEntry
-    //non-final fields, but can only be set once (consider moving these into a bean of their own)
+    // non-final fields, but can only be set once (consider moving these into a bean of their own)
     private Column[] columns;
     private Column[] allColumns; // includes invisible columns
+    private JsLayoutHints layoutHints;
+    private JsTotalsTableConfig totalsTableConfig;
     private long size;
     private InitialTableDefinition tableDef;
     private Column rowFormatColumn;
@@ -138,9 +144,9 @@ public final class ClientTableState extends TableConfig {
      *
      * Any state can have N other states after it, but only one state before it.
      *
-     * We maintain this linked list so we can reconstitute a valid TableList from
-     * any given table state (TableList maintains it's own linking structure on top
-     * of states, as each Table will use a private TableList to track it's own state stack).
+     * We maintain this linked list so we can reconstitute a valid TableList from any given table state (TableList
+     * maintains it's own linking structure on top of states, as each Table will use a private TableList to track it's
+     * own state stack).
      *
      */
     private final ClientTableState source;
@@ -149,27 +155,26 @@ public final class ClientTableState extends TableConfig {
     private boolean stayDead;
 
     public ClientTableState(
-        WorkerConnection connection,
-        TableTicket handle,
-        JsTableFetch fetcher,
-        String fetchSummary
-    ) {
-        this(connection, handle, Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), null, fetcher, fetchSummary);
+            WorkerConnection connection,
+            TableTicket handle,
+            JsTableFetch fetcher,
+            String fetchSummary) {
+        this(connection, handle, Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), null, fetcher, fetchSummary);
     }
 
     private ClientTableState(
-        WorkerConnection connection,
-        TableTicket handle,
-        List<Sort> sort,
-        List<String> conditions,
-        List<FilterCondition> filter,
-        List<CustomColumnDescriptor> customColumns,
-        List<String> dropColumns,
-        List<String> viewColumns,
-        ClientTableState source,
-        JsTableFetch fetch,
-        String fetchSummary
-    ) {
+            WorkerConnection connection,
+            TableTicket handle,
+            List<Sort> sort,
+            List<String> conditions,
+            List<FilterCondition> filter,
+            List<CustomColumnDescriptor> customColumns,
+            List<String> dropColumns,
+            List<String> viewColumns,
+            ClientTableState source,
+            JsTableFetch fetch,
+            String fetchSummary) {
         super(sort, conditions, filter, customColumns, dropColumns, viewColumns);
         this.touch = System.currentTimeMillis();
         this.fetch = fetch;
@@ -199,7 +204,7 @@ public final class ClientTableState extends TableConfig {
     }
 
     private JsLazy<Map<String, Column>> resetLookup() {
-        return new JsLazy<>(()->{
+        return new JsLazy<>(() -> {
             Map<String, Column> lookup = new LinkedHashMap<>();
             if (columns != null) {
                 for (Column column : columns) {
@@ -213,6 +218,7 @@ public final class ClientTableState extends TableConfig {
     public boolean hasDefinition() {
         return tableDef != null;
     }
+
     public boolean isRunning() {
         if (resolution == ResolutionState.RUNNING) {
             assert handle.isResolved() || isDisconnected() : "Handle not resolved when running";
@@ -243,18 +249,17 @@ public final class ClientTableState extends TableConfig {
         final List<String> viewColumns = config.getViewColumns();
 
         final ClientTableState newState = new ClientTableState(
-            connection, newHandle, sorts, conditions, filters, customColumns, dropColumns, viewColumns, this,
-            (c, s, metadata)->{
-                // This fetcher will not be used for the initial fetch, only for refetches.
-                // Importantly, any CTS with a source (what we are creating here; source=this, above)
-                // is revived, it does not use the refetcher; we directly rebuild batch operations instead.
-                // It may make sense to actually have batches route through reviver instead.
-                connection.getReviver().revive(metadata, s);
-            }, config.toSummaryString()
-        );
+                connection, newHandle, sorts, conditions, filters, customColumns, dropColumns, viewColumns, this,
+                (c, s, metadata) -> {
+                    // This fetcher will not be used for the initial fetch, only for refetches.
+                    // Importantly, any CTS with a source (what we are creating here; source=this, above)
+                    // is revived, it does not use the refetcher; we directly rebuild batch operations instead.
+                    // It may make sense to actually have batches route through reviver instead.
+                    connection.getReviver().revive(metadata, s);
+                }, config.toSummaryString());
         newState.setFlat(config.isFlat());
         if (!isRunning()) {
-            onFailed(reason->newState.setResolution(ResolutionState.FAILED, reason), JsRunnable.doNothing());
+            onFailed(reason -> newState.setResolution(ResolutionState.FAILED, reason), JsRunnable.doNothing());
         }
         touch();
         return newState;
@@ -308,7 +313,12 @@ public final class ClientTableState extends TableConfig {
 
     public List<String> getCustomColumnsString() {
         return getCustomColumns().stream().map(CustomColumnDescriptor::getExpression)
-            .collect(Collectors.toList());
+                .collect(Collectors.toList());
+    }
+
+    public List<CustomColumn> getCustomColumnsObject() {
+        return getCustomColumns().stream().map(CustomColumn::new)
+                .collect(Collectors.toList());
     }
 
     public Column[] getColumns() {
@@ -317,6 +327,20 @@ public final class ClientTableState extends TableConfig {
 
     public Column[] getAllColumns() {
         return allColumns;
+    }
+
+    public JsLayoutHints getLayoutHints() {
+        if (layoutHints == null) {
+            createLayoutHints();
+        }
+        return layoutHints;
+    }
+
+    public JsTotalsTableConfig getTotalsTableConfig() {
+        if (totalsTableConfig == null) {
+            createTotalsTableConfig();
+        }
+        return totalsTableConfig;
     }
 
     public long getSize() {
@@ -330,23 +354,32 @@ public final class ClientTableState extends TableConfig {
         }
         this.size = size;
 
+        JsConsumer<JsTable> doSetSize = table -> {
+            long localSize = size;
+            final ActiveTableBinding binding = getActiveBinding(table);
+            if (binding != null && table.isStreamTable()) {
+                localSize = Math.min(size, binding.getRows().size());
+            }
+            table.setSize(localSize);
+        };
+
         if (isRunning()) {
             if (log) {
                 JsLog.debug("CTS immediate size update ", this.size, " actives: ", active);
             }
-            forActiveTables(table -> table.setSize(size));
+            forActiveTables(doSetSize);
         } else {
             if (queuedSize == null) {
                 JsLog.debug("Queuing size changed until RUNNING STATE; ", size);
                 onRunning(self -> {
                     JsLog.debug("Firing queued size change event (", queuedSize, ")");
                     forActiveTables(table -> {
-                        table.setSize(queuedSize);
+                        doSetSize.apply(table);
+                        queuedSize = null;
                     });
-                    queuedSize = null;
                 }, JsRunnable.doNothing());
             }
-            queuedSize = (double)size;
+            queuedSize = (double) size;
         }
     }
 
@@ -358,64 +391,77 @@ public final class ClientTableState extends TableConfig {
         boolean create = this.tableDef != tableDef;
         this.tableDef = tableDef;
         if (create) {
-            createColumns();
+            ColumnDefinition[] columnDefinitions = tableDef.getColumns();
+
+            // iterate through the columns, combine format columns into the normal model
+            Map<String, ColumnDefinition> byNameMap = Arrays.stream(columnDefinitions)
+                    .collect(columnCollector(false));
+            Column[] columns1 = new Column[0];
+            allColumns = new Column[0];
+            for (ColumnDefinition definition : columnDefinitions) {
+                if (definition.isForRow()) {
+                    // special case for the row format column
+                    setRowFormatColumn(makeColumn(-1, definition, null, null, false, null, null, false));
+                    continue;
+                }
+                String name = definition.getName();
+
+                ColumnDefinition format = byNameMap.get(definition.getFormatColumnName());
+                ColumnDefinition style = byNameMap.get(definition.getStyleColumnName());
+
+                boolean isPartitionColumn = definition.isPartitionColumn();
+
+                // note the use of columns.length as jsIndex is accurate for visible columns
+                allColumns[allColumns.length] = makeColumn(columns1.length,
+                        definition,
+                        format == null || !format.isNumberFormatColumn() ? null : format.getColumnIndex(),
+                        style == null ? null : style.getColumnIndex(),
+                        isPartitionColumn,
+                        format == null || format.isNumberFormatColumn() ? null : format.getColumnIndex(),
+                        definition.getDescription(),
+                        definition.isInputTableKeyColumn());
+
+                if (definition.isVisible()) {
+                    columns1[columns1.length] = allColumns[allColumns.length - 1];
+                }
+            }
+
+            this.columns = JsObject.freeze(columns1);
+            this.columnLookup = resetLookup();
         }
     }
 
-    private void createColumns() {
-        ColumnDefinition[] columnDefinitions = tableDef.getColumns();
-
-        //iterate through the columns, combine format columns into the normal model
-        Map<String, ColumnDefinition> byNameMap = Arrays.stream(columnDefinitions)
-            .collect(columnCollector(false));
-        Column[] columns = new Column[0];
-        allColumns = new Column[0];
-        Map<String, String> columnDescriptions = new HashMap<>();
-        String[][] descriptionsArrays = tableDef.getAttributes().getColumnDescriptions();
-        if (descriptionsArrays != null) {
-            for (int i = 0; i < descriptionsArrays.length; i++) {
-                String[] pair = descriptionsArrays[i];
-                columnDescriptions.put(pair[0], pair[1]);
-            }
+    private void createLayoutHints() {
+        String hintsString = getTableDef().getAttributes().getLayoutHints();
+        JsLayoutHints jsHints = new JsLayoutHints();
+        if (hintsString == null) {
+            layoutHints = null;
+        } else {
+            layoutHints = jsHints.parse(hintsString);
         }
-        for (ColumnDefinition definition : columnDefinitions) {
-            if (definition.isForRow()) {
-                //special case for the row format column
-                setRowFormatColumn(makeColumn(-1, definition, null, null, false, null, null));
-                continue;
-            }
-            String name = definition.getName();
-
-            ColumnDefinition format = byNameMap.get(definition.getFormatColumnName());
-            ColumnDefinition style = byNameMap.get(definition.getStyleColumnName());
-
-            boolean isPartitionColumn = definition.isPartitionColumn();
-
-            // note the use of columns.length as jsIndex is accurate for visible columns
-            allColumns[allColumns.length] = makeColumn(columns.length,
-                definition,
-                format == null || !format.isNumberFormatColumn() ? null : format.getColumnIndex(),
-                style == null ? null : style.getColumnIndex(),
-                isPartitionColumn,
-                format == null || format.isNumberFormatColumn() ? null : format.getColumnIndex(),
-                columnDescriptions.get(name)
-            );
-
-            if (definition.isVisible()) {
-                columns[columns.length] = allColumns[allColumns.length - 1];
-            }
-        }
-
-        this.columns = JsObject.freeze(columns);
-        this.columnLookup = resetLookup();
     }
 
-    private static Column makeColumn(int jsIndex, ColumnDefinition definition, Integer numberFormatIndex, Integer styleIndex, boolean isPartitionColumn, Integer formatStringIndex, String description) {
-        return new Column(jsIndex, definition.getColumnIndex(), numberFormatIndex, styleIndex, definition.getType(), definition.getName(), isPartitionColumn, formatStringIndex, description);
+    private void createTotalsTableConfig() {
+        String configString = getTableDef().getAttributes().getTotalsTableConfig();
+
+        if (configString == null) {
+            totalsTableConfig = null;
+        } else {
+            totalsTableConfig = JsTotalsTableConfig.parse(configString);
+        }
     }
 
-    private static Collector<? super ColumnDefinition, ?, Map<String, ColumnDefinition>> columnCollector(boolean ordered) {
-        return Collectors.toMap(ColumnDefinition::getName, Function.identity(), assertNoDupes(), ordered ? LinkedHashMap::new : HashMap::new);
+    private static Column makeColumn(int jsIndex, ColumnDefinition definition, Integer numberFormatIndex,
+            Integer styleIndex, boolean isPartitionColumn, Integer formatStringIndex, String description,
+            boolean inputTableKeyColumn) {
+        return new Column(jsIndex, definition.getColumnIndex(), numberFormatIndex, styleIndex, definition.getType(),
+                definition.getName(), isPartitionColumn, formatStringIndex, description, inputTableKeyColumn);
+    }
+
+    private static Collector<? super ColumnDefinition, ?, Map<String, ColumnDefinition>> columnCollector(
+            boolean ordered) {
+        return Collectors.toMap(ColumnDefinition::getName, Function.identity(), assertNoDupes(),
+                ordered ? LinkedHashMap::new : HashMap::new);
     }
 
     private static <T> BinaryOperator<T> assertNoDupes() {
@@ -435,7 +481,7 @@ public final class ClientTableState extends TableConfig {
 
     @Override
     public boolean equals(Object o) {
-        return super.equals(o) && handle.equals(((ClientTableState)o).handle);
+        return super.equals(o) && handle.equals(((ClientTableState) o).handle);
     }
 
     @Override
@@ -459,13 +505,13 @@ public final class ClientTableState extends TableConfig {
         }
         if (resolution == ResolutionState.RUNNING) {
             // wait a moment and execute the callback, after verifying that we remained in that state
-            LazyPromise.runLater(()-> {
+            LazyPromise.runLater(() -> {
                 if (resolution == ResolutionState.RUNNING) {
                     callback.apply(this);
                 } else {
                     // Resubmit the callback? Probably not, this means we momentarily were in the correct state, but
                     // if we return to it, things could get weird
-//                    onRunning(callback);
+                    // onRunning(callback);
                 }
             });
             return;
@@ -492,13 +538,13 @@ public final class ClientTableState extends TableConfig {
             return;
         }
         if (resolution == ResolutionState.FAILED) {
-            LazyPromise.runLater(()-> {
+            LazyPromise.runLater(() -> {
                 if (resolution == ResolutionState.FAILED) {
                     callback.apply(failMsg);
                 } else {
                     // Resubmit the callback? Probably not, this means we momentarily were in the correct state, but
                     // if we return to it, things could get weird
-//                    onFailed(callback);
+                    // onFailed(callback);
                 }
             });
             return;
@@ -520,19 +566,15 @@ public final class ClientTableState extends TableConfig {
     }
 
     /**
-     * Checks if the current state can be used as a root to turn into the state
-     * described by the supplied arguments.
+     * Checks if the current state can be used as a root to turn into the state described by the supplied arguments.
      *
-     * While it is technically valid to interleave filters and sorts,
-     * for maximal performance, we want to ensure filters are always applied
-     * before sorts; so, if you have added a filter, but the current state
-     * has any sorts at all, we will return false, even though this
-     * state would be correct when used, it won't be maximally efficient.
+     * While it is technically valid to interleave filters and sorts, for maximal performance, we want to ensure filters
+     * are always applied before sorts; so, if you have added a filter, but the current state has any sorts at all, we
+     * will return false, even though this state would be correct when used, it won't be maximally efficient.
      *
-     * Additionally, custom columns might be used in filters and sorts,
-     * but a filter or sort on a custom column cannot be created until
-     * that custom column has been exported and provides a table definition
-     * so that we can supply Column instances to operate upon.
+     * Additionally, custom columns might be used in filters and sorts, but a filter or sort on a custom column cannot
+     * be created until that custom column has been exported and provides a table definition so that we can supply
+     * Column instances to operate upon.
      *
      * @param sorts The full set of sorts we want in our resulting table state
      * @param filters The full set of filters we want in our resulting table state
@@ -540,7 +582,8 @@ public final class ClientTableState extends TableConfig {
      * @param flat True if the resulting table should have a flatten index, false otherwise
      * @return true if this state can be used to add
      */
-    public boolean isCompatible(List<Sort> sorts, List<FilterCondition> filters, List<CustomColumnDescriptor> customColumns, boolean flat) {
+    public boolean isCompatible(List<Sort> sorts, List<FilterCondition> filters,
+            List<CustomColumnDescriptor> customColumns, boolean flat) {
         // start with the easy wins...
         if (isEmptyConfig()) {
             // an empty root state is compatible to everyone.
@@ -603,7 +646,7 @@ public final class ClientTableState extends TableConfig {
             }
         }
 
-        if (isFlat() != flat) {
+        if (!flat && isFlat()) {
             return false;
         }
 
@@ -626,20 +669,19 @@ public final class ClientTableState extends TableConfig {
     /**
      * @return true if there are no tables bound to this state.
      *
-     * If a table that had a subscription for this state was orphaned by a pending request,
-     * we want to clear the subscription immediately so it becomes inert (immediately remove the subscription),
-     * but we may need to rollback the request, and we don't want to release the
-     * handle until the pending request is finished (whereupon we will remove the binding).
+     *         If a table that had a subscription for this state was orphaned by a pending request, we want to clear the
+     *         subscription immediately so it becomes inert (immediately remove the subscription), but we may need to
+     *         rollback the request, and we don't want to release the handle until the pending request is finished
+     *         (whereupon we will remove the binding).
      */
     public boolean isEmpty() {
         return active.size == 0 && paused.size == 0 && retainers.size == 0;
     }
 
     /**
-     * Call this with a marker object that you want to use to cause the state to be retained.
-     * You either need to hold onto the returned function to clear your binding, or call
-     * {@link #unretain(Object)} when finished to avoid keeping this handle alive beyond its
-     * usefulness.
+     * Call this with a marker object that you want to use to cause the state to be retained. You either need to hold
+     * onto the returned function to clear your binding, or call {@link #unretain(Object)} when finished to avoid
+     * keeping this handle alive beyond its usefulness.
      */
     public JsRunnable retain(Object retainer) {
         retainers.add(retainer);
@@ -674,7 +716,8 @@ public final class ClientTableState extends TableConfig {
     }
 
     public boolean isFinished() {
-        return resolution == ResolutionState.RUNNING || resolution == ResolutionState.FAILED || resolution == ResolutionState.RELEASED;
+        return resolution == ResolutionState.RUNNING || resolution == ResolutionState.FAILED
+                || resolution == ResolutionState.RELEASED;
     }
 
     public boolean isDisconnected() {
@@ -715,11 +758,12 @@ public final class ClientTableState extends TableConfig {
         assert sub != null : "You cannot set the desired viewport on a non-active state + table combination";
         final RangeSet rows = sub.setDesiredViewport(firstRow, lastRow, columns);
         // let event loop eat multiple viewport sets and only apply the last one (winner of who gets spot in map)
-        LazyPromise.runLater(()->{
+        LazyPromise.runLater(() -> {
             if (sub.getRows() == rows) {
                 // winner! now, on to the next hurdle... ensuring we have columns.
-                // TODO: have an onColumnsReady callback, for cases when we know we're only waiting on non-column-modifying operations
-                onRunning(self->{
+                // TODO: have an onColumnsReady callback, for cases when we know we're only waiting on
+                // non-column-modifying operations
+                onRunning(self -> {
                     if (sub.getRows() == rows) {
                         // winner again!
                         applyViewport(sub);
@@ -773,21 +817,22 @@ public final class ClientTableState extends TableConfig {
 
     public MappedIterable<JsTable> getBoundTables() {
         assert iterate(active.keys()).noneMatch(paused::has) : "State cannot be active and paused at the same time; "
-            + "active: " +active +" paused: " + paused;
+                + "active: " + active + " paused: " + paused;
         return iterate(active.keys()).plus(iterate(paused.keys()));
     }
 
     public void forActiveSubscriptions(JsBiConsumer<JsTable, Viewport> callback) {
-        JsItr.forEach(active, (table, binding)-> {
+        JsItr.forEach(active, (table, binding) -> {
             if (binding.getSubscription() != null) {
-                assert binding.getTable() == table : "Corrupt binding between " + table + " and " + binding + " in " + active;
-                callback.apply((JsTable)table, binding.getSubscription());
+                assert binding.getTable() == table
+                        : "Corrupt binding between " + table + " and " + binding + " in " + active;
+                callback.apply((JsTable) table, binding.getSubscription());
             }
         });
     }
 
     public void forActiveTables(JsConsumer<JsTable> callback) {
-        JsItr.forEach(active, (table, sub)-> {
+        JsItr.forEach(active, (table, sub) -> {
             callback.apply(table);
         });
     }
@@ -813,7 +858,7 @@ public final class ClientTableState extends TableConfig {
     public void handleDelta(DeltaUpdates updates) {
         assert size != SIZE_UNINITIALIZED : "Received delta before receiving initial size";
         setSize(size + updates.getAdded().size() - updates.getRemoved().size());
-        forActiveSubscriptions((table, subscription)->{
+        forActiveSubscriptions((table, subscription) -> {
             assert table.getHandle().equals(handle);
             // we are the active state of this table, so forward along the delta.
             table.handleDelta(this, updates);
@@ -831,31 +876,32 @@ public final class ClientTableState extends TableConfig {
     @Override
     public String toString() {
         return "ClientTableState{" +
-            "handle=" + handle +
-            ", resolution=" + resolution +
-            ", active=" + active +
-            ", paused=" + paused +
-            ", size=" + size +
-            ", tableDef=" + tableDef +
-            ", rowFormatColumn=" + rowFormatColumn +
-            ", failMsg='" + failMsg + '\'' +
-            ", sorts=" + getSorts() +
-            ", filters=" + getFilters() +
-            ", customColumns=" + getCustomColumns() +
-            ", selectDistinct=" + getSelectDistinct() +
-            "} ";
+                "handle=" + handle +
+                ", resolution=" + resolution +
+                ", active=" + active +
+                ", paused=" + paused +
+                ", size=" + size +
+                ", tableDef=" + tableDef +
+                ", rowFormatColumn=" + rowFormatColumn +
+                ", failMsg='" + failMsg + '\'' +
+                ", sorts=" + getSorts() +
+                ", filters=" + getFilters() +
+                ", customColumns=" + getCustomColumns() +
+                ", selectDistinct=" + getSelectDistinct() +
+                "} ";
     }
+
     public String toStringMinimal() {
         return "ClientTableState{" +
-            "handle=" + handle +
-            ", resolution=" + resolution +
-            ", active=" + active.size +
-            ", paused=" + paused.size +
-            ", retainers=" + retainers.size +
-            ", size=" + size +
-            ", tableDef=" + tableDef +
-            ", rowFormatColumn=" + rowFormatColumn +
-            "} ";
+                "handle=" + handle +
+                ", resolution=" + resolution +
+                ", active=" + active.size +
+                ", paused=" + paused.size +
+                ", retainers=" + retainers.size +
+                ", size=" + size +
+                ", tableDef=" + tableDef +
+                ", rowFormatColumn=" + rowFormatColumn +
+                "} ";
     }
 
     public ClientTableState getPrevious() {
@@ -869,10 +915,14 @@ public final class ClientTableState extends TableConfig {
         }
         return sub;
     }
+
     public ActiveTableBinding getActiveBinding(JsTable table) {
         final HasTableState<ClientTableState> existing = getBinding(table);
-        return existing == null ? null : existing.isActive() ? (ActiveTableBinding) existing : ((PausedTableBinding)existing).getActiveBinding();
+        return existing == null ? null
+                : existing.isActive() ? (ActiveTableBinding) existing
+                        : ((PausedTableBinding) existing).getActiveBinding();
     }
+
     public Iterable<ActiveTableBinding> getActiveBindings() {
         return JsItr.iterate(active.values());
     }
@@ -915,7 +965,8 @@ public final class ClientTableState extends TableConfig {
      * Look through paused tables to see if any of them have been
      */
     public void cleanup() {
-        assert JsItr.iterate(active.keys()).allMatch(t->!t.isAlive() || t.state() == this) : "active map not up-to-date with tables";
+        assert JsItr.iterate(active.keys()).allMatch(t -> !t.isAlive() || t.state() == this)
+                : "active map not up-to-date with tables";
         if (getResolution() == ResolutionState.RELEASED) {
             for (PausedTableBinding sub : JsItr.iterate(paused.values())) {
                 releaseTable(sub.getActiveBinding().getTable());
@@ -924,7 +975,7 @@ public final class ClientTableState extends TableConfig {
             // notify any retainers who have events that we've been released.
             for (Object retainer : JsItr.iterate(retainers.values())) {
                 if (retainer instanceof HasEventHandling) {
-                    ((HasEventHandling)retainer).fireEventWithDetail(HasEventHandling.INTERNAL_EVENT_RELEASED, this);
+                    ((HasEventHandling) retainer).fireEventWithDetail(HasEventHandling.INTERNAL_EVENT_RELEASED, this);
                 }
             }
 
@@ -937,13 +988,14 @@ public final class ClientTableState extends TableConfig {
             if (table.isClosed()) {
                 releaseTable(table);
             } else if (!table.hasHandle(getHandle()) && !table.hasRollbackHandle(getHandle())) {
-                // release the table if it no longer has a reference to the handle with any of it's bindings, including paused bindings
+                // release the table if it no longer has a reference to the handle with any of it's bindings, including
+                // paused bindings
                 // don't releaseTable for tables that are in flux
                 if (table.state().isRunning()) {
                     releaseTable(table);
                 } else {
                     // wait until the table's current state is complete to try cleaning up again.
-                    table.state().onRunning(i->cleanup(), this::cleanup);
+                    table.state().onRunning(i -> cleanup(), this::cleanup);
                 }
             }
         }
@@ -957,23 +1009,23 @@ public final class ClientTableState extends TableConfig {
     }
 
     public static Comparator<? super ClientTableState> newestFirst() {
-        return (a, b)->(int)Math.signum(b.getLastTouched() - a.getLastTouched());
+        return (a, b) -> (int) Math.signum(b.getLastTouched() - a.getLastTouched());
     }
 
     public Promise<JsTable> fetchTable(HasEventHandling failHandler, BrowserHeaders metadata) {
-        return refetch(failHandler, metadata).then(cts->Promise.resolve(new JsTable(connection, cts)));
+        return refetch(failHandler, metadata).then(cts -> Promise.resolve(new JsTable(connection, cts)));
     }
 
     public Promise<ClientTableState> refetch(HasEventHandling failHandler, BrowserHeaders metadata) {
-        final Promise<ExportedTableCreationResponse> promise = Callbacks.grpcUnaryPromise(c ->
-            fetch.fetch(c, this, metadata)
-        );
-        //noinspection unchecked
+        final Promise<ExportedTableCreationResponse> promise =
+                Callbacks.grpcUnaryPromise(c -> fetch.fetch(c, this, metadata));
+        // noinspection unchecked
         return promise.then(def -> {
             if (resolution == ResolutionState.RELEASED) {
                 // was released before we managed to finish the fetch, ignore
-                //noinspection rawtypes,unchecked
-                return (Promise) Promise.reject("Table already released, cannot process incoming table definition, this can be safely ignored.");
+                // noinspection rawtypes,unchecked
+                return (Promise) Promise.reject(
+                        "Table already released, cannot process incoming table definition, this can be safely ignored.");
             }
             applyTableCreationResponse(def);
             return Promise.resolve(this);
@@ -981,47 +1033,25 @@ public final class ClientTableState extends TableConfig {
     }
 
     public void applyTableCreationResponse(ExportedTableCreationResponse def) {
+        assert def.getResultId().getTicket().getTicket_asB64().equals(getHandle().makeTicket().getTicket_asB64())
+                : "Ticket is incompatible with the table details";
         // by definition, the ticket is now exported and connected
         handle.setState(TableTicket.State.EXPORTED);
         handle.setConnected(true);
 
-        Schema schema = Schema.getRootAsSchema(new io.deephaven.javascript.proto.dhinternal.flatbuffers.ByteBuffer(def.getSchemaHeader_asU8()));
-        ColumnDefinition[] cols = new ColumnDefinition[(int)schema.fieldsLength()];
-        for (int i = 0; i < schema.fieldsLength(); i++) {
-            cols[i] = new ColumnDefinition();
-            Field f = schema.fields(i);
-            Map<String, String> fieldMetadata = new HashMap<>();
-            for (int j = 0; j < f.customMetadataLength(); j++) {
-                KeyValue keyValue = f.customMetadata(j);
-                fieldMetadata.put(keyValue.key().asString(), keyValue.value().asString());
-            }
-            cols[i].setName(f.name().asString());
-            cols[i].setColumnIndex(i);
-            cols[i].setType(fieldMetadata.get("deephaven:type"));
-            cols[i].setStyleColumn(fieldMetadata.get("deephaven:isStyle").equals("true"));
-            cols[i].setFormatColumn(fieldMetadata.get("deephaven:isDateFormat").equals("true") || fieldMetadata.get("deephaven:isNumberFormat").equals("true"));
-            cols[i].setForRow(fieldMetadata.get("deephaven:isRowStyle").equals("true"));
+        Uint8Array flightSchemaMessage = def.getSchemaHeader_asU8();
+        Schema schema = BarrageUtils.readSchemaMessage(flightSchemaMessage);
 
-            String formatColumnName = fieldMetadata.get("deephaven:dateFormatColumn");
-            if (formatColumnName == null) {
-                formatColumnName = fieldMetadata.get("deephaven:numberFormatColumn");
-            }
-            cols[i].setFormatColumnName(formatColumnName);
+        ColumnDefinition[] cols = BarrageUtils.readColumnDefinitions(schema);
 
-            cols[i].setStyleColumnName(fieldMetadata.get("deephaven:styleColumn"));
-        }
-
-        TableAttributesDefinition attributes = new TableAttributesDefinition();
-        attributes.setValues(new String[0]);
-        attributes.setKeys(new String[0]);
-        attributes.setRemainingKeys(new String[0]);
+        TableAttributesDefinition attributes = new TableAttributesDefinition(
+                keyValuePairs("deephaven:attribute.", schema.customMetadataLength(), schema::customMetadata),
+                keyValuePairs("deephaven:attribute_type.", schema.customMetadataLength(), schema::customMetadata),
+                keyValuePairs("deephaven:unsent.attribute.", schema.customMetadataLength(), schema::customMetadata)
+                        .keySet());
         setTableDef(new InitialTableDefinition()
                 .setAttributes(attributes)
-                .setColumns(cols)
-                .setFlat(false)
-                .setId(null)
-                .setSize(Long.parseLong(def.getSize()))
-        );
+                .setColumns(cols));
 
         setResolution(ResolutionState.RUNNING);
         setSize(Long.parseLong(def.getSize()));

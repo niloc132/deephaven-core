@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy;
 
 import io.deephaven.util.PrimitiveArrayType;
@@ -23,7 +26,7 @@ public class JpyModuleCharArrayTest extends JpyModuleArrayTestBase<char[]> {
     @Override
     void fillAsDesired(char[] array) {
         for (int i = 0; i < array.length; ++i) {
-            array[i] = (char)i;
+            array[i] = (char) i;
         }
     }
 }

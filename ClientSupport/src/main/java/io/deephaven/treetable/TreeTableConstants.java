@@ -1,6 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.treetable;
 
-import io.deephaven.db.tables.Table;
+import io.deephaven.engine.table.Table;
 
 public class TreeTableConstants {
     // This is the object used to identify the root table in fetch operations

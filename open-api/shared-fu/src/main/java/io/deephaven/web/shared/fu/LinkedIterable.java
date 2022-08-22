@@ -1,7 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.fu;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
 
 public class LinkedIterable<T> implements MappedIterable<T> {
@@ -48,7 +52,7 @@ public class LinkedIterable<T> implements MappedIterable<T> {
                 if (node == null) {
                     throw new IllegalStateException("Cannot remove() before next()");
                 }
-                remover.apply(prev, node);
+                remover.accept(prev, node);
             } else {
                 // unsupported
                 Iterator.super.remove();
@@ -59,11 +63,13 @@ public class LinkedIterable<T> implements MappedIterable<T> {
     private final T head;
     private final UnaryOperator<T> next;
     private final boolean skipHead;
-    private JsBiConsumer<T, T> remover;
+    private BiConsumer<T, T> remover;
 
     public LinkedIterable(T head, T tail, boolean includeTail, boolean strict, UnaryOperator<T> next) {
         this(head, new UnaryOperator<T>() {
-            boolean done = head == tail; // when head == tail, we will always return the head anyway, so just skip the next-ing.
+            boolean done = head == tail; // when head == tail, we will always return the head anyway, so just skip the
+                                         // next-ing.
+
             @Override
             public T apply(T cur) {
                 if (done) {
@@ -113,7 +119,7 @@ public class LinkedIterable<T> implements MappedIterable<T> {
         return itr;
     }
 
-    public LinkedIterable<T> setRemover(JsBiConsumer<T, T> remover) {
+    public LinkedIterable<T> setRemover(BiConsumer<T, T> remover) {
         this.remover = remover;
         return this;
     }

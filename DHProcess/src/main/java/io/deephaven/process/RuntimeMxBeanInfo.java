@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import io.deephaven.properties.PropertySet;
@@ -17,12 +20,12 @@ public abstract class RuntimeMxBeanInfo implements PropertySet {
 
     public static RuntimeMxBeanInfo of(RuntimeMXBean bean) {
         return ImmutableRuntimeMxBeanInfo.builder()
-            .systemProperties(_SystemProperties.of(bean))
-            .jvmArguments(_JvmArguments.of(bean))
-            .managementSpecVersion(bean.getManagementSpecVersion())
-            .isBootClassPathSupported(bean.isBootClassPathSupported())
-            .startTime(bean.getStartTime())
-            .build();
+                .systemProperties(_SystemProperties.of(bean))
+                .jvmArguments(_JvmArguments.of(bean))
+                .managementSpecVersion(bean.getManagementSpecVersion())
+                .isBootClassPathSupported(bean.isBootClassPathSupported())
+                .startTime(bean.getStartTime())
+                .build();
     }
 
     @Value.Parameter

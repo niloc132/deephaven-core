@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api;
 
 import elemental2.core.JsNumber;
@@ -18,9 +21,17 @@ public class Format {
         this.formatString = formatString;
     }
 
-    private static int getFg(long color) { return (int) color; }
-    private static int getBg(long color) { return (int) (color >>> 32); }
-    private static boolean isSet(int color) { return (color & 0x01000000) != 0; }
+    private static int getFg(long color) {
+        return (int) color;
+    }
+
+    private static int getBg(long color) {
+        return (int) (color >>> 32);
+    }
+
+    private static boolean isSet(int color) {
+        return (color & 0x01000000) != 0;
+    }
 
 
     @JsProperty
@@ -34,6 +45,7 @@ public class Format {
         }
         return color(color);
     }
+
     @JsProperty
     public String getBackgroundColor() {
         int color = getBg(cellColors);

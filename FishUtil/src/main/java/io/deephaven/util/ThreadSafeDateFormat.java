@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util;
 
 import io.deephaven.base.verify.Require;
@@ -16,18 +15,16 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
-//--------------------------------------------------------------------
+// --------------------------------------------------------------------
 /**
- * Wraps a {@link DateFormat} to provide a minimal level of thread
- * safety that DateFormat is lacking (namely, preventing simultaneous
- * calls to {@link #format} from separate threads from interfering
- * with each other).
+ * Wraps a {@link DateFormat} to provide a minimal level of thread safety that DateFormat is lacking (namely, preventing
+ * simultaneous calls to {@link #format} from separate threads from interfering with each other).
  */
 public class ThreadSafeDateFormat extends DateFormat {
     private final DateFormat m_dateFormat;
 
     public ThreadSafeDateFormat(DateFormat dateFormat) {
-        m_dateFormat=dateFormat;
+        m_dateFormat = dateFormat;
     }
 
     @Override
@@ -135,7 +132,7 @@ public class ThreadSafeDateFormat extends DateFormat {
         }
     }
 
-    //################################################################
+    // ################################################################
 
     @Override
     public boolean equals(Object obj) {

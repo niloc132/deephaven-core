@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.streams;
 
 import java.nio.ByteBuffer;
@@ -28,11 +27,10 @@ public class SimpleByteBufferSink implements CurrentByteBufferSink {
 
     @Override
     public ByteBuffer acceptBuffer(ByteBuffer b, int need) {
-        if ( b.remaining() < need ) {
+        if (b.remaining() < need) {
             b.flip();
-            ByteBuffer b2 = direct ?
-                    ByteBuffer.allocateDirect(Math.max(b.capacity() * 2, b.remaining() + need)) :
-                    ByteBuffer.allocate(Math.max(b.capacity() * 2, b.remaining() + need));
+            ByteBuffer b2 = direct ? ByteBuffer.allocateDirect(Math.max(b.capacity() * 2, b.remaining() + need))
+                    : ByteBuffer.allocate(Math.max(b.capacity() * 2, b.remaining() + need));
             b2.put(b);
             currentBuffer = b = b2;
         }

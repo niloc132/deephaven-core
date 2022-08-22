@@ -1,10 +1,13 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.impl;
 
-import io.deephaven.db.tables.ColumnDefinition;
-import io.deephaven.db.tables.Table;
-import io.deephaven.db.tables.TableDefinition;
-import io.deephaven.db.tables.utils.TableTools;
-import io.deephaven.db.v2.SparseSelect;
+import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.table.Table;
+import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.util.TableTools;
+import io.deephaven.engine.table.impl.SparseSelect;
 import io.deephaven.benchmarking.generator.ColumnGenerator;
 import org.jetbrains.annotations.NotNull;
 
@@ -15,21 +18,23 @@ public abstract class AbstractGeneratedTable extends AbstractBenchmarkTable {
     private final long nRows;
     private final TableDefinition definition;
 
-    public AbstractGeneratedTable(@NotNull String name, long nRows, long rngSeed, @NotNull List<ColumnGenerator> generators) {
+    public AbstractGeneratedTable(@NotNull String name, long nRows, long rngSeed,
+            @NotNull List<ColumnGenerator<?>> generators) {
         super(name, rngSeed, generators);
         this.nRows = nRows;
-        List<ColumnDefinition> definitions = getGeneratorMap()
-            .values()
-            .stream()
-            .map(ColumnGenerator::getDefinition)
-            .map(ColumnDefinition::withNormal)
-            .collect(Collectors.toList());
-        definition = new TableDefinition(definitions);
+        List<ColumnDefinition<?>> definitions = getGeneratorMap()
+                .values()
+                .stream()
+                .map(ColumnGenerator::getDefinition)
+                .map(ColumnDefinition::withNormal)
+                .collect(Collectors.toList());
+        definition = TableDefinition.of(definitions);
     }
 
     protected Table generateTable() {
-            return SparseSelect.sparseSelect(TableTools.emptyTable(nRows).updateView(
-                    getGeneratorMap().entrySet().stream().map(ent -> ent.getValue().getUpdateString(ent.getKey())).toArray(String[]::new)));
+        return SparseSelect.sparseSelect(TableTools.emptyTable(nRows).updateView(
+                getGeneratorMap().entrySet().stream().map(ent -> ent.getValue().getUpdateString(ent.getKey()))
+                        .toArray(String[]::new)));
     }
 
     @Override

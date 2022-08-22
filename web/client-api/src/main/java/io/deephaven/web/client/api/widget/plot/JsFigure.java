@@ -1,25 +1,27 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsArray;
 import elemental2.core.JsObject;
 import elemental2.dom.CustomEventInit;
-import elemental2.promise.IThenable;
 import elemental2.promise.Promise;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FetchFigureResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FigureDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.AxisDescriptor;
-import io.deephaven.web.client.api.Callback;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.TypedTicket;
 import io.deephaven.web.client.api.Callbacks;
 import io.deephaven.web.client.api.HasEventHandling;
+import io.deephaven.web.client.api.JsPartitionedTable;
 import io.deephaven.web.client.api.JsTable;
-import io.deephaven.web.client.api.TableMap;
 import io.deephaven.web.client.api.WorkerConnection;
+import io.deephaven.web.client.api.widget.JsWidget;
 import io.deephaven.web.client.fu.JsLog;
-import io.deephaven.web.client.fu.JsPromise;
 import io.deephaven.web.client.fu.LazyPromise;
 import io.deephaven.web.client.state.ClientTableState;
-import io.deephaven.web.shared.data.InitialTableDefinition;
-import io.deephaven.web.shared.data.TableHandle;
 import io.deephaven.web.shared.fu.JsBiConsumer;
 import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsOptional;
@@ -28,15 +30,17 @@ import jsinterop.annotations.JsType;
 import jsinterop.base.Js;
 import jsinterop.base.JsPropertyMap;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @JsType(name = "Figure", namespace = "dh.plot")
 public class JsFigure extends HasEventHandling {
-    private static native Throwable ofObject(Object obj) /*-{
-      return @java.lang.Throwable::of(*)(obj);
-    }-*/;
 
     @JsProperty(namespace = "dh.plot.Figure")
     public static final String EVENT_UPDATED = "updated",
@@ -50,11 +54,11 @@ public class JsFigure extends HasEventHandling {
             EVENT_DOWNSAMPLENEEDED = "downsampleneeded";
 
     public interface FigureFetch {
-        void fetch(JsBiConsumer<Object, FetchFigureResponse> callback);
+        void fetch(JsBiConsumer<Object, FetchObjectResponse> callback);
     }
 
     public interface FigureTableFetch {
-        Promise<FigureTableFetchData> fetch(JsFigure figure, FigureDescriptor descriptor);
+        Promise<FigureTableFetchData> fetch(JsFigure figure, FetchObjectResponse descriptor);
     }
 
     public interface FigureClose {
@@ -104,8 +108,8 @@ public class JsFigure extends HasEventHandling {
     private JsTable[] tables;
     private Map<Integer, JsTable> plotHandlesToTables;
 
-    private TableMap[] tableMaps;
-    private Map<Integer, TableMap> plotHandlesToTableMaps;
+    private JsPartitionedTable[] partitionedTables;
+    private Map<Integer, JsPartitionedTable> plotHandlesToPartitionedTables;
 
     private final Map<AxisDescriptor, DownsampledAxisDetails> downsampled = new HashMap<>();
 
@@ -127,31 +131,36 @@ public class JsFigure extends HasEventHandling {
     @JsIgnore
     public Promise<JsFigure> refetch() {
         plotHandlesToTables = new HashMap<>();
+        plotHandlesToPartitionedTables = new HashMap<>();
 
         return Callbacks.grpcUnaryPromise(fetch::fetch).then(response -> {
-            this.descriptor = response.getFigureDescriptor();
+            this.descriptor = FigureDescriptor.deserializeBinary(response.getData_asU8());
 
-            charts = descriptor.getChartsList().asList().stream().map(chartDescriptor -> new JsChart(chartDescriptor, this)).toArray(JsChart[]::new);
+            charts = descriptor.getChartsList().asList().stream()
+                    .map(chartDescriptor -> new JsChart(chartDescriptor, this)).toArray(JsChart[]::new);
             JsObject.freeze(charts);
 
-            return this.tableFetch.fetch(this, descriptor);
+            return this.tableFetch.fetch(this, response);
         }).then(tableFetchData -> {
             // all tables are wired up, need to map them to the series instances
             tables = tableFetchData.tables;
-            tableMaps = tableFetchData.tableMaps;
-            plotHandlesToTableMaps = tableFetchData.plotHandlesToTableMaps;
+            partitionedTables = tableFetchData.jsPartitionedTables;
             onClose = tableFetchData.onClose;
 
-            for (int i = 0; i < descriptor.getTablesList().length; i++) {
+            for (int i = 0; i < tables.length; i++) {
                 JsTable table = tables[i];
-                registerTableWithId(table, Js.cast(JsArray.of((double)i)));
+                registerTableWithId(table, Js.cast(JsArray.of((double) i)));
+            }
+            for (int i = 0; i < partitionedTables.length; i++) {
+                JsPartitionedTable partitionedTable = partitionedTables[i];
+                registerPartitionedTableWithId(partitionedTable, Js.cast(JsArray.of((double) i)));
             }
             Arrays.stream(charts)
                     .flatMap(c -> Arrays.stream(c.getSeries()))
-                    .forEach(s -> s.initSources(plotHandlesToTables, plotHandlesToTableMaps));
+                    .forEach(s -> s.initSources(plotHandlesToTables, plotHandlesToPartitionedTables));
             Arrays.stream(charts)
                     .flatMap(c -> Arrays.stream(c.getMultiSeries()))
-                    .forEach(s -> s.initSources(plotHandlesToTableMaps));
+                    .forEach(s -> s.initSources(plotHandlesToPartitionedTables));
 
             return null;
         }).then(ignore -> {
@@ -159,14 +168,16 @@ public class JsFigure extends HasEventHandling {
             fireEvent(EVENT_RECONNECT);
             return Promise.resolve(this);
         }, err -> {
-            final FigureFetchError fetchError = new FigureFetchError(ofObject(err), this.descriptor != null ? this.descriptor.getErrorsList() : new JsArray<>());
-            final CustomEventInit init = CustomEventInit.create();
+            final FigureFetchError fetchError = new FigureFetchError(LazyPromise.ofObject(err),
+                    this.descriptor != null ? this.descriptor.getErrorsList() : new JsArray<>());
+            // noinspection unchecked
+            final CustomEventInit<FigureFetchError> init = CustomEventInit.create();
             init.setDetail(fetchError);
             unsuppressEvents();
             fireEvent(EVENT_RECONNECTFAILED, init);
             suppressEvents();
 
-            //noinspection unchecked,rawtypes
+            // noinspection unchecked,rawtypes
             return (Promise<JsFigure>) (Promise) Promise.reject(fetchError);
         });
     }
@@ -191,7 +202,7 @@ public class JsFigure extends HasEventHandling {
 
     @JsProperty
     public double getUpdateInterval() {
-        return descriptor.getUpdateInterval();
+        return Long.parseLong(descriptor.getUpdateInterval());
     }
 
     @JsProperty
@@ -219,13 +230,13 @@ public class JsFigure extends HasEventHandling {
     }
 
     public void subscribe(@JsOptional DownsampleOptions forceDisableDownsample) {
-        //iterate all series, mark all as subscribed, will enqueue a check automatically
+        // iterate all series, mark all as subscribed, will enqueue a check automatically
         Arrays.stream(charts).flatMap(c -> Arrays.stream(c.getSeries()))
                 .forEach(s -> s.subscribe(forceDisableDownsample));
     }
 
     public void unsubscribe() {
-        //iterate all series, mark all as unsubscribed
+        // iterate all series, mark all as unsubscribed
         Arrays.stream(charts).flatMap(c -> Arrays.stream(c.getSeries()))
                 .forEach(JsSeries::markUnsubscribed);
 
@@ -256,16 +267,15 @@ public class JsFigure extends HasEventHandling {
         final Map<JsTable, Map<AxisRange, DownsampleParams>> downsampleMappings = Arrays.stream(charts)
                 .flatMap(c -> Arrays.stream(c.getSeries()))
                 .filter(JsSeries::isSubscribed)
-                .filter(series -> series.getOneClick() == null || (series.getOneClick().allRequiredValuesSet() && series.getOneClick().getTable() != null))
+                .filter(series -> series.getOneClick() == null
+                        || (series.getOneClick().allRequiredValuesSet() && series.getOneClick().getTable() != null))
                 .collect(
                         Collectors.groupingBy(
                                 this::tableForSeries,
                                 Collectors.groupingBy(
                                         this::groupByAxisRange,
-                                        Collectors.reducing(DownsampleParams.EMPTY, this::makeParamsForSeries, DownsampleParams::merge)
-                                )
-                        )
-                );
+                                        Collectors.reducing(DownsampleParams.EMPTY, this::makeParamsForSeries,
+                                                DownsampleParams::merge))));
 
         final Set<FigureSubscription> newSubscriptions = downsampleMappings.entrySet().stream().flatMap(outerEntry -> {
             JsTable table = outerEntry.getKey();
@@ -273,7 +283,8 @@ public class JsFigure extends HasEventHandling {
             return mapping.entrySet().stream().map(innerEntry -> {
                 AxisRange range = innerEntry.getKey();
                 DownsampleParams params = innerEntry.getValue();
-                return new FigureSubscription(this, table, range, range == null ? null : params, new HashSet<>(Arrays.asList(params.series)));
+                return new FigureSubscription(this, table, range, range == null ? null : params,
+                        new HashSet<>(Arrays.asList(params.series)));
             });
         }).collect(Collectors.toSet());
 
@@ -316,7 +327,7 @@ public class JsFigure extends HasEventHandling {
         }
 
         // otherwise grab the first table we can find
-        //TODO loop, assert all match
+        // TODO loop, assert all match
         return plotHandlesToTables.get(s.getDescriptor().getDataSourcesList().getAt(0).getTableId());
     }
 
@@ -335,13 +346,17 @@ public class JsFigure extends HasEventHandling {
 
         @Override
         public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
 
             final AxisRange axisRange = (AxisRange) o;
 
-            if (!xCol.equals(axisRange.xCol)) return false;
-            if (min != null ? !min.equals(axisRange.min) : axisRange.min != null) return false;
+            if (!xCol.equals(axisRange.xCol))
+                return false;
+            if (min != null ? !min.equals(axisRange.min) : axisRange.min != null)
+                return false;
             return max != null ? max.equals(axisRange.max) : axisRange.max == null;
         }
 
@@ -375,14 +390,15 @@ public class JsFigure extends HasEventHandling {
         }
         for (int i = 0; i < s.getSources().length; i++) {
             SeriesDataSource source = s.getSources()[i];
-            if (!source.getColumnType().equals("io.deephaven.db.tables.utils.DBDateTime")) {
+            if (!source.getColumnType().equals("io.deephaven.time.DateTime")) {
                 continue;
             }
             DownsampledAxisDetails downsampledAxisDetails = downsampled.get(source.getAxis().getDescriptor());
             if (downsampledAxisDetails == null) {
                 continue;
             }
-            return new AxisRange(source.getDescriptor().getColumnName(), downsampledAxisDetails.min, downsampledAxisDetails.max);
+            return new AxisRange(source.getDescriptor().getColumnName(), downsampledAxisDetails.min,
+                    downsampledAxisDetails.max);
         }
         return null;
     }
@@ -391,41 +407,51 @@ public class JsFigure extends HasEventHandling {
         if (series.getShapesVisible() == Boolean.TRUE) {
             return false;
         }
-        // this was formerly a switch/case, but since we're referencing JS we need to use expressions that look like non-constants to java
+        // this was formerly a switch/case, but since we're referencing JS we need to use expressions that look like
+        // non-constants to java
         int plotStyle = series.getPlotStyle();
-        if (plotStyle == FigureDescriptor.SeriesPlotStyle.getBAR() || plotStyle == FigureDescriptor.SeriesPlotStyle.getSTACKED_BAR() || plotStyle == FigureDescriptor.SeriesPlotStyle.getPIE()) {
+        if (plotStyle == FigureDescriptor.SeriesPlotStyle.getBAR()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getSTACKED_BAR()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getPIE()) {
             // category charts, can't remove categories
             return false;
         } else if (plotStyle == FigureDescriptor.SeriesPlotStyle.getSCATTER()) {
             // pointless without shapes visible, this ensures we aren't somehow trying to draw it
             return false;
-        } else if (plotStyle == FigureDescriptor.SeriesPlotStyle.getLINE() || plotStyle == FigureDescriptor.SeriesPlotStyle.getAREA() || plotStyle == FigureDescriptor.SeriesPlotStyle.getSTACKED_AREA() || plotStyle == FigureDescriptor.SeriesPlotStyle.getHISTOGRAM() || plotStyle == FigureDescriptor.SeriesPlotStyle.getOHLC() || plotStyle == FigureDescriptor.SeriesPlotStyle.getSTEP() || plotStyle == FigureDescriptor.SeriesPlotStyle.getERROR_BAR()) {
-            //allowed, fall through (listed so we can default to not downsample)
+        } else if (plotStyle == FigureDescriptor.SeriesPlotStyle.getLINE()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getAREA()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getSTACKED_AREA()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getHISTOGRAM()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getOHLC()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getSTEP()
+                || plotStyle == FigureDescriptor.SeriesPlotStyle.getERROR_BAR()) {
+            // allowed, fall through (listed so we can default to not downsample)
             return true;
         }
-        //unsupported
+        // unsupported
         return false;
     }
 
     private DownsampleParams makeParamsForSeries(JsSeries s) {
         String[] yCols = new String[0];
         int pixels = 0;
-        //... again, loop and find x axis, this time also y cols
+        // ... again, loop and find x axis, this time also y cols
         for (int i = 0; i < s.getSources().length; i++) {
             SeriesDataSource source = s.getSources()[i];
-            DownsampledAxisDetails downsampledAxisDetails = downsampled.get(source.getAxis().getDescriptor());
+            DownsampledAxisDetails downsampledAxisDetails =
+                    source.getAxis() != null ? downsampled.get(source.getAxis().getDescriptor()) : null;
             if (downsampledAxisDetails == null) {
                 yCols[yCols.length] = source.getDescriptor().getColumnName();
             } else {
                 pixels = downsampledAxisDetails.pixels;
             }
         }
-        return new DownsampleParams(new JsSeries[]{s}, yCols, pixels);
+        return new DownsampleParams(new JsSeries[] {s}, yCols, pixels);
     }
 
     // Then, aggregate the series instances and find the max pixel count, all the value columns to use
     public static class DownsampleParams {
-        static DownsampleParams EMPTY = new DownsampleParams(new JsSeries[0] , new String[0], 0);
+        static DownsampleParams EMPTY = new DownsampleParams(new JsSeries[0], new String[0], 0);
 
         private final JsSeries[] series;
         private final String[] yCols;
@@ -436,6 +462,7 @@ public class JsFigure extends HasEventHandling {
             this.yCols = yCols;
             this.pixelCount = pixelCount;
         }
+
         public DownsampleParams merge(DownsampleParams other) {
             return new DownsampleParams(
                     Stream.of(series, other.series)
@@ -446,9 +473,9 @@ public class JsFigure extends HasEventHandling {
                             .flatMap(Arrays::stream)
                             .distinct()
                             .toArray(String[]::new),
-                    Math.max(pixelCount, other.pixelCount)
-            );
+                    Math.max(pixelCount, other.pixelCount));
         }
+
         public JsSeries[] getSeries() {
             return series;
         }
@@ -476,28 +503,28 @@ public class JsFigure extends HasEventHandling {
     }
 
     /**
-     * Verifies that the underlying tables have the columns the series are expected.
-     * Throws an FigureSourceException if not found
+     * Verifies that the underlying tables have the columns the series are expected. Throws an FigureSourceException if
+     * not found
      */
     @JsIgnore
     public void verifyTables() {
         Arrays.stream(charts)
-            .flatMap(c -> Arrays.stream(c.getSeries()))
-            .forEach(s -> {
-                JsTable table = tableForSeries(s);
-                Arrays.stream(s.getSources())
-                    .forEach(source -> {
-                        try {
-                            table.findColumn(source.getDescriptor().getColumnName());
-                        } catch (NoSuchElementException e) {
-                            throw new FigureSourceException(table, source, e.toString());
-                        }
-                    });
-            });
+                .flatMap(c -> Arrays.stream(c.getSeries()))
+                .forEach(s -> {
+                    JsTable table = tableForSeries(s);
+                    Arrays.stream(s.getSources())
+                            .forEach(source -> {
+                                try {
+                                    table.findColumn(source.getDescriptor().getColumnName());
+                                } catch (NoSuchElementException e) {
+                                    throw new FigureSourceException(table, source, e.toString());
+                                }
+                            });
+                });
     }
 
     public void close() {
-        //explicit unsubscribe first, since those are handled separately from the table obj itself
+        // explicit unsubscribe first, since those are handled separately from the table obj itself
         unsubscribe();
 
         if (onClose != null) {
@@ -505,23 +532,31 @@ public class JsFigure extends HasEventHandling {
         }
 
         if (tables != null) {
-            Arrays.stream(tables).filter(jsTable -> !jsTable.isClosed()).forEach(JsTable::close);
+            Arrays.stream(tables).filter(t -> !t.isClosed()).forEach(JsTable::close);
         }
-        if (tableMaps != null) {
-            Arrays.stream(tableMaps).forEach(TableMap::close);
+        if (partitionedTables != null) {
+            Arrays.stream(partitionedTables).forEach(JsPartitionedTable::close);
         }
     }
 
     @JsIgnore
     public int registerTable(JsTable table) {
         int id = plotHandlesToTables.size();
-        registerTableWithId(table, Js.uncheckedCast(new double[] { id }));
+        registerTableWithId(table, Js.uncheckedCast(new double[] {id}));
         return id;
     }
 
     private void registerTableWithId(JsTable table, JsArray<Double> plotTableHandles) {
+        assert table != null;
         for (int j = 0; j < plotTableHandles.length; j++) {
             plotHandlesToTables.put((int) (double) plotTableHandles.getAt(j), table);
+        }
+    }
+
+    private void registerPartitionedTableWithId(JsPartitionedTable partitionedTable, JsArray<Double> plotTableHandles) {
+        assert partitionedTable != null;
+        for (int j = 0; j < plotTableHandles.length; j++) {
+            plotHandlesToPartitionedTables.put((int) (double) plotTableHandles.getAt(j), partitionedTable);
         }
     }
 
@@ -554,13 +589,17 @@ public class JsFigure extends HasEventHandling {
 
         @Override
         public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
 
             final DownsampledAxisDetails that = (DownsampledAxisDetails) o;
 
-            if (pixels != that.pixels) return false;
-            if (min != null ? !min.equals(that.min) : that.min != null) return false;
+            if (pixels != that.pixels)
+                return false;
+            if (min != null ? !min.equals(that.min) : that.min != null)
+                return false;
             return max != null ? max.equals(that.max) : that.max == null;
         }
 
@@ -576,27 +615,21 @@ public class JsFigure extends HasEventHandling {
     public static class FigureTableFetchData {
         private JsTable[] tables;
 
-        private TableMap[] tableMaps;
-        private Map<Integer, TableMap> plotHandlesToTableMaps;
+        private JsPartitionedTable[] jsPartitionedTables;
         private FigureClose onClose;
 
         public FigureTableFetchData(
                 JsTable[] tables,
-                TableMap[] tableMaps,
-                Map<Integer, TableMap> plotHandlesToTableMaps
-        ) {
-            this(tables, tableMaps, plotHandlesToTableMaps, null);
+                JsPartitionedTable[] jsPartitionedTables) {
+            this(tables, jsPartitionedTables, null);
         }
 
         public FigureTableFetchData(
                 JsTable[] tables,
-                TableMap[] tableMaps,
-                Map<Integer, TableMap> plotHandlesToTableMaps,
-                FigureClose onClose
-        ) {
+                JsPartitionedTable[] jsPartitionedTables,
+                FigureClose onClose) {
             this.tables = tables;
-            this.tableMaps = tableMaps;
-            this.plotHandlesToTableMaps = plotHandlesToTableMaps;
+            this.jsPartitionedTables = jsPartitionedTables;
 
             // Called when the figure is being closed
             this.onClose = onClose;
@@ -606,60 +639,66 @@ public class JsFigure extends HasEventHandling {
 
     private static class DefaultFigureTableFetch implements FigureTableFetch {
         private WorkerConnection connection;
+
         DefaultFigureTableFetch(WorkerConnection connection) {
             this.connection = connection;
         }
 
         @Override
-        public Promise fetch(JsFigure figure, FigureDescriptor descriptor) {
-            JsTable[] tables;
+        public Promise fetch(JsFigure figure, FetchObjectResponse response) {
+            JsTable[] tables = new JsTable[0];
+            JsPartitionedTable[] partitionedTables = new JsPartitionedTable[0];
 
-            // TODO (deephaven-core#62) implement fetch for tablemaps
-//            // iterate through the tablemaps we're supposed to have, fetch keys for them, and construct them
-            TableMap[] tableMaps = new TableMap[0];//new TableMap[descriptor.getTableMapIdsList().length];
-//            Promise<?>[] tableMapPromises = new Promise[descriptor.getTablemapsList().length];
-            Map<Integer, TableMap> plotHandlesToTableMaps = new HashMap<>();
-//            for (int i = 0; i < descriptor.getTablemapsList().length; i++) {
-//                final int index = i;
-//                tableMapPromises[i] = Callbacks
-//                        .<ColumnData, String>promise(null, c -> {
-////                            connection.getServer().getTableMapKeys(descriptor.getTableMaps()[index], c);
-//                            throw new UnsupportedOperationException("getTableMapKeys");
-//                        })
-//                        .then(keys -> {
-//                            TableMapDeclaration decl = new TableMapDeclaration();
-//                            decl.setKeys(keys);
-//                            decl.setHandle(descriptor.getTablemapsList().getAt(index));
-//                            TableMap tableMap = new TableMap(connection, c -> c.onSuccess(decl));
-//
-//                            // never attempt a reconnect, we'll get a new tablemap with the figure when it reconnects
-//                            tableMap.addEventListener(TableMap.EVENT_DISCONNECT, ignore -> tableMap.close());
-//
-//                            JsArray<Double> plotIds = descriptor.getTablemapidsList().getAt(index).getIdsList();
-//                            for (int j = 0; j < plotIds.length; j++) {
-//                                plotHandlesToTableMaps.put((int) (double) plotIds.getAt(j), tableMap);
-//                            }
-//                            tableMaps[index] = tableMap;
-//                            return tableMap.refetch();
-//                        });
-//            }
+            Promise<?>[] promises = new Promise[response.getTypedExportIdList().length];
 
-            // iterate through the table handles we're supposed to have and prep TableHandles for them
-            tables = new JsTable[descriptor.getTablesList().length];
+            int nextTableIndex = 0;
+            int nextPartitionedTableIndex = 0;
+            for (int i = 0; i < response.getTypedExportIdList().length; i++) {
+                TypedTicket ticket = response.getTypedExportIdList().getAt(i);
+                if (ticket.getType().equals("Table")) {
+                    // Note that creating a CTS like this means we can't actually refetch it, but that's okay, we can't
+                    // reconnect in this way without refetching the entire figure anyway.
+                    int tableIndex = nextTableIndex++;
+                    promises[i] = Callbacks.<ExportedTableCreationResponse, Object>grpcUnaryPromise(c -> {
+                        connection.tableServiceClient().getExportedTableCreationResponse(ticket.getTicket(),
+                                connection.metadata(),
+                                c::apply);
+                    }).then(etcr -> {
+                        ClientTableState cts = connection.newStateFromUnsolicitedTable(etcr, "table for figure");
+                        JsTable table = new JsTable(connection, cts);
+                        // never attempt a reconnect, since we might have a different figure schema entirely
+                        table.addEventListener(JsTable.EVENT_DISCONNECT, ignore -> table.close());
+                        tables[tableIndex] = table;
+                        return Promise.resolve(table);
+                    });
+                } else if (ticket.getType().equals("PartitionedTable")) {
 
-            for (int i = 0; i < descriptor.getTablesList().length; i++) {
-                ClientTableState clientTableState = connection.newStateFromUnsolicitedTable(descriptor.getTablesList().getAt(i), "table " + i + " for plot");
-                JsTable table = new JsTable(connection, clientTableState);
-                // never attempt a reconnect, since we might have a different figure schema entirely
-                table.addEventListener(JsTable.EVENT_DISCONNECT, ignore -> table.close());
-                tables[i] = table;
+                    int partitionedTableIndex = nextPartitionedTableIndex++;
+                    promises[i] = Callbacks.<FetchObjectResponse, Object>grpcUnaryPromise(c -> {
+                        FetchObjectRequest partitionedTableRequest = new FetchObjectRequest();
+                        partitionedTableRequest.setSourceId(ticket);
+                        connection.objectServiceClient().fetchObject(partitionedTableRequest, connection.metadata(),
+                                c::apply);
+                    }).then(object -> {
+                        JsPartitionedTable partitionedTable =
+                                new JsPartitionedTable(connection, new JsWidget(connection,
+                                        callback -> callback.handleResponse(null, object, ticket.getTicket())));
+                        partitionedTables[partitionedTableIndex] = partitionedTable;
+                        return partitionedTable.refetch();
+                    });
+                } else {
+                    throw new IllegalStateException("Ticket type not recognized in a Figure: " + ticket.getType());
+                }
             }
 
-            connection.registerFigure(figure);
+            return Promise.all(promises)
+                    .then(ignore -> {
+                        connection.registerFigure(figure);
 
-            return Promise.resolve(
-                    new FigureTableFetchData(tables, tableMaps, plotHandlesToTableMaps, f -> this.connection.releaseFigure(f))
-            );
+                        return Promise.resolve(
+                                new FigureTableFetchData(tables, partitionedTables,
+                                        f -> this.connection.releaseFigure(f)));
+                    });
         }
     }
 }

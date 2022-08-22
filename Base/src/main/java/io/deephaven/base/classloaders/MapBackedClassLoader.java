@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.classloaders;
 
 import org.jetbrains.annotations.NotNull;
@@ -40,7 +39,7 @@ public class MapBackedClassLoader extends ClassLoader {
     protected synchronized Class<?> findClass(final String name) throws ClassNotFoundException {
         final byte[] clazzData = classData.get(name);
         if (clazzData != null) {
-            return defineClass(name, clazzData, 0 , clazzData.length);
+            return defineClass(name, clazzData, 0, clazzData.length);
         }
         throw new ClassNotFoundException();
     }

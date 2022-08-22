@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.grpcweb.grpc;
 
 import jsinterop.annotations.JsPackage;
@@ -5,21 +8,21 @@ import jsinterop.annotations.JsType;
 
 @JsType(isNative = true, name = "dhinternal.grpcWeb.grpc.Code", namespace = JsPackage.GLOBAL)
 public class Code {
-  public static int Aborted,
-  AlreadyExists,
-  Canceled,
-  DataLoss,
-  DeadlineExceeded,
-  FailedPrecondition,
-  Internal,
-  InvalidArgument,
-  NotFound,
-  OK,
-  OutOfRange,
-  PermissionDenied,
-  ResourceExhausted,
-  Unauthenticated,
-  Unavailable,
-  Unimplemented,
-  Unknown;
+    public static int Aborted,
+            AlreadyExists,
+            Canceled,
+            DataLoss,
+            DeadlineExceeded,
+            FailedPrecondition,
+            Internal,
+            InvalidArgument,
+            NotFound,
+            OK,
+            OutOfRange,
+            PermissionDenied,
+            ResourceExhausted,
+            Unauthenticated,
+            Unavailable,
+            Unimplemented,
+            Unknown;
 }

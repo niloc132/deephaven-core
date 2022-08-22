@@ -1,6 +1,6 @@
 plugins {
   id 'java-library'
-  id 'com.diffplug.spotless'
+  id 'io.deephaven.project.register'
 }
 
 configurations {
@@ -9,11 +9,5 @@ configurations {
 
 dependencies {
   // consumer still needs to provide dependency
-  compileOnly 'ch.qos.logback:logback-core:1.2.3'
-}
-
-spotless {
-  java {
-    eclipse().configFile("${rootDir}/style/eclipse-java-google-style.xml")
-  }
+  Classpaths.inheritLogbackClassic(project, 'compileOnly')
 }

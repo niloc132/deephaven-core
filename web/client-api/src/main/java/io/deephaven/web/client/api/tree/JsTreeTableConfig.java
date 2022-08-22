@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.tree;
 
 import jsinterop.annotations.JsIgnore;
@@ -6,8 +9,7 @@ import jsinterop.base.Js;
 import jsinterop.base.JsPropertyMap;
 
 /**
- * Configuration object for running Table.treeTable to produce a hierarchical view of a given "flat"
- * table.
+ * Configuration object for running Table.treeTable to produce a hierarchical view of a given "flat" table.
  */
 @JsType(name = "TreeTableConfig", namespace = "dh")
 public class JsTreeTableConfig {
@@ -15,20 +17,19 @@ public class JsTreeTableConfig {
     public String parentColumn = null;
     public boolean promoteOrphansToRoot = false;
 
-    public JsTreeTableConfig() {
-    }
+    public JsTreeTableConfig() {}
 
     @JsIgnore
     public JsTreeTableConfig(JsPropertyMap<Object> source) {
         this();
         if (source.has("idColumn")) {
-            idColumn = source.getAny("idColumn").asString();
+            idColumn = source.getAsAny("idColumn").asString();
         }
         if (source.has("parentColumn")) {
-            parentColumn = source.getAny("parentColumn").asString();
+            parentColumn = source.getAsAny("parentColumn").asString();
         }
         if (source.has("promoteOrphansToRoot")) {
-            promoteOrphansToRoot = Js.isTruthy(source.getAny("promoteOrphansToRoot"));
+            promoteOrphansToRoot = Js.isTruthy(source.getAsAny("promoteOrphansToRoot"));
         }
     }
 }

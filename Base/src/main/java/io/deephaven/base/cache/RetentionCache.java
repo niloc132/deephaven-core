@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.cache;
 
 
@@ -12,13 +11,14 @@ import gnu.trove.strategy.IdentityHashingStrategy;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Utility for holding strong references to otherwise unreachable classes (e.g. listeners that will be weakly held
- * by the object they subscribe to).
+ * Utility for holding strong references to otherwise unreachable classes (e.g. listeners that will be weakly held by
+ * the object they subscribe to).
  */
 public class RetentionCache<TYPE> {
 
     private final TObjectIntMap<TYPE> retainedObjectToReferenceCount =
-            new TObjectIntCustomHashMap<>(IdentityHashingStrategy.INSTANCE, Constants.DEFAULT_CAPACITY, Constants.DEFAULT_LOAD_FACTOR, 0);
+            new TObjectIntCustomHashMap<>(IdentityHashingStrategy.INSTANCE, Constants.DEFAULT_CAPACITY,
+                    Constants.DEFAULT_LOAD_FACTOR, 0);
 
     /**
      * Ask this RetentionCache to hold on to a reference in order to ensure that {@code referent} remains

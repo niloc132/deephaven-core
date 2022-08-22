@@ -1,0 +1,12 @@
+# test-oriented local docker compose file to run redpanda and apicurio for testing
+
+version: "3.4"
+
+services:
+  redpanda:
+    extends:
+      file: ../redpanda-standalone/docker-compose.yml
+      service: redpanda
+    expose:
+      - 29092
+      - 8081

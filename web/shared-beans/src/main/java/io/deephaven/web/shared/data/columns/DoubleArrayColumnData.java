@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data.columns;
 
 import java.util.Arrays;
@@ -5,8 +8,7 @@ import java.util.Arrays;
 public class DoubleArrayColumnData extends ColumnData {
     private double[] data;
 
-    public DoubleArrayColumnData() {
-    }
+    public DoubleArrayColumnData() {}
 
     public DoubleArrayColumnData(double[] data) {
         this.data = data;
@@ -22,8 +24,10 @@ public class DoubleArrayColumnData extends ColumnData {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
 
         DoubleArrayColumnData that = (DoubleArrayColumnData) o;
 

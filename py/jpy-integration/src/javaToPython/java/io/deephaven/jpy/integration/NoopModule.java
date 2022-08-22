@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy.integration;
 
 import org.jpy.CreateModule;
@@ -18,14 +21,23 @@ interface NoopModule extends AutoCloseable {
     }
 
     void noop(int object);
+
     void noop(Integer object);
+
     void noop(String object);
+
     void noop(SomeJavaClass object);
+
     void noop(int[] object);
+
     void noop(Integer[] object);
+
     void noop(String[] object);
+
     void noop(SomeJavaClass[] object);
+
     void noop(Object genericObject);
+
     void noop(PyObject pyObject);
 
     @Override
@@ -34,9 +46,9 @@ interface NoopModule extends AutoCloseable {
     static String readResource(String name) {
         try {
             return new String(
-                Files.readAllBytes(Paths.get(
-                    NoopModule.class.getResource(name).toURI())),
-                StandardCharsets.UTF_8);
+                    Files.readAllBytes(Paths.get(
+                            NoopModule.class.getResource(name).toURI())),
+                    StandardCharsets.UTF_8);
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }

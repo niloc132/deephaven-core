@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking;
 
 import io.deephaven.util.annotations.ScriptApi;
@@ -11,13 +14,14 @@ public interface BenchmarkTableBuilder {
 
     /**
      * Set the RNG seed to be used to populate the table.
+     *
      * @param seed The seed.
      */
     @ScriptApi
     BenchmarkTableBuilder setSeed(long seed);
 
     @ScriptApi
-    BenchmarkTableBuilder addColumn(ColumnGenerator generator);
+    BenchmarkTableBuilder addColumn(ColumnGenerator<?> generator);
 
     /**
      * Create the table based on the current builder.

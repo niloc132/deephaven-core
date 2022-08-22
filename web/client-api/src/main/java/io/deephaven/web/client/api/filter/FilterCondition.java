@@ -1,11 +1,16 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.filter;
 
 import elemental2.core.JsArray;
+import elemental2.core.Uint8Array;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.*;
 import io.deephaven.web.client.api.Column;
 import jsinterop.annotations.*;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 @JsType(namespace = "dh")
@@ -31,7 +36,8 @@ public class FilterCondition {
         SearchCondition search = new SearchCondition();
         search.setSearchString(value.descriptor.getLiteral().getStringValue());
         if (columns != null) {
-            search.setOptionalReferencesList(Arrays.stream(columns).map(v -> v.descriptor.getReference()).toArray(Reference[]::new));
+            search.setOptionalReferencesList(
+                    Arrays.stream(columns).map(v -> v.descriptor.getReference()).toArray(Reference[]::new));
         }
 
         Condition c = new Condition();
@@ -57,14 +63,15 @@ public class FilterCondition {
 
     @JsIgnore
     protected static FilterCondition createAndValidate(Condition descriptor) {
-        //TODO (deephaven-core#723) re-introduce client-side validation so that a client knows right away when
-        //                          they build something invalid
+        // TODO (deephaven-core#723) re-introduce client-side validation so that a client knows right away when
+        // they build something invalid
         return new FilterCondition(descriptor);
     }
 
     public FilterCondition and(FilterCondition... filters) {
         AndCondition and = new AndCondition();
-        and.setFiltersList(Stream.concat(Stream.of(descriptor), Arrays.stream(filters).map(v -> v.descriptor)).toArray(Condition[]::new));
+        and.setFiltersList(Stream.concat(Stream.of(descriptor), Arrays.stream(filters).map(v -> v.descriptor))
+                .toArray(Condition[]::new));
 
         Condition c = new Condition();
         c.setAnd(and);
@@ -75,7 +82,8 @@ public class FilterCondition {
 
     public FilterCondition or(FilterCondition... filters) {
         OrCondition or = new OrCondition();
-        or.setFiltersList(Stream.concat(Stream.of(descriptor), Arrays.stream(filters).map(v -> v.descriptor)).toArray(Condition[]::new));
+        or.setFiltersList(Stream.concat(Stream.of(descriptor), Arrays.stream(filters).map(v -> v.descriptor))
+                .toArray(Condition[]::new));
 
         Condition c = new Condition();
         c.setOr(or);
@@ -110,7 +118,20 @@ public class FilterCondition {
 
         final FilterCondition that = (FilterCondition) o;
 
-        return descriptor.equals(that.descriptor);
+        // TODO (deephaven-core#723): implement a reasonable equality method; comparing pb serialization is expensive
+        final Uint8Array mBinary = descriptor.serializeBinary();
+        final Uint8Array oBinary = that.descriptor.serializeBinary();
+        if (mBinary.length != oBinary.length) {
+            return false;
+        }
+
+        for (int i = 0; i < mBinary.length; ++i) {
+            if (!Objects.equals(mBinary.getAt(i), oBinary.getAt(i))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override

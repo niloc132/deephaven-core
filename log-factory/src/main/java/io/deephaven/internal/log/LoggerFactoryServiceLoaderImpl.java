@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.internal.log;
 
 import java.util.Iterator;
@@ -11,7 +14,7 @@ enum LoggerFactoryServiceLoaderImpl {
 
     LoggerFactoryServiceLoaderImpl() {
         Bootstrap.log(getClass(),
-            String.format("searching for '%s'...", LoggerFactory.class.getName()));
+                String.format("searching for '%s'...", LoggerFactory.class.getName()));
         final Iterator<LoggerFactory> it = ServiceLoader.load(LoggerFactory.class).iterator();
         if (!it.hasNext()) {
             throw new IllegalStateException("No LoggerFactory found via ServiceLoader");
@@ -22,7 +25,7 @@ enum LoggerFactoryServiceLoaderImpl {
             while (it.hasNext()) {
                 factory = it.next();
                 Bootstrap.log(getClass(),
-                    String.format("found '%s'", factory.getClass().getName()));
+                        String.format("found '%s'", factory.getClass().getName()));
             }
             throw new IllegalStateException("Multiple LoggerFactories found via ServiceLoader");
         }

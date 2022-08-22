@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.modelfarm;
 
 import io.deephaven.base.verify.Require;
@@ -51,10 +50,10 @@ public class ModelMultiExec<T> implements Model<T> {
 
     @Override
     public void exec(final T data) {
-        synchronized (models.getLock(data)){
+        synchronized (models.getLock(data)) {
             final Iterator<Model<T>> it = models.iterator(data);
 
-            while(it.hasNext()){
+            while (it.hasNext()) {
                 Model<T> m = it.next();
                 m.exec(data);
             }

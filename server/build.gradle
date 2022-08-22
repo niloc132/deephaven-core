@@ -1,0 +1,93 @@
+plugins {
+    id 'java-library'
+    id 'io.deephaven.project.register'
+}
+
+dependencies {
+    implementation project(':engine-table')
+    implementation project(':extensions-csv')
+    implementation project(':extensions-parquet-table')
+    implementation project(':extensions-jdbc')
+    implementation project(':Util');
+    implementation project(':Integrations')
+    implementation project(':FishUtil')
+    implementation depCommonsLang3
+    Classpaths.inheritCommonsText(project, 'implementation')
+
+    Classpaths.inheritJavaParser(project, 'implementation')
+    implementation project(':open-api-lang-parser')
+
+    api(project(':java-client-barrage-dagger')) {
+        because 'downstream dagger compile, see deephaven-core#1722'
+    }
+    implementation 'org.hdrhistogram:HdrHistogram:2.1.12'
+
+    implementation project(':proto:proto-backplane-grpc-flight')
+    implementation project(':open-api-lang-tools')
+    api(project(':log-factory')) {
+        because 'downstream dagger compile, see deephaven-core#1722'
+    }
+    Classpaths.inheritSlf4j(project, 'jul-to-slf4j', 'implementation')
+    api(project(':application-mode')) {
+        because 'downstream dagger compile, see deephaven-core#1722'
+    }
+    implementation 'com.github.f4b6a3:uuid-creator:3.6.0'
+
+    api(project(':Configuration')) {
+        because 'jetty/netty implementations will access the configuration in their main()s'
+    }
+
+    api project(':ssl-config')
+
+    Classpaths.inheritFlatbuffer(project, 'implementation')
+
+    Classpaths.inheritDagger(project)
+    Classpaths.inheritDagger(project, /* test */ true)
+
+    Classpaths.inheritAutoService(project)
+    Classpaths.inheritAutoService(project, /* test */ true)
+
+    Classpaths.inheritImmutables(project)
+
+    implementation project(':Plot')
+
+    implementation project(':ClientSupport')
+
+    if ('true' == project.findProperty('extensions.classgraph.enabled')) {
+        runtimeOnly project(':extensions-classgraph')
+    }
+    if ('true' == project.findProperty('extensions.suanshu.enabled')) {
+        runtimeOnly project(':extensions-suanshu')
+    }
+
+    api(project(':plugin')) {
+        because 'downstream dagger compile, see deephaven-core#1722'
+    }
+    api(project(':plugin-dagger')) {
+        because 'downstream dagger compile, see deephaven-core#1722'
+    }
+
+    runtimeOnly project(':plugin-figure')
+    runtimeOnly project(':plugin-partitionedtable')
+
+    Classpaths.inheritGrpcPlatform(project, 'api')
+
+    api('io.grpc:grpc-services') {
+        because 'downstream dagger compile, see deephaven-core#1722'
+    }
+
+    testImplementation 'io.grpc:grpc-testing'
+
+    testImplementation project(':proto:proto-backplane-grpc')
+
+    testImplementation TestTools.projectDependency(project, 'engine-table'),
+            TestTools.projectDependency(project, 'Util')
+
+    runtimeOnly project(':Numerics'), project(':extensions-kafka')
+    Classpaths.inheritAssertJ(project)
+
+    testRuntimeOnly project(':log-to-slf4j')
+    Classpaths.inheritSlf4j(project, 'slf4j-simple', 'testRuntimeOnly')
+}
+
+TestTools.addEngineOutOfBandTest(project)

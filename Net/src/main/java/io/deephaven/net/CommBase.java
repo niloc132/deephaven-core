@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.net;
 
 import io.deephaven.base.FatalErrorHandler;
@@ -23,18 +22,23 @@ public class CommBase {
         if (defaultFatalErrorHandler == null) {
             synchronized (CommBase.class) {
                 if (defaultFatalErrorHandler == null) {
-                    final String defaultFatalErrorHandlerClassName = Configuration.getInstance().getProperty("Comm.fatalErrorHandlerFactoryClass");
+                    final String defaultFatalErrorHandlerClassName =
+                            Configuration.getInstance().getProperty("Comm.fatalErrorHandlerFactoryClass");
                     final Class defaultFatalErrorHandlerClass;
                     try {
                         defaultFatalErrorHandlerClass = Class.forName(defaultFatalErrorHandlerClassName);
                     } catch (ClassNotFoundException e) {
-                        throw new IllegalArgumentException("Could not find envelopeHandlerFactoryClass " + defaultFatalErrorHandlerClassName, e);
+                        throw new IllegalArgumentException(
+                                "Could not find envelopeHandlerFactoryClass " + defaultFatalErrorHandlerClassName, e);
                     }
                     final FatalErrorHandlerFactory defaultFatalErrorHandlerFactory;
                     try {
-                        defaultFatalErrorHandlerFactory = (FatalErrorHandlerFactory)defaultFatalErrorHandlerClass.newInstance();
+                        defaultFatalErrorHandlerFactory =
+                                (FatalErrorHandlerFactory) defaultFatalErrorHandlerClass.newInstance();
                     } catch (InstantiationException | IllegalAccessException | ClassCastException e) {
-                        throw new IllegalArgumentException("Could not instantiate envelopeHandlerFactoryClass " + defaultFatalErrorHandlerClass, e);
+                        throw new IllegalArgumentException(
+                                "Could not instantiate envelopeHandlerFactoryClass " + defaultFatalErrorHandlerClass,
+                                e);
                     }
                     defaultFatalErrorHandler = defaultFatalErrorHandlerFactory.get();
                 }
@@ -48,7 +52,8 @@ public class CommBase {
             FatalErrorHandler feh = getDefaultFatalHandler();
             feh.signalFatalError(message, x);
         } catch (Throwable fehx) {
-            // dump this to stderr, it's not great, but we had an error raising an error and really do want both of these in the log
+            // dump this to stderr, it's not great, but we had an error raising an error and really do want both of
+            // these in the log
             fehx.printStackTrace(System.err);
             x.printStackTrace(System.err);
             throw new RuntimeException("Could not raise fatal error: " + message, x);
@@ -74,15 +79,14 @@ public class CommBase {
             super(name, NioUtil.reduceSelectorGarbage(Selector.open()), log);
             this.driver = new Thread(() -> {
                 try {
-                    while ( !SingleThreadedScheduler.this.done ) {
+                    while (!SingleThreadedScheduler.this.done) {
                         work(10, null);
                     }
-                }
-                catch ( Throwable x ) {
-                    signalFatalError(name+" exception", x);
+                } catch (Throwable x) {
+                    signalFatalError(name + " exception", x);
                 }
             });
-            driver.setName(name+"-Driver");
+            driver.setName(name + "-Driver");
             driver.setDaemon(true);
         }
 
@@ -99,9 +103,8 @@ public class CommBase {
     public static SingleThreadedScheduler singleThreadedScheduler(final String name, Logger log) {
         try {
             return new SingleThreadedScheduler(name, log);
-        }
-        catch ( IOException x ) {
-            signalFatalError(name+" exception", x);
+        } catch (IOException x) {
+            signalFatalError(name + " exception", x);
             return null;
         }
     }

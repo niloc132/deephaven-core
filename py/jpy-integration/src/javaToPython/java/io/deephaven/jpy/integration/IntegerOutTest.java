@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy.integration;
 
 import io.deephaven.jpy.JpyModule;
@@ -16,8 +19,11 @@ public class IntegerOutTest extends PythonTest {
 
     interface IntegerOut extends IdentityOut {
         Integer identity(int object);
+
         Integer identity(Integer object);
+
         Integer identity(PyObject object);
+
         Integer identity(Object object);
     }
 
@@ -28,14 +34,14 @@ public class IntegerOutTest extends PythonTest {
     @Before
     public void setUp() {
         out = IdentityOut.create(getCreateModule(), IntegerOut.class);
-        ref = ReferenceCounting.create();
+        ref = ReferenceCounting.create(getCreateModule());
         jpy = JpyModule.create();
-        //jpy.setFlags(EnumSet.of(Flag.ALL));
+        // jpy.setFlags(EnumSet.of(Flag.ALL));
     }
 
     @After
     public void tearDown() {
-        //jpy.setFlags(EnumSet.of(Flag.OFF));
+        // jpy.setFlags(EnumSet.of(Flag.OFF));
         jpy.close();
         ref.close();
         out.close();
@@ -51,7 +57,7 @@ public class IntegerOutTest extends PythonTest {
     @Test
     public void explicitIntegerToInteger() {
         Assert.assertEquals(Integer.valueOf(UNIQ_INT), out
-            .identity(Integer.valueOf(UNIQ_INT)));
+                .identity(Integer.valueOf(UNIQ_INT)));
     }
 
     @Test
@@ -72,7 +78,7 @@ public class IntegerOutTest extends PythonTest {
     public void implicitPyObjectToInteger() {
         try (final PyObject in = expr(UNIQ_INT)) {
             check(1, in);
-            Assert.assertEquals(Integer.valueOf(UNIQ_INT), out.identity((Object)in));
+            Assert.assertEquals(Integer.valueOf(UNIQ_INT), out.identity((Object) in));
             check(1, in);
         }
     }

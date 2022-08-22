@@ -1,7 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api;
 
 import io.deephaven.api.expression.Expression;
+import io.deephaven.api.util.NameValidator;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -15,7 +20,7 @@ import java.util.stream.Collectors;
  * @see TableOperations#updateView(Collection)
  * @see TableOperations#select(Collection)
  */
-public interface Selectable {
+public interface Selectable extends Serializable {
 
     static Selectable of(ColumnName newColumn, Expression expression) {
         if (newColumn.equals(expression)) {
@@ -25,20 +30,20 @@ public interface Selectable {
     }
 
     static Selectable parse(String x) {
-        if (ColumnName.isValidParsedColumnName(x)) {
+        final int ix = x.indexOf('=');
+        if (ix < 0) {
             return ColumnName.parse(x);
         }
-        final int ix = x.indexOf('=');
-        if (ix < 0 || ix + 1 == x.length()) {
+        if (ix + 1 == x.length()) {
             throw new IllegalArgumentException(String.format(
-                "Unable to parse formula '%s', expected form '<newColumn>=<expression>'", x));
+                    "Unable to parse formula '%s', expected form '<newColumn>=<expression>'", x));
         }
         if (x.charAt(ix + 1) == '=') {
             throw new IllegalArgumentException(String.format(
-                "Unable to parse formula '%s', expected form '<newColumn>=<expression>'", x));
+                    "Unable to parse formula '%s', expected form '<newColumn>=<expression>'", x));
         }
         return SelectableImpl.of(ColumnName.parse(x.substring(0, ix)),
-            RawString.of(x.substring(ix + 1)));
+                RawString.of(x.substring(ix + 1)));
     }
 
     static List<Selectable> from(String... values) {

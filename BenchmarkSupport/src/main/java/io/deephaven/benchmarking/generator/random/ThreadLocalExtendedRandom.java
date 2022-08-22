@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.generator.random;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -12,7 +15,7 @@ public class ThreadLocalExtendedRandom extends ExtendedRandom {
         return INSTANCE;
     }
 
-    private ThreadLocalExtendedRandom() { }
+    private ThreadLocalExtendedRandom() {}
 
     @Override
     public double nextDouble() {

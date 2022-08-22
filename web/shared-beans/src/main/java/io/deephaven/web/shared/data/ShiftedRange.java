@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data;
 
 import java.io.Serializable;
@@ -6,8 +9,7 @@ public class ShiftedRange implements Serializable {
     private Range range;
     private long delta;
 
-    public ShiftedRange() {
-    }
+    public ShiftedRange() {}
 
     public ShiftedRange(Range range, long delta) {
         setRange(range);

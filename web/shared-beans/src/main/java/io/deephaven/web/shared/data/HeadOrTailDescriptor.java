@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data;
 
 import java.io.Serializable;
@@ -12,8 +15,7 @@ public class HeadOrTailDescriptor implements Serializable {
         this.rows = rows;
     }
 
-    public HeadOrTailDescriptor() {
-    }
+    public HeadOrTailDescriptor() {}
 
     public boolean isHead() {
         return head;

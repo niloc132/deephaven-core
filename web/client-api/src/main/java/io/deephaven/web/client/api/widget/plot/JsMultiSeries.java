@@ -1,9 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.dom.CustomEvent;
 import elemental2.dom.CustomEventInit;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.*;
-import io.deephaven.web.client.api.TableMap;
+import io.deephaven.web.client.api.JsPartitionedTable;
 import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsProperty;
 
@@ -25,26 +28,27 @@ public class JsMultiSeries {
     }
 
     @JsIgnore
-    public void initSources(Map<Integer, TableMap> plotHandlesToTableMaps) {
-        descriptor.getDataSourcesList().asList().stream().mapToInt(MultiSeriesSourceDescriptor::getTableMapId).distinct()
-                //TODO assert only one at this stage
+    public void initSources(Map<Integer, JsPartitionedTable> plotHandlesToPartitionedTables) {
+        descriptor.getDataSourcesList().asList().stream().mapToInt(MultiSeriesSourceDescriptor::getPartitionedTableId)
+                .distinct()
+                // TODO assert only one at this stage
                 .forEach(plotHandle -> {
-            TableMap tableMap = plotHandlesToTableMaps.get(plotHandle);
-            tableMap.getKeys().forEach((p0, p1, p2) -> {
-                requestTable(tableMap, p0);
-                return null;
-            });
-            tableMap.addEventListener(TableMap.EVENT_KEYADDED, event -> {
-                requestTable(tableMap, ((CustomEvent)event).detail);
-            });
+                    JsPartitionedTable partitionedTable = plotHandlesToPartitionedTables.get(plotHandle);
+                    partitionedTable.getKeys().forEach((p0, p1, p2) -> {
+                        requestTable(partitionedTable, p0);
+                        return null;
+                    });
+                    partitionedTable.addEventListener(JsPartitionedTable.EVENT_KEYADDED, event -> {
+                        requestTable(partitionedTable, ((CustomEvent) event).detail);
+                    });
 
-        });
+                });
     }
 
-    private void requestTable(TableMap tableMap, Object key) {
-        //TODO ask the server in parallel for the series name
+    private void requestTable(JsPartitionedTable partitionedTable, Object key) {
+        // TODO ask the server in parallel for the series name
         String seriesName = descriptor.getName() + ": " + key;
-        tableMap.getTable(key).then(table -> {
+        partitionedTable.getTable(key).then(table -> {
             SeriesDescriptor seriesInstance = new SeriesDescriptor();
 
             seriesInstance.setName(seriesName);
@@ -105,6 +109,7 @@ public class JsMultiSeries {
         }
         return map.getValuesList().getAt(index);
     }
+
     private String getOrDefault(String name, StringMapWithDefault map) {
         int index = map.getKeysList().findIndex((p0, p1, p2) -> name.equals(p0));
         if (index == -1) {
@@ -112,6 +117,7 @@ public class JsMultiSeries {
         }
         return map.getValuesList().getAt(index);
     }
+
     private double getOrDefault(String name, DoubleMapWithDefault map) {
         int index = map.getKeysList().findIndex((p0, p1, p2) -> name.equals(p0));
         if (index == -1) {

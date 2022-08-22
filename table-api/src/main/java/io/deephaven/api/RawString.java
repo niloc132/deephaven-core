@@ -1,5 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api;
 
+import io.deephaven.annotations.SimpleStyle;
 import io.deephaven.api.expression.Expression;
 import io.deephaven.api.filter.Filter;
 import io.deephaven.api.filter.FilterNot;
@@ -9,8 +13,8 @@ import org.immutables.value.Value.Parameter;
 import java.io.Serializable;
 
 /**
- * An un-parsed string; used for cases where the server has string-parsing that hasn't been
- * structurally represented at the api layer yet.
+ * An un-parsed string; used for cases where the server has string-parsing that hasn't been structurally represented at
+ * the api layer yet.
  */
 @Immutable
 @SimpleStyle

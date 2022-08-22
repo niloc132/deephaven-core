@@ -1,10 +1,14 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.base.system;
 
 import java.io.OutputStream;
 import java.util.Optional;
 
 /**
- * Allows classes to register interest in receiving application level calls to {@link System#out} and {@link System#err}.
+ * Allows classes to register interest in receiving application level calls to {@link System#out} and
+ * {@link System#err}.
  */
 public interface StandardStreamReceiver {
 

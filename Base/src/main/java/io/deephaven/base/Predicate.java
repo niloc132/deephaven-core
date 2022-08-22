@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base;
 
 public class Predicate {
@@ -14,11 +13,15 @@ public class Predicate {
         public boolean call(int arg);
 
         public static final Int ALWAYS_TRUE = new Int() {
-            public boolean call(final int arg) { return true; }
+            public boolean call(final int arg) {
+                return true;
+            }
         };
 
         public static final Int ALWAYS_FALSE = new Int() {
-            public boolean call(final int arg) { return false; }
+            public boolean call(final int arg) {
+                return false;
+            }
         };
     }
 

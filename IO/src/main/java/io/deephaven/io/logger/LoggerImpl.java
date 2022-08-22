@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.logger;
 
 import io.deephaven.base.text.TimestampBufferMicros;
@@ -26,17 +25,18 @@ public class LoggerImpl implements Logger {
     protected final boolean showLevel;
     protected final boolean showThreadName;
 
-    private static final ThreadLocal<String> THREAD_NAME=new ThreadLocal<String>(){
+    private static final ThreadLocal<String> THREAD_NAME = new ThreadLocal<String>() {
         private String threadName;
 
         protected String initialValue() {
-            threadName=Thread.currentThread().getName();
+            threadName = Thread.currentThread().getName();
 
             return threadName;
         }
     };
 
-    public LoggerImpl(LogEntryPool logEntryPool, LogSink logSink, String prefix, LogLevel loggingLevel, LoggerTimeSource timeSource, TimeZone tz, boolean showLevel, boolean showThreadName) {
+    public LoggerImpl(LogEntryPool logEntryPool, LogSink logSink, String prefix, LogLevel loggingLevel,
+            LoggerTimeSource timeSource, TimeZone tz, boolean showLevel, boolean showThreadName) {
         this.logEntryPool = logEntryPool;
         this.logSink = logSink;
 

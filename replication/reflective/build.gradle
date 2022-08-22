@@ -1,0 +1,24 @@
+plugins {
+    id 'java-library'
+    id 'io.deephaven.project.register'
+}
+
+description 'Reflective Replicators: Source code generators and replicators with compile-time dependencies on their inputs'
+
+dependencies {
+    implementation project(':replication-util')
+    implementation project(':engine-table')
+    implementation 'com.squareup:javapoet:1.9.0'
+    implementation depTrove3
+    implementation depCommonsIo
+
+    runtimeOnly project(':log-to-slf4j')
+    runtimeOnly project(path: ':configs')
+    runtimeOnly project(path: ':test-configs')
+    Classpaths.inheritSlf4j(project, 'slf4j-simple', 'runtimeOnly')
+}
+
+task replicateAll {
+    dependsOn Tasks.registerMainExecTask(project, 'replicateHashTable', 'io.deephaven.replicators.ReplicateHashTable')
+    dependsOn Tasks.registerMainExecTask(project, 'replicateTypedHashers', 'io.deephaven.replicators.ReplicateTypedHashers')
+}

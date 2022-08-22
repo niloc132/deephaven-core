@@ -1,10 +1,13 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsObject;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.SeriesDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.SourceDescriptor;
+import io.deephaven.web.client.api.JsPartitionedTable;
 import io.deephaven.web.client.api.JsTable;
-import io.deephaven.web.client.api.TableMap;
 import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsOptional;
 import jsinterop.annotations.JsProperty;
@@ -47,7 +50,6 @@ public class JsSeries {
                 }
             } else {
                 assert dataSource.hasOneClick();
-                assert dataSource.getOneClick().equals(oneClick.getDescriptor());
             }
         }
         JsObject.freeze(sources);
@@ -59,16 +61,15 @@ public class JsSeries {
      * are loaded.
      */
     @JsIgnore
-    public void initSources(Map<Integer, JsTable> tables, Map<Integer, TableMap> tableMaps) {
+    public void initSources(Map<Integer, JsTable> tables, Map<Integer, JsPartitionedTable> partitionedTables) {
         Arrays.stream(sources).forEach(s -> s.initColumnType(tables));
         if (oneClick != null) {
-            oneClick.setTableMap(tableMaps.get(sources[0].getDescriptor().getTableMapId()));
+            oneClick.setPartitionedTable(partitionedTables.get(sources[0].getDescriptor().getPartitionedTableId()));
         }
     }
 
     /**
-     * JS doesn't support method overloads, so we just ignore this one and mark the arg
-     * as optional in the JS version.
+     * JS doesn't support method overloads, so we just ignore this one and mark the arg as optional in the JS version.
      */
     @JsIgnore
     public void subscribe() {
@@ -80,6 +81,7 @@ public class JsSeries {
         subscribed = true;
         jsFigure.enqueueSubscriptionCheck();
     }
+
     public void unsubscribe() {
         markUnsubscribed();
         jsFigure.enqueueSubscriptionCheck();
@@ -137,11 +139,11 @@ public class JsSeries {
         return descriptor.getLineColor();
     }
 
-    //TODO (deephaven-core#774) finish this field or remove it from the DSL
-//    @JsProperty
-//    public String getLineStyle() {
-//        return descriptor.getLineStyle();
-//    }
+    // TODO (deephaven-core#774) finish this field or remove it from the DSL
+    // @JsProperty
+    // public String getLineStyle() {
+    // return descriptor.getLineStyle();
+    // }
 
     @JsProperty
     public String getPointLabelFormat() {

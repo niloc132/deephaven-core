@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.fu;
 
 import io.deephaven.web.client.api.LazyString;
@@ -10,14 +13,17 @@ import jsinterop.annotations.JsProperty;
  */
 public class JsLog {
 
-    private JsLog(){}
+    private JsLog() {}
 
     @JsProperty(name = "debug", namespace = "console")
     private static native elemental2.core.Function getDebug();
+
     @JsProperty(name = "info", namespace = "console")
     private static native elemental2.core.Function getInfo();
+
     @JsProperty(name = "warn", namespace = "console")
     private static native elemental2.core.Function getWarn();
+
     @JsProperty(name = "error", namespace = "console")
     private static native elemental2.core.Function getError();
 
@@ -30,20 +36,24 @@ public class JsLog {
             debug(msgs.valueOf());
         }
     }
-    public static void debug(Object ... msgs) {
+
+    public static void debug(Object... msgs) {
         if (shouldSpam()) {
             getDebug().apply(null, LazyString.resolve(msgs));
         }
     }
-    public static void info(Object ... msgs) {
+
+    public static void info(Object... msgs) {
         if (shouldSpam()) {
             getInfo().apply(null, LazyString.resolve(msgs));
         }
     }
-    public static void warn(Object ... msgs) {
+
+    public static void warn(Object... msgs) {
         getWarn().apply(null, LazyString.resolve(msgs));
     }
-    public static void error(Object ... msgs) {
+
+    public static void error(Object... msgs) {
         getError().apply(null, LazyString.resolve(msgs));
     }
 }

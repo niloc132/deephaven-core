@@ -1,9 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.lang.completion;
 
 import io.deephaven.base.Lazy;
-import io.deephaven.db.tables.TableDefinition;
-import io.deephaven.db.tables.libs.QueryLibrary;
-import io.deephaven.db.util.ScriptSession;
+import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.table.lang.QueryLibrary;
+import io.deephaven.engine.util.ScriptSession;
 
 import java.util.Collection;
 import java.util.Map;
@@ -22,12 +25,12 @@ public class CompletionLookups {
     private static final WeakHashMap<ScriptSession, CompletionLookups> lookups = new WeakHashMap<>();
 
     private final Lazy<QueryLibrary> ql;
-    private final Lazy<Collection<Class>> statics;
+    private final Lazy<Collection<Class<?>>> statics;
     private final Map<String, TableDefinition> referencedTables;
 
     public CompletionLookups() {
         ql = new Lazy<>(QueryLibrary::getLibrary);
-        statics = new Lazy<>(()->{
+        statics = new Lazy<>(() -> {
             ql.get();
             return QueryLibrary.getStaticImports();
         });
@@ -39,10 +42,10 @@ public class CompletionLookups {
     }
 
     public static CompletionLookups preload(ScriptSession session) {
-        return lookups.computeIfAbsent(session, s->new CompletionLookups());
+        return lookups.computeIfAbsent(session, s -> new CompletionLookups());
     }
 
-    public Collection<Class> getStatics() {
+    public Collection<Class<?>> getStatics() {
         return statics.get();
     }
 

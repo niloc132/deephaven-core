@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.string.cache;
 
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +36,7 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
     AbstractCompressedString(final char[] data, final int offset, final int length) {
         this.data = new byte[length];
         for (int bi = 0; bi < length; ++bi) {
-            this.data[bi] = (byte)data[offset + bi];
+            this.data[bi] = (byte) data[offset + bi];
         }
     }
 
@@ -78,6 +77,7 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
 
     /**
      * Convert a byte array to this type, assuming ISO-8859-1
+     * 
      * @param data The data to convert
      * @param offset The starting index from data to convert
      * @param length The length to convert
@@ -94,8 +94,8 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
         for (int si = 0; si < strings.length; ++si) {
             result[si] = convertValue(strings[si]);
         }
-        //noinspection unchecked
-        return (TYPE[])result;
+        // noinspection unchecked
+        return (TYPE[]) result;
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -103,7 +103,8 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Note: This is an API for trusted code to use.  The data array must not be modified.
+     * Note: This is an API for trusted code to use. The data array must not be modified.
+     * 
      * @return The internal data array for this instance.
      */
     public final byte[] getData() {
@@ -121,7 +122,7 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
 
     @Override
     public final char charAt(final int index) {
-        return (char)(data[index] & 0xFF);
+        return (char) (data[index] & 0xFF);
     }
 
     @Override
@@ -148,7 +149,7 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
     public final int hashCode() {
         int hashCode = cachedHashCode;
         if (hashCode == 0 && data.length > 0) {
-            //noinspection ForLoopReplaceableByForEach
+            // noinspection ForLoopReplaceableByForEach
             for (int bi = 0; bi < data.length; ++bi) {
                 hashCode = 31 * hashCode + data[bi];
             }
@@ -171,8 +172,8 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
             return false;
         }
 
-        //noinspection unchecked
-        final TYPE thatType = (TYPE)that;
+        // noinspection unchecked
+        final TYPE thatType = (TYPE) that;
         if (data.length != thatType.length()) {
             return false;
         }
@@ -234,10 +235,10 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
 
     @Override
     public final boolean regionMatches(final boolean ignoreCase,
-                                       final int offset,
-                                       final CharSequence that,
-                                       final int thatOffset,
-                                       final int length) {
+            final int offset,
+            final CharSequence that,
+            final int thatOffset,
+            final int length) {
         return CharSequenceUtils.regionMatches(ignoreCase, this, offset, that, thatOffset, length);
     }
 
@@ -309,8 +310,9 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
         if (beginIndex > endIndex) {
             throw new StringIndexOutOfBoundsException(endIndex - beginIndex);
         }
-        //noinspection unchecked
-        return (TYPE)(beginIndex == 0 && endIndex == data.length ? this : convertValue(data, beginIndex, endIndex - beginIndex));
+        // noinspection unchecked
+        return (TYPE) (beginIndex == 0 && endIndex == data.length ? this
+                : convertValue(data, beginIndex, endIndex - beginIndex));
     }
 
     @Override
@@ -321,8 +323,8 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
     @Override
     public final TYPE concat(final String other) {
         if (other.length() == 0) {
-            //noinspection unchecked
-            return (TYPE)this;
+            // noinspection unchecked
+            return (TYPE) this;
         }
         final byte[] otherData = other.getBytes(ENCODING);
         final byte[] concatenatedData = Arrays.copyOf(data, data.length + otherData.length);
@@ -333,8 +335,8 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
     @Override
     public final TYPE concat(final TYPE other) {
         if (other.length() == 0) {
-            //noinspection unchecked
-            return (TYPE)this;
+            // noinspection unchecked
+            return (TYPE) this;
         }
         final byte[] concatenatedData = Arrays.copyOf(data, data.length + other.length());
         System.arraycopy(other.getData(), 0, concatenatedData, data.length, other.length());
@@ -356,8 +358,8 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
         while (eii > bii && charAt(eii) <= ' ') {
             --eii;
         }
-        //noinspection unchecked
-        return (TYPE)(bii == 0 && eii == data.length - 1 ? this : substring(bii, eii + 1));
+        // noinspection unchecked
+        return (TYPE) (bii == 0 && eii == data.length - 1 ? this : substring(bii, eii + 1));
     }
 
     @Override
@@ -414,7 +416,8 @@ public abstract class AbstractCompressedString<TYPE extends AbstractCompressedSt
 
     @Override
     public final TYPE replace(final CharSequence target, final CharSequence replacement) {
-        return convertValue(Pattern.compile(target.toString(), Pattern.LITERAL).matcher(toString()).replaceAll(Matcher.quoteReplacement(replacement.toString())));
+        return convertValue(Pattern.compile(target.toString(), Pattern.LITERAL).matcher(toString())
+                .replaceAll(Matcher.quoteReplacement(replacement.toString())));
     }
 
     @Override

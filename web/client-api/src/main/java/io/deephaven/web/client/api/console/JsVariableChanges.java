@@ -1,34 +1,50 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.console;
 
 import elemental2.core.JsArray;
-import io.deephaven.web.shared.ide.VariableChanges;
-import io.deephaven.web.shared.ide.VariableDefinition;
+import elemental2.core.JsObject;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.application_pb.FieldInfo;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.application_pb.FieldsChangeUpdate;
 import jsinterop.annotations.JsProperty;
 import jsinterop.base.Js;
 
-import java.util.Arrays;
-
 public class JsVariableChanges {
     @JsProperty(namespace = "dh.VariableType")
-    public static final String  TABLE = "Table",
-                                TREETABLE = "TreeTable",
-                                TABLEMAP = "TableMap",
-                                FIGURE = "Figure",
-                                OTHERWIDGET = "OtherWidget",
-                                PANDAS = "Pandas";
+    public static final String TABLE = "Table",
+            TREETABLE = "TreeTable",
+            TABLEMAP = "TableMap",
+            PARTITIONEDTABLE = "PartitionedTable",
+            FIGURE = "Figure",
+            OTHERWIDGET = "OtherWidget",
+            PANDAS = "pandas.DataFrame",
+            TREEMAP = "Treemap";
 
-    private JsVariableDefinition[] created;
-    private JsVariableDefinition[] updated;
-    private JsVariableDefinition[] removed;
+    private final JsVariableDefinition[] created;
+    private final JsVariableDefinition[] updated;
+    private final JsVariableDefinition[] removed;
 
-    private static JsVariableDefinition[] convertDefinitions(VariableDefinition[] definitions) {
-        return Arrays.stream(definitions).map(def -> new JsVariableDefinition(def.getName(), def.getType())).toArray(JsVariableDefinition[]::new);
+    public static JsVariableChanges from(FieldsChangeUpdate update) {
+        final JsVariableDefinition[] created = toVariableDefinitions(update.getCreatedList());
+        final JsVariableDefinition[] updated = toVariableDefinitions(update.getUpdatedList());
+        final JsVariableDefinition[] removed = toVariableDefinitions(update.getRemovedList());
+        return new JsVariableChanges(created, updated, removed);
     }
 
-    public JsVariableChanges(VariableChanges changes) {
-        created = convertDefinitions(changes.created);
-        updated = convertDefinitions(changes.updated);
-        removed = convertDefinitions(changes.removed);
+    private static JsVariableDefinition[] toVariableDefinitions(JsArray<FieldInfo> createdList) {
+        final JsVariableDefinition[] definitions = new JsVariableDefinition[createdList.length];
+        for (int i = 0; i < createdList.length; i++) {
+            definitions[i] = new JsVariableDefinition(createdList.getAt(i));
+        }
+        return definitions;
+    }
+
+    public JsVariableChanges(JsVariableDefinition[] created, JsVariableDefinition[] updated,
+            JsVariableDefinition[] removed) {
+        this.created = JsObject.freeze(created);
+        this.updated = JsObject.freeze(updated);
+        this.removed = JsObject.freeze(removed);
     }
 
     @JsProperty

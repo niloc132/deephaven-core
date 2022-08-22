@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.codec;
 
 import io.deephaven.datastructures.util.CollectionUtil;
@@ -6,9 +9,10 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  *
- * <p>Codec for non-nullable byte arrays that does a no-op encode/decode.
- * <p>One particular instance where this is useful is reading parquet 1.0 data
- *    encoded as binary as "raw".
+ * <p>
+ * Codec for non-nullable byte arrays that does a no-op encode/decode.
+ * <p>
+ * One particular instance where this is useful is reading parquet 1.0 data encoded as binary as "raw".
  *
  */
 public class SimpleByteArrayCodec implements ObjectCodec<byte[]> {

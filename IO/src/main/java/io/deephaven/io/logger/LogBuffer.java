@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.logger;
 
 import io.deephaven.base.RingBuffer;
@@ -52,7 +51,7 @@ public class LogBuffer implements LogBufferRecordListener {
 
     public synchronized void subscribe(final LogBufferRecordListener listener) {
         listeners.add(listener);
-        for (final RingBuffer<LogBufferRecord>.Iterator ri = history.iterator(); ri.hasNext(); ) {
+        for (final RingBuffer<LogBufferRecord>.Iterator ri = history.iterator(); ri.hasNext();) {
             listener.record(ri.next());
         }
     }

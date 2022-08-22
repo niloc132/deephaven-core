@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util;
 
 import org.jetbrains.annotations.NotNull;
@@ -15,8 +18,7 @@ public class SafeCloseableList implements SafeCloseable {
 
     private final List<SafeCloseable> list = new ArrayList<>();
 
-    public SafeCloseableList() {
-    }
+    public SafeCloseableList() {}
 
     public SafeCloseableList(SafeCloseable... entries) {
         this(Arrays.asList(entries));

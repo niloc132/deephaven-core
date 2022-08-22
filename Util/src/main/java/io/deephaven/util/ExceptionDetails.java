@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util;
 
 import org.jetbrains.annotations.NotNull;
@@ -54,10 +53,11 @@ public class ExceptionDetails implements Serializable {
      * Returns true if exceptionDetails is not null and the result of applying testToApply on exceptionDetails is true
      *
      * @param exceptionDetails the exception to test
-     * @param testToApply      the test to apply
+     * @param testToApply the test to apply
      * @return true if exceptionDetails is not null and testToApply returns true
      */
-    public static boolean testExceptionDetails(@Nullable final ExceptionDetails exceptionDetails, @NotNull final Predicate<ExceptionDetails> testToApply) {
+    public static boolean testExceptionDetails(@Nullable final ExceptionDetails exceptionDetails,
+            @NotNull final Predicate<ExceptionDetails> testToApply) {
         return exceptionDetails != null && testToApply.test(exceptionDetails);
     }
 }

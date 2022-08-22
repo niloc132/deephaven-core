@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.batch;
 
 import io.deephaven.web.client.api.Sort;
@@ -11,8 +14,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * This class represents a container for all the various operations you might apply to a given table
- * (sort, filter, custom columns, select distinct, soon others).
+ * This class represents a container for all the various operations you might apply to a given table (sort, filter,
+ * custom columns, select distinct, soon others).
  *
  * Using this container allows us to add an optional new property without updating many methods signatures.
  */
@@ -28,7 +31,7 @@ public class TableConfig {
     private boolean isFlat;
 
     @JsType(namespace = JsPackage.GLOBAL, name = "Object", isNative = true)
-    public static class JsConfig  {
+    public static class JsConfig {
         public Sort[] sorts;
         public String[] conditions;
         public String[] dropColumns;
@@ -39,17 +42,15 @@ public class TableConfig {
         public boolean isFlat;
     }
 
-    public TableConfig() {
-    }
+    public TableConfig() {}
 
     public TableConfig(
-        List<Sort> sorts,
-        List<String> conditions,
-        List<FilterCondition> filters,
-        List<CustomColumnDescriptor> customColumns,
-        List<String> dropColumns,
-        List<String> viewColumns
-    ) {
+            List<Sort> sorts,
+            List<String> conditions,
+            List<FilterCondition> filters,
+            List<CustomColumnDescriptor> customColumns,
+            List<String> dropColumns,
+            List<String> viewColumns) {
         this.sorts.addAll(sorts);
         this.conditions.addAll(conditions);
         this.filters.addAll(filters);
@@ -144,15 +145,15 @@ public class TableConfig {
     @Override
     public String toString() {
         return "TableConfig{" +
-            "sorts=" + sorts +
-            ", filters=" + filters +
-            ", customColumns=" + customColumns +
-            ", selectDistinct=" + selectDistinct +
-            ", conditions=" + conditions +
-            ", dropColumns=" + dropColumns +
-            ", viewColumns=" + viewColumns +
-            ", isFlat=" + isFlat +
-            '}';
+                "sorts=" + sorts +
+                ", filters=" + filters +
+                ", customColumns=" + customColumns +
+                ", selectDistinct=" + selectDistinct +
+                ", conditions=" + conditions +
+                ", dropColumns=" + dropColumns +
+                ", viewColumns=" + viewColumns +
+                ", isFlat=" + isFlat +
+                '}';
     }
 
     public boolean isEmpty() {
@@ -201,8 +202,8 @@ public class TableConfig {
         config.viewColumns = viewColumns.toArray(new String[viewColumns.size()]);
         config.filters = filters.toArray(new FilterCondition[filters.size()]);
         config.customColumns = customColumns.stream()
-            .map(CustomColumnDescriptor::getExpression)
-            .toArray(String[]::new);
+                .map(CustomColumnDescriptor::getExpression)
+                .toArray(String[]::new);
         config.isFlat = isFlat;
         return config;
     }
@@ -213,8 +214,7 @@ public class TableConfig {
             result.append("customColumns: ")
                     .append(customColumns.stream()
                             .map(CustomColumnDescriptor::getExpression)
-                            .collect(Collectors.joining(","))
-                    )
+                            .collect(Collectors.joining(",")))
                     .append("\n");
         }
 
@@ -222,8 +222,7 @@ public class TableConfig {
             result.append("filters: ")
                     .append(filters.stream()
                             .map(FilterCondition::toString)
-                            .collect(Collectors.joining(","))
-                    )
+                            .collect(Collectors.joining(",")))
                     .append("\n");
         }
 

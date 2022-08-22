@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.barrage;
 
 import io.deephaven.web.shared.data.Range;
@@ -21,7 +24,8 @@ public class ShiftedRangeReader {
         ShiftedRange[] ranges = new ShiftedRange[0];
         while (startIter.hasNext()) {
             long startPosition = startIter.nextLong();
-            ranges[ranges.length] = new ShiftedRange(new Range(startPosition, endIter.nextLong()), postShiftStartIter.nextLong() - startPosition);
+            ranges[ranges.length] = new ShiftedRange(new Range(startPosition, endIter.nextLong()),
+                    postShiftStartIter.nextLong() - startPosition);
         }
 
         return ranges;

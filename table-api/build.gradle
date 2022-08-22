@@ -1,23 +1,20 @@
 plugins {
   id 'java-library'
-  id 'com.diffplug.spotless'
+  id 'io.deephaven.project.register'
 }
 
-dependencies {
-  annotationProcessor 'org.immutables:value:2.8.1'
-  compileOnly 'org.immutables:value-annotations:2.8.1'
+description = 'The Deephaven table operations API'
 
-  testImplementation(platform('org.junit:junit-bom:5.7.2'))
+dependencies {
+  Classpaths.inheritImmutables(project)
+
+  compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+
+  Classpaths.inheritJUnitPlatform(project)
+  Classpaths.inheritAssertJ(project)
   testImplementation 'org.junit.jupiter:junit-jupiter'
-  testImplementation 'org.assertj:assertj-core:3.19.0'
 }
 
 test {
   useJUnitPlatform()
-}
-
-spotless {
-  java {
-    eclipse().configFile("${rootDir}/style/eclipse-java-google-style.xml")
-  }
 }

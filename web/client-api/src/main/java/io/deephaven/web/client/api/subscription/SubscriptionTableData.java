@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.subscription;
 
 import elemental2.core.JsArray;
@@ -19,14 +22,16 @@ import java.math.BigInteger;
 import java.util.NavigableSet;
 import java.util.PrimitiveIterator;
 import java.util.TreeMap;
+import static io.deephaven.web.client.api.subscription.ViewportData.NO_ROW_FORMAT_COLUMN;
 
 public class SubscriptionTableData {
     @JsFunction
     private interface ArrayCopy {
         void copyTo(Object destArray, long destPos, Object srcArray, int srcPos);
     }
+
     private final JsArray<Column> columns;
-    private final Integer rowStyleColumn;
+    private final int rowStyleColumn;
     private final HasEventHandling evented;
 
     // the actual rows present on the client, in their correct order
@@ -41,15 +46,15 @@ public class SubscriptionTableData {
     // array of data columns, cast each to a jsarray to read rows
     private Object[] data;
 
-    public SubscriptionTableData(JsArray<Column> columns, Integer rowStyleColumn, HasEventHandling evented) {
+    public SubscriptionTableData(JsArray<Column> columns, int rowStyleColumn, HasEventHandling evented) {
         this.columns = columns;
         this.rowStyleColumn = rowStyleColumn;
         this.evented = evented;
     }
 
-    //TODO support this being called multiple times so we can keep viewports going without clearing the data
+    // TODO support this being called multiple times so we can keep viewports going without clearing the data
     public TableData handleSnapshot(TableSnapshot snapshot) {
-        //when changing snapshots we should actually rewrite the columns, possibly emulate ViewportData more?
+        // when changing snapshots we should actually rewrite the columns, possibly emulate ViewportData more?
         ColumnData[] dataColumns = snapshot.getDataColumns();
         data = new Object[dataColumns.length];
         reusableDestinations = RangeSet.empty();
@@ -62,7 +67,7 @@ public class SubscriptionTableData {
         for (int index = 0; index < dataColumns.length; index++) {
             ColumnData dataColumn = dataColumns[index];
             if (dataColumn == null) {
-                //no data in this column, wasn't requested
+                // no data in this column, wasn't requested
                 continue;
             }
 
@@ -89,9 +94,9 @@ public class SubscriptionTableData {
     }
 
     /**
-     * Helper to avoid appending many times when modifying indexes. The append() method should be called
-     * for each key _in order_ to ensure that RangeSet.addRange isn't called excessively. When no more
-     * items will be added, flush() must be called.
+     * Helper to avoid appending many times when modifying indexes. The append() method should be called for each key
+     * _in order_ to ensure that RangeSet.addRange isn't called excessively. When no more items will be added, flush()
+     * must be called.
      */
     private static class RangeSetAppendHelper {
         private final RangeSet rangeSet;
@@ -107,7 +112,7 @@ public class SubscriptionTableData {
             assert key >= 0;
 
             if (currentFirst == -1) {
-                //first key to be added, move both first and last
+                // first key to be added, move both first and last
                 currentFirst = key;
                 currentLast = key;
 
@@ -142,7 +147,7 @@ public class SubscriptionTableData {
         delta.getRemoved().indexIterator().forEachRemaining((long index) -> {
             long dest = redirectedIndexes.remove(index);
             reusableHelper.append(dest);
-            //TODO consider trimming the columns down too, and truncating the reusable slots at the end
+            // TODO consider trimming the columns down too, and truncating the reusable slots at the end
         });
         reusableHelper.flush();
         // clean up index by ranges, not by row
@@ -237,17 +242,15 @@ public class SubscriptionTableData {
             int j = 0;
             while (modifiedIndexes.hasNext()) {
                 long origIndex = modifiedIndexes.nextLong();
-                // this assertion will fail if we use this class for viewports, since all instances will be included,
-                // and in that case we should use this for invalidation of cached data
-                assert modifiedColumn.getRowsModified().contains(origIndex);
-                arrayCopy.copyTo(data[modifiedColumn.getColumnIndex()], redirectedIndexes.get(origIndex), modifiedColumn.getValues().getData(), j++);
+                arrayCopy.copyTo(data[modifiedColumn.getColumnIndex()], redirectedIndexes.get(origIndex),
+                        modifiedColumn.getValues().getData(), j++);
             }
         }
 
         // Check that the index sizes make sense
         assert redirectedIndexes.size() == index.size();
         // Note that we can't do this assert, since we don't truncate arrays, we just leave nulls at the end
-//        assert Js.asArrayLike(data[0]).getLength() == redirectedIndexes.size();
+        // assert Js.asArrayLike(data[0]).getLength() == redirectedIndexes.size();
 
         return notifyUpdates(delta.getAdded(), delta.getRemoved(), allModified);
     }
@@ -267,16 +270,16 @@ public class SubscriptionTableData {
         switch (type) {
             case "long":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    long value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asLong();
+                    long value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asLong();
                     if (value == QueryConstants.NULL_LONG) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
                         Js.asArrayLike(destArray).setAt((int) destPos, LongWrapper.of(value));
                     }
                 };
-            case "io.deephaven.db.tables.utils.DBDateTime":
+            case "io.deephaven.time.DateTime":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    long value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asLong();
+                    long value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asLong();
                     if (value == QueryConstants.NULL_LONG) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -321,7 +324,7 @@ public class SubscriptionTableData {
                 };
             case "java.lang.Boolean":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    int value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asInt();
+                    int value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asInt();
                     if (value == 1) {
                         Js.asArrayLike(destArray).setAt((int) destPos, true);
                     } else if (value == 0) {
@@ -332,7 +335,7 @@ public class SubscriptionTableData {
                 };
             case "int":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    int value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asInt();
+                    int value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asInt();
                     if (value == QueryConstants.NULL_INT) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -341,7 +344,7 @@ public class SubscriptionTableData {
                 };
             case "byte":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    byte value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asByte();
+                    byte value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asByte();
                     if (value == QueryConstants.NULL_BYTE) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -350,7 +353,7 @@ public class SubscriptionTableData {
                 };
             case "short":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    short value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asShort();
+                    short value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asShort();
                     if (value == QueryConstants.NULL_SHORT) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -359,7 +362,7 @@ public class SubscriptionTableData {
                 };
             case "double":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    double value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asDouble();
+                    double value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asDouble();
                     if (value == QueryConstants.NULL_DOUBLE) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -368,7 +371,7 @@ public class SubscriptionTableData {
                 };
             case "float":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    float value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asFloat();
+                    float value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asFloat();
                     if (value == QueryConstants.NULL_FLOAT) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -377,7 +380,7 @@ public class SubscriptionTableData {
                 };
             case "char":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    char value = Js.asArrayLike(srcArray).getAnyAt(srcPos).asChar();
+                    char value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asChar();
                     if (value == QueryConstants.NULL_CHAR) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -403,7 +406,7 @@ public class SubscriptionTableData {
             RangeSet reused = RangeSet.empty();
             long taken = 0;
             RangeSet stillUnused = RangeSet.empty();
-            //TODO this could be more efficient, iterating entire ranges until we only need a partial range
+            // TODO this could be more efficient, iterating entire ranges until we only need a partial range
             PrimitiveIterator.OfLong iterator = reusableDestinations.indexIterator();
             while (taken < required) {
                 assert iterator.hasNext();
@@ -412,7 +415,7 @@ public class SubscriptionTableData {
                 taken++;
             }
             assert taken == required;
-            while(iterator.hasNext()) {
+            while (iterator.hasNext()) {
                 long value = iterator.nextLong();
                 stillUnused.addRange(new Range(value, value));
             }
@@ -465,7 +468,7 @@ public class SubscriptionTableData {
         public Any get(Column column) {
             int redirectedIndex = (int) (long) redirectedIndexes.get(this.index);
             JsArrayLike<Object> columnData = Js.asArrayLike(data[column.getIndex()]);
-            return columnData.getAnyAt(redirectedIndex);
+            return columnData.getAtAsAny(redirectedIndex);
         }
 
         @Override
@@ -478,19 +481,19 @@ public class SubscriptionTableData {
             int redirectedIndex = (int) (long) redirectedIndexes.get(this.index);
             if (column.getStyleColumnIndex() != null) {
                 JsArray<Any> colors = Js.uncheckedCast(data[column.getStyleColumnIndex()]);
-                cellColors = colors.getAnyAt(redirectedIndex).asLong();
+                cellColors = colors.getAtAsAny(redirectedIndex).asLong();
             }
-            if (rowStyleColumn != null) {
+            if (rowStyleColumn != NO_ROW_FORMAT_COLUMN) {
                 JsArray<Any> rowStyle = Js.uncheckedCast(data[rowStyleColumn]);
-                rowColors = rowStyle.getAnyAt(redirectedIndex).asLong();
+                rowColors = rowStyle.getAtAsAny(redirectedIndex).asLong();
             }
             if (column.getFormatColumnIndex() != null) {
                 JsArray<Any> formatStrings = Js.uncheckedCast(data[column.getFormatColumnIndex()]);
-                numberFormat = formatStrings.getAnyAt(redirectedIndex).asString();
+                numberFormat = formatStrings.getAtAsAny(redirectedIndex).asString();
             }
             if (column.getFormatStringColumnIndex() != null) {
                 JsArray<Any> formatStrings = Js.uncheckedCast(data[column.getFormatStringColumnIndex()]);
-                formatString = formatStrings.getAnyAt(redirectedIndex).asString();
+                formatString = formatStrings.getAtAsAny(redirectedIndex).asString();
             }
             return new Format(cellColors, rowColors, numberFormat, formatString);
         }
@@ -498,8 +501,8 @@ public class SubscriptionTableData {
 
 
     /**
-     * Event data, describing the indexes that were added/removed/updated, and providing access to Rows
-     * (and thus data in columns) either by index, or scanning the complete present index.
+     * Event data, describing the indexes that were added/removed/updated, and providing access to Rows (and thus data
+     * in columns) either by index, or scanning the complete present index.
      */
     public class UpdateEventData implements TableData {
         private JsRangeSet added;
@@ -549,7 +552,7 @@ public class SubscriptionTableData {
         public Any getData(long index, Column column) {
             int redirectedIndex = (int) (long) redirectedIndexes.get(index);
             JsArrayLike<Object> columnData = Js.asArrayLike(data[column.getIndex()]);
-            return columnData.getAnyAt(redirectedIndex);
+            return columnData.getAtAsAny(redirectedIndex);
         }
 
         @Override
@@ -566,19 +569,19 @@ public class SubscriptionTableData {
             int redirectedIndex = (int) (long) redirectedIndexes.get(index);
             if (column.getStyleColumnIndex() != null) {
                 JsArray<Any> colors = Js.uncheckedCast(data[column.getStyleColumnIndex()]);
-                cellColors = colors.getAnyAt(redirectedIndex).asLong();
+                cellColors = colors.getAtAsAny(redirectedIndex).asLong();
             }
-            if (rowStyleColumn != null) {
+            if (rowStyleColumn != NO_ROW_FORMAT_COLUMN) {
                 JsArray<Any> rowStyle = Js.uncheckedCast(data[rowStyleColumn]);
-                rowColors = rowStyle.getAnyAt(redirectedIndex).asLong();
+                rowColors = rowStyle.getAtAsAny(redirectedIndex).asLong();
             }
             if (column.getFormatColumnIndex() != null) {
                 JsArray<Any> formatStrings = Js.uncheckedCast(data[column.getFormatColumnIndex()]);
-                numberFormat = formatStrings.getAnyAt(redirectedIndex).asString();
+                numberFormat = formatStrings.getAtAsAny(redirectedIndex).asString();
             }
             if (column.getFormatStringColumnIndex() != null) {
                 JsArray<Any> formatStrings = Js.uncheckedCast(data[column.getFormatStringColumnIndex()]);
-                formatString = formatStrings.getAnyAt(redirectedIndex).asString();
+                formatString = formatStrings.getAtAsAny(redirectedIndex).asString();
             }
             return new Format(cellColors, rowColors, numberFormat, formatString);
         }

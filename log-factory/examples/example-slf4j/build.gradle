@@ -1,13 +1,13 @@
 plugins {
-	id 'java'
 	id 'application'
+	id 'io.deephaven.project.register'
 }
 
 dependencies {
 	implementation project(':log-example-base')
 
 	runtimeOnly project(':log-to-slf4j')
-	runtimeOnly 'org.slf4j:slf4j-simple:1.7.30'
+	Classpaths.inheritSlf4j(project, 'slf4j-simple', 'runtimeOnly')
 }
 
 application {

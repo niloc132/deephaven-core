@@ -1,6 +1,8 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy;
 
-import io.deephaven.jpy.JpyConfigSource.SysProps;
 import java.time.Duration;
 import java.util.Objects;
 import org.jpy.CreateModule;
@@ -13,7 +15,7 @@ public class PythonResource extends ExternalResource {
     }
 
     public static PythonResource ofSysProps() {
-        return of(SysProps.INSTANCE.asJpyConfig());
+        return of(JpyConfigSource.sysProps().asJpyConfig());
     }
 
     private final JpyConfigExt config;

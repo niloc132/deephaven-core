@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.numerics.movingaverages;
 
 import junit.framework.TestCase;
@@ -80,8 +83,8 @@ public class EmaArrayTest extends TestCase {
     }
 
     /**
-     * Make sure that smaller timescales correspond to faster moving averages.  The smallest double should correspond
-     * to no averaging.
+     * Make sure that smaller timescales correspond to faster moving averages. The smallest double should correspond to
+     * no averaging.
      */
     public void testTimescales() {
         double[] timeScales = {Double.MIN_VALUE};
@@ -106,10 +109,10 @@ public class EmaArrayTest extends TestCase {
      * Make sure that it returns the right size.
      */
     public void testSize() {
-        double[] timeScales = {1,2,3,4,5};
+        double[] timeScales = {1, 2, 3, 4, 5};
 
         EmaArray emas = new EmaArray(Ema.Type.LEVEL, Ema.Mode.TIME, timeScales);
         assertEquals(timeScales.length, emas.size());
     }
 
- }
+}

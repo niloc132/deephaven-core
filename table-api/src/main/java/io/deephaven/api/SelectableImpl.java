@@ -1,5 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api;
 
+import io.deephaven.annotations.SimpleStyle;
 import io.deephaven.api.expression.Expression;
 import org.immutables.value.Value.Check;
 import org.immutables.value.Value.Immutable;
@@ -27,7 +31,7 @@ abstract class SelectableImpl implements Selectable, Serializable {
             // To make sure that Selectable#equals() works as we would expect, we should always use
             // canonical ColumnName when applicable.
             throw new IllegalArgumentException(
-                "Should not construct SelectableImpl with expression() equal to newColumn(), use the ColumnName directly");
+                    "Should not construct SelectableImpl with expression() equal to newColumn(), use the ColumnName directly");
         }
     }
 }

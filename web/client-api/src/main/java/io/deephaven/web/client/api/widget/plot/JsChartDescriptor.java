@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsArray;
@@ -32,8 +35,7 @@ public class JsChartDescriptor {
     public boolean is3d;
 
     @JsConstructor
-    public JsChartDescriptor() {
-    }
+    public JsChartDescriptor() {}
 
     @JsIgnore
     public JsChartDescriptor(JsPropertyMap<Object> source) {
@@ -41,10 +43,10 @@ public class JsChartDescriptor {
 
         Map<Object, JsAxisDescriptor> axisMap = new HashMap<>();
         if (source.has("axes")) {
-            JsArray<Object> axes = source.getAny("axes").cast();
+            JsArray<Object> axes = source.getAsAny("axes").cast();
             this.axes = Js.uncheckedCast(axes.map((axisSource, index, all) -> {
                 if (axisSource instanceof JsAxisDescriptor) {
-                    return (JsAxisDescriptor)axisSource;
+                    return (JsAxisDescriptor) axisSource;
                 } else {
                     return new JsAxisDescriptor((JsPropertyMap<Object>) axisSource);
                 }
@@ -55,10 +57,10 @@ public class JsChartDescriptor {
         }
 
         if (source.has("series")) {
-            JsArray<Object> series = source.getAny("series").cast();
+            JsArray<Object> series = source.getAsAny("series").cast();
             this.series = Js.uncheckedCast(series.map((seriesSource, index, all) -> {
                 if (seriesSource instanceof JsSeriesDescriptor) {
-                    return (JsSeriesDescriptor)seriesSource;
+                    return (JsSeriesDescriptor) seriesSource;
                 } else {
                     return new JsSeriesDescriptor((JsPropertyMap<Object>) seriesSource, axisMap);
                 }

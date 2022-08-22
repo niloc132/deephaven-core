@@ -1,14 +1,23 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api;
 
+import io.deephaven.annotations.SimpleStyle;
 import io.deephaven.api.agg.Pair;
 import io.deephaven.api.expression.Expression;
+import io.deephaven.api.util.NameValidator;
 import io.deephaven.api.value.Value;
-import io.deephaven.db.tables.utils.NameValidator;
 import org.immutables.value.Value.Check;
 import org.immutables.value.Value.Immutable;
 import org.immutables.value.Value.Parameter;
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Represents a column name.
@@ -16,19 +25,10 @@ import java.io.Serializable;
 @Immutable
 @SimpleStyle
 public abstract class ColumnName
-    implements Selectable, Value, Expression, Pair, JoinMatch, JoinAddition, Serializable {
-
-    public static boolean isValidColumnName(String name) {
-        try {
-            NameValidator.validateColumnName(name);
-            return true;
-        } catch (NameValidator.InvalidNameException e) {
-            return false;
-        }
-    }
+        implements Selectable, Value, Expression, Pair, JoinMatch, JoinAddition, Serializable {
 
     public static boolean isValidParsedColumnName(String value) {
-        return isValidColumnName(value.trim());
+        return NameValidator.isValidColumnName(value.trim());
     }
 
     public static ColumnName of(String name) {
@@ -37,6 +37,24 @@ public abstract class ColumnName
 
     public static ColumnName parse(String value) {
         return of(value.trim());
+    }
+
+    public static List<ColumnName> from(String... values) {
+        return Arrays.stream(values).map(ColumnName::of).collect(Collectors.toList());
+    }
+
+    public static List<ColumnName> from(Collection<String> values) {
+        return values.stream().map(ColumnName::of).collect(Collectors.toList());
+    }
+
+    public static Optional<Collection<ColumnName>> cast(Collection<? extends Selectable> columns) {
+        for (Selectable column : columns) {
+            if (!(column instanceof ColumnName)) {
+                return Optional.empty();
+            }
+        }
+        // noinspection unchecked
+        return Optional.of((Collection<ColumnName>) columns);
     }
 
     /**

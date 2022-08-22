@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util;
 
 import java.lang.ref.ReferenceQueue;
@@ -32,8 +31,8 @@ public class SoftRecycler<T> {
     /**
      * @param capacity Capacity of the recycler
      * @param constructItem A callback that creates a new item
-     * @param sanitizeItem Optional. A callback that sanitizes the item before reuse. Pass null if no sanitization
-     *                     is needed.
+     * @param sanitizeItem Optional. A callback that sanitizes the item before reuse. Pass null if no sanitization is
+     *        needed.
      */
     public SoftRecycler(int capacity, Supplier<T> constructItem, Consumer<T> sanitizeItem) {
         this.capacity = capacity;

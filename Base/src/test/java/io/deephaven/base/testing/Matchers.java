@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.base.testing;
 
 import io.deephaven.base.verify.Require;
@@ -6,14 +9,17 @@ import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 
 public class Matchers {
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     public static <T> Matcher<T> thumbprint(Class<T> type, final Thumbprinter<T> thumbprinter, String thumbprint) {
         return new ThumbprintMatcher<T>(type, thumbprint) {
-            @Override public String getThumbprint(T t) { return thumbprinter.getThumbprint(t); }
+            @Override
+            public String getThumbprint(T t) {
+                return thumbprinter.getThumbprint(t);
+            }
         };
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     public static abstract class ThumbprintMatcher<T> extends BaseMatcher<T> implements Thumbprinter<T> {
 
         private final Class<T> m_type;
@@ -21,18 +27,21 @@ public class Matchers {
 
         protected ThumbprintMatcher(Class<T> type, String thumbprint) {
             Require.neqNull(type, "type");
-            m_type=type;
-            m_thumbprint=thumbprint;
+            m_type = type;
+            m_thumbprint = thumbprint;
         }
 
-        @Override public boolean matches(Object item) {
-            //noinspection unchecked
+        @Override
+        public boolean matches(Object item) {
+            // noinspection unchecked
             return m_type.isInstance(item)
-                && m_thumbprint.equals(getThumbprint((T)item));
+                    && m_thumbprint.equals(getThumbprint((T) item));
         }
 
-        @Override public void describeTo(Description description) {
-            description.appendText(m_type.getName()).appendText(" has thumbprint \"").appendText(m_thumbprint).appendText("\"");
+        @Override
+        public void describeTo(Description description) {
+            description.appendText(m_type.getName()).appendText(" has thumbprint \"").appendText(m_thumbprint)
+                    .appendText("\"");
         }
     }
 }

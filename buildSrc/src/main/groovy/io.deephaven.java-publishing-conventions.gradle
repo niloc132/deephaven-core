@@ -1,0 +1,43 @@
+import io.deephaven.project.util.PublishingConstants
+
+plugins {
+  id 'java'
+  id 'signing'
+  id 'maven-publish'
+}
+
+java {
+  withJavadocJar()
+  withSourcesJar()
+}
+
+tasks.withType(Javadoc) {
+  options.addStringOption('Xdoclint:none', '-quiet')
+  options.addStringOption('Xmaxwarns', '1')
+
+  // https://github.com/gradle/gradle/issues/19869
+  options.addStringOption('sourcepath', sourceSets.main.allJava.getSourceDirectories().getAsPath())
+}
+
+def licenseName = ext.license.name
+def licenseUrl = ext.license.url
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+      pom {
+        licenses {
+          license {
+            name = licenseName
+            url = licenseUrl
+          }
+        }
+      }
+    }
+  }
+}
+
+PublishingConstants.setupRepositories(project)
+PublishingConstants.setupMavenPublication(project, publishing.publications.mavenJava)
+PublishingConstants.setupSigning(project, publishing.publications.mavenJava)

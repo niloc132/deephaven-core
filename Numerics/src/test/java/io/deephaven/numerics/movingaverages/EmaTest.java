@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.numerics.movingaverages;
 
 import junit.framework.TestCase;
@@ -72,8 +75,8 @@ public class EmaTest extends TestCase {
     }
 
     /**
-     * Make sure that smaller timescales correspond to faster moving averages.  The smallest double should correspond
-     * to no averaging.
+     * Make sure that smaller timescales correspond to faster moving averages. The smallest double should correspond to
+     * no averaging.
      */
     public void testTimescales() {
         double timeScale = Double.MIN_VALUE;

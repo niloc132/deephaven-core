@@ -1,10 +1,14 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.impl;
 
 import io.deephaven.benchmarking.BenchmarkTable;
 import io.deephaven.benchmarking.BenchmarkTableBuilder;
 
 /**
- * The basic implementation of {@link BenchmarkTableBuilder}.  It allows users to specify table type and add columns, while specifying their RNG properties.
+ * The basic implementation of {@link BenchmarkTableBuilder}. It allows users to specify table type and add columns,
+ * while specifying their RNG properties.
  */
 public class InMemoryBenchmarkTableBuilder extends AbstractBenchmarkTableBuilder {
 

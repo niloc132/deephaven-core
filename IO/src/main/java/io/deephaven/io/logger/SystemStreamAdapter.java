@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.logger;
 
 import io.deephaven.io.log.LogLevel;
@@ -12,6 +11,7 @@ public class SystemStreamAdapter {
 
     /**
      * Redirect System.out to the specified logger, at level STDOUT.
+     * 
      * @param logger
      */
     public static void sendSystemOutToLogger(final Logger logger) {
@@ -20,6 +20,7 @@ public class SystemStreamAdapter {
 
     /**
      * Redirect System.err to the specified logger, at level STDERR.
+     * 
      * @param logger
      */
     public static void sendSystemErrToLogger(final Logger logger) {

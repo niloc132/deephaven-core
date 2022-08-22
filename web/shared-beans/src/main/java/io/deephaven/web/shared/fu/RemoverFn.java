@@ -1,10 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.fu;
 
 import jsinterop.annotations.JsFunction;
 
 /**
- * Like Gwt's HandlerRegistration,
- * but future-friendly (JsFunction), dependency-free, and easier to type!
+ * Like Gwt's HandlerRegistration, but future-friendly (JsFunction), dependency-free, and easier to type!
  */
 @JsFunction
 @FunctionalInterface

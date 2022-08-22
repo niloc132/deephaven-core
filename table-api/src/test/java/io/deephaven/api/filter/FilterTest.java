@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api.filter;
 
 import io.deephaven.api.ColumnName;
@@ -27,6 +30,22 @@ public class FilterTest {
     @Test
     void not() {
         toString(Filter.not(Filter.isNull(ColumnName.of("Foo"))), "!(isNull(Foo))");
+    }
+
+    @Test
+    void ands() {
+        toString(
+                FilterAnd.of(Filter.isNotNull(ColumnName.of("Foo")),
+                        FilterCondition.gt(ColumnName.of("Foo"), Value.of(42L))),
+                "(!isNull(Foo)) && (Foo > 42)");
+    }
+
+    @Test
+    void ors() {
+        toString(
+                FilterOr.of(Filter.isNull(ColumnName.of("Foo")),
+                        FilterCondition.eq(ColumnName.of("Foo"), Value.of(42L))),
+                "(isNull(Foo)) || (Foo == 42)");
     }
 
     private static void toString(Filter filter, String expected) {

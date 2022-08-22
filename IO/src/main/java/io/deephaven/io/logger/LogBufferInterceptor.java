@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.logger;
 
 import io.deephaven.base.log.LogOutput;
@@ -39,7 +38,7 @@ public class LogBufferInterceptor extends LogBuffer implements LogSink.Intercept
             // We don't support MAILER log lines.
             return;
         }
-        // TODO: Lighter weight synchronization?  Off-thread the StreamLoggerImpl's sink?
+        // TODO: Lighter weight synchronization? Off-thread the StreamLoggerImpl's sink?
         synchronized (this) {
             if (next == null) {
                 next = new LogBufferRecord();

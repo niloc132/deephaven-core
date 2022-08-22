@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy.integration;
 
 import io.deephaven.jpy.PythonTest;
@@ -10,6 +13,7 @@ public class PyLibNullArgTest extends PythonTest {
 
     interface SomeModule extends AutoCloseable {
         String some_function();
+
         String some_function(String x);
     }
 
@@ -18,9 +22,9 @@ public class PyLibNullArgTest extends PythonTest {
     @Before
     public void setUp() throws Exception {
         someModule = getCreateModule().callAsFunctionModule(
-            "some_module",
-            readResource(PyLibNullArgTest.class, "pylib_null_arg_test.py"),
-            SomeModule.class);
+                "some_module",
+                readResource(PyLibNullArgTest.class, "pylib_null_arg_test.py"),
+                SomeModule.class);
     }
 
     @After

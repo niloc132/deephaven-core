@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.datastructures.hash;
 
 import io.deephaven.hash.IntrusiveChainedHashAdapter;
@@ -7,8 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * A pool for "free" entries to be use with IntrusiveChainedHash structures, implemented as a stack using the same
- * adapter and intrusive fields.
- * Requires external synchronization of all methods for concurrent use.
+ * adapter and intrusive fields. Requires external synchronization of all methods for concurrent use.
  */
 public class IntrusiveChainedEntryPool<VALUE_TYPE> {
 
@@ -24,6 +26,7 @@ public class IntrusiveChainedEntryPool<VALUE_TYPE> {
 
     /**
      * Construct a new pool with the supplied adapter.
+     * 
      * @param adapter The adapter
      */
     public IntrusiveChainedEntryPool(@NotNull final IntrusiveChainedHashAdapter<VALUE_TYPE> adapter) {
@@ -32,6 +35,7 @@ public class IntrusiveChainedEntryPool<VALUE_TYPE> {
 
     /**
      * Give a currently un-linked entry to the pool.
+     * 
      * @param entry The entry
      */
     public void give(@NotNull final VALUE_TYPE entry) {
@@ -44,6 +48,7 @@ public class IntrusiveChainedEntryPool<VALUE_TYPE> {
 
     /**
      * Take an entry from the pool.
+     * 
      * @return The entry taken, or null if the pool was empty
      */
     public @Nullable VALUE_TYPE take() {

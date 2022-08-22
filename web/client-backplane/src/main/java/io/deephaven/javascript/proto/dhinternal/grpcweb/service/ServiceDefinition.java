@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.grpcweb.service;
 
 import jsinterop.annotations.JsOverlay;
@@ -8,18 +11,18 @@ import jsinterop.base.Js;
 import jsinterop.base.JsPropertyMap;
 
 @JsType(
-    isNative = true,
-    name = "dhinternal.grpcWeb.service.ServiceDefinition",
-    namespace = JsPackage.GLOBAL)
+        isNative = true,
+        name = "dhinternal.grpcWeb.service.ServiceDefinition",
+        namespace = JsPackage.GLOBAL)
 public interface ServiceDefinition {
-  @JsOverlay
-  static ServiceDefinition create() {
-    return Js.uncheckedCast(JsPropertyMap.of());
-  }
+    @JsOverlay
+    static ServiceDefinition create() {
+        return Js.uncheckedCast(JsPropertyMap.of());
+    }
 
-  @JsProperty
-  String getServiceName();
+    @JsProperty
+    String getServiceName();
 
-  @JsProperty
-  void setServiceName(String serviceName);
+    @JsProperty
+    void setServiceName(String serviceName);
 }

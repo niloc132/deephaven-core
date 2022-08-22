@@ -342,102 +342,6 @@ use of Promises or events.
 The Deephaven Web API provides similar functionality as the client GUI. The following documentation details the available class types, methods, properties, and events. 
 "namespace" here refers to the fact that using any of these objects requires an "dh." prefix.
 
-##### Class `Client`
-Simple client object used to connect to the Deephaven installation and interact with it.
-
-###### Constructor
-
- * `new dh.Client(websocketUrl)` - Creates a connection to the given Deephaven webserver.
- 
-###### Properties
- * `boolean connected` - Read-only. True if the client is currently connected.
- 
-###### Methods
- * `onConnected(Number= timeoutInMillis):Promise<Void>` - The returned Promise resolves when the client is connected, or 
- rejects on failure. If the optional `timeoutInMillis` is provided, the Promise will reject after the timeout has elapsed.
- Otherwise, it will wait indefinitely. 
- * `login(creds):Promise<Void>` - Currently username with password and SAML authentication with a token is supported by the server installation.
- The authentication `type` of `password` or `saml` can be specified in the credentials object.  
- The returned Promise will hold no value, and the request parameter will depend on how the installation is 
- configured to handle auth. Optionally there may be an `operateAs` key in the credentials objects, allowing the 
- authenticated user to see content as if they were another user, if they have permission to do so. Must only be called
- when the client is connected (i.e. after the `connect` event, but before `disconnect`, etc).
- * `getKnownConfigs():QueryInfo[]` - Get known Query Configs that this client is already aware of. It is possible that
- this list is empty right after connecting; ensure you are subscribed to the `configadded` and related events to get
- updates if necessary. For a simple view showing available Query Configs, you can get the known queries and subscribe to
- later changes, and then remove the event handler when the view goes away.
- * `getUserInfo():UserInfo` - Get information of the authenticated user.  
- * `addEventListener(String type, function listener):Function` - Listen for events on the main connection.  Returns a
- convenience function to remove the event listener for you.
- * `removeEventListener(String type, function listener)` - Allow for manual "normal" event handler removal.
- * `disconnect()` - Log out and disconnect from the server.
- <!-- * `getAuthConfigValues():String[configuration][value]`: Get a list of server authentication configuration values that are allowed to be seen prior to the authentication. 
- Visible authentication configuration values can be specified through `authentication.client.configuration.list` on the server configuration.   -->
- 
- 
-###### Events
- * `connect` - Indicates that the initial connection has been established.
- * `disconnect` - Indicates that the connection was lost and some messages may be delayed until reconnect.
- * `reconnect` - Indicates that the client has automatically reconnected to the server.
- * `reconnectauthfailed` - Indicates that the client's authentication has expired. Call `login(creds)` to resolve.
- * `configadded` - event.detail is the new QueryInfo (see below).
- * `configremoved` - event.detail is the deleted QueryInfo.
- * `configupdated` - event.detail is the modified QueryInfo.
- * `requestfailed` - Indicates that there was an error communicating with the server.
-
-##### Class `UserInfo`
-Provide information of the authenticated user. 
-
-##### Properties
- * `String username` - Username of the authenticated user. 
- * `String operateAs` -  The authenticated user may operate as other user and see other user's content if permitted. Same as the `username` if `operateAs` is not specified upon authentication.  
-
-##### Class `QueryInfo`
-Describes a given persistent query configuration and its status.
-
-###### Properties
- * `String serial` - Unique identifier for this configuration, intended for internal use.
- * `String scriptLanguage` - The language used to write the script that this configuration runs.
- * `String configurationType` - The type of this configuration (e.g., "Script", "ReplayScript", "JdbcImport")
- * `String name` - Human readable name identifying this configuration.
- * `VariableDefinition[] objects` - Objects that can be fetched from this query.
- * `String status` - The current status of this configuration.
- * `String[] tables` - The unique, human-readable names of all tables in this query configuration.
- * `String[] scheduling` - Describes the schedule that this query is run on, if any.
- * `boolean displayable` - Indicates if the query is displayable for the current user.
-
-###### Methods
- * `getTable(String tableName):Promise<Table>` - Load the named table, with columns and size information
- already fully populated.
- * `getTableMap(String tableMapName):Promise<TableMap>` - Load the named TableMap, with all keys that can be used to
- access underlying tables. Note that unlike tables, TableMap names are not published as part of the QueryInfo, so each 
- use of the TableMap must either follow some naming convention from an existing table, or must already know the 
- TableMap's name.
- * `getFigure(String figureName):Promise<Figure>` - Load the named Figure, including its tables and tablemaps as needed.
- * `getTreeTable(String treeTableName):Promise<TreeTable>` - Loads the named tree table or roll-up table, with column
- data populated. All nodes are collapsed by default, and size is presently not available until the viewport is first
- set.
- * `getObject(VariableDefinition def):Promise<Object>` - Loads the given object from the server, following the correct
- semantics of providing that particular object.
- * `intradayTable(String namespace, String name, String= internalPartition, boolean= live):Promise<Table>` - Creates
- and retrieves an intraday table from the given namespace and name. If provided, the "intradayPartition" parameter will
- specify which partition to read from on disk, defaults to null for "all". The "live" parameter defaults to true, and
- can be specified as false to avoid fetching a ticking table.
- * `intradayPartitions(String namespace, String name):Proise<Table>` - Get a table containing the possible intraday
- partition names for the `intradayTable` method.
- * `historicalTable(String namespace, String name):Promise<Table>` - Creates and retrieves a historical table. The
- resulting table is likely to be uncoalesced, so must be filtered at least once to have a size available. 
- * `emptyTable(Number size, Object<String, String>= columns):Promise<Table>` - Creates an empty table with the specified 
- number of rows. Optionally columns and types may be specified, but all values will be null.
- * `timeTable(Number periodNanos, DateWrapper= startTime` - Creates a new table that ticks automatically every 
- "periodNanos" nanoseconds. A start time may be provided, if so the table will be populated with the interval from the
- specified date until now.
- 
-###### Events
- * `requestfailed` - Indicates that there was an error communicating with the worker for this query configuration.
- * `disconnect` - Indicates that the connection was lost and some messages may be delayed until reconnect.
- * `reconnect` - Indicates that the worker for this query configuration has automatically reconnected to the server.
-
 ##### Class `Table`
 Provides access to data in a table. Note that several methods present
 their response through Promises. This allows the client to both avoid actually connecting to the server until necessary,
@@ -476,8 +380,10 @@ and also will permit some changes not to inform the UI right away that they have
  Note that the filter property will immediately return the new value, but you may receive update events using the old
  filter before the new one is applied, and the `filterchanged` event fires. Reusing existing, applied filters may enable
  this to perform better on the server.  The `updated` event will also fire, but `rowadded` and `rowremoved` will not.
- * `applyCustomColumns(String[]):String[]` - Replace the current custom columns with a new set. These columns can be
- used when adding new filter and sort operations to the table, as long as they are present.
+ * `applyCustomColumns(String[]):String[]` - Deprecated, use `applyCustomColumns(CustomColumn[])` instead - Replace the current custom columns with a new set. These columns can be
+  used when adding new filter and sort operations to the table, as long as they are present.
+ * `applyCustomColumns(CustomColumn[]):CustomColumn[]` - Replace the current custom columns with a new set. These columns can be
+  used when adding new filter and sort operations to the table, as long as they are present.
  * `setViewport(Number firstRow, Number lastRow, Column[]= columns, Number= updateIntervalMs):TableViewportSubscription` - 
  If the columns parameter is not provided, all columns will be used. If the updateIntervalMs parameter is not provided, 
  a default of one second will be used. Until this is called, no data will be available. Invoking this will result in events
@@ -535,7 +441,7 @@ and also will permit some changes not to inform the UI right away that they have
    * "ReverseAJ"
    * "ExactJoin"
    * "LeftJoin"
- * `byExternal(String[] keys, boolean= dropKeys):Promise<TableMap>` - Creates a new TableMap from the contents of the
+ * `partitionBy(String[] keys, boolean= dropKeys):Promise<PartitionedTable>` - Creates a new PartitionedTable from the contents of the
  current table, partitioning data based on the specified keys.
 <!--
  * `getAttributes():String[]` - returns an array listing the attributes that are set on this table, minus some of those already
@@ -570,11 +476,18 @@ and also will permit some changes not to inform the UI right away that they have
 Describes the structure of the column, and if desired can be used to get access to the data to be rendered in this
 column.
 
+###### Static functions
+ * `formatRowColor(String expression): CustomColumn` - Format entire rows colors using the expression specified. Returns a `CustomColumn` object to apply to a table using `applyCustomColumns` with the parameters specified.
+ * `createCustomColumn(String name, String expression): CustomColumn` - Return a `CustomColumn` object to apply using `applyCustomColumns` with the expression specified.
+
 ###### Methods
  * `get(Row):Any` - Returns the value for this column in the given row. Type will be consistent with the type of the
  Column.
  * `filter():FilterValue` - Creates a new value for use in filters based on this column. Used either as a parameter to
  another filter operation, or as a builder to create a filter operation.
+ * `formatColor(String expression): CustomColumn` - Return a `CustomColumn` object to apply using `applyCustomColumns` with the expression specified.
+ * `formatNumber(String expression): CustomColumn` - Return a `CustomColumn` object to apply using `applyCustomColumns` with the expression specified.
+ * `formatDate(String expression): CustomColumn` - Return a `CustomColumn` object to apply using `applyCustomColumns` with the expression specified.
  * `sort():Sort` - Creates a sort builder object, to be used when sorting by this column.
 
 ###### Properties
@@ -599,7 +512,12 @@ return a new Sort instance.
 ###### Properties
  * `Column column` - The column which is sorted.
  * `String direction` - The direction of this sort, either `ASC`, `DESC`, or `REVERSE`.
- * `boolean isAbs` - True if the absolute value of the column should be used when sorting; defaults to false.
+ * `boolean isAbs` - True if the absolute value of the column should be used when sorting; defaults to false. 
+
+##### Class `CustomColumn`
+* `String name` - The name of the column to use.
+* `String type` - Type of custom column. One of `FORMAT_COLOR`, `FORMAT_NUMBER`, `FORMAT_DATE`, or `NEW`.
+* `String expression` - The expression to evaluate this custom column.
 
 ##### Class `FilterValue`
 Describes data that can be filtered, either a column reference or a literal value. Used this way, the type of a value
@@ -692,7 +610,7 @@ These instances are immutable - all operations that compose them to build bigger
      third.
      * `isInf` - Returns true if the given number is "infinity".
      * `isNaN` - Returns true if the given number is "not a number".
-     * `isNormal` - Returns true if the given number is not null, is not infinity, and is not "not a number".
+     * `isFinite` - Returns true if the given number is not null, is not infinity, and is not "not a number".
      * `startsWith` - Returns true if the first string starts with the second string.
      * `endsWith` - Returns true if the first string ends with the second string.
      * `matches` - Returns true if the first string argument matches the second string used as a Java regular expression.
@@ -729,20 +647,15 @@ This object may be pooled internally or discarded and not updated. Do not retain
  * `String formatString` - The format string to apply to the value of this cell (see https://docs.deephaven.io/latest/Content/writeQueries/formatTables.htm#Formatting_Tables).
  * `String numberFormat` - DEPRECATED - use `formatString` instead. Number format string to apply to the value in this cell (see https://docs.deephaven.io/latest/Content/writeQueries/formatTables.htm#Formatting_Tables).
 
-##### Class `TableMap`
+##### Class `PartitionedTable`
 Represents a set of Tables each corresponding to some key. The keys are available locally, but a call must be made to 
 the server to get each Table. All tables will have the same structure.
-
-The available TableMap instances are not listed in the QueryInfo object as tables are - the application must know the
-name of the TableMaps that will be available.
-
-Note: Currently, keys can only be String values.
 
 ###### Methods
  * `getKeys():String[]` - The set of all currently known keys. This is kept up to date, so getting the list after adding
  an event listener for `keyadded` will ensure no keys are missed.
  * `size():Number` - The count of known keys.
- * `close()` - Indicates that this TableMap will no longer be used, removing subcriptions to updated keys, etc. This
+ * `close()` - Indicates that this PartitionedTable will no longer be used, removing subcriptions to updated keys, etc. This
  will not affect tables in use.
  * `getTable(String):Promise<Table>` - Fetches the table with the given key.
 
@@ -802,7 +715,7 @@ rows. To achieve this, request the same Totals Table again, but remove the `grou
  * `FilterCondition[] filter` - Read-only. An ordered list of Filters to apply to the table.  To update, call applyFilter().
  Note that this getter will return the new value immediately, even though it may take a little time to update on the
  server. You may listen for the `filterchanged` event to know when to update the UI.
- * `String[] customColumns` - Read-only. An ordered list of custom column formulas to add to the table, either adding
+ * `CustomColumn[] customColumns` - Read-only. An ordered list of custom column formulas to add to the table, either adding
  new columns or replacing existing ones. To update, call `applyCustomColumns()`.
 
 ###### Methods
@@ -825,8 +738,10 @@ rows. To achieve this, request the same Totals Table again, but remove the `grou
  Note that the filter property will immediately return the new value, but you may receive update events using the old
  filter before the new one is applied, and the `filterchanged` event fires. Reusing existing, applied filters may enable
  this to perform better on the server.  The `updated` event will also fire, but `rowadded` and `rowremoved` will not.
- * `applyCustomColumns(String[]):String[]` - Replace the current custom columns with a new set. These columns can be
+ * `applyCustomColumns(String[]):String[]` - Deprecated, use `applyCustomColumns(CustomColumn[])` instead - Replace the current custom columns with a new set. These columns can be
  used when adding new filter and sort operations to the table, as long as they are present.
+ * `applyCustomColumns(CustomColumn[]):CustomColumn[]` - Replace the current custom columns with a new set. These columns can be
+    used when adding new filter and sort operations to the table, as long as they are present.
  * `addEventListener(String type, function listener):Function` - Listen for events on the main connection.  Returns a
  convenience function to remove the event listener.
  * `removeEventListener(String type, function listener)` - Allow for manual "normal" event handler removal as well.
@@ -1076,6 +991,7 @@ This enum describes the name of each supported operation/aggregation type when c
  * `MAX` - The maximum value in the specified column. Can apply to any column type which is Comparable in Java. String
  value is "Max".
  * `SUM` - The sum of all values in the specified column. Can only apply to numeric types. String value is "Sum".
+ * `ABS_SUM` - The sum of all values, as their distance from zero, in the specified column. Can only apply to numeric types. String value is “AbsSum”.
  * `VAR` - The variance of all values in the specified column. Can only apply to numeric types. String value is "Var".
  * `AVG` - The average of all values in the specified column. Can only apply to numeric types. String value is "Avg".
  * `STD` - The standard deviation of all values in the specified column. Can only apply to numeric types. String value is
@@ -1100,9 +1016,14 @@ This enum describes the name of each supported operation/aggregation type when c
 
 ##### Class `IdeConnection`
 
+###### Constructor
+ * `new dh.IdeConnection(String websocketUrl, IdeConnectionOptions options)` - creates a new instance, from which console sessions can be made. `options` are optional.
+
 ###### Methods
 
  * `addEventListener(String eventType, Function eventListener)`
+ * `getConsoleTypes():String[]` - Retrieve the available console types for this worker.
+ * `getHeapInfo():HeapInfo` - Retrieve the current heap info for this worker.
  * `removeEventListener(String eventType, Function eventListener)`
  * `onLogMessage(Function logHandler):Function`
  * `startSession(String scriptLanguage):Promise<IdeSession>`
@@ -1113,13 +1034,19 @@ This enum describes the name of each supported operation/aggregation type when c
  * `String websocketUrl` - the url used when connecting to the server. Read-only.
  * `String serviceId` - The name of the service that should be authenticated to on the server. Read-only.
 
+##### Class `IdeConnectionOptions`
+###### Properties
+ * `String authToken` - base 64 encoded auth token
+ * `String serviceId` - The service ID to use for the connection
+
 ##### Class `IdeSession`
 
 ###### Methods
 
  * `getTable(String tableName):Promise<Table>` - Load the named table, with columns and size information
  already fully populated.
- * `getFigure(String figureName):Promise<Figure>` - Load the named Figure, including its tables and tablemaps as needed.
+ * `getFigure(String figureName):Promise<Figure>` - Load the named Figure, including its tables and partitionedtables
+as needed.
  * `getTreeTable(String treeTableName):Promise<TreeTable>` - Loads the named tree table or roll-up table, with column
  data populated. All nodes are collapsed by default, and size is presently not available until the viewport is first
  set.
@@ -1263,6 +1190,11 @@ This enum describes the name of each supported operation/aggregation type when c
  * `VariableDefinition created`
  * `VariableDefinition updated`
  * `VariableDefinition removed`
+
+##### Class `HeapInfo`
+ * `Number maximumHeapSize` - Maximum heap size of this worker.
+ * `Number freeMemory` - Free memory of this worker.
+ * `Number totalHeapSize` - Total heap size available for this worker.
 -->
 
 #### The `dh.plot` namespace:
@@ -1271,7 +1203,7 @@ This enum describes the name of each supported operation/aggregation type when c
 Provides the details for a figure.
 
 The Deephaven JS API supports automatic lossless downsampling of time-series data, when that data is plotted in one or
-more line series. Using a scatter plot or a X-axis of some type other than DBDateTime will prevent this feature
+more line series. Using a scatter plot or a X-axis of some type other than DateTime will prevent this feature
 from being applied to a series. To enable this feature, invoke `Axis.range(...)` to specify the length in pixels of the
 axis on the screen, and the range of values that are visible, and the server will use that width (and range, if any) to
 reduce the number of points sent to the client.

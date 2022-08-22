@@ -1,17 +1,24 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.treetable;
 
-import io.deephaven.db.tables.Table;
+import io.deephaven.engine.table.Table;
 
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * <p>A basic description of a particular table within a Tree Table.</p>
+ * <p>
+ * A basic description of a particular table within a Tree Table.
+ * </p>
  *
- * <p>When this structure is created, if the table id is included then the query will fetch the table
- *    from it's parent by the key, applying any filters and sorts required.  Before data is returned to the client,
- *    the set of children is updated to reflect any changes in the table.</p>
+ * <p>
+ * When this structure is created, if the table id is included then the query will fetch the table from it's parent by
+ * the key, applying any filters and sorts required. Before data is returned to the client, the set of children is
+ * updated to reflect any changes in the table.
+ * </p>
  */
 public class TableDetails implements Serializable {
     private static final long serialVersionUID = 2L;

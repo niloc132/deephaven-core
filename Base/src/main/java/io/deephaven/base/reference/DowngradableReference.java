@@ -1,13 +1,13 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.reference;
 
 import java.lang.ref.WeakReference;
 
 /**
  * SimpleReference implementation that allows a downgrade from strongly reachable to weakly reachable.
+ * 
  * @note This only applies (obviously) to this reference's relationship to the referent.
  * @param <T>
  */
@@ -30,8 +30,8 @@ public class DowngradableReference<T> extends WeakReference<T> implements Simple
     }
 
     /**
-     * Eliminate this object's hard reference to the referent.  Converts the reachability enforced by this object
-     * from hard to weak.
+     * Eliminate this object's hard reference to the referent. Converts the reachability enforced by this object from
+     * hard to weak.
      */
     public void downgrade() {
         hardReference = null;

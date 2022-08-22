@@ -1,7 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.batch;
 
 import elemental2.core.JsArray;
-import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.Ticket;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.*;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.batchtablerequest.Operation;
 import io.deephaven.web.client.api.Sort;
@@ -22,8 +25,8 @@ import java.util.stream.Stream;
 /**
  * Used by client to create batched requests.
  *
- * This allows us to store everything using the objects a client expects to interact with
- * (Sort, FilterCondition, etc), rather than DTO types like SortDescriptor, FilterDescriptor, etc.
+ * This allows us to store everything using the objects a client expects to interact with (Sort, FilterCondition, etc),
+ * rather than DTO types like SortDescriptor, FilterDescriptor, etc.
  *
  */
 public class BatchBuilder {
@@ -33,8 +36,7 @@ public class BatchBuilder {
 
     public static class BatchOp extends TableConfig {
 
-        public BatchOp() {
-        }
+        public BatchOp() {}
 
         private TableTicket source, target;
         private ClientTableState state;
@@ -64,6 +66,7 @@ public class BatchBuilder {
         public void setState(ClientTableState state) {
             this.state = state;
         }
+
         public void fromState(ClientTableState state) {
             setState(state);
             setSorts(state.getSorts());
@@ -99,17 +102,28 @@ public class BatchBuilder {
             return getCustomColumns() != null && !getCustomColumns().isEmpty();
         }
 
+        public boolean hasViewColumns() {
+            return getViewColumns() != null && !getViewColumns().isEmpty();
+        }
+
+        public boolean hasDropColumns() {
+            return getDropColumns() != null && !getDropColumns().isEmpty();
+        }
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            if (!super.equals(o)) return false;
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
+            if (!super.equals(o))
+                return false;
 
             final BatchOp batchOp = (BatchOp) o;
 
             // even if both have null handles, they should not be equal unless they are the same instance...
-            if (source != null ? !source.equals(batchOp.source) : batchOp.source != null) return false;
+            if (source != null ? !source.equals(batchOp.source) : batchOp.source != null)
+                return false;
             return target != null ? target.equals(batchOp.target) : batchOp.target == null;
         }
 
@@ -136,10 +150,12 @@ public class BatchBuilder {
             if (getFilters().size() != value.getFilters().size() || !getFilters().containsAll(value.getFilters())) {
                 return false;
             }
-            if (getDropColumns().size() != value.getDropColumns().size() || !getDropColumns().containsAll(value.getDropColumns())) {
+            if (getDropColumns().size() != value.getDropColumns().size()
+                    || !getDropColumns().containsAll(value.getDropColumns())) {
                 return false;
             }
-            if (getViewColumns().size() != value.getViewColumns().size() || !getViewColumns().containsAll(value.getViewColumns())) {
+            if (getViewColumns().size() != value.getViewColumns().size()
+                    || !getViewColumns().containsAll(value.getViewColumns())) {
                 return false;
             }
 
@@ -153,18 +169,14 @@ public class BatchBuilder {
         @Override
         public String toString() {
             return "BatchOp{" +
-//                "handles=" + handles +
-                ", state=" + (state == null ? null : state.toStringMinimal()) +
-                ", appendTo=" + (appendTo == null ? null : appendTo.toStringMinimal()) +
-                ", " + super.toString() + "}";
+            // "handles=" + handles +
+                    ", state=" + (state == null ? null : state.toStringMinimal()) +
+                    ", appendTo=" + (appendTo == null ? null : appendTo.toStringMinimal()) +
+                    ", " + super.toString() + "}";
         }
     }
 
     public JsArray<Operation> serializable() {
-        if (ops.isEmpty()) {
-            return new JsArray<>();
-        }
-
         JsArray<Operation> send = new JsArray<>();
         for (BatchOp op : ops) {
             if (!op.hasHandles()) {
@@ -172,7 +184,8 @@ public class BatchBuilder {
                 continue;
             }
             if (op.getState().isEmpty()) {
-                op.getState().setResolution(ClientTableState.ResolutionState.FAILED, "Table state abandoned before request was made");
+                op.getState().setResolution(ClientTableState.ResolutionState.FAILED,
+                        "Table state abandoned before request was made");
                 continue;
             }
 
@@ -181,6 +194,7 @@ public class BatchBuilder {
             Supplier<TableReference> prevTableSupplier = new Supplier<TableReference>() {
                 // initialize as -1 because a reference to the "first" will be zero
                 int internalOffset = -1;
+
                 @Override
                 public TableReference get() {
                     TableReference ref = new TableReference();
@@ -204,23 +218,24 @@ public class BatchBuilder {
                     buildFilter(op, prevTableSupplier, lastOp),
                     buildSort(op, prevTableSupplier, lastOp),
                     buildDropColumns(op, prevTableSupplier, lastOp),
-                    flattenOperation(op, prevTableSupplier, lastOp)
-            )
+                    flattenOperation(op, prevTableSupplier, lastOp))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            lastOp[0].accept(op.getNewId().makeTicket());
+            if (!operations.isEmpty()) {
+                lastOp[0].accept(op.getNewId().makeTicket());
 
-            // after building the entire collection, append to the set of steps we'll send
-            for (int i = 0; i < operations.size(); i++) {
-                send.push(operations.get(i));
+                // after building the entire collection, append to the set of steps we'll send
+                for (int i = 0; i < operations.size(); i++) {
+                    send.push(operations.get(i));
+                }
             }
-
         }
         return send;
     }
 
-    private Operation buildCustomColumns(BatchOp op, Supplier<TableReference> prevTableSupplier, Consumer<Ticket>[] lastOp) {
+    private Operation buildCustomColumns(BatchOp op, Supplier<TableReference> prevTableSupplier,
+            Consumer<Ticket>[] lastOp) {
         SelectOrUpdateRequest value = new SelectOrUpdateRequest();
 
         for (CustomColumnDescriptor customColumn : op.getCustomColumns()) {
@@ -241,7 +256,8 @@ public class BatchBuilder {
         return updateViewOp;
     }
 
-    private Operation flattenOperation(BatchOp op, Supplier<TableReference> prevTableSupplier, Consumer<Ticket>[] lastOp) {
+    private Operation flattenOperation(BatchOp op, Supplier<TableReference> prevTableSupplier,
+            Consumer<Ticket>[] lastOp) {
         if (!op.isFlat()) {
             return null;
         }
@@ -292,7 +308,8 @@ public class BatchBuilder {
         return filterOp;
     }
 
-    private Operation buildDropColumns(BatchOp op, Supplier<TableReference> prevTableSupplier, Consumer<Ticket>[] lastOp) {
+    private Operation buildDropColumns(BatchOp op, Supplier<TableReference> prevTableSupplier,
+            Consumer<Ticket>[] lastOp) {
         DropColumnsRequest value = new DropColumnsRequest();
         for (String dropColumn : op.getDropColumns()) {
             value.addColumnNames(dropColumn);
@@ -309,7 +326,9 @@ public class BatchBuilder {
 
         return dropOp;
     }
-    private Operation buildViewColumns(BatchOp op, Supplier<TableReference> prevTableSupplier, Consumer<Ticket>[] lastOp) {
+
+    private Operation buildViewColumns(BatchOp op, Supplier<TableReference> prevTableSupplier,
+            Consumer<Ticket>[] lastOp) {
         SelectOrUpdateRequest value = new SelectOrUpdateRequest();
         for (String dropColumn : op.getDropColumns()) {
             value.addColumnSpecs(dropColumn);
@@ -373,16 +392,17 @@ public class BatchBuilder {
     }
 
     public BatchOp getFirstOp() {
-        assert !ops.isEmpty(): "Don't call getFirstOp on an empty batch!";
+        assert !ops.isEmpty() : "Don't call getFirstOp on an empty batch!";
         return ops.get(0);
     }
 
     @Override
     public String toString() {
         return "BatchBuilder{" +
-            "ops=" + ops +
-            '}';
+                "ops=" + ops +
+                '}';
     }
+
     public String toStringMinimal() {
         StringBuilder b = new StringBuilder("BatchBuilder{ops=[");
         for (BatchOp op : ops) {

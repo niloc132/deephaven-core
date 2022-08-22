@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.stats;
 
 public class Item<V extends Value> {
@@ -18,7 +17,7 @@ public class Item<V extends Value> {
     /** The value associated with this item */
     protected final V value;
 
-    /** Creating this for intrady so we don't have to allocate or change the existing DB schema **/
+    /** Creating this for intraday so we don't have to allocate or change the existing schema **/
     protected final String compactName;
 
     /**

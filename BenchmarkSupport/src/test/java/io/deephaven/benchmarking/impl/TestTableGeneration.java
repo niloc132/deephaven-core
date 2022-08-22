@@ -1,8 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.impl;
 
-import io.deephaven.db.tables.Table;
-import io.deephaven.db.tables.utils.TableTools;
-import io.deephaven.db.v2.QueryTableTestBase;
+import io.deephaven.engine.table.Table;
+import io.deephaven.engine.util.TableTools;
+import io.deephaven.engine.table.impl.QueryTableTestBase;
 import io.deephaven.benchmarking.BenchmarkTable;
 import io.deephaven.benchmarking.BenchmarkTableBuilder;
 import io.deephaven.benchmarking.BenchmarkTools;
@@ -15,7 +18,7 @@ public class TestTableGeneration extends QueryTableTestBase {
                 .addColumn(BenchmarkTools.stringCol("Stringy", 1, 10))
                 .addColumn(BenchmarkTools.numberCol("C2", int.class))
                 .addColumn(BenchmarkTools.numberCol("C3", double.class))
-                .addColumn(BenchmarkTools.stringCol("C4",10, 5,7, 0xFEEDBEEF))
+                .addColumn(BenchmarkTools.stringCol("C4", 10, 5, 7, 0xFEEDBEEF))
                 .addColumn(BenchmarkTools.stringCol("Thingy", 30, 6, 6, 0xB00FB00F))
                 .addGroupingColumns("Thingy")
                 .setPartitioningFormula("${autobalance_single}")
@@ -44,7 +47,7 @@ public class TestTableGeneration extends QueryTableTestBase {
                 .addColumn(BenchmarkTools.stringCol("Stringy", 1, 10))
                 .addColumn(BenchmarkTools.numberCol("C2", int.class))
                 .addColumn(BenchmarkTools.numberCol("C3", double.class))
-                .addColumn(BenchmarkTools.stringCol("C4",10, 5,7, 0xFEEDBEEF))
+                .addColumn(BenchmarkTools.stringCol("C4", 10, 5, 7, 0xFEEDBEEF))
                 .addColumn(BenchmarkTools.stringCol("Thingy", 30, 6, 6, 0xB00FB00F))
                 .build();
 
@@ -68,14 +71,14 @@ public class TestTableGeneration extends QueryTableTestBase {
                 .addColumn(BenchmarkTools.stringCol("Stringy", 1, 10))
                 .addColumn(BenchmarkTools.numberCol("C2", int.class))
                 .addColumn(BenchmarkTools.numberCol("C3", double.class))
-                .addColumn(BenchmarkTools.stringCol("C4",10, 5,7, 0xFEEDBEEF))
+                .addColumn(BenchmarkTools.stringCol("C4", 10, 5, 7, 0xFEEDBEEF))
                 .addColumn(BenchmarkTools.stringCol("Thingy", 30, 6, 6, 0xB00FB00F))
                 .build();
 
-        final Table resultTable = BenchmarkTools.applySparsity(bt.getTable(),2000, 1, 0);
+        final Table resultTable = BenchmarkTools.applySparsity(bt.getTable(), 2000, 1, 0);
 
         assertEquals(2000, resultTable.size());
-        assertTrue(resultTable.getIndex().lastKey() > 100000);
+        assertTrue(resultTable.getRowSet().lastRowKey() > 100000);
         // Make sure we can generate more
         bt.cleanup();
     }

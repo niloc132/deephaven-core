@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api;
 
 import elemental2.core.JsArray;
@@ -18,7 +21,7 @@ public class LazyString {
         if (obj instanceof JsProvider) {
             return new LazyString((JsProvider) obj);
         }
-        return new LazyString(()->obj);
+        return new LazyString(() -> obj);
     }
 
     public static LazyString of(JsProvider<Object> obj) {
@@ -31,8 +34,8 @@ public class LazyString {
     }
 
     public static Object[] resolve(Object[] msgs) {
-        JsLazy<Object[]> copy = JsLazy.of(JsArray::of, msgs);
-        for (int i = msgs.length; i-->0;) {
+        JsLazy<Object[]> copy = JsLazy.of(arr -> JsArray.of(arr).asArray(new Object[0]), msgs);
+        for (int i = msgs.length; i-- > 0;) {
             if (msgs[i] instanceof LazyString) {
                 // first time in will copy all the values, as is, including current LazyString
                 final Object[] cp = copy.get();

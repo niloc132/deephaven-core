@@ -1,5 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.api;
 
+import io.deephaven.annotations.SimpleStyle;
 import org.immutables.value.Value.Check;
 import org.immutables.value.Value.Immutable;
 import org.immutables.value.Value.Parameter;
@@ -24,7 +28,7 @@ abstract class JoinMatchImpl implements JoinMatch {
             // To make sure that JoinMatch#equals() works as we would expect, we should always use
             // canonical ColumnName when applicable.
             throw new IllegalArgumentException(
-                "Should not construct JoinMatchImpl with left() equal to right(), use the ColumnName directly");
+                    "Should not construct JoinMatchImpl with left() equal to right(), use the ColumnName directly");
         }
     }
 }

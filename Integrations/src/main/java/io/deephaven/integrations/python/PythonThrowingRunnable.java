@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.integrations.python;
 
 import io.deephaven.util.FunctionalInterfaces;
@@ -18,19 +17,19 @@ public class PythonThrowingRunnable implements FunctionalInterfaces.ThrowingRunn
     /**
      * Creates a new runnable.
      *
-     * @param pyObjectIn the python object providing a function - must either be callable or
-     *                   have an "apply" attribute which is callable.
+     * @param pyObjectIn the python object providing a function - must either be callable or have an "apply" attribute
+     *        which is callable.
      */
-    public PythonThrowingRunnable(final PyObject pyObjectIn){
-        if(pyObjectIn.hasAttribute("apply")){
+    public PythonThrowingRunnable(final PyObject pyObjectIn) {
+        if (pyObjectIn.hasAttribute("apply")) {
             pyCallable = pyObjectIn.getAttribute("apply");
-            if (!pyCallable.hasAttribute("__call__")){
+            if (!pyCallable.hasAttribute("__call__")) {
                 throw new IllegalArgumentException("The Python object provided has an apply attribute " +
                         "which is not callable");
             }
-        }else if (pyObjectIn.hasAttribute("__call__")){
+        } else if (pyObjectIn.hasAttribute("__call__")) {
             pyCallable = pyObjectIn;
-        }else{
+        } else {
             throw new IllegalArgumentException("The Python object specified should either be callable, or a " +
                     "class instance with an apply method");
         }

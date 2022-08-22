@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.thread;
 
 import org.jetbrains.annotations.NotNull;
@@ -27,8 +30,10 @@ public class NamingThreadFactory implements ThreadFactory {
         this.daemon = daemon;
     }
 
-    @Override public Thread newThread(@NotNull final Runnable r) {
-        final Thread thread = new Thread(threadGroup, r, clazz.getSimpleName() + "-" + name + "-" + threadCounter.incrementAndGet());
+    @Override
+    public Thread newThread(@NotNull final Runnable r) {
+        final Thread thread =
+                new Thread(threadGroup, r, clazz.getSimpleName() + "-" + name + "-" + threadCounter.incrementAndGet());
         thread.setDaemon(daemon);
         return thread;
     }

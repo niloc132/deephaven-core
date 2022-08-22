@@ -1,20 +1,32 @@
+plugins {
+    id 'io.deephaven.project.register'
+}
+
 configurations {
-    compile.extendsFrom dhConsole
+    implementation.extendsFrom dhConsole
 }
 
 dependencies {
-    compile project(':DB')
+    implementation project(':engine-table')
+    implementation project(':engine-function')
+    implementation project(':log-factory')
+    implementation project(':Configuration')
+    implementation depCommonsLang3
 
-    testCompile project(path: ':DB', configuration: 'testOutput')
-
-    testRuntime project(path: ':configs'), project(path: ':test-configs')
+    testImplementation TestTools.projectDependency(project, 'Base')
+    testImplementation TestTools.projectDependency(project, 'engine-table')
+    testImplementation project(':extensions-csv')
 
     testRuntimeOnly project(':log-to-slf4j')
-    testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.30'
+    testRuntimeOnly project(path: ':configs')
+    testRuntimeOnly project(path: ':test-configs')
+    Classpaths.inheritSlf4j(project, 'slf4j-simple', 'testRuntimeOnly')
 }
 
-task replicateDownsampleValueTrackers(type: JavaExec) {
-    workingDir "$rootDir"
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'io.deephaven.clientsupport.plotdownsampling.ReplicateDownsamplingValueTrackers'
+spotless {
+    java {
+        targetExclude(
+                '**/**ValueTracker.java',
+        )
+    }
 }

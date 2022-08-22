@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import io.deephaven.properties.PropertySet;
@@ -47,9 +50,9 @@ public abstract class OperatingSystemVersionOshi implements PropertySet {
 
     public static OperatingSystemVersionOshi from(OSVersionInfo info) {
         return ImmutableOperatingSystemVersionOshi.builder()
-            .version(Optional.ofNullable(info.getVersion()))
-            .codeName(Optional.ofNullable(info.getCodeName()))
-            .buildNumber(Optional.ofNullable(info.getBuildNumber()))
-            .build();
+                .version(Optional.ofNullable(info.getVersion()))
+                .codeName(Optional.ofNullable(info.getCodeName()))
+                .buildNumber(Optional.ofNullable(info.getBuildNumber()))
+                .build();
     }
 }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.grpcweb;
 
 import io.deephaven.javascript.proto.dhinternal.grpcweb.invoke.Request;
@@ -7,6 +10,6 @@ import jsinterop.annotations.JsType;
 
 @JsType(isNative = true, name = "dhinternal.grpcWeb.unary", namespace = JsPackage.GLOBAL)
 public class Unary {
-  public static native <TRequest, TResponse, M> Request unary(
-      M methodDescriptor, UnaryRpcOptions<TRequest, TResponse> props);
+    public static native <TRequest, TResponse, M> Request unary(
+            M methodDescriptor, UnaryRpcOptions<TRequest, TResponse> props);
 }

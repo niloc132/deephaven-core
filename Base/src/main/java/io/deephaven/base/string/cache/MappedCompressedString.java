@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.string.cache;
 
 import io.deephaven.base.reference.SimpleReference;
@@ -11,15 +10,15 @@ import org.jetbrains.annotations.NotNull;
 import java.nio.ByteBuffer;
 
 /**
- * This is a ridiculously simple, light-as-I-can-make-it, but decidedly single-purpose data structure.
- * Specifically, it's a CompressedString with an embedded (to avoid reference or Object instance overhead)
- * open-addressed SimpleReference<Object>-identity -> int hash map with load factor 1 (100%) and no public operations
- * other than "putIfAbsent".
+ * This is a ridiculously simple, light-as-I-can-make-it, but decidedly single-purpose data structure. Specifically,
+ * it's a CompressedString with an embedded (to avoid reference or Object instance overhead) open-addressed
+ * SimpleReference<Object>-identity -> int hash map with load factor 1 (100%) and no public operations other than
+ * "putIfAbsent".
  *
  * The reason for requiring that key objects be SimpleReferences is to allow for O(1) automatic slot reclamation across
- * many MappedCompressedString instances at the same time.  A given source of mappings creates a single SimpleReference
- * to use as a key, and may invalidate mappings (creating a deleted slot) simply by clearing the SimpleReference.
- * In practice, a WeakSimpleReference to the source itself is used, in order to also allow garbage collection of the
+ * many MappedCompressedString instances at the same time. A given source of mappings creates a single SimpleReference
+ * to use as a key, and may invalidate mappings (creating a deleted slot) simply by clearing the SimpleReference. In
+ * practice, a WeakSimpleReference to the source itself is used, in order to also allow garbage collection of the
  * mapping source object to invalidate all of its mappings.
  *
  * Unfortunately, I haven't figured out a way to make this allow concurrent gets.
@@ -27,9 +26,8 @@ import java.nio.ByteBuffer;
  * The intended use is in Deephaven import code, for storing SymbolManager -> SymbolId mappings on the CompressedString
  * that represents the Symbol itself, typically inside of a (bounded) StringCache of MappedCompressedString instances.
  *
- * Note that this uses io.deephaven.base.reference.SimpleReference instead of java.lang.ref.Reference so that unit
- * tests can avoid being required to use the concrete sub-classes of Reference, which all come with GC-related
- * side-effects.
+ * Note that this uses io.deephaven.base.reference.SimpleReference instead of java.lang.ref.Reference so that unit tests
+ * can avoid being required to use the concrete sub-classes of Reference, which all come with GC-related side-effects.
  */
 public final class MappedCompressedString extends AbstractCompressedString<MappedCompressedString> {
 
@@ -95,12 +93,14 @@ public final class MappedCompressedString extends AbstractCompressedString<Mappe
 
     /**
      * Add the specified <key, value> pair if no mapping already exists for key.
+     * 
      * @param key A non-null Reference to an arbitrary object whose reachability determines mapping validity.
-     * @param potentialValue The value to insert if none already exists.  Must not equal NULL_MAPPING_VALUE.
+     * @param potentialValue The value to insert if none already exists. Must not equal NULL_MAPPING_VALUE.
      * @return The existing mapped value, if present, or NULL_MAPPING_VALUE if potentialValue was used.
      */
     public final synchronized int putIfAbsent(final SimpleReference<?> key, final int potentialValue) {
-        return putIfAbsentInternal(Require.neqNull(key, "key"), Require.neq(potentialValue, "potentialValue", NULL_MAPPING_VALUE, "NULL_MAPPING_VALUE"), true);
+        return putIfAbsentInternal(Require.neqNull(key, "key"),
+                Require.neq(potentialValue, "potentialValue", NULL_MAPPING_VALUE, "NULL_MAPPING_VALUE"), true);
     }
 
     private int putIfAbsentInternal(final SimpleReference<?> key, final int potentialValue, final boolean allowRehash) {
@@ -150,7 +150,8 @@ public final class MappedCompressedString extends AbstractCompressedString<Mappe
             rehash();
             return putIfAbsentInternal(key, potentialValue, false);
         }
-        throw new IllegalStateException("BUG: No free space found for <" + key + ',' + potentialValue + ">, but allowRehash is false!");
+        throw new IllegalStateException(
+                "BUG: No free space found for <" + key + ',' + potentialValue + ">, but allowRehash is false!");
     }
 
     private int firstIndexFor(final SimpleReference<?> key) {
@@ -168,13 +169,14 @@ public final class MappedCompressedString extends AbstractCompressedString<Mappe
         keys = new SimpleReference<?>[oldKeys.length * 2];
         values = new int[keys.length];
 
-        for (int oki = 0; oki < oldKeys.length; ++oki) {
-            final SimpleReference<?> key = oldKeys[oki];
+        for (int rsi = 0; rsi < oldKeys.length; ++rsi) {
+            final SimpleReference<?> key = oldKeys[rsi];
             if (key.get() == null) {
                 continue;
             }
-            if (putIfAbsentInternal(key, oldValues[oki], false) != NULL_MAPPING_VALUE) {
-                throw new IllegalStateException("BUG: Mapping for <" + oldKeys[oki] + ',' + oldValues[oki] + "> already present during rehash!");
+            if (putIfAbsentInternal(key, oldValues[rsi], false) != NULL_MAPPING_VALUE) {
+                throw new IllegalStateException("BUG: Mapping for <" + oldKeys[rsi] + ',' + oldValues[rsi]
+                        + "> already present during rehash!");
             }
         }
     }

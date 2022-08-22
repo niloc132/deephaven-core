@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.configuration;
 
 import java.io.InputStream;
@@ -6,10 +9,12 @@ import java.util.ServiceLoader;
 /**
  * An abstraction for opening property files. Invoked via {@link ParsedProperties#load(String)}.
  *
- * <p>The default implementation is {@link PropertyInputStreamLoaderTraditional}.
+ * <p>
+ * The default implementation is {@link PropertyInputStreamLoaderTraditional}.
  *
- * <p>To override the default, additional {@link PropertyInputStreamLoader} implementations can be
- * added to the classpath and referenced via the {@link ServiceLoader} mechanism.
+ * <p>
+ * To override the default, additional {@link PropertyInputStreamLoader} implementations can be added to the classpath
+ * and referenced via the {@link ServiceLoader} mechanism.
  */
 public interface PropertyInputStreamLoader {
 

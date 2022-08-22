@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.codec;
 
 import org.jetbrains.annotations.NotNull;
@@ -11,7 +14,7 @@ public class ExternalizableCodec<T extends Externalizable> implements ObjectCode
 
     public ExternalizableCodec(String className) {
         try {
-            //noinspection unchecked
+            // noinspection unchecked
             this.externalizableClass = (Class<T>) Class.forName(className);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);

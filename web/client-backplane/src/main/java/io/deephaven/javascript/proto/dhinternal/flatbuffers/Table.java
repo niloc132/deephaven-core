@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.flatbuffers;
 
 import jsinterop.annotations.JsOverlay;
@@ -9,20 +12,20 @@ import jsinterop.base.JsPropertyMap;
 
 @JsType(isNative = true, name = "dhinternal.flatbuffers.Table", namespace = JsPackage.GLOBAL)
 public interface Table {
-  @JsOverlay
-  static Table create() {
-    return Js.uncheckedCast(JsPropertyMap.of());
-  }
+    @JsOverlay
+    static Table create() {
+        return Js.uncheckedCast(JsPropertyMap.of());
+    }
 
-  @JsProperty
-  ByteBuffer getBb();
+    @JsProperty
+    ByteBuffer getBb();
 
-  @JsProperty
-  double getBb_pos();
+    @JsProperty
+    double getBb_pos();
 
-  @JsProperty
-  void setBb(ByteBuffer bb);
+    @JsProperty
+    void setBb(ByteBuffer bb);
 
-  @JsProperty
-  void setBb_pos(double bb_pos);
+    @JsProperty
+    void setBb_pos(double bb_pos);
 }

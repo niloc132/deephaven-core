@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.profiling;
 
 import io.deephaven.util.QueryConstants;
@@ -9,8 +12,7 @@ public final class NullThreadProfiler implements ThreadProfiler {
 
     public static final ThreadProfiler INSTANCE = new NullThreadProfiler();
 
-    private NullThreadProfiler() {
-    }
+    private NullThreadProfiler() {}
 
     @Override
     public boolean memoryProfilingAvailable() {

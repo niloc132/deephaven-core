@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.annotations;
 
 import java.lang.annotation.Documented;
@@ -11,5 +14,5 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD})
 @Inherited
 @Documented
-public @interface FinalDefault
-{}
+public @interface FinalDefault {
+}

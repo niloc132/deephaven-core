@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy.integration;
 
 import org.jpy.CreateModule;
@@ -20,9 +23,9 @@ interface SimpleObject extends AutoCloseable {
     static String readResource(String name) {
         try {
             return new String(
-                Files.readAllBytes(Paths.get(
-                    SimpleObject.class.getResource(name).toURI())),
-                StandardCharsets.UTF_8);
+                    Files.readAllBytes(Paths.get(
+                            SimpleObject.class.getResource(name).toURI())),
+                    StandardCharsets.UTF_8);
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }

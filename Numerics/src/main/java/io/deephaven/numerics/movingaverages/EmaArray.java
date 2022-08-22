@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.numerics.movingaverages;
 
 import java.io.Serializable;
@@ -19,8 +18,8 @@ public class EmaArray implements Serializable {
     /**
      * Constructs a new array of EMAs which use the given timescales.
      *
-     * @param type       type of EMA
-     * @param mode       compute the ema by tick or time
+     * @param type type of EMA
+     * @param mode compute the ema by tick or time
      * @param timeScales timescales for the EMAs.
      */
     public EmaArray(Ema.Type type, Ema.Mode mode, double[] timeScales) {
@@ -46,7 +45,7 @@ public class EmaArray implements Serializable {
         }
     }
 
-    public double[] getCurrent(){
+    public double[] getCurrent() {
         double[] result = new double[emas.length];
 
         for (int i = 0; i < emas.length; i++) {
@@ -61,7 +60,7 @@ public class EmaArray implements Serializable {
      *
      * @return size of the ema array.
      */
-    public int size(){
+    public int size() {
         return emas.length;
     }
 

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util;
 
 import org.jetbrains.annotations.NotNull;
@@ -8,8 +11,8 @@ import org.jetbrains.annotations.NotNull;
 public class ExceptionUtil {
     public static boolean causedBy(@NotNull Throwable t, Class<? extends Throwable> cause) {
         Throwable curr = t;
-        while(curr != null) {
-            if(cause.isAssignableFrom(curr.getClass())) {
+        while (curr != null) {
+            if (cause.isAssignableFrom(curr.getClass())) {
                 return true;
             }
             curr = curr.getCause();

@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.string.cache;
 
 import org.jetbrains.annotations.NotNull;
@@ -9,9 +8,11 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Type adapter for MappedCompressedStrings.
  */
-public class StringCacheTypeAdapterMappedCompressedStringImpl implements StringCacheTypeAdapter<MappedCompressedString> {
+public class StringCacheTypeAdapterMappedCompressedStringImpl
+        implements StringCacheTypeAdapter<MappedCompressedString> {
 
-    public static final StringCacheTypeAdapter<MappedCompressedString> INSTANCE = new StringCacheTypeAdapterMappedCompressedStringImpl();
+    public static final StringCacheTypeAdapter<MappedCompressedString> INSTANCE =
+            new StringCacheTypeAdapterMappedCompressedStringImpl();
 
     private static final MappedCompressedString EMPTY_VALUE = new MappedCompressedString("");
 

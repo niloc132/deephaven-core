@@ -34,7 +34,6 @@ import io.deephaven.lang.api.ChunkerInvokable;
 import io.deephaven.lang.api.IsScope;
 import io.deephaven.lang.api.ParseState;
 import io.deephaven.lang.api.ParseCancelled;
-import io.deephaven.lang.meta.Messenger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -51,7 +50,6 @@ public class Chunker implements ChunkerMixin {
     private final Stack<ParseState> stack = new Stack<ParseState>();
     private static int pythonDepth = -1, pythonIndent = 4;
     private final IdentityHashMap<Node, ParseState> states = new IdentityHashMap<Node, ParseState>();
-    private Messenger messenger;
     private ChunkerInvokable invoker;
     private String language;
     boolean groovy = true, python = false;
@@ -76,21 +74,8 @@ public class Chunker implements ChunkerMixin {
         return language;
     }
 
-    public synchronized Messenger setMessenger(Messenger messenger) {
-        Messenger was = this.messenger;
-        this.messenger = messenger;
-        return was;
-    }
-
-    public synchronized Messenger getMessenger() {
-        if (this.messenger == null) {
-          this.messenger = new Messenger();
-        }
-        return messenger;
-    }
-
     void report(int code) {
-        getMessenger().report(code, this);
+        // no-op
     }
 
     void jjtreeOpenNodeScope(Node n){

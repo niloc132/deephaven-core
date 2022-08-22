@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy;
 
 import io.deephaven.util.PrimitiveArrayType;
@@ -23,7 +26,7 @@ public class JpyModuleByteArrayTest extends JpyModuleArrayTestBase<byte[]> {
     @Override
     void fillAsDesired(byte[] array) {
         for (int i = 0; i < array.length; ++i) {
-            array[i] = (byte)i;
+            array[i] = (byte) i;
         }
     }
 }

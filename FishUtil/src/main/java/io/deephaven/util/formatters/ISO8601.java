@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util.formatters;
 
 import io.deephaven.configuration.Configuration;
@@ -64,7 +63,7 @@ public class ISO8601 {
 
     public static String toISO8601(Date d, TimeZone tz) {
         DateFormat df = toISO8601Cache.get();
-        if(df == null) {
+        if (df == null) {
             df = ISO8601DateTimeFormat(tz);
             toISO8601Cache.set(df);
         } else {
@@ -87,7 +86,7 @@ public class ISO8601 {
 
     public static String timeISO8601(Date d, TimeZone tz) {
         DateFormat df = timeISO8601Cache.get();
-        if(df == null) {
+        if (df == null) {
             df = ISO8601TimeFormat(tz);
             timeISO8601Cache.set(df);
         } else {
@@ -110,7 +109,7 @@ public class ISO8601 {
 
     public static String dateISO8601(Date d, TimeZone tz) {
         DateFormat df = dateISO8601Cache.get();
-        if(df == null) {
+        if (df == null) {
             df = ISO8601DateFormat(tz);
             dateISO8601Cache.set(df);
         } else {

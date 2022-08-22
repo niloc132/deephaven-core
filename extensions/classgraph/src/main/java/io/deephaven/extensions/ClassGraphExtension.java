@@ -1,9 +1,13 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.extensions;
 
-import io.deephaven.db.tables.Table;
-import io.deephaven.db.tables.libs.QueryLibraryImports;
-import io.deephaven.db.tables.utils.TableTools;
-import io.deephaven.db.util.GroovyDeephavenSession.InitScript;
+import com.google.auto.service.AutoService;
+import io.deephaven.engine.table.Table;
+import io.deephaven.engine.table.lang.QueryLibraryImports;
+import io.deephaven.engine.util.TableTools;
+import io.deephaven.engine.util.GroovyDeephavenSession.InitScript;
 import io.deephaven.util.QueryConstants;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.Resource;
@@ -19,11 +23,11 @@ import javax.inject.Inject;
 
 public class ClassGraphExtension {
 
+    @AutoService(InitScript.class)
     public static class Script implements InitScript {
 
         @Inject
-        public Script() {
-        }
+        public Script() {}
 
         @Override
         public String getScriptPath() {
@@ -36,6 +40,7 @@ public class ClassGraphExtension {
         }
     }
 
+    @AutoService(QueryLibraryImports.class)
     public static class Imports implements QueryLibraryImports {
 
         @Override
@@ -64,10 +69,10 @@ public class ClassGraphExtension {
 
     public static Table tableAllExtensions(String extension, ScanResult scan) {
         return fromUris(scan
-            .getResourcesWithExtension(extension)
-            .stream()
-            .map(Resource::getURI)
-            .iterator());
+                .getResourcesWithExtension(extension)
+                .stream()
+                .map(Resource::getURI)
+                .iterator());
     }
 
     public static Table tableAllExtensions(String extension) {
@@ -100,15 +105,15 @@ public class ClassGraphExtension {
             fragments.add(uri.getFragment());
         }
         return TableTools.newTable(
-            TableTools.stringCol("Scheme", schemes.toArray(new String[0])),
-            TableTools.stringCol("SchemeSpecificPart", schemeSpecificParts.toArray(new String[0])),
-            TableTools.stringCol("Authority", authorities.toArray(new String[0])),
-            TableTools.stringCol("UserInfo", userInfos.toArray(new String[0])),
-            TableTools.stringCol("Host", hosts.toArray(new String[0])),
-            TableTools.intCol("Port", ports.stream().mapToInt(ClassGraphExtension::toDhInt).toArray()),
-            TableTools.stringCol("Path", paths.toArray(new String[0])),
-            TableTools.stringCol("Query", queries.toArray(new String[0])),
-            TableTools.stringCol("Fragment", fragments.toArray(new String[0])));
+                TableTools.stringCol("Scheme", schemes.toArray(new String[0])),
+                TableTools.stringCol("SchemeSpecificPart", schemeSpecificParts.toArray(new String[0])),
+                TableTools.stringCol("Authority", authorities.toArray(new String[0])),
+                TableTools.stringCol("UserInfo", userInfos.toArray(new String[0])),
+                TableTools.stringCol("Host", hosts.toArray(new String[0])),
+                TableTools.intCol("Port", ports.stream().mapToInt(ClassGraphExtension::toDhInt).toArray()),
+                TableTools.stringCol("Path", paths.toArray(new String[0])),
+                TableTools.stringCol("Query", queries.toArray(new String[0])),
+                TableTools.stringCol("Fragment", fragments.toArray(new String[0])));
     }
 
     private static int toDhInt(Integer boxed) {

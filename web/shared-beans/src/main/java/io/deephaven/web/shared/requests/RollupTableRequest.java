@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.requests;
 
 import io.deephaven.web.shared.data.TableHandle;
@@ -83,6 +86,6 @@ public class RollupTableRequest implements Serializable {
                 ", aggregations=" + Arrays.toString(aggregations) +
                 ", includeConstituents=" + includeConstituents +
                 ", includeOriginalColumns=" + includeOriginalColumns +
-        '}';
+                '}';
     }
 }

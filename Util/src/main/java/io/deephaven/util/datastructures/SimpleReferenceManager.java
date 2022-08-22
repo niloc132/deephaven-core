@@ -1,6 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.datastructures;
 
 import io.deephaven.base.reference.SimpleReference;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,8 +18,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
- * A helper for manging a list of References. It hides the internal management
- * of expired references and provides for iteration over the valid ones
+ * A helper for managing a list of References. It hides the internal management of expired references and provides for
+ * iteration over the valid ones
  */
 public final class SimpleReferenceManager<T, R extends SimpleReference<T>> {
 
@@ -36,11 +40,23 @@ public final class SimpleReferenceManager<T, R extends SimpleReference<T>> {
      * structure.
      *
      * @param referenceFactory Factory to create references for added referents; should always make a unique reference
-     * @param concurrent       Use CopyOnWriteArrayList for internal storage if true, else ArrayList
+     * @param concurrent Use CopyOnWriteArrayList for internal storage if true, else ArrayList
      */
     public SimpleReferenceManager(@NotNull final Function<T, R> referenceFactory, final boolean concurrent) {
+        this(referenceFactory, concurrent ? new CopyOnWriteArrayList<>() : new ArrayList<>());
+    }
+
+    /**
+     * Create a SimpleReferenceManager with the specified {@code referenceCollection} as the backing data structure..
+     *
+     * @param referenceFactory Factory to create references for added referents; should always make a unique reference
+     * @param referenceCollection The collection to use for holding references
+     */
+    public SimpleReferenceManager(
+            @NotNull final Function<T, R> referenceFactory,
+            @NotNull final Collection<R> referenceCollection) {
         this.referenceFactory = referenceFactory;
-        references = concurrent ? new CopyOnWriteArrayList<>() : new ArrayList<>();
+        this.references = referenceCollection;
     }
 
     /**
@@ -196,6 +212,19 @@ public final class SimpleReferenceManager<T, R extends SimpleReference<T>> {
     }
 
     /**
+     * Return the number of valid references in the list.
+     *
+     * Note that each reference is checked for validity, making this operation linear in the number of references.
+     *
+     * @return the number of valid references in the list
+     */
+    public int size() {
+        final MutableInt size = new MutableInt(0);
+        forEach((ref, source) -> size.increment());
+        return size.intValue();
+    }
+
+    /**
      * Clear the list of references.
      */
     public void clear() {
@@ -210,7 +239,7 @@ public final class SimpleReferenceManager<T, R extends SimpleReference<T>> {
         // This is particular to the use case in question, because the deque is used as an ordered subset of an ordered
         // data structure for removing items by identity match. Don't try to use this deque for anything else and expect
         // you'll like the results.
-        return new ArrayDeque<R>() {
+        return new ArrayDeque<>() {
             @Override
             public boolean contains(final Object object) {
                 if (peekFirst() == object) {

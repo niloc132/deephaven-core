@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb_service;
 
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.Action;
@@ -9,8 +12,6 @@ import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.FlightInfo;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.HandshakeRequest;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.HandshakeResponse;
-import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.OOBExchangeResult;
-import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.OOBPutResult;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.PutResult;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.Result;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.SchemaResult;
@@ -25,652 +26,328 @@ import jsinterop.base.Js;
 import jsinterop.base.JsPropertyMap;
 
 @JsType(
-    isNative = true,
-    name = "dhinternal.arrow.flight.protocol.flight_pb_service.FlightServiceClient",
-    namespace = JsPackage.GLOBAL)
+        isNative = true,
+        name = "dhinternal.arrow.flight.protocol.Flight_pb_service.FlightServiceClient",
+        namespace = JsPackage.GLOBAL)
 public class FlightServiceClient {
-  @JsFunction
-  public interface DoExchangeOOBClientStreamUpdateCallbackFn {
+    @JsFunction
+    public interface GetFlightInfoCallbackFn {
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface P0Type {
+            @JsOverlay
+            static FlightServiceClient.GetFlightInfoCallbackFn.P0Type create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            double getCode();
+
+            @JsProperty
+            String getMessage();
+
+            @JsProperty
+            BrowserHeaders getMetadata();
+
+            @JsProperty
+            void setCode(double code);
+
+            @JsProperty
+            void setMessage(String message);
+
+            @JsProperty
+            void setMetadata(BrowserHeaders metadata);
+        }
+
+        void onInvoke(FlightServiceClient.GetFlightInfoCallbackFn.P0Type p0, FlightInfo p1);
+    }
+
+    @JsFunction
+    public interface GetFlightInfoMetadata_or_callbackFn {
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface P0Type {
+            @JsOverlay
+            static FlightServiceClient.GetFlightInfoMetadata_or_callbackFn.P0Type create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            double getCode();
+
+            @JsProperty
+            String getMessage();
+
+            @JsProperty
+            BrowserHeaders getMetadata();
+
+            @JsProperty
+            void setCode(double code);
+
+            @JsProperty
+            void setMessage(String message);
+
+            @JsProperty
+            void setMetadata(BrowserHeaders metadata);
+        }
+
+        void onInvoke(FlightServiceClient.GetFlightInfoMetadata_or_callbackFn.P0Type p0, FlightInfo p1);
+    }
+
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.DoExchangeOOBClientStreamUpdateCallbackFn.P0Type create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
+    public interface GetFlightInfoMetadata_or_callbackUnionType {
+        @JsOverlay
+        static FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType of(Object o) {
+            return Js.cast(o);
+        }
 
-      @JsProperty
-      double getCode();
+        @JsOverlay
+        default BrowserHeaders asBrowserHeaders() {
+            return Js.cast(this);
+        }
 
-      @JsProperty
-      String getMessage();
+        @JsOverlay
+        default FlightServiceClient.GetFlightInfoMetadata_or_callbackFn asGetFlightInfoMetadata_or_callbackFn() {
+            return Js.cast(this);
+        }
 
-      @JsProperty
-      BrowserHeaders getMetadata();
+        @JsOverlay
+        default boolean isBrowserHeaders() {
+            return (Object) this instanceof BrowserHeaders;
+        }
 
-      @JsProperty
-      void setCode(double code);
-
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
+        @JsOverlay
+        default boolean isGetFlightInfoMetadata_or_callbackFn() {
+            return (Object) this instanceof FlightServiceClient.GetFlightInfoMetadata_or_callbackFn;
+        }
     }
 
-    void onInvoke(
-        FlightServiceClient.DoExchangeOOBClientStreamUpdateCallbackFn.P0Type p0,
-        OOBExchangeResult p1);
-  }
+    @JsFunction
+    public interface GetSchemaCallbackFn {
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface P0Type {
+            @JsOverlay
+            static FlightServiceClient.GetSchemaCallbackFn.P0Type create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
 
-  @JsFunction
-  public interface DoExchangeOOBClientStreamUpdateMetadata_or_callbackFn {
+            @JsProperty
+            double getCode();
+
+            @JsProperty
+            String getMessage();
+
+            @JsProperty
+            BrowserHeaders getMetadata();
+
+            @JsProperty
+            void setCode(double code);
+
+            @JsProperty
+            void setMessage(String message);
+
+            @JsProperty
+            void setMetadata(BrowserHeaders metadata);
+        }
+
+        void onInvoke(FlightServiceClient.GetSchemaCallbackFn.P0Type p0, SchemaResult p1);
+    }
+
+    @JsFunction
+    public interface GetSchemaMetadata_or_callbackFn {
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface P0Type {
+            @JsOverlay
+            static FlightServiceClient.GetSchemaMetadata_or_callbackFn.P0Type create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            double getCode();
+
+            @JsProperty
+            String getMessage();
+
+            @JsProperty
+            BrowserHeaders getMetadata();
+
+            @JsProperty
+            void setCode(double code);
+
+            @JsProperty
+            void setMessage(String message);
+
+            @JsProperty
+            void setMetadata(BrowserHeaders metadata);
+        }
+
+        void onInvoke(FlightServiceClient.GetSchemaMetadata_or_callbackFn.P0Type p0, SchemaResult p1);
+    }
+
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackFn.P0Type
-          create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
+    public interface GetSchemaMetadata_or_callbackUnionType {
+        @JsOverlay
+        static FlightServiceClient.GetSchemaMetadata_or_callbackUnionType of(Object o) {
+            return Js.cast(o);
+        }
 
-      @JsProperty
-      double getCode();
+        @JsOverlay
+        default BrowserHeaders asBrowserHeaders() {
+            return Js.cast(this);
+        }
 
-      @JsProperty
-      String getMessage();
+        @JsOverlay
+        default FlightServiceClient.GetSchemaMetadata_or_callbackFn asGetSchemaMetadata_or_callbackFn() {
+            return Js.cast(this);
+        }
 
-      @JsProperty
-      BrowserHeaders getMetadata();
+        @JsOverlay
+        default boolean isBrowserHeaders() {
+            return (Object) this instanceof BrowserHeaders;
+        }
 
-      @JsProperty
-      void setCode(double code);
-
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
+        @JsOverlay
+        default boolean isGetSchemaMetadata_or_callbackFn() {
+            return (Object) this instanceof FlightServiceClient.GetSchemaMetadata_or_callbackFn;
+        }
     }
 
-    void onInvoke(
-        FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackFn.P0Type p0,
-        OOBExchangeResult p1);
-  }
+    public String serviceHost;
 
-  @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-  public interface DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType {
-    @JsOverlay
-    static FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType of(
-        Object o) {
-      return Js.cast(o);
-    }
+    public FlightServiceClient(String serviceHost, Object options) {}
 
-    @JsOverlay
-    default BrowserHeaders asBrowserHeaders() {
-      return Js.cast(this);
-    }
+    public FlightServiceClient(String serviceHost) {}
 
-    @JsOverlay
-    default FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackFn
-        asDoExchangeOOBClientStreamUpdateMetadata_or_callbackFn() {
-      return Js.cast(this);
-    }
+    public native ResponseStream<Result> doAction(Action requestMessage, BrowserHeaders metadata);
 
-    @JsOverlay
-    default boolean isBrowserHeaders() {
-      return (Object) this instanceof BrowserHeaders;
-    }
+    public native ResponseStream<Result> doAction(Action requestMessage);
+
+    public native BidirectionalStream<FlightData, FlightData> doExchange();
+
+    public native BidirectionalStream<FlightData, FlightData> doExchange(BrowserHeaders metadata);
+
+    public native ResponseStream<FlightData> doGet(Ticket requestMessage, BrowserHeaders metadata);
+
+    public native ResponseStream<FlightData> doGet(Ticket requestMessage);
+
+    public native BidirectionalStream<FlightData, PutResult> doPut();
+
+    public native BidirectionalStream<FlightData, PutResult> doPut(BrowserHeaders metadata);
 
     @JsOverlay
-    default boolean isDoExchangeOOBClientStreamUpdateMetadata_or_callbackFn() {
-      return (Object) this
-          instanceof FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackFn;
-    }
-  }
-
-  @JsFunction
-  public interface DoPutOOBClientStreamUpdateCallbackFn {
-    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.DoPutOOBClientStreamUpdateCallbackFn.P0Type create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
-
-      @JsProperty
-      double getCode();
-
-      @JsProperty
-      String getMessage();
-
-      @JsProperty
-      BrowserHeaders getMetadata();
-
-      @JsProperty
-      void setCode(double code);
-
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
-    }
-
-    void onInvoke(
-        FlightServiceClient.DoPutOOBClientStreamUpdateCallbackFn.P0Type p0, OOBPutResult p1);
-  }
-
-  @JsFunction
-  public interface DoPutOOBClientStreamUpdateMetadata_or_callbackFn {
-    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackFn.P0Type create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
-
-      @JsProperty
-      double getCode();
-
-      @JsProperty
-      String getMessage();
-
-      @JsProperty
-      BrowserHeaders getMetadata();
-
-      @JsProperty
-      void setCode(double code);
-
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
-    }
-
-    void onInvoke(
-        FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackFn.P0Type p0,
-        OOBPutResult p1);
-  }
-
-  @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-  public interface DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType {
-    @JsOverlay
-    static FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType of(
-        Object o) {
-      return Js.cast(o);
+    public final UnaryResponse getFlightInfo(
+            FlightDescriptor requestMessage,
+            BrowserHeaders metadata_or_callback,
+            FlightServiceClient.GetFlightInfoCallbackFn callback) {
+        return getFlightInfo(
+                requestMessage,
+                Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback),
+                callback);
     }
 
     @JsOverlay
-    default BrowserHeaders asBrowserHeaders() {
-      return Js.cast(this);
+    public final UnaryResponse getFlightInfo(
+            FlightDescriptor requestMessage, BrowserHeaders metadata_or_callback) {
+        return getFlightInfo(
+                requestMessage,
+                Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback));
     }
 
     @JsOverlay
-    default FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackFn
-        asDoPutOOBClientStreamUpdateMetadata_or_callbackFn() {
-      return Js.cast(this);
+    public final UnaryResponse getFlightInfo(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetFlightInfoMetadata_or_callbackFn metadata_or_callback,
+            FlightServiceClient.GetFlightInfoCallbackFn callback) {
+        return getFlightInfo(
+                requestMessage,
+                Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback),
+                callback);
     }
 
     @JsOverlay
-    default boolean isBrowserHeaders() {
-      return (Object) this instanceof BrowserHeaders;
+    public final UnaryResponse getFlightInfo(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetFlightInfoMetadata_or_callbackFn metadata_or_callback) {
+        return getFlightInfo(
+                requestMessage,
+                Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback));
+    }
+
+    public native UnaryResponse getFlightInfo(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType metadata_or_callback,
+            FlightServiceClient.GetFlightInfoCallbackFn callback);
+
+    public native UnaryResponse getFlightInfo(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType metadata_or_callback);
+
+    @JsOverlay
+    public final UnaryResponse getSchema(
+            FlightDescriptor requestMessage,
+            BrowserHeaders metadata_or_callback,
+            FlightServiceClient.GetSchemaCallbackFn callback) {
+        return getSchema(
+                requestMessage,
+                Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback),
+                callback);
     }
 
     @JsOverlay
-    default boolean isDoPutOOBClientStreamUpdateMetadata_or_callbackFn() {
-      return (Object) this
-          instanceof FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackFn;
-    }
-  }
-
-  @JsFunction
-  public interface GetFlightInfoCallbackFn {
-    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.GetFlightInfoCallbackFn.P0Type create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
-
-      @JsProperty
-      double getCode();
-
-      @JsProperty
-      String getMessage();
-
-      @JsProperty
-      BrowserHeaders getMetadata();
-
-      @JsProperty
-      void setCode(double code);
-
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
-    }
-
-    void onInvoke(FlightServiceClient.GetFlightInfoCallbackFn.P0Type p0, FlightInfo p1);
-  }
-
-  @JsFunction
-  public interface GetFlightInfoMetadata_or_callbackFn {
-    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.GetFlightInfoMetadata_or_callbackFn.P0Type create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
-
-      @JsProperty
-      double getCode();
-
-      @JsProperty
-      String getMessage();
-
-      @JsProperty
-      BrowserHeaders getMetadata();
-
-      @JsProperty
-      void setCode(double code);
-
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
-    }
-
-    void onInvoke(FlightServiceClient.GetFlightInfoMetadata_or_callbackFn.P0Type p0, FlightInfo p1);
-  }
-
-  @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-  public interface GetFlightInfoMetadata_or_callbackUnionType {
-    @JsOverlay
-    static FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType of(Object o) {
-      return Js.cast(o);
+    public final UnaryResponse getSchema(
+            FlightDescriptor requestMessage, BrowserHeaders metadata_or_callback) {
+        return getSchema(
+                requestMessage,
+                Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback));
     }
 
     @JsOverlay
-    default BrowserHeaders asBrowserHeaders() {
-      return Js.cast(this);
+    public final UnaryResponse getSchema(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetSchemaMetadata_or_callbackFn metadata_or_callback,
+            FlightServiceClient.GetSchemaCallbackFn callback) {
+        return getSchema(
+                requestMessage,
+                Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback),
+                callback);
     }
 
     @JsOverlay
-    default FlightServiceClient.GetFlightInfoMetadata_or_callbackFn
-        asGetFlightInfoMetadata_or_callbackFn() {
-      return Js.cast(this);
+    public final UnaryResponse getSchema(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetSchemaMetadata_or_callbackFn metadata_or_callback) {
+        return getSchema(
+                requestMessage,
+                Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback));
     }
 
-    @JsOverlay
-    default boolean isBrowserHeaders() {
-      return (Object) this instanceof BrowserHeaders;
-    }
+    public native UnaryResponse getSchema(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetSchemaMetadata_or_callbackUnionType metadata_or_callback,
+            FlightServiceClient.GetSchemaCallbackFn callback);
 
-    @JsOverlay
-    default boolean isGetFlightInfoMetadata_or_callbackFn() {
-      return (Object) this instanceof FlightServiceClient.GetFlightInfoMetadata_or_callbackFn;
-    }
-  }
+    public native UnaryResponse getSchema(
+            FlightDescriptor requestMessage,
+            FlightServiceClient.GetSchemaMetadata_or_callbackUnionType metadata_or_callback);
 
-  @JsFunction
-  public interface GetSchemaCallbackFn {
-    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.GetSchemaCallbackFn.P0Type create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
+    public native BidirectionalStream<HandshakeRequest, HandshakeResponse> handshake();
 
-      @JsProperty
-      double getCode();
+    public native BidirectionalStream<HandshakeRequest, HandshakeResponse> handshake(
+            BrowserHeaders metadata);
 
-      @JsProperty
-      String getMessage();
+    public native ResponseStream<ActionType> listActions(
+            Empty requestMessage, BrowserHeaders metadata);
 
-      @JsProperty
-      BrowserHeaders getMetadata();
+    public native ResponseStream<ActionType> listActions(Empty requestMessage);
 
-      @JsProperty
-      void setCode(double code);
+    public native ResponseStream<FlightInfo> listFlights(
+            Criteria requestMessage, BrowserHeaders metadata);
 
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
-    }
-
-    void onInvoke(FlightServiceClient.GetSchemaCallbackFn.P0Type p0, SchemaResult p1);
-  }
-
-  @JsFunction
-  public interface GetSchemaMetadata_or_callbackFn {
-    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface P0Type {
-      @JsOverlay
-      static FlightServiceClient.GetSchemaMetadata_or_callbackFn.P0Type create() {
-        return Js.uncheckedCast(JsPropertyMap.of());
-      }
-
-      @JsProperty
-      double getCode();
-
-      @JsProperty
-      String getMessage();
-
-      @JsProperty
-      BrowserHeaders getMetadata();
-
-      @JsProperty
-      void setCode(double code);
-
-      @JsProperty
-      void setMessage(String message);
-
-      @JsProperty
-      void setMetadata(BrowserHeaders metadata);
-    }
-
-    void onInvoke(FlightServiceClient.GetSchemaMetadata_or_callbackFn.P0Type p0, SchemaResult p1);
-  }
-
-  @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-  public interface GetSchemaMetadata_or_callbackUnionType {
-    @JsOverlay
-    static FlightServiceClient.GetSchemaMetadata_or_callbackUnionType of(Object o) {
-      return Js.cast(o);
-    }
-
-    @JsOverlay
-    default BrowserHeaders asBrowserHeaders() {
-      return Js.cast(this);
-    }
-
-    @JsOverlay
-    default FlightServiceClient.GetSchemaMetadata_or_callbackFn
-        asGetSchemaMetadata_or_callbackFn() {
-      return Js.cast(this);
-    }
-
-    @JsOverlay
-    default boolean isBrowserHeaders() {
-      return (Object) this instanceof BrowserHeaders;
-    }
-
-    @JsOverlay
-    default boolean isGetSchemaMetadata_or_callbackFn() {
-      return (Object) this instanceof FlightServiceClient.GetSchemaMetadata_or_callbackFn;
-    }
-  }
-
-  public String serviceHost;
-
-  public FlightServiceClient(String serviceHost, Object options) {}
-
-  public FlightServiceClient(String serviceHost) {}
-
-  public native ResponseStream<Result> doAction(Action requestMessage, BrowserHeaders metadata);
-
-  public native ResponseStream<Result> doAction(Action requestMessage);
-
-  public native BidirectionalStream<FlightData, FlightData> doExchange();
-
-  public native BidirectionalStream<FlightData, FlightData> doExchange(BrowserHeaders metadata);
-
-  public native ResponseStream<FlightData> doExchangeOOBClientStream(
-      FlightData requestMessage, BrowserHeaders metadata);
-
-  public native ResponseStream<FlightData> doExchangeOOBClientStream(FlightData requestMessage);
-
-  @JsOverlay
-  public final UnaryResponse doExchangeOOBClientStreamUpdate(
-      FlightData requestMessage,
-      BrowserHeaders metadata_or_callback,
-      FlightServiceClient.DoExchangeOOBClientStreamUpdateCallbackFn callback) {
-    return doExchangeOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse doExchangeOOBClientStreamUpdate(
-      FlightData requestMessage, BrowserHeaders metadata_or_callback) {
-    return doExchangeOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback));
-  }
-
-  @JsOverlay
-  public final UnaryResponse doExchangeOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackFn
-          metadata_or_callback,
-      FlightServiceClient.DoExchangeOOBClientStreamUpdateCallbackFn callback) {
-    return doExchangeOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse doExchangeOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackFn
-          metadata_or_callback) {
-    return doExchangeOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback));
-  }
-
-  public native UnaryResponse doExchangeOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType
-          metadata_or_callback,
-      FlightServiceClient.DoExchangeOOBClientStreamUpdateCallbackFn callback);
-
-  public native UnaryResponse doExchangeOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoExchangeOOBClientStreamUpdateMetadata_or_callbackUnionType
-          metadata_or_callback);
-
-  public native ResponseStream<FlightData> doGet(Ticket requestMessage, BrowserHeaders metadata);
-
-  public native ResponseStream<FlightData> doGet(Ticket requestMessage);
-
-  public native BidirectionalStream<FlightData, PutResult> doPut();
-
-  public native BidirectionalStream<FlightData, PutResult> doPut(BrowserHeaders metadata);
-
-  public native ResponseStream<PutResult> doPutOOBClientStream(
-      FlightData requestMessage, BrowserHeaders metadata);
-
-  public native ResponseStream<PutResult> doPutOOBClientStream(FlightData requestMessage);
-
-  @JsOverlay
-  public final UnaryResponse doPutOOBClientStreamUpdate(
-      FlightData requestMessage,
-      BrowserHeaders metadata_or_callback,
-      FlightServiceClient.DoPutOOBClientStreamUpdateCallbackFn callback) {
-    return doPutOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse doPutOOBClientStreamUpdate(
-      FlightData requestMessage, BrowserHeaders metadata_or_callback) {
-    return doPutOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback));
-  }
-
-  @JsOverlay
-  public final UnaryResponse doPutOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackFn metadata_or_callback,
-      FlightServiceClient.DoPutOOBClientStreamUpdateCallbackFn callback) {
-    return doPutOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse doPutOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackFn metadata_or_callback) {
-    return doPutOOBClientStreamUpdate(
-        requestMessage,
-        Js
-            .<FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType>
-                uncheckedCast(metadata_or_callback));
-  }
-
-  public native UnaryResponse doPutOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType
-          metadata_or_callback,
-      FlightServiceClient.DoPutOOBClientStreamUpdateCallbackFn callback);
-
-  public native UnaryResponse doPutOOBClientStreamUpdate(
-      FlightData requestMessage,
-      FlightServiceClient.DoPutOOBClientStreamUpdateMetadata_or_callbackUnionType
-          metadata_or_callback);
-
-  @JsOverlay
-  public final UnaryResponse getFlightInfo(
-      FlightDescriptor requestMessage,
-      BrowserHeaders metadata_or_callback,
-      FlightServiceClient.GetFlightInfoCallbackFn callback) {
-    return getFlightInfo(
-        requestMessage,
-        Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse getFlightInfo(
-      FlightDescriptor requestMessage, BrowserHeaders metadata_or_callback) {
-    return getFlightInfo(
-        requestMessage,
-        Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback));
-  }
-
-  @JsOverlay
-  public final UnaryResponse getFlightInfo(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetFlightInfoMetadata_or_callbackFn metadata_or_callback,
-      FlightServiceClient.GetFlightInfoCallbackFn callback) {
-    return getFlightInfo(
-        requestMessage,
-        Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse getFlightInfo(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetFlightInfoMetadata_or_callbackFn metadata_or_callback) {
-    return getFlightInfo(
-        requestMessage,
-        Js.<FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback));
-  }
-
-  public native UnaryResponse getFlightInfo(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType metadata_or_callback,
-      FlightServiceClient.GetFlightInfoCallbackFn callback);
-
-  public native UnaryResponse getFlightInfo(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetFlightInfoMetadata_or_callbackUnionType metadata_or_callback);
-
-  @JsOverlay
-  public final UnaryResponse getSchema(
-      FlightDescriptor requestMessage,
-      BrowserHeaders metadata_or_callback,
-      FlightServiceClient.GetSchemaCallbackFn callback) {
-    return getSchema(
-        requestMessage,
-        Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse getSchema(
-      FlightDescriptor requestMessage, BrowserHeaders metadata_or_callback) {
-    return getSchema(
-        requestMessage,
-        Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback));
-  }
-
-  @JsOverlay
-  public final UnaryResponse getSchema(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetSchemaMetadata_or_callbackFn metadata_or_callback,
-      FlightServiceClient.GetSchemaCallbackFn callback) {
-    return getSchema(
-        requestMessage,
-        Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback),
-        callback);
-  }
-
-  @JsOverlay
-  public final UnaryResponse getSchema(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetSchemaMetadata_or_callbackFn metadata_or_callback) {
-    return getSchema(
-        requestMessage,
-        Js.<FlightServiceClient.GetSchemaMetadata_or_callbackUnionType>uncheckedCast(
-            metadata_or_callback));
-  }
-
-  public native UnaryResponse getSchema(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetSchemaMetadata_or_callbackUnionType metadata_or_callback,
-      FlightServiceClient.GetSchemaCallbackFn callback);
-
-  public native UnaryResponse getSchema(
-      FlightDescriptor requestMessage,
-      FlightServiceClient.GetSchemaMetadata_or_callbackUnionType metadata_or_callback);
-
-  public native BidirectionalStream<HandshakeRequest, HandshakeResponse> handshake();
-
-  public native BidirectionalStream<HandshakeRequest, HandshakeResponse> handshake(
-      BrowserHeaders metadata);
-
-  public native ResponseStream<ActionType> listActions(
-      Empty requestMessage, BrowserHeaders metadata);
-
-  public native ResponseStream<ActionType> listActions(Empty requestMessage);
-
-  public native ResponseStream<FlightInfo> listFlights(
-      Criteria requestMessage, BrowserHeaders metadata);
-
-  public native ResponseStream<FlightInfo> listFlights(Criteria requestMessage);
+    public native ResponseStream<FlightInfo> listFlights(Criteria requestMessage);
 }

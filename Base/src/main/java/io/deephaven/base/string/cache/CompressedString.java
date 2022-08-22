@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.string.cache;
 
 import org.jetbrains.annotations.NotNull;
@@ -13,8 +12,7 @@ import java.nio.ByteBuffer;
  */
 public final class CompressedString extends AbstractCompressedString<CompressedString> {
 
-    public CompressedString() {
-    }
+    public CompressedString() {}
 
     public CompressedString(String data) {
         super(data);
@@ -68,6 +66,7 @@ public final class CompressedString extends AbstractCompressedString<CompressedS
 
     /**
      * Helper to be statically imported for groovy scripting.
+     * 
      * @param value The String to convert
      * @return A new CompressedString with the same contents as value, assuming ISO-8859-1 encoding
      */

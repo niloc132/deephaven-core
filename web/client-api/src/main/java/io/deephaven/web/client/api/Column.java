@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api;
 
 import io.deephaven.web.client.api.filter.FilterValue;
@@ -25,16 +28,28 @@ public class Column {
     private final int jsIndex;
 
     /**
-     * Specific to rollup tables when constituent columns are enabled. Used in toString(),
-     * but ignored for equals/hashcode, since it might be helpful for debugging, but could
-     * potentially confuse some comparisons between instances since this is set after the
-     * CTS is created, ready for use.
+     * Specific to rollup tables when constituent columns are enabled. Used in toString(), but ignored for
+     * equals/hashcode, since it might be helpful for debugging, but could potentially confuse some comparisons between
+     * instances since this is set after the CTS is created, ready for use.
      */
     private String constituentType;
 
     private String description;
+    private final boolean isInputTableKeyColumn;
 
-    public Column(int jsIndex, int index, Integer formatColumnIndex, Integer styleColumnIndex, String type, String name, boolean isPartitionColumn, Integer formatStringColumnIndex, String description) {
+    @JsMethod(namespace = "dh.Column")
+    public static CustomColumn formatRowColor(String expression) {
+        return new CustomColumn(CustomColumn.ROW_FORMAT_NAME, CustomColumn.TYPE_FORMAT_COLOR, expression);
+    }
+
+    @JsMethod(namespace = "dh.Column")
+    public static CustomColumn createCustomColumn(String name, String expression) {
+        return new CustomColumn(name, CustomColumn.TYPE_NEW, expression);
+    }
+
+    public Column(int jsIndex, int index, Integer formatColumnIndex, Integer styleColumnIndex, String type, String name,
+            boolean isPartitionColumn, Integer formatStringColumnIndex, String description,
+            boolean inputTableKeyColumn) {
         this.jsIndex = jsIndex;
         this.index = index;
         this.formatColumnIndex = formatColumnIndex;
@@ -44,6 +59,7 @@ public class Column {
         this.isPartitionColumn = isPartitionColumn;
         this.formatStringColumnIndex = formatStringColumnIndex;
         this.description = description;
+        this.isInputTableKeyColumn = inputTableKeyColumn;
     }
 
     @JsMethod
@@ -65,6 +81,7 @@ public class Column {
     public int getIndex() {
         return index;
     }
+
     @JsProperty
     public String getType() {
         return type;
@@ -122,6 +139,10 @@ public class Column {
         return isPartitionColumn;
     }
 
+    public boolean isInputTableKeyColumn() {
+        return isInputTableKeyColumn;
+    }
+
     @JsMethod
     public Sort sort() {
         return new Sort(this);
@@ -133,33 +154,55 @@ public class Column {
     }
 
     @JsMethod
+    public CustomColumn formatColor(String expression) {
+        return new CustomColumn(name, CustomColumn.TYPE_FORMAT_COLOR, expression);
+    }
+
+    @JsMethod
+    public CustomColumn formatNumber(String expression) {
+        return new CustomColumn(name, CustomColumn.TYPE_FORMAT_NUMBER, expression);
+    }
+
+    @JsMethod
+    public CustomColumn formatDate(String expression) {
+        return new CustomColumn(name, CustomColumn.TYPE_FORMAT_DATE, expression);
+    }
+
+    @JsMethod
     @Override
     public String toString() {
         return "Column{" +
-            "index=" + index +
-            ", formatColumnIndex=" + formatColumnIndex +
-            ", styleColumnIndex=" + styleColumnIndex +
-            ", formatStringColumnIndex=" + formatStringColumnIndex +
-            ", type='" + type + '\'' +
-            ", name='" + name + '\'' +
-            '}';
+                "index=" + index +
+                ", formatColumnIndex=" + formatColumnIndex +
+                ", styleColumnIndex=" + styleColumnIndex +
+                ", formatStringColumnIndex=" + formatStringColumnIndex +
+                ", type='" + type + '\'' +
+                ", name='" + name + '\'' +
+                '}';
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
 
         Column column = (Column) o;
 
-        if (index != column.index) return false;
-        if (formatColumnIndex != null ? !formatColumnIndex.equals(column.formatColumnIndex) : column.formatColumnIndex != null)
+        if (index != column.index)
             return false;
-        if (styleColumnIndex != null ? !styleColumnIndex.equals(column.styleColumnIndex) : column.styleColumnIndex != null)
+        if (formatColumnIndex != null ? !formatColumnIndex.equals(column.formatColumnIndex)
+                : column.formatColumnIndex != null)
             return false;
-        if (formatStringColumnIndex != null ? !formatStringColumnIndex.equals(column.formatStringColumnIndex) : column.formatStringColumnIndex != null)
+        if (styleColumnIndex != null ? !styleColumnIndex.equals(column.styleColumnIndex)
+                : column.styleColumnIndex != null)
             return false;
-        if (!type.equals(column.type)) return false;
+        if (formatStringColumnIndex != null ? !formatStringColumnIndex.equals(column.formatStringColumnIndex)
+                : column.formatStringColumnIndex != null)
+            return false;
+        if (!type.equals(column.type))
+            return false;
         return name.equals(column.name);
     }
 

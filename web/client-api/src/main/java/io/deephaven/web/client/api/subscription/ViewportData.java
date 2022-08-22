@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.subscription;
 
 import elemental2.core.JsArray;
@@ -8,6 +11,7 @@ import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsProperty;
 import jsinterop.base.Any;
 import jsinterop.base.Js;
+import jsinterop.base.JsArrayLike;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -45,9 +49,10 @@ public class ViewportData implements TableData {
 
     private final int rowFormatColumn;
 
-    public ViewportData(RangeSet includedRows, Object[] dataColumns, JsArray<Column> columns, int rowFormatColumn, long maxLength) {
+    public ViewportData(RangeSet includedRows, Object[] dataColumns, JsArray<Column> columns, int rowFormatColumn,
+            long maxLength) {
         assert maxLength <= Integer.MAX_VALUE;
-        this.maxLength = (int)maxLength;
+        this.maxLength = (int) maxLength;
 
         Iterator<Range> rangeIterator = includedRows.rangeIterator();
         data = new Object[dataColumns.length];
@@ -61,6 +66,8 @@ public class ViewportData implements TableData {
         } else {
             offset = -1;
         }
+
+        // Clean data for requested columns, and provide format column data as well, if any
         for (int i = 0; i < columns.length; i++) {
             Column c = columns.getAt(i);
             int index = c.getIndex();
@@ -76,6 +83,14 @@ public class ViewportData implements TableData {
                 data[c.getFormatStringColumnIndex()] = dataColumns[c.getFormatStringColumnIndex()];
             }
         }
+
+        // Handle row format column, if any
+        this.rowFormatColumn = rowFormatColumn;
+        if (rowFormatColumn != NO_ROW_FORMAT_COLUMN) {
+            data[rowFormatColumn] = dataColumns[rowFormatColumn];
+        }
+
+        // Grow all columns to match the size of the viewport, if necessary
         if (length < maxLength) {
             for (int i = 0; i < data.length; i++) {
                 if (data[i] != null) {
@@ -84,10 +99,6 @@ public class ViewportData implements TableData {
                     existingColumnData.fill(NULL_SENTINEL, length, this.maxLength);
                 }
             }
-        }
-        this.rowFormatColumn = rowFormatColumn;
-        if (rowFormatColumn != NO_ROW_FORMAT_COLUMN) {
-            data[rowFormatColumn] = dataColumns[rowFormatColumn];
         }
 
         rows = new JsArray<>();
@@ -98,45 +109,45 @@ public class ViewportData implements TableData {
     }
 
     private static DataCleaner getDataCleanerForColumnType(String columnType) {
-        switch(columnType) {
+        switch (columnType) {
             case "int":
                 return (data, i) -> {
-                    int value = data.getAnyAt(i).asInt();
+                    int value = data.getAtAsAny(i).asInt();
                     if (value == QueryConstants.NULL_INT) {
                         data.setAt(i, null);
                     }
                 };
             case "byte":
                 return (data, i) -> {
-                    byte value = data.getAnyAt(i).asByte();
+                    byte value = data.getAtAsAny(i).asByte();
                     if (value == QueryConstants.NULL_BYTE) {
                         data.setAt(i, null);
                     }
                 };
             case "short":
                 return (data, i) -> {
-                    short value = data.getAnyAt(i).asShort();
+                    short value = data.getAtAsAny(i).asShort();
                     if (value == QueryConstants.NULL_SHORT) {
                         data.setAt(i, null);
                     }
                 };
             case "double":
                 return (data, i) -> {
-                    double value = data.getAnyAt(i).asDouble();
+                    double value = data.getAtAsAny(i).asDouble();
                     if (value == QueryConstants.NULL_DOUBLE) {
                         data.setAt(i, null);
                     }
                 };
             case "float":
                 return (data, i) -> {
-                    float value = data.getAnyAt(i).asFloat();
+                    float value = data.getAtAsAny(i).asFloat();
                     if (value == QueryConstants.NULL_FLOAT) {
                         data.setAt(i, null);
                     }
                 };
             case "char":
                 return (data, i) -> {
-                    char value = data.getAnyAt(i).asChar();
+                    char value = data.getAtAsAny(i).asChar();
                     if (value == QueryConstants.NULL_CHAR) {
                         data.setAt(i, null);
                     }
@@ -154,12 +165,12 @@ public class ViewportData implements TableData {
             return dataColumn;
         }
 
-        switch(column.getType()) {
+        switch (column.getType()) {
             case "long": {
                 JsArray<Any> values = Js.uncheckedCast(dataColumn);
                 LongWrapper[] cleanData = new LongWrapper[values.length];
                 for (int i = 0; i < values.length; i++) {
-                    long value = values.getAnyAt(i).asLong();
+                    long value = values.getAtAsAny(i).asLong();
                     if (value == QueryConstants.NULL_LONG) {
                         cleanData[i] = null;
                     } else {
@@ -168,11 +179,11 @@ public class ViewportData implements TableData {
                 }
                 return cleanData;
             }
-            case "io.deephaven.db.tables.utils.DBDateTime": {
+            case "io.deephaven.time.DateTime": {
                 JsArray<Any> values = Js.uncheckedCast(dataColumn);
                 DateWrapper[] cleanData = new DateWrapper[values.length];
                 for (int i = 0; i < values.length; i++) {
-                    long value = values.getAnyAt(i).asLong();
+                    long value = values.getAtAsAny(i).asLong();
                     if (value == QueryConstants.NULL_LONG) {
                         cleanData[i] = null;
                     } else {
@@ -185,7 +196,7 @@ public class ViewportData implements TableData {
                 JsArray<Any> values = Js.uncheckedCast(dataColumn);
                 java.lang.Boolean[] cleanData = new java.lang.Boolean[values.length];
                 for (int i = 0; i < values.length; i++) {
-                    int value = values.getAnyAt(i).asInt();
+                    int value = values.getAtAsAny(i).asInt();
                     if (value == 1) {
                         cleanData[i] = true;
                     } else if (value == 0) {
@@ -252,7 +263,7 @@ public class ViewportData implements TableData {
                 DataCleaner dataCleaner = getDataCleanerForColumnType(column.getType());
                 if (dataCleaner != null) {
                     JsArray<Any> values = Js.uncheckedCast(dataColumn);
-                    JsArray<Any> cleanData = Js.uncheckedCast(values.slice());
+                    JsArray<Any> cleanData = Js.uncheckedCast(JsArray.from((JsArrayLike<Any>) values));
 
                     for (int i = 0; i < values.length; i++) {
                         dataCleaner.clean(cleanData, i);
@@ -404,7 +415,7 @@ public class ViewportData implements TableData {
                 }
 
                 // iterate forward and move them backward (note: since begin is <= end, we now know it fits in an int)
-                for (int j = (int)begin; j <= end; ++j) {
+                for (int j = (int) begin; j <= end; ++j) {
                     for (int i = 0; i < data.length; ++i) {
                         final JsArray<Any> existingColumnData = Js.uncheckedCast(data[i]);
                         if (existingColumnData == null) {
@@ -437,7 +448,8 @@ public class ViewportData implements TableData {
 
             // look for a local Column which matches this index so we know how to clean it
             final Column column = columns.find((c, i1, i2) -> c.getIndex() == modifiedColumn.getColumnIndex());
-            final JsArray<Any> updatedColumnData = Js.uncheckedCast(cleanData(modifiedColumn.getValues().getData(), column));
+            final JsArray<Any> updatedColumnData =
+                    Js.uncheckedCast(cleanData(modifiedColumn.getValues().getData(), column));
             final JsArray<Any> existingColumnData = Js.uncheckedCast(data[modifiedColumn.getColumnIndex()]);
             if (updatedColumnData.length == 0) {
                 continue;
@@ -447,13 +459,14 @@ public class ViewportData implements TableData {
             int i = 0;
             while (it.hasNext()) {
                 long modifiedOffset = it.nextLong();
-                long internalOffset = (modifiedOffset - offset);
+                int internalOffset = (int) (modifiedOffset - offset);
                 if (internalOffset < 0 || internalOffset >= maxLength) {
                     i++;
-                    continue;// data we don't need to see, either meant for another table, or we just sent a viewport update
+                    continue;// data we don't need to see, either meant for another table, or we just sent a viewport
+                             // update
                 }
-                existingColumnData.setAt((int) internalOffset, updatedColumnData.getAnyAt(i));
-                updated.modified.add((int) internalOffset);
+                existingColumnData.setAt(internalOffset, updatedColumnData.getAtAsAny(i));
+                updated.modified.add(internalOffset);
                 i++;
             }
         }
@@ -464,7 +477,8 @@ public class ViewportData implements TableData {
                 DeltaUpdates.ColumnAdditions addedColumn = serializedAdditions[addedColIndex];
 
                 Column column = columns.find((c, i1, i2) -> c.getIndex() == addedColumn.getColumnIndex());
-                final JsArray<Any> addedColumnData = Js.uncheckedCast(cleanData(addedColumn.getValues().getData(), column));
+                final JsArray<Any> addedColumnData =
+                        Js.uncheckedCast(cleanData(addedColumn.getValues().getData(), column));
                 final JsArray<Any> existingColumnData = Js.uncheckedCast(data[addedColumn.getColumnIndex()]);
                 if (addedColumnData.length == 0) {
                     continue;
@@ -477,22 +491,31 @@ public class ViewportData implements TableData {
                     int internalOffset = (int) (addedOffset - offset);
                     if (internalOffset < 0 || internalOffset >= maxLength) {
                         i++;
-                        continue;// data we don't need to see, either meant for another table, or we just sent a viewport update
+                        continue;// data we don't need to see, either meant for another table, or we just sent a
+                                 // viewport update
                     }
                     assert internalOffset < existingColumnData.length;
-                    existingColumnData.setAt(internalOffset, addedColumnData.getAnyAt(i));
-                    updated.added.add(internalOffset);
+
+                    Any existing = existingColumnData.getAt(internalOffset);
+                    if (existing == NULL_SENTINEL || internalOffset >= length) {
+                        // space was set aside or was left at the end of the array for this value, it is a new addition
+                        updated.added.add(internalOffset);
+                    } else {
+                        // we're overwriting some existing value
+                        updated.modified.add(internalOffset);
+                    }
+                    existingColumnData.setAt(internalOffset, addedColumnData.getAtAsAny(i));
                     i++;
                 }
             }
         }
 
-        for (Iterator<Integer> it = updated.modified.iterator(); it.hasNext(); ) {
-            int ii = it.next();
-            updated.added.remove(ii);
-            updated.removed.remove(ii);
-        }
-        for (Iterator<Integer> it = updated.removed.iterator(); it.hasNext(); ) {
+        // exclude added items from being marked as modified, since we're hiding shifts from api consumers
+        updated.modified.removeAll(updated.added);
+
+        // Any position which was both added and removed should instead be marked as modified, this cleans
+        // up anything excluded above that didn't otherwise make sense
+        for (Iterator<Integer> it = updated.removed.iterator(); it.hasNext();) {
             int ii = it.next();
             if (updated.added.remove(ii)) {
                 it.remove();
@@ -503,7 +526,8 @@ public class ViewportData implements TableData {
         length = length + updated.added.size() - updated.removed.size();
         assert 0 <= length && length <= maxLength;
 
-        // Viewport footprint should be small enough that we can afford to see if this update corrupted our view of the world:
+        // Viewport footprint should be small enough that we can afford to see if this update corrupted our view of the
+        // world:
         assert !dataContainsNullSentinels();
 
         return updated;

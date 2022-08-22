@@ -1,8 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.text;
 
 public class ScriptSanitizer {
     /**
-     * Replaces unwanted characters like smart quotes with the standard equivalent.  Used so that copy and paste
+     * Replaces unwanted characters like smart quotes with the standard equivalent. Used so that copy and paste
      * operations from tools like Outlook or Slack don't result in unusable scripts.
      *
      * @param commandToSanitize the command to sanitize

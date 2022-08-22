@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven;
 
 /**
@@ -16,9 +19,11 @@ public class UncheckedDeephavenException extends RuntimeException {
         super(cause);
     }
 
-    public UncheckedDeephavenException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    public UncheckedDeephavenException(String message, Throwable cause, boolean enableSuppression,
+            boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
+
     public UncheckedDeephavenException() {
         super();
     }

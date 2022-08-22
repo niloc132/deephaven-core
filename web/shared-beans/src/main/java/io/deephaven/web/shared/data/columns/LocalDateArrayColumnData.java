@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data.columns;
 
 import io.deephaven.web.shared.data.LocalDate;
@@ -5,14 +8,13 @@ import io.deephaven.web.shared.data.LocalDate;
 import java.util.Arrays;
 
 /**
- * Holder for data associated with a column of type java.time.LocalDate.
- * This type is serialized with a custom LocalDate type for efficiency and GWT compatibility.
+ * Holder for data associated with a column of type java.time.LocalDate. This type is serialized with a custom LocalDate
+ * type for efficiency and GWT compatibility.
  */
 public class LocalDateArrayColumnData extends ColumnData {
     private LocalDate[] data;
 
-    public LocalDateArrayColumnData() {
-    }
+    public LocalDateArrayColumnData() {}
 
     public LocalDateArrayColumnData(LocalDate[] data) {
         this.data = data;
@@ -28,8 +30,10 @@ public class LocalDateArrayColumnData extends ColumnData {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         final LocalDateArrayColumnData that = (LocalDateArrayColumnData) o;
         return Arrays.deepEquals(data, that.data);
     }

@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.tablelogger;
 
 /**
@@ -9,13 +8,21 @@ package io.deephaven.tablelogger;
  */
 public interface RowSetter<T> {
     void set(T value);
+
     void setBoolean(Boolean value);
+
     void setByte(byte value);
+
     void setChar(char value);
+
     void setDouble(double value);
+
     void setFloat(float value);
+
     void setInt(int value);
+
     void setLong(long value);
+
     void setShort(short value);
 
     Class getType();

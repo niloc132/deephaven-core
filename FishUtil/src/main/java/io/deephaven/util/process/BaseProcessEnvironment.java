@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util.process;
 
 import io.deephaven.base.verify.Require;
@@ -40,9 +39,9 @@ public abstract class BaseProcessEnvironment implements ProcessEnvironment {
      * @param log
      */
     protected BaseProcessEnvironment(@NotNull final ShutdownManager shutdownManager,
-                                     @NotNull final FatalErrorReporter fatalErrorReporter,
-                                     @NotNull final String mainClassName,
-                                     @NotNull final Logger log) {
+            @NotNull final FatalErrorReporter fatalErrorReporter,
+            @NotNull final String mainClassName,
+            @NotNull final Logger log) {
         this.shutdownManager = Require.neqNull(shutdownManager, "shutdownManager");
         this.fatalErrorReporter = Require.neqNull(fatalErrorReporter, "fatalErrorReporter");
         this.mainClassName = Require.nonempty(mainClassName, "mainClassName");
@@ -62,15 +61,5 @@ public abstract class BaseProcessEnvironment implements ProcessEnvironment {
     @Override
     public final String getMainClassName() {
         return mainClassName;
-    }
-
-    @Override
-    public final Logger getLog() {
-        if (!Boolean.getBoolean("LoggerFactory.silenceOnProcessEnvironment")) {
-            log.warn(new RuntimeException("Trace"))
-                .append("Logger being fetched via ProcessEnvironment instead of io.deephaven.internal.log.LoggerFactory")
-                .endl();
-        }
-        return log;
     }
 }

@@ -1,17 +1,34 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.ide.client;
 
 import elemental2.promise.Promise;
 import io.deephaven.web.client.api.QueryConnectable;
 import io.deephaven.web.shared.fu.JsRunnable;
-import io.deephaven.web.shared.ide.ConsoleAddress;
-import jsinterop.annotations.JsIgnore;
-import jsinterop.annotations.JsType;
+import io.deephaven.web.shared.data.ConnectToken;
+import jsinterop.annotations.*;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  */
 @JsType(namespace = "dh")
 public class IdeConnection extends QueryConnectable<IdeConnection> {
-    private final ConsoleAddress address;
+    @JsMethod(namespace = JsPackage.GLOBAL)
+    private static native String atob(String encodedData);
+
+    private static AuthTokenPromiseSupplier getAuthTokenPromiseSupplier(IdeConnectionOptions options) {
+        ConnectToken token = null;
+        if (options != null && options.authToken != null) {
+            token = new ConnectToken();
+            token.setBytes(atob(options.authToken).getBytes(StandardCharsets.UTF_8));
+        }
+        return AuthTokenPromiseSupplier.oneShot(token);
+    }
+
+    private final String serverUrl;
+
     private final JsRunnable deathListenerCleanup;
 
     @Override
@@ -22,10 +39,10 @@ public class IdeConnection extends QueryConnectable<IdeConnection> {
     /**
      * Direct connection to an already-running worker instance, without first authenticating to a client.
      */
-    @JsIgnore
-    public IdeConnection(ConsoleAddress address) {
-        super(AuthTokenPromiseSupplier.oneShot(address.getToken()));
-        this.address = address;
+    @JsConstructor
+    public IdeConnection(String serverUrl, @JsOptional IdeConnectionOptions options) {
+        super(getAuthTokenPromiseSupplier(options));
+        this.serverUrl = serverUrl;
         this.deathListenerCleanup = JsRunnable.doNothing();
     }
 
@@ -38,7 +55,7 @@ public class IdeConnection extends QueryConnectable<IdeConnection> {
     @Override
     @JsIgnore
     public String getServerUrl() {
-        return address.getWebsocketUrl();
+        return serverUrl;
     }
 
     @Override
@@ -47,7 +64,7 @@ public class IdeConnection extends QueryConnectable<IdeConnection> {
         if (!connection.isAvailable() || connection.get().isUsable()) {
             return Promise.resolve(this);
         } else {
-            return (Promise)Promise.reject("Cannot connect, session is dead.");
+            return (Promise) Promise.reject("Cannot connect, session is dead.");
         }
     }
 

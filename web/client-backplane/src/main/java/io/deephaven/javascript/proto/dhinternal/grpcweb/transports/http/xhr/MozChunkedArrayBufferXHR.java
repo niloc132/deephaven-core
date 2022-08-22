@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.grpcweb.transports.http.xhr;
 
 import io.deephaven.javascript.proto.dhinternal.grpcweb.transports.transport.TransportOptions;
@@ -5,16 +8,16 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
 @JsType(
-    isNative = true,
-    name = "dhinternal.grpcWeb.transports.http.xhr.MozChunkedArrayBufferXHR",
-    namespace = JsPackage.GLOBAL)
+        isNative = true,
+        name = "dhinternal.grpcWeb.transports.http.xhr.MozChunkedArrayBufferXHR",
+        namespace = JsPackage.GLOBAL)
 public class MozChunkedArrayBufferXHR extends XHR {
-  public MozChunkedArrayBufferXHR() {
-    // This super call is here only for the code to compile; it is never executed.
-    super((TransportOptions) null, (XhrTransportInit) null);
-  }
+    public MozChunkedArrayBufferXHR() {
+        // This super call is here only for the code to compile; it is never executed.
+        super((TransportOptions) null, (XhrTransportInit) null);
+    }
 
-  public native void configureXhr();
+    public native void configureXhr();
 
-  public native void onProgressEvent();
+    public native void onProgressEvent();
 }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.codec;
 
 import org.jetbrains.annotations.NotNull;
@@ -7,9 +10,10 @@ import java.nio.charset.StandardCharsets;
 
 /**
  *
- * <p>Codec for non-nullable Strings from UTF8 byte arrays.
- * <p>One particular instance where this is useful is reading parquet 1.0 data
- *    encoded as binary as String.
+ * <p>
+ * Codec for non-nullable Strings from UTF8 byte arrays.
+ * <p>
+ * One particular instance where this is useful is reading parquet 1.0 data encoded as binary as String.
  *
  */
 public class UTF8StringAsByteArrayCodec implements ObjectCodec<String> {
@@ -44,7 +48,8 @@ public class UTF8StringAsByteArrayCodec implements ObjectCodec<String> {
     @Override
     public byte[] encode(@Nullable final String input) {
         if (input == null) {
-            throw new IllegalArgumentException(UTF8StringAsByteArrayCodec.class.getSimpleName() + " cannot encode nulls");
+            throw new IllegalArgumentException(
+                    UTF8StringAsByteArrayCodec.class.getSimpleName() + " cannot encode nulls");
         }
         return input.getBytes(StandardCharsets.UTF_8);
     }
@@ -67,7 +72,7 @@ public class UTF8StringAsByteArrayCodec implements ObjectCodec<String> {
     @Nullable
     @Override
     public String decode(@NotNull final byte[] input, final int offset, final int length) {
-        return new String (input, offset, length, StandardCharsets.UTF_8);
+        return new String(input, offset, length, StandardCharsets.UTF_8);
     }
 
     @Override

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.base.system;
 
 import java.io.OutputStream;
@@ -27,31 +30,31 @@ public class StandardStreamState {
 
         // get all of the out sinks
         List<OutputStream> outReceivers = receivers.stream()
-            .map(StandardStreamReceiver::receiveOut)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .collect(Collectors.toList());
+                .map(StandardStreamReceiver::receiveOut)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
 
         // get all of the err sinks
         List<OutputStream> errReceivers = receivers.stream()
-            .map(StandardStreamReceiver::receiveErr)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .collect(Collectors.toList());
+                .map(StandardStreamReceiver::receiveErr)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
 
         if (!outReceivers.isEmpty()) {
             PrintStream out = adapt(outReceivers);
             if (out != System.out) {
+                System.out.println("# New System.out configured");
                 System.setOut(out);
-                out.println("# New System.out configured");
             }
         }
 
         if (!errReceivers.isEmpty()) {
             PrintStream err = adapt(errReceivers);
             if (err != System.err) {
+                System.err.println("# New System.err configured");
                 System.setErr(err);
-                err.println("# New System.err configured");
             }
         }
     }
@@ -61,7 +64,7 @@ public class StandardStreamState {
         if (outputStreams.size() == 1) {
             OutputStream out = outputStreams.get(0);
             if (out instanceof PrintStream) {
-                return (PrintStream)out;
+                return (PrintStream) out;
             }
             return new PrintStream(out, true, "ISO-8859-1");
         }

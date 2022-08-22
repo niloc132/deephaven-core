@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.log.impl;
 
 import io.deephaven.base.pool.ThreadSafeLenientFixedSizePool;
@@ -14,7 +13,9 @@ public class DynamicLogEntryPoolImpl extends ThreadSafeLenientFixedSizePool<LogE
     public DynamicLogEntryPoolImpl(String name, int entryCount, final LogBufferPool bufferPool) {
         super(name, entryCount,
                 new Function.Nullary<LogEntry>() {
-                    public LogEntry call() { return new LogEntryImpl(bufferPool); }
+                    public LogEntry call() {
+                        return new LogEntryImpl(bufferPool);
+                    }
                 }, null);
     }
 

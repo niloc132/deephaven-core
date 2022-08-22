@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import io.deephaven.properties.PropertySet;
@@ -37,10 +40,10 @@ public abstract class SystemInfoOshi implements PropertySet {
     public static SystemInfoOshi forCurrentProcess() {
         final SystemInfo info = new SystemInfo();
         return ImmutableSystemInfoOshi.builder()
-            .operatingSystem(OperatingSystemOshi.from(info.getOperatingSystem()))
-            .computerSystem(ComputerSystemOshi.from(info.getHardware().getComputerSystem()))
-            .systemMemory(SystemMemoryOshi.from(info.getHardware().getMemory()))
-            .systemCpu(SystemCpuOshi.from(info.getHardware().getProcessor()))
-            .build();
+                .operatingSystem(OperatingSystemOshi.from(info.getOperatingSystem()))
+                .computerSystem(ComputerSystemOshi.from(info.getHardware().getComputerSystem()))
+                .systemMemory(SystemMemoryOshi.from(info.getHardware().getMemory()))
+                .systemCpu(SystemCpuOshi.from(info.getHardware().getProcessor()))
+                .build();
     }
 }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data;
 
 import java.io.Serializable;
@@ -43,9 +46,9 @@ public class SortDescriptor implements Serializable {
     @Override
     public String toString() {
         return "SortDescriptor{" +
-            "dir='" + dir + '\'' +
-            ", columnName='" + columnName + '\'' +
-            ", abs=" + abs +
-            '}';
+                "dir='" + dir + '\'' +
+                ", columnName='" + columnName + '\'' +
+                ", abs=" + abs +
+                '}';
     }
 }

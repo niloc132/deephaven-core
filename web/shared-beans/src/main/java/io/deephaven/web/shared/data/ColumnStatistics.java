@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data;
 
 import java.io.Serializable;
@@ -8,10 +11,7 @@ import java.util.Arrays;
  */
 public class ColumnStatistics implements Serializable {
     public enum ColumnType {
-        NUMERIC,
-        COMPARABLE,
-        DATETIME,
-        NON_COMPARABLE,
+        NUMERIC, COMPARABLE, DATETIME, NON_COMPARABLE,
     }
 
     private ColumnType type;
@@ -31,7 +31,7 @@ public class ColumnStatistics implements Serializable {
     private double absMin;
     private double absMax;
 
-    // Data from a GenerateDBDateTimeStatsFunction
+    // Data from a GenerateDateTimeStatsFunction
     private long minDateTime;
     private long maxDateTime;
 

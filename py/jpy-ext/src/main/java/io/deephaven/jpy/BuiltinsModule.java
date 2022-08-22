@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy;
 
 import org.jpy.PyLib;
@@ -23,7 +26,7 @@ public interface BuiltinsModule extends AutoCloseable {
      * @return the list of names in the current local scope
      * @see <a href="https://docs.python.org/3/library/functions.html#dir">dir</a>
      */
-    //PyObject dir();
+    // PyObject dir();
 
     /**
      * Attempt to return a list of valid attributes for that object.
@@ -43,9 +46,8 @@ public interface BuiltinsModule extends AutoCloseable {
     PyObject dict();
 
     /**
-     * Get the length (the number of items) of an object. The argument may be a sequence (such as a
-     * string, bytes, tuple, list, or range) or a collection (such as a dictionary, set, or
-     * frozen set).
+     * Get the length (the number of items) of an object. The argument may be a sequence (such as a string, bytes,
+     * tuple, list, or range) or a collection (such as a dictionary, set, or frozen set).
      *
      * @param pyObject the python object
      * @return the length (the number of items) of an object

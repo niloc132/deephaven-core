@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base;
 
 import io.deephaven.base.verify.RequirementFailure;
@@ -9,15 +8,15 @@ import junit.framework.TestCase;
 
 import java.util.HashMap;
 
-//--------------------------------------------------------------------
+// --------------------------------------------------------------------
 /**
  * Tests for {@link LowGarbageArrayIntegerMap}
  */
 public class TestLowGarbageArrayIntegerMap extends TestCase {
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     public void testLowGarbageArrayIntegerMap() {
-        HashMap integerToStringMap=new LowGarbageArrayIntegerMap<String>();
+        HashMap integerToStringMap = new LowGarbageArrayIntegerMap<String>();
 
         // check empty get
         assertNull(integerToStringMap.get(5));

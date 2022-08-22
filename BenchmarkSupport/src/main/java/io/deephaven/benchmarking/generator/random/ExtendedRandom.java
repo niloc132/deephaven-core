@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.generator.random;
 
 import java.util.Random;
@@ -21,16 +24,15 @@ public abstract class ExtendedRandom {
         long r = nextLong();
         if (origin < bound) {
             long n = bound - origin, m = n - 1;
-            if ((n & m) == 0L)  // power of two
+            if ((n & m) == 0L) // power of two
                 r = (r & m) + origin;
-            else if (n > 0L) {  // reject over-represented candidates
-                for (long u = r >>> 1;            // ensure nonnegative
-                     u + m - (r = u % n) < 0L;    // rejection check
-                     u = nextLong() >>> 1) // retry
-                    ;
+            else if (n > 0L) { // reject over-represented candidates
+                for (long u = r >>> 1; // ensure nonnegative
+                        u + m - (r = u % n) < 0L; // rejection check
+                        u = nextLong() >>> 1) // retry
+                ;
                 r += origin;
-            }
-            else {              // range not representable as long
+            } else { // range not representable as long
                 while (r < origin || r >= bound)
                     r = nextLong();
             }
@@ -43,22 +45,23 @@ public abstract class ExtendedRandom {
             int n = bound - origin;
             if (n > 0) {
                 return nextInt(n) + origin;
-            }
-            else {  // range not representable as int
+            } else { // range not representable as int
                 int r;
                 do {
                     r = nextInt();
                 } while (r < origin || r >= bound);
                 return r;
             }
-        }
-        else {
+        } else {
             return nextInt();
         }
     }
 
     public abstract double nextDouble();
+
     public abstract long nextLong();
+
     public abstract int nextInt();
+
     public abstract int nextInt(int n);
 }

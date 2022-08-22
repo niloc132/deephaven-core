@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import io.deephaven.properties.PropertySet;
@@ -41,11 +44,11 @@ public abstract class OperatingSystemOshi implements PropertySet {
 
     public static OperatingSystemOshi from(OperatingSystem os) {
         return ImmutableOperatingSystemOshi.builder()
-            .family(os.getFamily())
-            .manufacturer(os.getManufacturer())
-            .version(OperatingSystemVersionOshi.from(os.getVersionInfo()))
-            .network(NetworkOshi.from(os.getNetworkParams()))
-            .pid(os.getProcessId())
-            .build();
+                .family(os.getFamily())
+                .manufacturer(os.getManufacturer())
+                .version(OperatingSystemVersionOshi.from(os.getVersionInfo()))
+                .network(NetworkOshi.from(os.getNetworkParams()))
+                .pid(os.getProcessId())
+                .build();
     }
 }

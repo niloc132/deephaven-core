@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api;
 
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.SortDescriptor;
@@ -10,7 +13,8 @@ public class Sort {
             DESCENDING = "DESC",
             REVERSE = "REVERSE";
 
-    private static final Column REVERSE_COLUMN = new Column(-1, -1, null, null, "", "__REVERSE_COLUMN", false, null, null);
+    private static final Column REVERSE_COLUMN =
+            new Column(-1, -1, null, null, "", "__REVERSE_COLUMN", false, null, null, false);
 
     private final Column column;
     private String direction;
@@ -48,6 +52,7 @@ public class Sort {
         sort.direction = ASCENDING;
         return sort;
     }
+
     @JsMethod
     public Sort desc() {
         Sort sort = new Sort(column);
@@ -55,6 +60,7 @@ public class Sort {
         sort.direction = DESCENDING;
         return sort;
     }
+
     @JsMethod
     public Sort abs() {
         Sort sort = new Sort(column);
@@ -88,10 +94,10 @@ public class Sort {
     @Override
     public String toString() {
         return "Sort{" +
-            "column=" + column +
-            ", direction='" + direction + '\'' +
-            ", abs=" + abs +
-            '}';
+                "column=" + column +
+                ", direction='" + direction + '\'' +
+                ", abs=" + abs +
+                '}';
     }
 
     @Override

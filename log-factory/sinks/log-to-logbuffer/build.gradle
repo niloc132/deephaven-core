@@ -1,6 +1,6 @@
 plugins {
   id 'java-library'
-  id 'com.diffplug.spotless'
+  id 'io.deephaven.project.register'
 }
 
 configurations {
@@ -9,10 +9,6 @@ configurations {
 
 dependencies {
   compileOnly project(':log-factory')
-}
 
-spotless {
-  java {
-    eclipse().configFile("${rootDir}/style/eclipse-java-google-style.xml")
-  }
+  Classpaths.inheritAutoService(project)
 }

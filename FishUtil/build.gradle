@@ -1,6 +1,16 @@
-dependencies {
-    compile project(':Base'), project(':DataStructures'), project(':IO'), project(':Configuration'), project(':log-factory')
-    compile depCommonsEmail, depCommonsNet
+plugins {
+    id 'io.deephaven.project.register'
+    id 'java-library'
+}
 
-    testCompile project(path: ':Base', configuration: 'tests')
+dependencies {
+    implementation project(':Base')
+    implementation project(':DataStructures')
+    implementation project(':IO')
+    implementation project(':Configuration')
+    implementation project(':log-factory')
+    implementation depCommonsEmail
+    implementation depCommonsNet
+
+    testImplementation project(path: ':Base', configuration: 'tests')
 }

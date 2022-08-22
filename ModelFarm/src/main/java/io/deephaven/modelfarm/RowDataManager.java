@@ -1,10 +1,9 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.modelfarm;
 
-import io.deephaven.db.v2.DynamicTable;
+import io.deephaven.engine.table.Table;
 
 /**
  * An interface for accessing and querying data contained in rows of a dynamic table.
@@ -19,7 +18,7 @@ public interface RowDataManager<KEYTYPE, DATATYPE> {
      *
      * @return source table.
      */
-    DynamicTable table();
+    Table table();
 
     /**
      * Creates a new data instance.
@@ -31,7 +30,7 @@ public interface RowDataManager<KEYTYPE, DATATYPE> {
     /**
      * Gets the current unique identifier value for a row.
      * <p>
-     * This function should only be called during an update loop or while holding the LTM lock.
+     * This function should only be called during an update loop or while holding the UGP lock.
      *
      * @param index table row index.
      * @return current unique identifier for a row.
@@ -39,9 +38,10 @@ public interface RowDataManager<KEYTYPE, DATATYPE> {
     KEYTYPE uniqueIdCurrent(final long index);
 
     /**
-     * Gets the previous unique identifier value for a row.  One column of each table is designated as a unique identifier for data rows.
+     * Gets the previous unique identifier value for a row. One column of each table is designated as a unique
+     * identifier for data rows.
      * <p>
-     * This function should only be called during an update loop or while holding the LTM lock.
+     * This function should only be called during an update loop or while holding the UGP lock.
      *
      * @param index table row index.
      * @return previous underlying id.
@@ -51,11 +51,11 @@ public interface RowDataManager<KEYTYPE, DATATYPE> {
     /**
      * Populates a data object with data from a table row.
      * <p>
-     * This method should be called while the LTM lock is held.  This can occur either during the update loop or the
-     * LTM lock can be acquired outside the update loop.  If the LTM lock is not held, the loaded data can be inconsistent
-     * or corrupt.
+     * This method should be called while the UGP lock is held. This can occur either during the update loop or the UGP
+     * lock can be acquired outside the update loop. If the UGP lock is not held, the loaded data can be inconsistent or
+     * corrupt.
      *
-     * @param data  data structure to populate
+     * @param data data structure to populate
      * @param index table index of the row to load data from
      * @param usePrev use data from the previous table update
      */
@@ -71,8 +71,8 @@ public interface RowDataManager<KEYTYPE, DATATYPE> {
         /**
          * Load data for extra columns.
          *
-         * @param data    data structure to populate
-         * @param index   table index of the row to load data from
+         * @param data data structure to populate
+         * @param index table index of the row to load data from
          * @param usePrev use data from the previous table update
          */
         void load(DATATYPE data, long index, boolean usePrev);

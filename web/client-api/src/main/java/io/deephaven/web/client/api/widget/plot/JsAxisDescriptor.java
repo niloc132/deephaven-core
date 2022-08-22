@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsArray;
@@ -31,8 +34,7 @@ public class JsAxisDescriptor {
     public boolean isTimeAxis = false;
 
     @JsConstructor
-    public JsAxisDescriptor() {
-    }
+    public JsAxisDescriptor() {}
 
     @JsIgnore
     public JsAxisDescriptor(JsPropertyMap<Object> source) {
@@ -57,7 +59,7 @@ public class JsAxisDescriptor {
         invert = JsData.getBooleanProperty(source, "invert");
         isTimeAxis = JsData.getBooleanProperty(source, "isTimeAxis");
         if (source.has("majorTickLocations")) {
-            majorTickLocations = source.getAny("majorTickLocations").uncheckedCast();
+            majorTickLocations = source.getAsAny("majorTickLocations").uncheckedCast();
         }
     }
 }

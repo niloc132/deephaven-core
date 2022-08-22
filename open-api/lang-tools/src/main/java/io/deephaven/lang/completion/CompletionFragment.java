@@ -1,11 +1,13 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.lang.completion;
 
 /**
  * A Deephaven-internal completion fragment.
  *
- * Represents a source code replacement option,
- * with fields for "what code to insert", "where to insert it",
- * and "what to render for completion, if different from code insertion".
+ * Represents a source code replacement option, with fields for "what code to insert", "where to insert it", and "what
+ * to render for completion, if different from code insertion".
  */
 public class CompletionFragment {
     int start; // where to start the replacement
@@ -46,11 +48,11 @@ public class CompletionFragment {
     @Override
     public String toString() {
         return "CompletionFragment{" +
-            "start=" + start +
-            ", length=" + length +
-            ", completion='" + completion + '\'' +
-            ", displayCompletion='" + displayCompletion + '\'' +
-            '}';
+                "start=" + start +
+                ", length=" + length +
+                ", completion='" + completion + '\'' +
+                ", displayCompletion='" + displayCompletion + '\'' +
+                '}';
     }
 
     @Override

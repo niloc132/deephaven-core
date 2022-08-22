@@ -1,6 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking;
 
-import io.deephaven.db.v2.utils.metrics.MetricsManager;
+import io.deephaven.util.metrics.MetricsManager;
 import org.openjdk.jmh.results.RunResult;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
@@ -11,6 +14,7 @@ import java.util.Collection;
 
 public class BenchUtil {
     public static final int defaultHeapGb = 4;
+
     public static void run(final Class c) {
         run(defaultHeapGb, c);
     }
@@ -18,7 +22,7 @@ public class BenchUtil {
     public static void run(final int heapGb, final Class c, String... benchmarkMethods) {
         final String[] regexes;
         if (benchmarkMethods.length == 0) {
-            regexes = new String[] { c.getSimpleName() };
+            regexes = new String[] {c.getSimpleName()};
         } else {
             regexes = new String[benchmarkMethods.length];
             int i = 0;

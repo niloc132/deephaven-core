@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.generator;
 
 import io.deephaven.benchmarking.generator.random.ExtendedRandom;
@@ -64,6 +67,6 @@ public class NumGenerator implements DataGenerator<Number> {
     }
 
     public char getChar() {
-        return (char)getShort();
+        return (char) getShort();
     }
 }

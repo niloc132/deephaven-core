@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.string.cache;
 
 import io.deephaven.base.MathUtil;
@@ -18,7 +17,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
     private char storage[] = new char[0];
 
     /**
-     * The number of chars from storage that have been used.  Also, the length of the CharSequence.
+     * The number of chars from storage that have been used. Also, the length of the CharSequence.
      */
     private int used;
 
@@ -41,6 +40,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
 
     /**
      * Grow the internal storage of this builder to avoid repeated resizing.
+     * 
      * @param needed
      */
     public final void reserveCapacity(final int needed) {
@@ -60,6 +60,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
 
     /**
      * Append a slice of a String to this adapter.
+     * 
      * @param value A String instance to append to this adapter.
      * @param offset The index of the first char in value to include in the proto-string.
      * @param length The length of the proto-String in chars.
@@ -76,6 +77,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
 
     /**
      * Append a String to this adapter.
+     * 
      * @param value A String instance to append to this adapter.
      * @return This adapter.
      */
@@ -85,6 +87,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
 
     /**
      * Append a slice of a CharSequence to this adapter.
+     * 
      * @param value A CharSequence instance to append to this adapter.
      * @param offset The index of the first char in value to include in the proto-string.
      * @param length The length of the proto-String in chars.
@@ -103,6 +106,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
 
     /**
      * Append a CharSequence to this adapter.
+     * 
      * @param value A CharSequence instance to append to this adapter.
      * @return This adapter.
      */
@@ -125,6 +129,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
 
     /**
      * Append a char to this adapter.
+     * 
      * @param value A char to append to this adapter.
      * @return This adapter.
      */
@@ -138,7 +143,7 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
         if (length > 0) {
             ensureSpace(length);
             for (int bi = offset; bi < offset + length; ++bi) {
-                storage[used++] = (char)(value[bi] & 0xFF);
+                storage[used++] = (char) (value[bi] & 0xFF);
             }
             cachedHashCode = 0;
         }
@@ -151,11 +156,12 @@ public class CharSequenceAdapterBuilder extends CharSequenceAdapter {
 
     /**
      * Append a byte (converted to a char) to this adapter.
+     * 
      * @param value A byte to append to this adapter.
      * @return This adapter.
      */
     public final CharSequenceAdapterBuilder append(final byte value) {
-        ensureSpace(1)[used++] = (char)(value & 0xFF);
+        ensureSpace(1)[used++] = (char) (value & 0xFF);
         cachedHashCode = 0;
         return this;
     }

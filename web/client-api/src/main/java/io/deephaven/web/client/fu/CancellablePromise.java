@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.fu;
 
 import elemental2.promise.Promise;
@@ -12,8 +15,7 @@ import jsinterop.annotations.JsType;
  *
  * We do not extend Promise as js interop is not yet good enough to extend native types.
  *
- * So, instead, we just hack on a "cancel" property pointing to a function that can
- * be invoked only from javascript.
+ * So, instead, we just hack on a "cancel" property pointing to a function that can be invoked only from javascript.
  */
 @JsType(namespace = JsPackage.GLOBAL, name = "Promise", isNative = true)
 public class CancellablePromise<T> extends Promise<T> {

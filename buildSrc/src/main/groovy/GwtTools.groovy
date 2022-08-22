@@ -6,10 +6,7 @@ import groovy.transform.CompileStatic
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.file.ConfigurableFileCollection
-import org.gradle.api.file.CopySpec
 import org.gradle.api.plugins.JavaPlugin
-import org.gradle.api.tasks.TaskOutputs
-import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
 
 /**
@@ -72,37 +69,6 @@ class GwtTools {
             gwtc.logger.quiet('Running in gwt dev mode; saving source to {}/dh/src', extras)
         }
 
-        // Add a jar task to create an artifact containing our compiled application
-        p.tasks.register "jsJar", Jar, {
-            Jar j ->
-                j.group = '~Deephaven'
-                j.description = description
-                // make a task dependency, AND make sure we rebuild this jar if the gwtc task output files change.
-                j.inputs.files gwtc.outputs.files
-                j.from("$gwt.compile.war/dhapi") {
-                    CopySpec c->
-                        c.exclude '**/extra' // don't put our source files in exported jar, thx
-                        c.into 'dhapi'
-                }
-                // let's also pull in the ide client's build output
-                TaskOutputs uiOutputs = p.project(':web-client-ui').tasks.getByName('ideClient').outputs
-                j.from(uiOutputs.files) {
-                    CopySpec c ->
-                        c.into 'dhide'
-                }
-
-                TaskOutputs internalOpenapiOutputs = p.project(':proto:raw-js-openapi').tasks.getByName('webpackSources').outputs
-                j.from(internalOpenapiOutputs.files) {
-                    CopySpec c ->
-                        c.into 'dhapi'
-                }
-
-                j.classifier = 'js'
-                j.doFirst {
-                    j.logger.info "Merging $gwt.compile.war and $uiOutputs into $j.archivePath"
-                }
-        }
-
         p.tasks.findByName('gwtCheck')?.enabled = false
     }
 
@@ -134,7 +100,7 @@ class GwtTools {
                 /** Fail compilation if any input file contains an error. */
                 strict = true
                 /** Specifies Java source level. ("1.6", "1.7")*/
-                sourceLevel = "1.8"
+                sourceLevel = "11"
                 /** The number of local workers to use when compiling permutations. */
                 localWorkers = 1
                 /** Emit extra information allow chrome dev tools to display Java identifiers in many places instead of JavaScript functions. (NONE, ONLY_METHOD_NAME, ABBREVIATED, FULL)*/

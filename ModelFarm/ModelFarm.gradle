@@ -2,18 +2,29 @@
  * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
  */
 
+plugins {
+    id 'io.deephaven.project.register'
+    id 'java-library'
+}
+
 configurations {
-    testCompile.extendsFrom fishBaseTest
+    testImplementation.extendsFrom fishBaseTest
 }
 
 dependencies {
-    compile project(':DB')
+    api project(':engine-table')
+    api project(':engine-time')
 
-    runtime project(':configs')
+    implementation project(':Configuration')
+    implementation project(':log-factory')
 
-    testCompile project(path: ':DB', configuration: 'testOutput')
-    testRuntime project(':Numerics')
+    runtimeOnly project(':configs')
+
+    testImplementation TestTools.projectDependency(project, 'engine-table')
+    testRuntimeOnly project(':Numerics')
 
     testRuntimeOnly project(':log-to-slf4j')
-    testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.30'
+    testRuntimeOnly project(path: ':configs')
+    testRuntimeOnly project(path: ':test-configs')
+    Classpaths.inheritSlf4j(project, 'slf4j-simple', 'testRuntimeOnly')
 }

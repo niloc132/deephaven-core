@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.logger;
 
 import io.deephaven.base.verify.Assert;
@@ -54,7 +53,8 @@ public class LogBufferRecord implements Externalizable {
         final LogBufferRecord copy = new LogBufferRecord();
         copy.setTimestampMicros(timestampMicros);
         copy.setLevel(level);
-        copy.setData(ByteBuffer.wrap(Arrays.copyOfRange(data.array(), data.position() + data.arrayOffset(), data.limit() + data.arrayOffset())));
+        copy.setData(ByteBuffer.wrap(Arrays.copyOfRange(data.array(), data.position() + data.arrayOffset(),
+                data.limit() + data.arrayOffset())));
         return copy;
     }
 

@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util;
 
 import org.jetbrains.annotations.NotNull;
@@ -14,10 +13,8 @@ public class OSUtil {
 
     public enum OSFamily {
 
-        LINUX(name -> name.startsWith("Linux")),
-        WINDOWS(name -> name.contains("Windows")),
-        MAC_OS(name -> name.startsWith("Mac OS")),
-        SOLARIS(name -> name.startsWith("SunOs"));
+        LINUX(name -> name.startsWith("Linux")), WINDOWS(name -> name.contains("Windows")), MAC_OS(
+                name -> name.startsWith("Mac OS")), SOLARIS(name -> name.startsWith("SunOs"));
 
         private final Predicate<String> nameMatcher;
 
@@ -32,12 +29,14 @@ public class OSUtil {
 
     public static OSFamily getOSFamily() {
         final String name = getOSName();
-        final OSFamily[] matchingFamilies = Arrays.stream(OSFamily.values()).filter(family -> family.matchesName(name)).toArray(OSFamily[]::new);
+        final OSFamily[] matchingFamilies =
+                Arrays.stream(OSFamily.values()).filter(family -> family.matchesName(name)).toArray(OSFamily[]::new);
         if (matchingFamilies.length == 0) {
             throw new IllegalArgumentException("Unknown OS family for OS name " + name);
         }
         if (matchingFamilies.length > 1) {
-            throw new IllegalArgumentException("Ambiguous OS family for OS name " + name + ", matches: " + Arrays.toString(matchingFamilies));
+            throw new IllegalArgumentException(
+                    "Ambiguous OS family for OS name " + name + ", matches: " + Arrays.toString(matchingFamilies));
         }
         return matchingFamilies[0];
     }

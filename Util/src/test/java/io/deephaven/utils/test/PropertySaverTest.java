@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.utils.test;
 
 import io.deephaven.configuration.Configuration;
@@ -18,12 +21,12 @@ public class PropertySaverTest {
 
     // Add this to IntelliJ Unit Test Run Configuration to mimic gradle test
     //
-    // -ea -DConfiguration.rootFile=dh-tests.prop -Dworkspace=./tmp/workspace -Ddevroot=. -Dlog4j.configuration=log4j.teamcity.xml
+    // -ea -DConfiguration.rootFile=dh-tests.prop -Dworkspace=./tmp/workspace -Ddevroot=.
     // -ea is for JVM to honor assertions
     //
     // CommandLine:
-    //  ./gradlew :Util:test --tests io.deephaven.utils.test.PropertySaverTest
-    //  open Util/build/reports/tests/test/index.html
+    // ./gradlew :Util:test --tests io.deephaven.utils.test.PropertySaverTest
+    // open Util/build/reports/tests/test/index.html
 
     private final Logger log = new StreamLoggerImpl(System.out, LogLevel.DEBUG);
 
@@ -40,7 +43,7 @@ public class PropertySaverTest {
             log.info().append("Remove someProperty: " + someProperty).endl();
             propertySaver.remove(someProperty);
             log.info().append("configuration currentSize: " + configuration.getProperties().size()).endl();
-            Assert.assertEquals(configuration.getProperties().size(), initialSize -1);
+            Assert.assertEquals(configuration.getProperties().size(), initialSize - 1);
         } finally {
             propertySaver.restore();
             log.info().append("configuration restored size: " + configuration.getProperties().size()).endl();

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util.datastructures;
 
 import io.deephaven.hash.IndexableMap;
@@ -38,10 +41,11 @@ public class SortedIndexableMapWrapper<K, V> implements IndexableMap<K, V> {
 
     // get the sorted values list, returning the cached version if available
     private synchronized List<Map.Entry<K, V>> getValuesList() {
-        if (valueList  != null) {
+        if (valueList != null) {
             return valueList;
         }
-        valueList = baseMap.entrySet().stream().sorted((e1, e2) -> comparator.compare(e1.getValue(), e2.getValue())).collect(Collectors.toCollection(ArrayList::new));
+        valueList = baseMap.entrySet().stream().sorted((e1, e2) -> comparator.compare(e1.getValue(), e2.getValue()))
+                .collect(Collectors.toCollection(ArrayList::new));
         return valueList;
     }
 
@@ -114,11 +118,12 @@ public class SortedIndexableMapWrapper<K, V> implements IndexableMap<K, V> {
 
     @Override
     public boolean equals(Object o) {
-        //noinspection SimplifiableIfStatement
+        // noinspection SimplifiableIfStatement
         if (o == null || !(o instanceof SortedIndexableMapWrapper)) {
             return false;
         }
-        return comparator.equals(((SortedIndexableMapWrapper) o).comparator) &&  baseMap.equals(((SortedIndexableMapWrapper) o).baseMap);
+        return comparator.equals(((SortedIndexableMapWrapper) o).comparator)
+                && baseMap.equals(((SortedIndexableMapWrapper) o).baseMap);
     }
 
     @Override

@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.sched;
 
 import io.deephaven.base.Procedure;
@@ -16,9 +15,9 @@ import java.io.IOException;
  */
 public abstract class Job implements LogOutputAppendable {
 
-    //--------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
     // public interface
-    //--------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
 
     /**
      * This method is invoked by the scheduler when the job's channel becomes ready.
@@ -36,14 +35,13 @@ public abstract class Job implements LogOutputAppendable {
     public abstract void timedOut();
 
     /**
-     * This method is called if the job is explicitly cancelled before it becomes
-     * ready or times out.
+     * This method is called if the job is explicitly cancelled before it becomes ready or times out.
      */
     public abstract void cancelled();
 
-    //--------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
     // scheduler state management
-    //--------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
 
     // TODO: currently, we assume that the scheduler is a singleton, or at the least
     // TODO: that no job will be used with more than one scheduler throughout its lifetime.

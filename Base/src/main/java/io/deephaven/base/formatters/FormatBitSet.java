@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.formatters;
 
 import java.util.BitSet;
@@ -14,7 +13,7 @@ public class FormatBitSet {
         return logOutput -> {
             logOutput.append("{");
             boolean first = true;
-            for (int runStart = 0; runStart < bitSet.size(); ) {
+            for (int runStart = 0; runStart < bitSet.size();) {
                 if (bitSet.get(runStart)) {
                     if (first) {
                         first = false;
@@ -25,7 +24,7 @@ public class FormatBitSet {
 
                     logOutput.append(runStart);
                     int runEnd;
-                    //noinspection StatementWithEmptyBody
+                    // noinspection StatementWithEmptyBody
                     for (runEnd = runStart + 1; runEnd < bitSet.size() && bitSet.get(runEnd); runEnd++);
                     if (runEnd > runStart + 1) {
                         logOutput.append("-").append(runEnd - 1);
@@ -45,7 +44,7 @@ public class FormatBitSet {
 
         builder.append("{");
         boolean first = true;
-        for (int runStart = 0; runStart < bitSet.size(); ) {
+        for (int runStart = 0; runStart < bitSet.size();) {
             if (bitSet.get(runStart)) {
                 if (first) {
                     first = false;
@@ -56,7 +55,7 @@ public class FormatBitSet {
 
                 builder.append(runStart);
                 int runEnd;
-                //noinspection StatementWithEmptyBody
+                // noinspection StatementWithEmptyBody
                 for (runEnd = runStart + 1; runEnd < bitSet.size() && bitSet.get(runEnd); runEnd++);
                 if (runEnd > runStart + 1) {
                     builder.append("-").append(runEnd - 1);

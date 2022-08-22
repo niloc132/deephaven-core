@@ -1,10 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.lang.completion;
 
 import io.deephaven.base.verify.Require;
-import io.deephaven.db.tables.ColumnDefinition;
-import io.deephaven.db.tables.TableDefinition;
-import io.deephaven.db.tables.utils.DBDateTime;
-import io.deephaven.db.util.VariableProvider;
+import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.util.VariableProvider;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.lang.generated.ChunkerAssign;
@@ -19,20 +21,20 @@ import java.util.*;
 /**
  * A stateful object to represent a document search at a given position.
  *
- * When we search left or right from an intermediate node like whitespace, dot, comma or EOF,
- * we will create a new CompletionRequest at the new index.
+ * When we search left or right from an intermediate node like whitespace, dot, comma or EOF, we will create a new
+ * CompletionRequest at the new index.
  *
- * This currently uses absolute cursor positions, but we want this to be a line/column position instead,
- * so we can completely remove consideration of absolute cursors.
+ * This currently uses absolute cursor positions, but we want this to be a line/column position instead, so we can
+ * completely remove consideration of absolute cursors.
  *
- * This mistake was made by trying to base V2 on V1 semantics which are not really relevant
- * when considering Monaco, LSP and Javacc which all use line/column semantics.
+ * This mistake was made by trying to base V2 on V1 semantics which are not really relevant when considering Monaco, LSP
+ * and Javacc which all use line/column semantics.
  *
- * Absolute cursor positions are unfortunately deeply entwined in {@link ChunkerCompleter},
- * so we are leaving it in place for now.
+ * Absolute cursor positions are unfortunately deeply entwined in {@link ChunkerCompleter}, so we are leaving it in
+ * place for now.
  *
- * Note that this class also maintains a map of loaded table definitions,
- * so that repeated completions will not pay to load the same table definition more than once.
+ * Note that this class also maintains a map of loaded table definitions, so that repeated completions will not pay to
+ * load the same table definition more than once.
  */
 public class CompletionRequest {
 
@@ -48,13 +50,14 @@ public class CompletionRequest {
         this(completer, command, offset, new LinkedHashMap<>());
     }
 
-    private CompletionRequest(@NotNull ChunkerCompleter completer, String command, int offset, Map<String, TableDefinition> localDefs) {
+    private CompletionRequest(@NotNull ChunkerCompleter completer, String command, int offset,
+            Map<String, TableDefinition> localDefs) {
         this.source = command;
         this.offset = this.candidate = offset;
         this.completer = completer;
         this.localDefs = localDefs;
-        Require.requirement(offset >= 0, "offset >= 0");
-        Require.requirement(offset <= command.length(), "offset <= command.length()");
+        Require.geqZero(offset, "offset");
+        Require.leq(offset, "offset", command.length(), "command.length()");
     }
 
     public String getSource() {
@@ -79,19 +82,23 @@ public class CompletionRequest {
         return req;
     }
 
-    public TableDefinition getTableDefinition(final ChunkerCompleter completer, final ParsedDocument doc, VariableProvider variables, String name) {
-        // Each request maintains a local cache of looked-up table definitions, to avoid going to the VariableHandler unless needed
+    public TableDefinition getTableDefinition(final ChunkerCompleter completer, final ParsedDocument doc,
+            VariableProvider variables, String name) {
+        // Each request maintains a local cache of looked-up table definitions, to avoid going to the VariableHandler
+        // unless needed
         // Note that we do NOT go to the completer.getReferencedTables map at all;
         // we don't want to cache anything local-to-script-session any further
         // than a single completion invocation (i.e. local to a CompletionRequest)
         if (localDefs.containsKey(name)) {
             // if there wasn't a table definition in the script session once, it won't magically appear again later.
-            // This might seem a little excessive, but in python at least, it is non-"free" to check if binding a variable exists.
+            // This might seem a little excessive, but in python at least, it is non-"free" to check if binding a
+            // variable exists.
             return localDefs.get(name);
         }
         TableDefinition result = variables.getTableDefinition(name);
         if (result == null) {
-            // If the result was null, we can try to search for an assign statement that is initialized w/ something we _can_ grok.
+            // If the result was null, we can try to search for an assign statement that is initialized w/ something we
+            // _can_ grok.
             final List<ChunkerAssign> assignment = completer.findAssignment(doc, this, name);
             if (!assignment.isEmpty()) {
                 // ok! there was an assignment to our table variable that occurred before user's cursor (this is,
@@ -123,7 +130,6 @@ public class CompletionRequest {
     }
 
     private TableDefinition convertNewTableInvocation(final ChunkerInvoke invoke) {
-        final TableDefinition def = new TableDefinition();
         final List<ColumnDefinition<?>> columns = new ArrayList<>();
         for (Node argument : invoke.getArguments()) {
             if (argument instanceof ChunkerInvoke) {
@@ -133,7 +139,8 @@ public class CompletionRequest {
                 if (colArgs.isEmpty()) {
                     // this is normal, if user has typed `newTable(stringCol(`
                     // in this case, there is no valid table definition, so we'll just skip this column.
-                    // In the future, we may want to consider user-defined zero-arg functions that return ColumnDefinitions
+                    // In the future, we may want to consider user-defined zero-arg functions that return
+                    // ColumnDefinitions
                     continue;
                 }
                 final String colName = toStringLiteral(colArgs.get(0));
@@ -176,7 +183,8 @@ public class CompletionRequest {
                         columns.add(ColumnDefinition.ofFloat(colName));
                         break;
                     case "col":
-                        // We _could_ technically try to guess from the col() varargs what the type is, but, not worth it atm.
+                        // We _could_ technically try to guess from the col() varargs what the type is, but, not worth
+                        // it atm.
                         columns.add(ColumnDefinition.fromGenericType(colName, Object.class));
                         break;
                     default:
@@ -197,23 +205,23 @@ public class CompletionRequest {
                         .endl();
             }
         }
-        def.setColumns(columns.toArray(new ColumnDefinition[0]));
-        return def;
+        return TableDefinition.of(columns);
     }
 
     private String toStringLiteral(final Node node) {
         if (node instanceof ChunkerString) {
-            return ((ChunkerString)node).getRaw();
-        } // TODO: if it's a variable name, try to trace it back to a static assignment of a string, or a binding variable.
+            return ((ChunkerString) node).getRaw();
+        } // TODO: if it's a variable name, try to trace it back to a static assignment of a string, or a binding
+          // variable.
         return null;
     }
 
     @Override
     public String toString() {
         return "CompletionRequest{" +
-            "source='" + source + '\'' +
-            ", offset=" + offset +
-            ", candidate=" + candidate +
-            '}';
+                "source='" + source + '\'' +
+                ", offset=" + offset +
+                ", candidate=" + candidate +
+                '}';
     }
 }

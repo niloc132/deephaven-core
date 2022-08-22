@@ -1,17 +1,11 @@
 plugins {
   id 'java-library'
-  id 'com.diffplug.spotless'
+  id 'io.deephaven.project.register'
 }
 
 configurations {
-  compile.extendsFrom fishIo
+  api.extendsFrom fishIo
 }
 
 dependencies {
-}
-
-spotless {
-  java {
-    eclipse().configFile("${rootDir}/style/eclipse-java-google-style.xml")
-  }
 }

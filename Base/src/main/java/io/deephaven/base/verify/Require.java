@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base.verify;
 
 import org.jetbrains.annotations.NotNull;
@@ -13,68 +12,67 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-//--------------------------------------------------------------------
+// --------------------------------------------------------------------
 /**
- * Requirement methods for simple runtime program verification.
- * Failed requirements throw {@link RequirementFailure}.
- * <p> Methods:
+ * Requirement methods for simple runtime program verification. Failed requirements throw {@link RequirementFailure}.
+ * <p>
+ * Methods:
  * <ul>
- * <li> void requirement(boolean condition, String conditionText[, String detailMessage][, int numCallsBelowRequirer])
- * <li> void requirement(boolean condition, String conditionText, value0, String name0, value1, String name1, ... [, int numCallsBelowRequirer])
+ * <li>void requirement(boolean condition, String conditionText[, String detailMessage][, int numCallsBelowRequirer])
+ * <li>void requirement(boolean condition, String conditionText, value0, String name0, value1, String name1, ... [, int
+ * numCallsBelowRequirer])
  * </ul>
  * <ul>
- * <li> void statementNeverExecuted([int numCallsBelowRequirer])
- * <li> void statementNeverExecuted(String statementDescription[, int numCallsBelowRequirer])
- * <li> void exceptionNeverCaught(Exception caughtException[, int numCallsBelowRequirer])
- * <li> void exceptionNeverCaught(String tryStatementDescription, Exception caughtException[, int numCallsBelowRequirer])
- * <li> void valueNeverOccurs(value, String name[, int numCallsBelowRequirer])
- * <li> void valuesNeverOccur(value0, name0, value1, name1, ... [, int numCallsBelowRequirer])
+ * <li>void statementNeverExecuted([int numCallsBelowRequirer])
+ * <li>void statementNeverExecuted(String statementDescription[, int numCallsBelowRequirer])
+ * <li>void exceptionNeverCaught(Exception caughtException[, int numCallsBelowRequirer])
+ * <li>void exceptionNeverCaught(String tryStatementDescription, Exception caughtException[, int numCallsBelowRequirer])
+ * <li>void valueNeverOccurs(value, String name[, int numCallsBelowRequirer])
+ * <li>void valuesNeverOccur(value0, name0, value1, name1, ... [, int numCallsBelowRequirer])
  * </ul>
  * <ul>
- * <li> void holdsLock/notHoldsLock(Object, String name[, int numCallsBelowRequirer])
+ * <li>void holdsLock/notHoldsLock(Object, String name[, int numCallsBelowRequirer])
  * </ul>
  * <ul>
- * <li> void instanceOf/notInstanceOf(Object, String name, Class type[, int numCallsBelowRequirer])
+ * <li>void instanceOf/notInstanceOf(Object, String name, Class type[, int numCallsBelowRequirer])
  * </ul>
  * <ul>
- * <li> void eq/neq(boolean/char/byte/short/int/long/float/double, String name0, boolean/char/byte/short/int/long/float/double[, String name1][, int numCallsBelowRequirer])
- * <li> void lt/leq/gt/geq(char/byte/short/int/long/float/double, String name0, char/byte/short/int/long/float/double[, String name1][, int numCallsBelowRequirer])
+ * <li>void eq/neq(boolean/char/byte/short/int/long/float/double, String name0,
+ * boolean/char/byte/short/int/long/float/double[, String name1][, int numCallsBelowRequirer])
+ * <li>void lt/leq/gt/geq(char/byte/short/int/long/float/double, String name0, char/byte/short/int/long/float/double[,
+ * String name1][, int numCallsBelowRequirer])
  * </ul>
  * <ul>
- * <li> void eqFalse/neqFalse/eqTrue/neqTrue(boolean, String name[, int numCallsBelowRequirer])
- * <li> void eqZero/neqZero(char/byte/short/int/long/float/double, String name[, int numCallsBelowRequirer])
- * <li> void ltZero/leqZero/gtZero/geqZero(byte/short/int/long/float/double, String name[, int numCallsBelowRequirer])
+ * <li>void eqFalse/neqFalse/eqTrue/neqTrue(boolean, String name[, int numCallsBelowRequirer])
+ * <li>void eqZero/neqZero(char/byte/short/int/long/float/double, String name[, int numCallsBelowRequirer])
+ * <li>void ltZero/leqZero/gtZero/geqZero(byte/short/int/long/float/double, String name[, int numCallsBelowRequirer])
  * </ul>
  * <ul>
- * <li> void eq/neq(Object, name0, Object[, name1][, int numCallsBelowRequirer])
- * <li> void eqNull/neqNull(Object, String name[, int numCallsBelowRequirer])
+ * <li>void eq/neq(Object, name0, Object[, name1][, int numCallsBelowRequirer])
+ * <li>void eqNull/neqNull(Object, String name[, int numCallsBelowRequirer])
  * </ul>
  * <ul>
- * <li> void equals(Object, String name0, Object, String name1[, int numCallsBelowRequirer])
- * <li> void nonempty(String, String name[, int numCallsBelowRequirer])
+ * <li>void equals(Object, String name0, Object, String name1[, int numCallsBelowRequirer])
+ * <li>void nonempty(String, String name[, int numCallsBelowRequirer])
  * </ul>
- * <p> Naming Rationale:
+ * <p>
+ * Naming Rationale:
  * <ul>
- * <li> eq, neq, lt, leq, gt, get correspond to ==, !=, <, <=, >, >=, e.g.,
+ * <li>eq, neq, lt, leq, gt, get correspond to ==, !=, <, <=, >, >=, e.g.,
  * <ul>
- * <li> For Object a and b,
- * Require.eq(a, "a", b, "b") corresponds to require (a == b)
- * <li> For Object o,
- * Require.neqNull(o, "o") corresponds to require (o != null)
- * <li> for int x,
- * Require.eqZero(x, "x") corresponds to require (x == 0)
+ * <li>For Object a and b, Require.eq(a, "a", b, "b") corresponds to require (a == b)
+ * <li>For Object o, Require.neqNull(o, "o") corresponds to require (o != null)
+ * <li>for int x, Require.eqZero(x, "x") corresponds to require (x == 0)
  * </ul>
- * <li> equals corresponds to Object.equals (preceded by necessary null checks), e.g.,
+ * <li>equals corresponds to Object.equals (preceded by necessary null checks), e.g.,
  * <ul>
- * <li> For Object a and b,
- * Require.equals(a, "a", b, "b") corresponds to require (a!= null && b != null && a.equals(b))
- * <li> for String s,
- * Require.nonempty(s, "s") corresponds to require (s != null && s.length() != 0)
+ * <li>For Object a and b, Require.equals(a, "a", b, "b") corresponds to require (a!= null && b != null && a.equals(b))
+ * <li>for String s, Require.nonempty(s, "s") corresponds to require (s != null && s.length() != 0)
  * </ul>
  * </ul>
  */
 public final class Require {
-    //################################################################
+    // ################################################################
     static private volatile Consumer<RequirementFailure> onFailureCallback;
 
     public static boolean setOnFailureCallback(Consumer<RequirementFailure> newCallback) {
@@ -84,15 +82,16 @@ public final class Require {
     }
 
     // we should only have static methods
-    private Require() {
-    }
+    private Require() {}
 
-    //################################################################
+    // ################################################################
     // Handle failed requirements
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     private static void fail(String conditionText, int numCallsBelowRequirer) {
-        final RequirementFailure requirementFailure = new RequirementFailure(ExceptionMessageUtil.failureMessage("Requirement", "required", conditionText, null), numCallsBelowRequirer + 1);
+        final RequirementFailure requirementFailure = new RequirementFailure(
+                ExceptionMessageUtil.failureMessage("Requirement", "required", conditionText, null),
+                numCallsBelowRequirer + 1);
         if (onFailureCallback != null) {
             try {
                 onFailureCallback.accept(requirementFailure);
@@ -102,9 +101,11 @@ public final class Require {
         throw requirementFailure;
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     private static void fail(String conditionText, String detailMessage, int numCallsBelowRequirer) {
-        final RequirementFailure requirementFailure = new RequirementFailure(ExceptionMessageUtil.failureMessage("Requirement", "required", conditionText, detailMessage), numCallsBelowRequirer + 1);
+        final RequirementFailure requirementFailure = new RequirementFailure(
+                ExceptionMessageUtil.failureMessage("Requirement", "required", conditionText, detailMessage),
+                numCallsBelowRequirer + 1);
         if (onFailureCallback != null) {
             try {
                 onFailureCallback.accept(requirementFailure);
@@ -114,10 +115,10 @@ public final class Require {
         throw requirementFailure;
     }
 
-    //################################################################
+    // ################################################################
     // requirement
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (condition, conditionText)
      */
@@ -131,11 +132,12 @@ public final class Require {
         requirement(condition, conditionText, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (condition, conditionText, detailMessage)
      */
-    public static void requirement(boolean condition, String conditionText, String detailMessage, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, String detailMessage,
+            int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, detailMessage, numCallsBelowRequirer + 1);
         }
@@ -145,11 +147,12 @@ public final class Require {
         requirement(condition, conditionText, detailMessage, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (condition, Object o0, String name0, ... )
      */
-    public static void requirement(boolean condition, String conditionText, Object o0, String name0, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, Object o0, String name0,
+            int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0), numCallsBelowRequirer + 1);
         }
@@ -159,51 +162,63 @@ public final class Require {
         requirement(condition, conditionText, o0, name0, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1, String name1, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1,
+            String name1, int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1), numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1, String name1) {
+    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1,
+            String name1) {
         requirement(condition, conditionText, o0, name0, o1, name1, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1, String name1, Object o2, String name2, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1,
+            String name1, Object o2, String name2, int numCallsBelowRequirer) {
         if (!(condition)) {
-            fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1, o2, name2), numCallsBelowRequirer + 1);
+            fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1, o2, name2),
+                    numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, long o0, String name0, long o1, String name1, long o2, String name2, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, long o0, String name0, long o1,
+            String name1, long o2, String name2, int numCallsBelowRequirer) {
         if (!(condition)) {
-            fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1, o2, name2), numCallsBelowRequirer + 1);
+            fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1, o2, name2),
+                    numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1, String name1, Object o2, String name2) {
+    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1,
+            String name1, Object o2, String name2) {
         requirement(condition, conditionText, o0, name0, o1, name1, o2, name2, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, long o0, String name0, long o1, String name1, long o2, String name2) {
+    public static void requirement(boolean condition, String conditionText, long o0, String name0, long o1,
+            String name1, long o2, String name2) {
         requirement(condition, conditionText, o0, name0, o1, name1, o2, name2, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1, String name1, Object o2, String name2, Object o3, String name3, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1,
+            String name1, Object o2, String name2, Object o3, String name3, int numCallsBelowRequirer) {
         if (!(condition)) {
-            fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1, o2, name2, o3, name3), numCallsBelowRequirer + 1);
+            fail(conditionText, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1, o2, name2, o3, name3),
+                    numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1, String name1, Object o2, String name2, Object o3, String name3) {
+    public static void requirement(boolean condition, String conditionText, Object o0, String name0, Object o1,
+            String name1, Object o2, String name2, Object o3, String name3) {
         requirement(condition, conditionText, o0, name0, o1, name1, o2, name2, o3, name3, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (condition, boolean b0, String name0, ... )
      */
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0,
+            int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, ExceptionMessageUtil.valueAndName(b0, name0), numCallsBelowRequirer + 1);
         }
@@ -213,51 +228,63 @@ public final class Require {
         requirement(condition, conditionText, b0, name0, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1, String name1, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1,
+            String name1, int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1, String name1) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1,
+            String name1) {
         requirement(condition, conditionText, b0, name0, b1, name1, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, double d1, String name1, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, double d1,
+            String name1, int numCallsBelowRequirer) {
         if (!(condition)) {
-            fail(conditionText, ExceptionMessageUtil.concat(ExceptionMessageUtil.valueAndName(b0, name0), ExceptionMessageUtil.valueAndName(d1, name1)), numCallsBelowRequirer + 1);
+            fail(conditionText, ExceptionMessageUtil.concat(ExceptionMessageUtil.valueAndName(b0, name0),
+                    ExceptionMessageUtil.valueAndName(d1, name1)), numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, double d1, String name1) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, double d1,
+            String name1) {
         requirement(condition, conditionText, b0, name0, d1, name1, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1, String name1, boolean b2, String name2, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1,
+            String name1, boolean b2, String name2, int numCallsBelowRequirer) {
         if (!(condition)) {
-            fail(conditionText, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1, b2, name2), numCallsBelowRequirer + 1);
+            fail(conditionText, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1, b2, name2),
+                    numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1, String name1, boolean b2, String name2) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1,
+            String name1, boolean b2, String name2) {
         requirement(condition, conditionText, b0, name0, b1, name1, b2, name2, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1, String name1, boolean b2, String name2, boolean b3, String name3, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1,
+            String name1, boolean b2, String name2, boolean b3, String name3, int numCallsBelowRequirer) {
         if (!(condition)) {
-            fail(conditionText, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1, b2, name2, b3, name3), numCallsBelowRequirer + 1);
+            fail(conditionText, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1, b2, name2, b3, name3),
+                    numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1, String name1, boolean b2, String name2, boolean b3, String name3) {
+    public static void requirement(boolean condition, String conditionText, boolean b0, String name0, boolean b1,
+            String name1, boolean b2, String name2, boolean b3, String name3) {
         requirement(condition, conditionText, b0, name0, b1, name1, b2, name2, b3, name3, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (condition, int i0, String name0, ... )
      */
-    public static void requirement(boolean condition, String conditionText, int i0, String name0, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, int i0, String name0,
+            int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, ExceptionMessageUtil.valueAndName(i0, name0), numCallsBelowRequirer + 1);
         }
@@ -267,21 +294,24 @@ public final class Require {
         requirement(condition, conditionText, i0, name0, 1);
     }
 
-    public static void requirement(boolean condition, String conditionText, int i0, String name0, int i1, String name1, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, int i0, String name0, int i1, String name1,
+            int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1), numCallsBelowRequirer + 1);
         }
     }
 
-    public static void requirement(boolean condition, String conditionText, int i0, String name0, int i1, String name1) {
+    public static void requirement(boolean condition, String conditionText, int i0, String name0, int i1,
+            String name1) {
         requirement(condition, conditionText, i0, name0, i1, name1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (condition, long l0, String name0, ... )
      */
-    public static void requirement(boolean condition, String conditionText, long l0, String name0, int numCallsBelowRequirer) {
+    public static void requirement(boolean condition, String conditionText, long l0, String name0,
+            int numCallsBelowRequirer) {
         if (!(condition)) {
             fail(conditionText, ExceptionMessageUtil.valueAndName(l0, name0), numCallsBelowRequirer + 1);
         }
@@ -291,10 +321,10 @@ public final class Require {
         requirement(condition, conditionText, l0, name0, 1);
     }
 
-    //################################################################
+    // ################################################################
     // statementNeverExecuted
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this statement is never executed)
      */
@@ -307,7 +337,7 @@ public final class Require {
         return statementNeverExecuted(1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (statementDescription is never executed)
      */
@@ -320,16 +350,17 @@ public final class Require {
         return statementNeverExecuted(statementDescription, 1);
     }
 
-    //################################################################
+    // ################################################################
     // exceptionNeverCaught
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this exception is never caught, Exception e)
      */
     public static RequirementFailure exceptionNeverCaught(Exception e, int numCallsBelowRequirer) {
         try {
-            fail(e.getClass().getName() + " is never caught", e.getClass().getName() + "(" + e.getMessage() + ") caught", numCallsBelowRequirer + 1);
+            fail(e.getClass().getName() + " is never caught",
+                    e.getClass().getName() + "(" + e.getMessage() + ") caught", numCallsBelowRequirer + 1);
         } catch (RequirementFailure requirementFailure) {
             requirementFailure.initCause(e);
             throw requirementFailure;
@@ -341,13 +372,15 @@ public final class Require {
         return exceptionNeverCaught(e, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (tryStatementDescription succeeds, Exception e)
      */
-    public static RequirementFailure exceptionNeverCaught(String tryStatementDescription, Exception e, int numCallsBelowRequirer) {
+    public static RequirementFailure exceptionNeverCaught(String tryStatementDescription, Exception e,
+            int numCallsBelowRequirer) {
         try {
-            fail(tryStatementDescription + " succeeds", e.getClass().getName() + "(" + e.getMessage() + ") caught", numCallsBelowRequirer + 1);
+            fail(tryStatementDescription + " succeeds", e.getClass().getName() + "(" + e.getMessage() + ") caught",
+                    numCallsBelowRequirer + 1);
         } catch (RequirementFailure requirementFailure) {
             requirementFailure.initCause(e);
             throw requirementFailure;
@@ -359,10 +392,10 @@ public final class Require {
         return exceptionNeverCaught(tryStatementDescription, e, 1);
     }
 
-    //################################################################
+    // ################################################################
     // valueNeverOccurs
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, Object o, name)
      */
@@ -375,7 +408,7 @@ public final class Require {
         return valueNeverOccurs(o, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, boolean b, name)
      */
@@ -388,20 +421,20 @@ public final class Require {
         return valueNeverOccurs(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, char c, name)
      */
     public static RequirementFailure valueNeverOccurs(char c, String name, int numCallsBelowRequirer) {
         fail(ExceptionMessageUtil.valueAndName(c, name) + " never occurs", numCallsBelowRequirer + 1);
         return null;
-}
+    }
 
     public static RequirementFailure valueNeverOccurs(char c, String name) {
         return valueNeverOccurs(c, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, byte b, name)
      */
@@ -414,7 +447,7 @@ public final class Require {
         return valueNeverOccurs(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, short s, name)
      */
@@ -427,7 +460,7 @@ public final class Require {
         return valueNeverOccurs(s, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, int i, name)
      */
@@ -440,7 +473,7 @@ public final class Require {
         return valueNeverOccurs(i, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, long l, name)
      */
@@ -453,7 +486,7 @@ public final class Require {
         return valueNeverOccurs(l, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, float f, name)
      */
@@ -466,7 +499,7 @@ public final class Require {
         return valueNeverOccurs(f, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (this value never occurs, double d, name)
      */
@@ -479,10 +512,10 @@ public final class Require {
         return valueNeverOccurs(d, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // holdsLock, notHoldsLock
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o != null && (current thread holds o's lock))
      */
@@ -497,7 +530,7 @@ public final class Require {
         holdsLock(o, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o != null && !(current thread holds o's lock))
      */
@@ -513,16 +546,18 @@ public final class Require {
     }
 
 
-    //################################################################
+    // ################################################################
     // instanceOf, notInstanceOf
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o instanceof type)
      */
     public static <T> void instanceOf(Object o, String name, Class<T> type, int numCallsBelowRequirer) {
         if (!type.isInstance(o)) {
-            fail(name + " instanceof " + type, null == o ? ExceptionMessageUtil.valueAndName(o, name) : name + " instanceof " + o.getClass() + " (" + ExceptionMessageUtil.valueAndName(o, name) + ")", numCallsBelowRequirer + 1);
+            fail(name + " instanceof " + type, null == o ? ExceptionMessageUtil.valueAndName(o, name)
+                    : name + " instanceof " + o.getClass() + " (" + ExceptionMessageUtil.valueAndName(o, name) + ")",
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -530,13 +565,15 @@ public final class Require {
         instanceOf(o, name, type, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require !(o instanceof type)
      */
     public static <T> void notInstanceOf(Object o, String name, Class<T> type, int numCallsBelowRequirer) {
         if (type.isInstance(o)) {
-            fail("!(" + name + " instanceof " + type + ")", name + " instanceof " + o.getClass() + " (" + ExceptionMessageUtil.valueAndName(o, name) + ")", numCallsBelowRequirer + 1);
+            fail("!(" + name + " instanceof " + type + ")",
+                    name + " instanceof " + o.getClass() + " (" + ExceptionMessageUtil.valueAndName(o, name) + ")",
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -544,10 +581,10 @@ public final class Require {
         notInstanceOf(o, name, type, 1);
     }
 
-    //################################################################
+    // ################################################################
     // isAWTThread, isNotAWTThread
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (current thread is AWT Event Dispatch Thread)
      */
@@ -561,7 +598,7 @@ public final class Require {
         }
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (current thread is AWT Event Dispatch Thread)
      */
@@ -575,16 +612,17 @@ public final class Require {
         }
     }
 
-    //################################################################
+    // ################################################################
     // eq (primitiveValue == primitiveValue)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 == b1)
      */
     public static void eq(boolean b0, String name0, boolean b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 == b1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -602,13 +640,14 @@ public final class Require {
         eq(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c0 == c1)
      */
     public static void eq(char c0, String name0, char c1, String name1, int numCallsBelowRequirer) {
         if (!(c0 == c1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -618,7 +657,8 @@ public final class Require {
 
     public static void eq(char c0, String name0, char c1, int numCallsBelowRequirer) {
         if (!(c0 == c1)) {
-            fail(name0 + " == " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -626,13 +666,14 @@ public final class Require {
         eq(c0, name0, c1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 == b1)
      */
     public static void eq(byte b0, String name0, byte b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 == b1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -650,13 +691,14 @@ public final class Require {
         eq(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s0 == s1)
      */
     public static void eq(short s0, String name0, short s1, String name1, int numCallsBelowRequirer) {
         if (!(s0 == s1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -674,13 +716,14 @@ public final class Require {
         eq(s0, name0, s1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i0 == i1)
      */
     public static void eq(int i0, String name0, int i1, String name1, int numCallsBelowRequirer) {
         if (!(i0 == i1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -698,13 +741,14 @@ public final class Require {
         eq(i0, name0, i1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l0 == l1)
      */
     public static void eq(long l0, String name0, long l1, String name1, int numCallsBelowRequirer) {
         if (!(l0 == l1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -722,13 +766,14 @@ public final class Require {
         eq(l0, name0, l1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f0 == f1)
      */
     public static void eq(float f0, String name0, float f1, String name1, int numCallsBelowRequirer) {
         if (!(f0 == f1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -746,13 +791,14 @@ public final class Require {
         eq(f0, name0, f1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d0 == d1)
      */
     public static void eq(double d0, String name0, double d1, String name1, int numCallsBelowRequirer) {
         if (!(d0 == d1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -770,16 +816,17 @@ public final class Require {
         eq(d0, name0, d1, 1);
     }
 
-    //################################################################
+    // ################################################################
     // neq (primitiveValue != primitiveValue)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 != b1)
      */
     public static void neq(boolean b0, String name0, boolean b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 != b1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -797,13 +844,14 @@ public final class Require {
         neq(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c0 != c1)
      */
     public static void neq(char c0, String name0, char c1, String name1, int numCallsBelowRequirer) {
         if (!(c0 != c1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -813,7 +861,8 @@ public final class Require {
 
     public static void neq(char c0, String name0, char c1, int numCallsBelowRequirer) {
         if (!(c0 != c1)) {
-            fail(name0 + " != " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -821,13 +870,14 @@ public final class Require {
         neq(c0, name0, c1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 != b1)
      */
     public static void neq(byte b0, String name0, byte b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 != b1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -845,13 +895,14 @@ public final class Require {
         neq(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s0 != s1)
      */
     public static void neq(short s0, String name0, short s1, String name1, int numCallsBelowRequirer) {
         if (!(s0 != s1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -869,13 +920,14 @@ public final class Require {
         neq(s0, name0, s1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i0 != i1)
      */
     public static int neq(int i0, String name0, int i1, String name1, int numCallsBelowRequirer) {
         if (!(i0 != i1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return i0;
     }
@@ -894,13 +946,14 @@ public final class Require {
         neq(i0, name0, i1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l0 != l1)
      */
     public static void neq(long l0, String name0, long l1, String name1, int numCallsBelowRequirer) {
         if (!(l0 != l1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -918,13 +971,14 @@ public final class Require {
         neq(l0, name0, l1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f0 != f1)
      */
     public static void neq(float f0, String name0, float f1, String name1, int numCallsBelowRequirer) {
         if (!(f0 != f1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -942,13 +996,14 @@ public final class Require {
         neq(f0, name0, f1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d0 != d1)
      */
     public static void neq(double d0, String name0, double d1, String name1, int numCallsBelowRequirer) {
         if (!(d0 != d1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -966,16 +1021,17 @@ public final class Require {
         neq(d0, name0, d1, 1);
     }
 
-    //################################################################
+    // ################################################################
     // lt (primitiveValue < primitiveValue)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c0 < c1)
      */
     public static char lt(char c0, String name0, char c1, String name1, int numCallsBelowRequirer) {
         if (!(c0 < c1)) {
-            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -986,7 +1042,8 @@ public final class Require {
 
     public static char lt(char c0, String name0, char c1, int numCallsBelowRequirer) {
         if (!(c0 < c1)) {
-            fail(name0 + " < " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -995,13 +1052,14 @@ public final class Require {
         return lt(c0, name0, c1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 < b1)
      */
     public static byte lt(byte b0, String name0, byte b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 < b1)) {
-            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return b0;
     }
@@ -1021,13 +1079,14 @@ public final class Require {
         return lt(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s0 < s1)
      */
     public static short lt(short s0, String name0, short s1, String name1, int numCallsBelowRequirer) {
         if (!(s0 < s1)) {
-            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return s0;
     }
@@ -1047,13 +1106,14 @@ public final class Require {
         return lt(s0, name0, s1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i0 < i1)
      */
     public static int lt(int i0, String name0, int i1, String name1, int numCallsBelowRequirer) {
         if (!(i0 < i1)) {
-            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return i0;
     }
@@ -1073,13 +1133,14 @@ public final class Require {
         return lt(i0, name0, i1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l0 < l1)
      */
     public static long lt(long l0, String name0, long l1, String name1, int numCallsBelowRequirer) {
         if (!(l0 < l1)) {
-            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return l0;
     }
@@ -1099,13 +1160,14 @@ public final class Require {
         return lt(l0, name0, l1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f0 < f1)
      */
     public static float lt(float f0, String name0, float f1, String name1, int numCallsBelowRequirer) {
         if (!(f0 < f1)) {
-            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return f0;
     }
@@ -1125,13 +1187,14 @@ public final class Require {
         return lt(f0, name0, f1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d0 < d1)
      */
     public static double lt(double d0, String name0, double d1, String name1, int numCallsBelowRequirer) {
         if (!(d0 < d1)) {
-            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " < " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return d0;
     }
@@ -1151,16 +1214,17 @@ public final class Require {
         return lt(d0, name0, d1, 1);
     }
 
-    //################################################################
+    // ################################################################
     // leq (primitiveValue <= primitiveValue)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c0 <= c1)
      */
     public static char leq(char c0, String name0, char c1, String name1, int numCallsBelowRequirer) {
         if (!(c0 <= c1)) {
-            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -1171,7 +1235,8 @@ public final class Require {
 
     public static char leq(char c0, String name0, char c1, int numCallsBelowRequirer) {
         if (!(c0 <= c1)) {
-            fail(name0 + " <= " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -1180,13 +1245,14 @@ public final class Require {
         return leq(c0, name0, c1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 <= b1)
      */
     public static byte leq(byte b0, String name0, byte b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 <= b1)) {
-            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return b0;
     }
@@ -1206,13 +1272,14 @@ public final class Require {
         return leq(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s0 <= s1)
      */
     public static short leq(short s0, String name0, short s1, String name1, int numCallsBelowRequirer) {
         if (!(s0 <= s1)) {
-            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return s0;
     }
@@ -1232,13 +1299,14 @@ public final class Require {
         return leq(s0, name0, s1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i0 <= i1)
      */
     public static int leq(int i0, String name0, int i1, String name1, int numCallsBelowRequirer) {
         if (!(i0 <= i1)) {
-            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return i0;
     }
@@ -1258,13 +1326,14 @@ public final class Require {
         return leq(i0, name0, i1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l0 <= l1)
      */
     public static long leq(long l0, String name0, long l1, String name1, int numCallsBelowRequirer) {
         if (!(l0 <= l1)) {
-            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return l0;
     }
@@ -1284,13 +1353,14 @@ public final class Require {
         return leq(l0, name0, l1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f0 <= f1)
      */
     public static float leq(float f0, String name0, float f1, String name1, int numCallsBelowRequirer) {
         if (!(f0 <= f1)) {
-            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return f0;
     }
@@ -1310,13 +1380,14 @@ public final class Require {
         return leq(f0, name0, f1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d0 <= d1)
      */
     public static double leq(double d0, String name0, double d1, String name1, int numCallsBelowRequirer) {
         if (!(d0 <= d1)) {
-            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " <= " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return d0;
     }
@@ -1336,16 +1407,17 @@ public final class Require {
         return leq(d0, name0, d1, 1);
     }
 
-    //################################################################
+    // ################################################################
     // gt (primitiveValue > primitiveValue)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c0 > c1)
      */
     public static char gt(char c0, String name0, char c1, String name1, int numCallsBelowRequirer) {
         if (!(c0 > c1)) {
-            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -1356,7 +1428,8 @@ public final class Require {
 
     public static char gt(char c0, String name0, char c1, int numCallsBelowRequirer) {
         if (!(c0 > c1)) {
-            fail(name0 + " > " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -1365,13 +1438,14 @@ public final class Require {
         return gt(c0, name0, c1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 > b1)
      */
     public static byte gt(byte b0, String name0, byte b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 > b1)) {
-            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return b0;
     }
@@ -1391,13 +1465,14 @@ public final class Require {
         return gt(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s0 > s1)
      */
     public static short gt(short s0, String name0, short s1, String name1, int numCallsBelowRequirer) {
         if (!(s0 > s1)) {
-            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return s0;
     }
@@ -1417,13 +1492,14 @@ public final class Require {
         return gt(s0, name0, s1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i0 > i1)
      */
     public static int gt(int i0, String name0, int i1, String name1, int numCallsBelowRequirer) {
         if (!(i0 > i1)) {
-            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return i0;
     }
@@ -1443,13 +1519,14 @@ public final class Require {
         return gt(i0, name0, i1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l0 > l1)
      */
     public static long gt(long l0, String name0, long l1, String name1, int numCallsBelowRequirer) {
         if (!(l0 > l1)) {
-            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return l0;
     }
@@ -1469,13 +1546,14 @@ public final class Require {
         return gt(l0, name0, l1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f0 > f1)
      */
     public static float gt(float f0, String name0, float f1, String name1, int numCallsBelowRequirer) {
         if (!(f0 > f1)) {
-            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return f0;
     }
@@ -1495,13 +1573,14 @@ public final class Require {
         return gt(f0, name0, f1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d0 > d1)
      */
     public static double gt(double d0, String name0, double d1, String name1, int numCallsBelowRequirer) {
         if (!(d0 > d1)) {
-            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " > " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return d0;
     }
@@ -1521,16 +1600,17 @@ public final class Require {
         return gt(d0, name0, d1, 1);
     }
 
-    //################################################################
+    // ################################################################
     // geq (primitiveValue >= primitiveValue)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c0 >= c1)
      */
     public static char geq(char c0, String name0, char c1, String name1, int numCallsBelowRequirer) {
         if (!(c0 >= c1)) {
-            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(c0, name0, c1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -1541,7 +1621,8 @@ public final class Require {
 
     public static char geq(char c0, String name0, char c1, int numCallsBelowRequirer) {
         if (!(c0 >= c1)) {
-            fail(name0 + " >= " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + ExceptionMessageUtil.valueString(c1), ExceptionMessageUtil.valueAndName(c0, name0),
+                    numCallsBelowRequirer + 1);
         }
         return c0;
     }
@@ -1550,13 +1631,14 @@ public final class Require {
         return geq(c0, name0, c1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b0 >= b1)
      */
     public static byte geq(byte b0, String name0, byte b1, String name1, int numCallsBelowRequirer) {
         if (!(b0 >= b1)) {
-            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(b0, name0, b1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return b0;
     }
@@ -1576,13 +1658,14 @@ public final class Require {
         return geq(b0, name0, b1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s0 >= s1)
      */
     public static short geq(short s0, String name0, short s1, String name1, int numCallsBelowRequirer) {
         if (!(s0 >= s1)) {
-            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(s0, name0, s1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return s0;
     }
@@ -1602,13 +1685,14 @@ public final class Require {
         return geq(s0, name0, s1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i0 >= i1)
      */
     public static int geq(int i0, String name0, int i1, String name1, int numCallsBelowRequirer) {
         if (!(i0 >= i1)) {
-            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(i0, name0, i1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return i0;
     }
@@ -1628,13 +1712,14 @@ public final class Require {
         return geq(i0, name0, i1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l0 >= l1)
      */
     public static long geq(long l0, String name0, long l1, String name1, int numCallsBelowRequirer) {
         if (!(l0 >= l1)) {
-            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(l0, name0, l1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return l0;
     }
@@ -1654,13 +1739,14 @@ public final class Require {
         return geq(l0, name0, l1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f0 >= f1)
      */
     public static float geq(float f0, String name0, float f1, String name1, int numCallsBelowRequirer) {
         if (!(f0 >= f1)) {
-            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(f0, name0, f1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return f0;
     }
@@ -1680,13 +1766,14 @@ public final class Require {
         return geq(f0, name0, f1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d0 >= d1)
      */
     public static double geq(double d0, String name0, double d1, String name1, int numCallsBelowRequirer) {
         if (!(d0 >= d1)) {
-            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " >= " + name1, ExceptionMessageUtil.valueAndName(d0, name0, d1, name1),
+                    numCallsBelowRequirer + 1);
         }
         return d0;
     }
@@ -1706,10 +1793,10 @@ public final class Require {
         return geq(d0, name0, d1, 1);
     }
 
-    //################################################################
+    // ################################################################
     // eqFalse, neqFalse, eqTrue, neqTrue (boolean ==/!= false/true)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
 
     /**
      * require (b == false)
@@ -1724,7 +1811,7 @@ public final class Require {
         eqFalse(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b != false)
      */
@@ -1738,7 +1825,7 @@ public final class Require {
         neqFalse(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b == true)
      */
@@ -1752,7 +1839,7 @@ public final class Require {
         eqTrue(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b != true)
      */
@@ -1766,10 +1853,10 @@ public final class Require {
         neqTrue(b, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // eqZero (primitiveValue == 0)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c == 0)
      */
@@ -1783,7 +1870,7 @@ public final class Require {
         eqZero(c, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b == 0)
      */
@@ -1797,7 +1884,7 @@ public final class Require {
         eqZero(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s == 0)
      */
@@ -1811,7 +1898,7 @@ public final class Require {
         eqZero(s, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i == 0)
      */
@@ -1825,7 +1912,7 @@ public final class Require {
         eqZero(i, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l == 0)
      */
@@ -1839,7 +1926,7 @@ public final class Require {
         eqZero(l, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f == 0)
      */
@@ -1853,7 +1940,7 @@ public final class Require {
         eqZero(f, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d == 0)
      */
@@ -1867,10 +1954,10 @@ public final class Require {
         eqZero(d, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // neqZero (primitiveValue != 0)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (c != 0)
      */
@@ -1885,7 +1972,7 @@ public final class Require {
         return neqZero(c, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b != 0)
      */
@@ -1900,7 +1987,7 @@ public final class Require {
         return neqZero(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s != 0)
      */
@@ -1915,7 +2002,7 @@ public final class Require {
         return neqZero(s, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i != 0)
      */
@@ -1930,7 +2017,7 @@ public final class Require {
         return neqZero(i, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l != 0)
      */
@@ -1945,7 +2032,7 @@ public final class Require {
         return neqZero(l, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f != 0)
      */
@@ -1960,7 +2047,7 @@ public final class Require {
         return neqZero(f, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d != 0)
      */
@@ -1975,10 +2062,10 @@ public final class Require {
         return neqZero(d, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // ltZero (primitiveValue < 0)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b < 0)
      */
@@ -1993,7 +2080,7 @@ public final class Require {
         return ltZero(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s < 0)
      */
@@ -2008,7 +2095,7 @@ public final class Require {
         return ltZero(s, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i < 0)
      */
@@ -2023,7 +2110,7 @@ public final class Require {
         return ltZero(i, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l < 0)
      */
@@ -2038,7 +2125,7 @@ public final class Require {
         return ltZero(l, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f < 0)
      */
@@ -2053,7 +2140,7 @@ public final class Require {
         return ltZero(f, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d < 0)
      */
@@ -2068,10 +2155,10 @@ public final class Require {
         return ltZero(d, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // leqZero (primitiveValue <= 0)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b <= 0)
      */
@@ -2086,7 +2173,7 @@ public final class Require {
         return leqZero(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s <= 0)
      */
@@ -2101,7 +2188,7 @@ public final class Require {
         return leqZero(s, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i <= 0)
      */
@@ -2116,7 +2203,7 @@ public final class Require {
         return leqZero(i, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l <= 0)
      */
@@ -2131,7 +2218,7 @@ public final class Require {
         return leqZero(l, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f <= 0)
      */
@@ -2146,7 +2233,7 @@ public final class Require {
         return leqZero(f, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d <= 0)
      */
@@ -2161,10 +2248,10 @@ public final class Require {
         return leqZero(d, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // gtZero (primitiveValue > 0)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b > 0)
      */
@@ -2179,7 +2266,7 @@ public final class Require {
         return gtZero(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s > 0)
      */
@@ -2194,7 +2281,7 @@ public final class Require {
         return gtZero(s, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i > 0)
      */
@@ -2209,7 +2296,7 @@ public final class Require {
         return gtZero(i, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l > 0)
      */
@@ -2224,7 +2311,7 @@ public final class Require {
         return gtZero(l, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f > 0)
      */
@@ -2239,7 +2326,7 @@ public final class Require {
         return gtZero(f, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d > 0)
      */
@@ -2254,10 +2341,10 @@ public final class Require {
         return gtZero(d, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // geqZero (primitiveValue >= 0)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (b >= 0)
      */
@@ -2272,7 +2359,7 @@ public final class Require {
         return geqZero(b, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s >= 0)
      */
@@ -2287,7 +2374,7 @@ public final class Require {
         return geqZero(s, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (i >= 0)
      */
@@ -2302,7 +2389,7 @@ public final class Require {
         return geqZero(i, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (l >= 0)
      */
@@ -2317,7 +2404,7 @@ public final class Require {
         return geqZero(l, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (f >= 0)
      */
@@ -2332,7 +2419,7 @@ public final class Require {
         return geqZero(f, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (d >= 0)
      */
@@ -2347,17 +2434,18 @@ public final class Require {
         return geqZero(d, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // eq, neq (Object ==/!= Object)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
 
     /**
      * require (o0 == o1)
      */
     public static void eq(Object o0, String name0, Object o1, String name1, int numCallsBelowRequirer) {
         if (!(o0 == o1)) {
-            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + name1, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -2367,7 +2455,8 @@ public final class Require {
 
     public static void eq(Object o0, String name0, Object o1, int numCallsBelowRequirer) {
         if (!(o0 == o1)) {
-            fail(name0 + " == " + ExceptionMessageUtil.valueString(o1), ExceptionMessageUtil.valueAndName(o0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " == " + ExceptionMessageUtil.valueString(o1), ExceptionMessageUtil.valueAndName(o0, name0),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -2375,13 +2464,14 @@ public final class Require {
         eq(o0, name0, o1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o0 != o1)
      */
     public static void neq(Object o0, String name0, Object o1, String name1, int numCallsBelowRequirer) {
         if (!(o0 != o1)) {
-            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + name1, ExceptionMessageUtil.valueAndName(o0, name0, o1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -2391,7 +2481,8 @@ public final class Require {
 
     public static void neq(Object o0, String name0, Object o1, int numCallsBelowRequirer) {
         if (!(o0 != o1)) {
-            fail(name0 + " != " + ExceptionMessageUtil.valueString(o1), ExceptionMessageUtil.valueAndName(o0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + " != " + ExceptionMessageUtil.valueString(o1), ExceptionMessageUtil.valueAndName(o0, name0),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -2400,10 +2491,10 @@ public final class Require {
     }
 
 
-    //################################################################
+    // ################################################################
     // eqNull, neqNull (Object ==/!= null)
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o == null)
      */
@@ -2417,7 +2508,7 @@ public final class Require {
         eqNull(o, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o != null)
      */
@@ -2434,7 +2525,7 @@ public final class Require {
         return neqNull(o, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o != NaN)
      */
@@ -2449,7 +2540,7 @@ public final class Require {
         return neqNaN(o, name, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o != +/-Inf)
      */
@@ -2464,10 +2555,10 @@ public final class Require {
         return neqInf(o, name, 1);
     }
 
-    //################################################################
+    // ################################################################
     // equals (Object.equals(Object))
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o0 != null && o1 != null && o0.equals(o1))
      */
@@ -2475,7 +2566,8 @@ public final class Require {
         neqNull(o0, name0, numCallsBelowRequirer + 1);
         neqNull(o1, name1, numCallsBelowRequirer + 1);
         if (!(o0.equals(o1))) {
-            fail(name0 + ".equals(" + name1 + ")", ExceptionMessageUtil.valueAndName(o0, name0, o1, name1), numCallsBelowRequirer + 1);
+            fail(name0 + ".equals(" + name1 + ")", ExceptionMessageUtil.valueAndName(o0, name0, o1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -2493,7 +2585,8 @@ public final class Require {
         neqNull(o0, name0, numCallsBelowRequirer + 1);
         neqNull(o1, "o1", numCallsBelowRequirer + 1);
         if (!(o0.equals(o1))) {
-            fail(name0 + ".equals(" + ExceptionMessageUtil.valueString(o1) + ")", ExceptionMessageUtil.valueAndName(o0, name0), numCallsBelowRequirer + 1);
+            fail(name0 + ".equals(" + ExceptionMessageUtil.valueString(o1) + ")",
+                    ExceptionMessageUtil.valueAndName(o0, name0), numCallsBelowRequirer + 1);
         }
     }
 
@@ -2504,7 +2597,7 @@ public final class Require {
         equals(o0, name0, o1, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (o0 != null && o1 != null && !o0.equals(o1))
      */
@@ -2512,7 +2605,8 @@ public final class Require {
         neqNull(o0, name0, numCallsBelowRequirer + 1);
         neqNull(o1, name1, numCallsBelowRequirer + 1);
         if (o0.equals(o1)) {
-            fail("!" + name0 + ".equals(" + name1 + ")", ExceptionMessageUtil.valueAndName(o0, name0, o1, name1), numCallsBelowRequirer + 1);
+            fail("!" + name0 + ".equals(" + name1 + ")", ExceptionMessageUtil.valueAndName(o0, name0, o1, name1),
+                    numCallsBelowRequirer + 1);
         }
     }
 
@@ -2530,7 +2624,8 @@ public final class Require {
         neqNull(o0, name0, numCallsBelowRequirer + 1);
         neqNull(o1, "o1", numCallsBelowRequirer + 1);
         if (o0.equals(o1)) {
-            fail("!" + name0 + ".equals(" + ExceptionMessageUtil.valueString(o1) + ")", ExceptionMessageUtil.valueAndName(o0, name0), numCallsBelowRequirer + 1);
+            fail("!" + name0 + ".equals(" + ExceptionMessageUtil.valueString(o1) + ")",
+                    ExceptionMessageUtil.valueAndName(o0, name0), numCallsBelowRequirer + 1);
         }
     }
 
@@ -2541,10 +2636,10 @@ public final class Require {
         notEquals(o0, name0, o1, 1);
     }
 
-    //################################################################
+    // ################################################################
     // nonempty (String.equals(nonempty))
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /**
      * require (s != null && s.length() > 0)
      */
@@ -2560,39 +2655,46 @@ public final class Require {
         return nonempty(s, name, 1);
     }
 
-    //################################################################
+    // ################################################################
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (collection != null && collection.contains(element)) */
-    public static <C extends Collection<T>, T> C contains(C collection, String collectionName, T element, String elementName, int numCallsBelowRequirer) {
-        neqNull(collection, collectionName, numCallsBelowRequirer+1);
+    public static <C extends Collection<T>, T> C contains(C collection, String collectionName, T element,
+            String elementName, int numCallsBelowRequirer) {
+        neqNull(collection, collectionName, numCallsBelowRequirer + 1);
         if (!(collection.contains(element))) {
-            fail(collectionName + ".contains(" + elementName + ")", ExceptionMessageUtil.valueAndName(element, elementName), numCallsBelowRequirer + 1);
+            fail(collectionName + ".contains(" + elementName + ")",
+                    ExceptionMessageUtil.valueAndName(element, elementName), numCallsBelowRequirer + 1);
         }
         return collection;
     }
 
-    public static <C extends Collection<T>, T> C contains(C collection, String collectionName, T element, String elementName) {
+    public static <C extends Collection<T>, T> C contains(C collection, String collectionName, T element,
+            String elementName) {
         return contains(collection, collectionName, element, elementName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (collection != null && !collection.contains(element)) */
-    public static <C extends Collection<T>, T> C notContains(C collection, String collectionName, T element, String elementName, int numCallsBelowRequirer) {
+    public static <C extends Collection<T>, T> C notContains(C collection, String collectionName, T element,
+            String elementName, int numCallsBelowRequirer) {
         neqNull(collection, collectionName, numCallsBelowRequirer + 1);
         if (collection.contains(element)) {
-            fail("!" + collectionName + ".contains(" + elementName + ")", ExceptionMessageUtil.valueAndName(element, elementName), numCallsBelowRequirer + 1);
+            fail("!" + collectionName + ".contains(" + elementName + ")",
+                    ExceptionMessageUtil.valueAndName(element, elementName), numCallsBelowRequirer + 1);
         }
         return collection;
     }
 
-    public static <C extends Collection<T>, T> C notContains(C collection, String collectionName, T element, String elementName) {
+    public static <C extends Collection<T>, T> C notContains(C collection, String collectionName, T element,
+            String elementName) {
         return notContains(collection, collectionName, element, elementName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (collection != null && !collection.stream().anyMatch(Objects::isNull) */
-    public static <C extends Collection<T>, T> C notContainsNull(C collection, String collectionName, int numCallsBelowRequirer) {
+    public static <C extends Collection<T>, T> C notContainsNull(C collection, String collectionName,
+            int numCallsBelowRequirer) {
         neqNull(collection, collectionName, numCallsBelowRequirer + 1);
         if (collection.stream().anyMatch(Objects::isNull)) {
             fail(collectionName + " does not contain null", numCallsBelowRequirer + 1);
@@ -2604,12 +2706,14 @@ public final class Require {
         return notContainsNull(collection, collectionName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (map != null && map.containsKey(key)) */
-    public static <M extends Map<K, V>, K, V> M containsKey(M map, String mapName, K key, String keyName, int numCallsBelowRequirer) {
+    public static <M extends Map<K, V>, K, V> M containsKey(M map, String mapName, K key, String keyName,
+            int numCallsBelowRequirer) {
         neqNull(map, mapName, numCallsBelowRequirer + 1);
         if (!(map.containsKey(key))) {
-            fail(mapName + ".containsKey(" + keyName + ")", ExceptionMessageUtil.valueAndName(key, keyName), numCallsBelowRequirer + 1);
+            fail(mapName + ".containsKey(" + keyName + ")", ExceptionMessageUtil.valueAndName(key, keyName),
+                    numCallsBelowRequirer + 1);
         }
         return map;
     }
@@ -2618,12 +2722,14 @@ public final class Require {
         return containsKey(map, mapName, key, keyName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (map != null && !map.containsKey(element)) */
-    public static <M extends Map<K, V>, K, V> M notContainsKey(M map, String mapName, K key, String keyName, int numCallsBelowRequirer) {
+    public static <M extends Map<K, V>, K, V> M notContainsKey(M map, String mapName, K key, String keyName,
+            int numCallsBelowRequirer) {
         neqNull(map, mapName, numCallsBelowRequirer + 1);
         if (map.containsKey(key)) {
-            fail("!" + mapName + ".containsKey(" + keyName + ")", ExceptionMessageUtil.valueAndName(key, keyName), numCallsBelowRequirer + 1);
+            fail("!" + mapName + ".containsKey(" + keyName + ")", ExceptionMessageUtil.valueAndName(key, keyName),
+                    numCallsBelowRequirer + 1);
         }
         return map;
     }
@@ -2632,13 +2738,16 @@ public final class Require {
         return notContainsKey(map, mapName, key, keyName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (offset >= 0 && offset < length) */
     public static int inRange(int offset, String offsetName, int length, String lengthName, int numCallsBelowRequirer) {
         if (!(offset >= 0)) {
-            fail(offsetName + " >= 0", ExceptionMessageUtil.valueAndName(offset, offsetName), numCallsBelowRequirer + 1);
+            fail(offsetName + " >= 0", ExceptionMessageUtil.valueAndName(offset, offsetName),
+                    numCallsBelowRequirer + 1);
         } else if (!(offset < length)) {
-            fail(offsetName + " < " + lengthName, ExceptionMessageUtil.valueAndName(offset, offsetName, length, lengthName), numCallsBelowRequirer + 1);
+            fail(offsetName + " < " + lengthName,
+                    ExceptionMessageUtil.valueAndName(offset, offsetName, length, lengthName),
+                    numCallsBelowRequirer + 1);
         }
         return offset;
     }
@@ -2648,13 +2757,16 @@ public final class Require {
         return inRange(offset, offsetName, length, lengthName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (offset >= start && offset < end) */
-    public static int inRange(int offset, String offsetName, int start, String startName, int end, String endName, int numCallsBelowRequirer) {
+    public static int inRange(int offset, String offsetName, int start, String startName, int end, String endName,
+            int numCallsBelowRequirer) {
         if (!(offset >= start)) {
-            fail(offsetName + " >= " + startName, ExceptionMessageUtil.valueAndName(offset, offsetName, start, startName), numCallsBelowRequirer + 1);
+            fail(offsetName + " >= " + startName,
+                    ExceptionMessageUtil.valueAndName(offset, offsetName, start, startName), numCallsBelowRequirer + 1);
         } else if (!(offset < end)) {
-            fail(offsetName + " < " + endName, ExceptionMessageUtil.valueAndName(offset, offsetName, end, endName), numCallsBelowRequirer + 1);
+            fail(offsetName + " < " + endName, ExceptionMessageUtil.valueAndName(offset, offsetName, end, endName),
+                    numCallsBelowRequirer + 1);
         }
         return offset;
     }
@@ -2664,13 +2776,17 @@ public final class Require {
         return inRange(offset, offsetName, start, startName, end, endName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (offset >= 0 && offset < length) */
-    public static long inRange(long offset, String offsetName, long length, String lengthName, int numCallsBelowRequirer) {
+    public static long inRange(long offset, String offsetName, long length, String lengthName,
+            int numCallsBelowRequirer) {
         if (!(offset >= 0L)) {
-            fail(offsetName + " >= 0L", ExceptionMessageUtil.valueAndName(offset, offsetName), numCallsBelowRequirer + 1);
+            fail(offsetName + " >= 0L", ExceptionMessageUtil.valueAndName(offset, offsetName),
+                    numCallsBelowRequirer + 1);
         } else if (!(offset < length)) {
-            fail(offsetName + " < " + lengthName, ExceptionMessageUtil.valueAndName(offset, offsetName, length, lengthName), numCallsBelowRequirer + 1);
+            fail(offsetName + " < " + lengthName,
+                    ExceptionMessageUtil.valueAndName(offset, offsetName, length, lengthName),
+                    numCallsBelowRequirer + 1);
         }
         return offset;
     }
@@ -2680,13 +2796,16 @@ public final class Require {
         return inRange(offset, offsetName, length, lengthName, 1);
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     /** require (offset >= start && offset < end) */
-    public static long inRange(long offset, String offsetName, long start, String startName, long end, String endName, int numCallsBelowRequirer) {
+    public static long inRange(long offset, String offsetName, long start, String startName, long end, String endName,
+            int numCallsBelowRequirer) {
         if (!(offset >= start)) {
-            fail(offsetName + " >= " + startName, ExceptionMessageUtil.valueAndName(offset, offsetName, start, startName), numCallsBelowRequirer + 1);
+            fail(offsetName + " >= " + startName,
+                    ExceptionMessageUtil.valueAndName(offset, offsetName, start, startName), numCallsBelowRequirer + 1);
         } else if (!(offset < end)) {
-            fail(offsetName + " < " + endName, ExceptionMessageUtil.valueAndName(offset, offsetName, end, endName), numCallsBelowRequirer + 1);
+            fail(offsetName + " < " + endName, ExceptionMessageUtil.valueAndName(offset, offsetName, end, endName),
+                    numCallsBelowRequirer + 1);
         }
         return offset;
     }
@@ -2696,12 +2815,13 @@ public final class Require {
         return inRange(offset, offsetName, start, startName, end, endName, 1);
     }
 
-    //################################################################
+    // ################################################################
 
     /** require d != {Infinity, -Infinity, NaN}. */
     public static double normalized(double d, String name, int numCallsBelowRequirer) {
         if (!(!Double.isNaN(d) && !Double.isInfinite(d))) {
-            fail(name + " is normalized (not infinity or NaN)", ExceptionMessageUtil.valueAndName(d, name), numCallsBelowRequirer + 1);
+            fail(name + " is normalized (not infinity or NaN)", ExceptionMessageUtil.valueAndName(d, name),
+                    numCallsBelowRequirer + 1);
         }
         return d;
     }
@@ -2723,8 +2843,9 @@ public final class Require {
         return nonEmpty(a, name, 1);
     }
 
-    public static int[] lengthEqual(final int[] a, final String name, final int length, final int numCallsBelowRequirer) {
-        if ( !(a.length == length) ) {
+    public static int[] lengthEqual(final int[] a, final String name, final int length,
+            final int numCallsBelowRequirer) {
+        if (!(a.length == length)) {
             fail(name + ".length == " + length, ExceptionMessageUtil.valueAndName(a, name), numCallsBelowRequirer + 1);
         }
         return a;
@@ -2784,15 +2905,15 @@ public final class Require {
         }
     }
 
-    public static void isSquare(double[][] m, String name){
-        for(int i=0; i<m.length; i++){
-            if(m[i].length != m.length){
+    public static void isSquare(double[][] m, String name) {
+        for (int i = 0; i < m.length; i++) {
+            if (m[i].length != m.length) {
                 fail("Matrix is not square: " + name, "matrix is not square: " + name, 1);
             }
         }
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     public static double inRange(double trialValue, double endPointA, double endPointB, String name) {
         double minRange = endPointA;
         double maxRange = endPointB;
@@ -2801,12 +2922,13 @@ public final class Require {
             maxRange = endPointA;
         }
         if (trialValue < minRange || maxRange < trialValue) {
-            fail(name + " = " + trialValue + " is expected to be in the range of [" + minRange + "," + maxRange + "] but was not", 1);
+            fail(name + " = " + trialValue + " is expected to be in the range of [" + minRange + "," + maxRange
+                    + "] but was not", 1);
         }
         return trialValue;
     }
 
-    //----------------------------------------------------------------
+    // ----------------------------------------------------------------
     public static float inRange(float trialValue, float endPointA, float endPointB, String name) {
         float minRange = endPointA;
         float maxRange = endPointB;
@@ -2815,7 +2937,8 @@ public final class Require {
             maxRange = endPointA;
         }
         if (trialValue < minRange || maxRange < trialValue) {
-            fail(name + " = " + trialValue + " is expected to be in the range of [" + minRange + "," + maxRange + "] but was not", 1);
+            fail(name + " = " + trialValue + " is expected to be in the range of [" + minRange + "," + maxRange
+                    + "] but was not", 1);
         }
         return trialValue;
     }

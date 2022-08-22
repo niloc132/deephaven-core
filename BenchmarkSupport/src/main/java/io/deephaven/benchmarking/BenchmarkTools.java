@@ -1,12 +1,15 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking;
 
 import io.deephaven.base.StringUtils;
 import io.deephaven.configuration.Configuration;
-import io.deephaven.db.tables.ColumnDefinition;
-import io.deephaven.db.tables.Table;
-import io.deephaven.db.tables.TableDefinition;
-import io.deephaven.db.tables.select.QueryScope;
-import io.deephaven.db.tables.utils.DBDateTime;
+import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.table.Table;
+import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.time.DateTime;
 import io.deephaven.util.annotations.ScriptApi;
 import io.deephaven.benchmarking.generator.*;
 import io.deephaven.benchmarking.impl.PersistentBenchmarkTableBuilder;
@@ -25,11 +28,11 @@ import java.util.Random;
 @ScriptApi
 public class BenchmarkTools {
 
-    private static final List<ColumnDefinition> COMMON_RESULT_COLUMNS = Arrays.asList(
-        ColumnDefinition.ofString("Benchmark"),
-        ColumnDefinition.ofString("Mode"),
-        ColumnDefinition.ofInt("Iteration"),
-        ColumnDefinition.ofString("Params"));
+    private static final List<ColumnDefinition<?>> COMMON_RESULT_COLUMNS = Arrays.asList(
+            ColumnDefinition.ofString("Benchmark"),
+            ColumnDefinition.ofString("Mode"),
+            ColumnDefinition.ofInt("Iteration"),
+            ColumnDefinition.ofString("Params"));
 
 
     /**
@@ -48,8 +51,8 @@ public class BenchmarkTools {
     /**
      * Get a new {@link InMemoryBenchmarkTableBuilder}
      *
-     * @param name            The name of the table.
-     * @param size            The desired size of the table.
+     * @param name The name of the table.
+     * @param size The desired size of the table.
      * @return a new {@link BenchmarkTableBuilder}.
      */
 
@@ -59,10 +62,10 @@ public class BenchmarkTools {
     }
 
     /**
-     * Create a new {@link BenchmarkTableBuilder} that will apply generated columns as an {@link Table#update(String...)}
-     * call to the source table.
+     * Create a new {@link BenchmarkTableBuilder} that will apply generated columns as an
+     * {@link Table#update(String...)} call to the source table.
      *
-     * @param name      The name of the table.
+     * @param name The name of the table.
      * @param fromTable The table to use as a base.
      * @return a new {@link BenchmarkTableBuilder}.
      */
@@ -74,12 +77,13 @@ public class BenchmarkTools {
     /**
      * Create an enumerated {@link ColumnGenerator<String>}, selecting values from the enum randomly.
      *
-     * @param name   The name of the column
-     * @param nVals  The number of values in the enumeration
+     * @param name The name of the column
+     * @param nVals The number of values in the enumeration
      * @param minLen The minimum length of a value
      * @param maxLen The maximum length of a value
-     * @param seed   The RNG seed to use to create the enumerated values
-     * @return a {@link ColumnGenerator<String>} suitable for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
+     * @param seed The RNG seed to use to create the enumerated values
+     * @return a {@link ColumnGenerator<String>} suitable for use with
+     *         {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
     public static ColumnGenerator<String> stringCol(String name, int nVals, int minLen, int maxLen, long seed) {
@@ -87,33 +91,38 @@ public class BenchmarkTools {
     }
 
     /**
-     * <p>Create an enumerated {@link ColumnGenerator<String>} selecting values from the enum using the selected mode.</p>
+     * <p>
+     * Create an enumerated {@link ColumnGenerator<String>} selecting values from the enum using the selected mode.
+     * </p>
      *
      * <ul>
      * <li><i>{@link EnumStringColumnGenerator.Mode#Random}</i> - Select enum values randomly</li>
      * <li><i>{@link EnumStringColumnGenerator.Mode#Rotate}</i> - Select enum values in order, and wrap around</li>
      * </ul>
      *
-     * @param name   The name of the column
-     * @param nVals  The number of values in the enumeration
+     * @param name The name of the column
+     * @param nVals The number of values in the enumeration
      * @param minLen The minimum length of a value
      * @param maxLen The maximum length of a value
-     * @param seed   The RNG seed to use to create the enumerated values
-     * @param mode   The selection mode to use.
-     * @return a {@link ColumnGenerator<String>} suitable for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
+     * @param seed The RNG seed to use to create the enumerated values
+     * @param mode The selection mode to use.
+     * @return a {@link ColumnGenerator<String>} suitable for use with
+     *         {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
-    public static ColumnGenerator<String> stringCol(String name, int nVals, int minLen, int maxLen, long seed, EnumStringColumnGenerator.Mode mode) {
+    public static ColumnGenerator<String> stringCol(String name, int nVals, int minLen, int maxLen, long seed,
+            EnumStringColumnGenerator.Mode mode) {
         return new EnumStringColumnGenerator(name, nVals, minLen, maxLen, seed, mode);
     }
 
     /**
      * Create a {@link ColumnGenerator<String>} that generates random strings constrained by length.
      *
-     * @param name   The name of the column
+     * @param name The name of the column
      * @param minLen the minimum length of a value
      * @param maxLen the maximum length of a value
-     * @return a {@link ColumnGenerator<String>} suitable for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
+     * @return a {@link ColumnGenerator<String>} suitable for use with
+     *         {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
     public static ColumnGenerator<String> stringCol(String name, int minLen, int maxLen) {
@@ -124,9 +133,10 @@ public class BenchmarkTools {
      * Create a {@link ColumnGenerator<Character>} that generates values between min and max
      *
      * @param name The name of the column
-     * @param min  the minimum value
-     * @param max  the maximum value
-     * @return a {@link ColumnGenerator<Character>} for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
+     * @param min the minimum value
+     * @param max the maximum value
+     * @return a {@link ColumnGenerator<Character>} for use with
+     *         {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
     public static ColumnGenerator<Character> charCol(String name, char min, char max) {
@@ -135,21 +145,23 @@ public class BenchmarkTools {
 
     /**
      * @param name The name of the column
-     * @return a {@link ColumnGenerator<DBDateTime>} for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
+     * @return a {@link ColumnGenerator< DateTime >} for use with
+     *         {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
-    public static ColumnGenerator<DBDateTime> dateCol(String name) {
+    public static ColumnGenerator<DateTime> dateCol(String name) {
         return new DateColumnGenerator(name);
     }
 
     /**
      * @param name The name of the column
-     * @param min  the minimum value
-     * @param max  the maximum value
-     * @return a {@link ColumnGenerator<DBDateTime>} for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
+     * @param min the minimum value
+     * @param max the maximum value
+     * @return a {@link ColumnGenerator< DateTime >} for use with
+     *         {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
-    public static ColumnGenerator<DBDateTime> dateCol(String name, DBDateTime min, DBDateTime max) {
+    public static ColumnGenerator<DateTime> dateCol(String name, DateTime min, DateTime max) {
         return new DateColumnGenerator(name, min, max);
     }
 
@@ -158,7 +170,7 @@ public class BenchmarkTools {
      *
      * @param name The name of the column
      * @param type The type of number
-     * @param <T>  The type of number
+     * @param <T> The type of number
      * @return a {@link ColumnGenerator<T>} for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
@@ -171,9 +183,9 @@ public class BenchmarkTools {
      *
      * @param name The name of the column
      * @param type The type of number
-     * @param min  The minimum value
-     * @param max  The maximum value
-     * @param <T>  The type of number
+     * @param min The minimum value
+     * @param max The maximum value
+     * @param <T> The type of number
      * @return a {@link ColumnGenerator<T>} for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
@@ -184,44 +196,50 @@ public class BenchmarkTools {
     /**
      * Create a {@link ColumnGenerator<T>} that generates a monotonically increasing number of the desired type.
      *
-     * @param name  The name of the column
-     * @param type  The type of number
+     * @param name The name of the column
+     * @param type The type of number
      * @param start The starting value
-     * @param step  The value to step by
-     * @param <T>   The type of number
+     * @param step The value to step by
+     * @param <T> The type of number
      * @return a {@link ColumnGenerator<T>} for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
-    public static <T extends Number> ColumnGenerator<T> seqNumberCol(String name, Class<T> type, double start, double step) {
+    public static <T extends Number> ColumnGenerator<T> seqNumberCol(String name, Class<T> type, double start,
+            double step) {
         return new SequentialNumColumnGenerator<>(type, name, start, step);
     }
 
     /**
-     * <p>Create a {@link ColumnGenerator<T>} that generates a number of the desired type which steps based on the input {@link SequentialNumColumnGenerator.Mode}.</p>
+     * <p>
+     * Create a {@link ColumnGenerator<T>} that generates a number of the desired type which steps based on the input
+     * {@link SequentialNumColumnGenerator.Mode}.
+     * </p>
      *
      * <ul>
      * <li><i>{@link SequentialNumColumnGenerator.Mode#NoLimit}</i> - Monotonically increasing with no limit</li>
-     * <li><i>{@link SequentialNumColumnGenerator.Mode#RollAtLimit}</i> - Roll over to the start value when the limit is reached</li>
-     * <li><i>{@link SequentialNumColumnGenerator.Mode#ReverseAtLimit}</i> - Change increment direction when the limit is reached</li>
+     * <li><i>{@link SequentialNumColumnGenerator.Mode#RollAtLimit}</i> - Roll over to the start value when the limit is
+     * reached</li>
+     * <li><i>{@link SequentialNumColumnGenerator.Mode#ReverseAtLimit}</i> - Change increment direction when the limit
+     * is reached</li>
      * </ul>
      *
-     * @param name  The name of the column
-     * @param type  The type of number
+     * @param name The name of the column
+     * @param type The type of number
      * @param start The starting value
-     * @param step  The value to step by
-     * @param max   the limit value
-     * @param mode  What to do when the max is reached.
-     * @param <T>   The type of number
+     * @param step The value to step by
+     * @param max the limit value
+     * @param mode What to do when the max is reached.
+     * @param <T> The type of number
      * @return a {@link ColumnGenerator<T>} for use with {@link BenchmarkTableBuilder#addColumn(ColumnGenerator)}
      */
     @ScriptApi
-    public static <T extends Number> ColumnGenerator<T> seqNumberCol(String name, Class<T> type, double start, double step, double max, SequentialNumColumnGenerator.Mode mode) {
+    public static <T extends Number> ColumnGenerator<T> seqNumberCol(String name, Class<T> type, double start,
+            double step, double max, SequentialNumColumnGenerator.Mode mode) {
         return new SequentialNumColumnGenerator<>(type, name, start, step, max, mode);
     }
 
     /**
-     * Strip a benchmark name of the format x.y.z.a.b.c.d.BenchmarkClass.method to
-     * BenchmarkClass.method
+     * Strip a benchmark name of the format x.y.z.a.b.c.d.BenchmarkClass.method to BenchmarkClass.method
      *
      * @param benchmark The full benchmark name
      * @return The stripped version
@@ -244,15 +262,16 @@ public class BenchmarkTools {
     }
 
     public static final String DETAIL_LOG_PREFIX = "Details.";
+
     public static String getDetailOutputPath(String benchmarkName) {
         return DETAIL_LOG_PREFIX + benchmarkName;
     }
 
-    public static TableDefinition getLogDefinitionWithExtra(List<ColumnDefinition> columnsToAdd) {
-        final List<ColumnDefinition> columns = new ArrayList<>(COMMON_RESULT_COLUMNS);
+    public static TableDefinition getLogDefinitionWithExtra(List<ColumnDefinition<?>> columnsToAdd) {
+        final List<ColumnDefinition<?>> columns = new ArrayList<>(COMMON_RESULT_COLUMNS);
         columns.addAll(columnsToAdd);
 
-        return new TableDefinition(columns);
+        return TableDefinition.of(columns);
     }
 
     public static String getStrippedBenchmarkName(BenchmarkParams params) {
@@ -270,10 +289,10 @@ public class BenchmarkTools {
             throw new IllegalStateException("Sparsity must be in the range of 1 through 100");
         }
 
-        return sparsity == 100? size : (int)Math.ceil(size * SPARSITY_FUDGE_FACTOR / (sparsity / 100.0));
+        return sparsity == 100 ? size : (int) Math.ceil(size * SPARSITY_FUDGE_FACTOR / (sparsity / 100.0));
     }
 
-    public static Table applySparsity(Table table,int size, int sparsity,long seed){
+    public static Table applySparsity(Table table, int size, int sparsity, long seed) {
         if (sparsity == 100) {
             return table;
         }

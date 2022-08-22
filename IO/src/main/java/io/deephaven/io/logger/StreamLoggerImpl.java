@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.io.logger;
 
 import io.deephaven.base.ArrayUtil;
@@ -29,9 +28,20 @@ public class StreamLoggerImpl implements Logger {
             null);
 
     private static final LogBufferPool logBufferPool = new LogBufferPool() {
-        @Override public ByteBuffer take(int minSize) { return  buffers.take(); }
-        @Override public ByteBuffer take() { return buffers.take(); }
-        @Override public void give(ByteBuffer item) { buffers.give(item); }
+        @Override
+        public ByteBuffer take(int minSize) {
+            return buffers.take();
+        }
+
+        @Override
+        public ByteBuffer take() {
+            return buffers.take();
+        }
+
+        @Override
+        public void give(ByteBuffer item) {
+            buffers.give(item);
+        }
     };
 
     /**
@@ -73,11 +83,9 @@ public class StreamLoggerImpl implements Logger {
         public void write(Entry e) {
             try {
                 InternalLoggerUtil.writeEntryToStream(e, e.stream, interceptors);
-            }
-            catch ( IOException x ) {
+            } catch (IOException x) {
                 throw new UncheckedIOException(x);
-            }
-            finally {
+            } finally {
                 e.clear();
                 entries.give(e);
             }
@@ -101,7 +109,7 @@ public class StreamLoggerImpl implements Logger {
 
     private static final Sink SINK = new Sink();
 
-    //---------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------
 
     private final OutputStream stream;
     private LogLevel loggingLevel;

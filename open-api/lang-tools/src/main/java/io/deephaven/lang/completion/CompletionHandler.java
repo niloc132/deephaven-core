@@ -1,9 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.lang.completion;
 
-import io.deephaven.lang.generated.ChunkerAssign;
-import io.deephaven.lang.generated.ChunkerDocument;
-import io.deephaven.lang.generated.Node;
-import io.deephaven.lang.parse.api.ParsedResult;
+import io.deephaven.lang.parse.ParsedDocument;
 import io.deephaven.proto.backplane.script.grpc.CompletionItem;
 import io.deephaven.proto.backplane.script.grpc.Position;
 
@@ -12,6 +12,6 @@ import java.util.Collection;
 /**
  * General API for returning a list of completion results from a given offset in a source command.
  */
-public interface CompletionHandler <ResultType extends ParsedResult<ChunkerDocument, ChunkerAssign, Node>> {
-    Collection<CompletionItem.Builder> runCompletion(ResultType doc, Position pos, int offset);
+public interface CompletionHandler {
+    Collection<CompletionItem.Builder> runCompletion(ParsedDocument doc, Position pos, int offset);
 }

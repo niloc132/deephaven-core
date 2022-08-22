@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy.integration;
 
 import io.deephaven.jpy.PythonTest;
@@ -10,10 +13,10 @@ public class TypeTest extends PythonTest {
     @Test
     public void checkReferenceCount() {
         try (
-            final ReferenceCounting ref = ReferenceCounting.create();
-            final IdentityModule identity = IdentityModule.create(getCreateModule());
-            final PyObject pyObject = SimpleObject.create(getCreateModule());
-            final PyObject type = pyObject.getType()) {
+                final ReferenceCounting ref = ReferenceCounting.create(getCreateModule());
+                final IdentityModule identity = IdentityModule.create(getCreateModule());
+                final PyObject pyObject = SimpleObject.create(getCreateModule());
+                final PyObject type = pyObject.getType()) {
 
             // It's hard for me to be more precise about this - jpy, and python itself, might be
             // keeping their own references to the type for lookup purposes.

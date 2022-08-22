@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.chartdescriptor;
 
 import jsinterop.annotations.JsOverlay;
@@ -8,48 +11,54 @@ import jsinterop.base.Js;
 import jsinterop.base.JsPropertyMap;
 
 @JsType(
-    isNative = true,
-    name = "dhinternal.io.deephaven.proto.console_pb.FigureDescriptor.ChartDescriptor.ChartTypeMap",
-    namespace = JsPackage.GLOBAL)
+        isNative = true,
+        name = "dhinternal.io.deephaven.proto.console_pb.FigureDescriptor.ChartDescriptor.ChartTypeMap",
+        namespace = JsPackage.GLOBAL)
 public interface ChartTypeMap {
-  @JsOverlay
-  static ChartTypeMap create() {
-    return Js.uncheckedCast(JsPropertyMap.of());
-  }
+    @JsOverlay
+    static ChartTypeMap create() {
+        return Js.uncheckedCast(JsPropertyMap.of());
+    }
 
-  @JsProperty(name = "CATEGORY")
-  int getCATEGORY();
+    @JsProperty(name = "CATEGORY")
+    int getCATEGORY();
 
-  @JsProperty(name = "CATEGORY_3D")
-  int getCATEGORY_3D();
+    @JsProperty(name = "CATEGORY_3D")
+    int getCATEGORY_3D();
 
-  @JsProperty(name = "OHLC")
-  int getOHLC();
+    @JsProperty(name = "OHLC")
+    int getOHLC();
 
-  @JsProperty(name = "PIE")
-  int getPIE();
+    @JsProperty(name = "PIE")
+    int getPIE();
 
-  @JsProperty(name = "XY")
-  int getXY();
+    @JsProperty(name = "TREEMAP")
+    int getTREEMAP();
 
-  @JsProperty(name = "XYZ")
-  int getXYZ();
+    @JsProperty(name = "XY")
+    int getXY();
 
-  @JsProperty(name = "CATEGORY")
-  void setCATEGORY(int CATEGORY);
+    @JsProperty(name = "XYZ")
+    int getXYZ();
 
-  @JsProperty(name = "CATEGORY_3D")
-  void setCATEGORY_3D(int CATEGORY_3D);
+    @JsProperty(name = "CATEGORY")
+    void setCATEGORY(int CATEGORY);
 
-  @JsProperty(name = "OHLC")
-  void setOHLC(int OHLC);
+    @JsProperty(name = "CATEGORY_3D")
+    void setCATEGORY_3D(int CATEGORY_3D);
 
-  @JsProperty(name = "PIE")
-  void setPIE(int PIE);
+    @JsProperty(name = "OHLC")
+    void setOHLC(int OHLC);
 
-  @JsProperty(name = "XY")
-  void setXY(int XY);
+    @JsProperty(name = "PIE")
+    void setPIE(int PIE);
 
-  @JsProperty(name = "XYZ")
-  void setXYZ(int XYZ);
+    @JsProperty(name = "TREEMAP")
+    void setTREEMAP(int TREEMAP);
+
+    @JsProperty(name = "XY")
+    void setXY(int XY);
+
+    @JsProperty(name = "XYZ")
+    void setXYZ(int XYZ);
 }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsArray;
@@ -32,8 +35,7 @@ public class JsSeriesDescriptor {
     public JsArray<JsSourceDescriptor> dataSources;
 
     @JsConstructor
-    public JsSeriesDescriptor() {
-    }
+    public JsSeriesDescriptor() {}
 
     @JsIgnore
     public JsSeriesDescriptor(JsPropertyMap<Object> source, Map<Object, JsAxisDescriptor> axisMap) {
@@ -41,10 +43,8 @@ public class JsSeriesDescriptor {
 
         plotStyle = JsData.getRequiredStringProperty(source, "plotStyle");
         name = JsData.getStringProperty(source, "name");
-        JsArray<Object> dataSources = JsData.getRequiredProperty(source, "dataSources").cast();
-        this.dataSources = Js.uncheckedCast(dataSources.map(
-            (sourceSource, index, all) -> new JsSourceDescriptor((JsPropertyMap<Object>)sourceSource, axisMap)
-        ));
+        JsArray<JsPropertyMap<Object>> dataSources = JsData.getRequiredProperty(source, "dataSources").cast();
+        this.dataSources = dataSources.map((sourceSource, index, all) -> new JsSourceDescriptor(sourceSource, axisMap));
         linesVisible = JsData.getNullableBooleanProperty(source, "linesVisible");
         shapesVisible = JsData.getNullableBooleanProperty(source, "shapesVisible");
         gradientVisible = JsData.getNullableBooleanProperty(source, "gradientVisible");

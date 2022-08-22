@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.shared.data;
 
 import java.io.Serializable;
@@ -10,8 +13,7 @@ public class HandleMapping implements Serializable {
     private TableHandle source;
     private TableHandle newId;
 
-    public HandleMapping() {
-    }
+    public HandleMapping() {}
 
     public HandleMapping(TableHandle source, TableHandle newId) {
         this.source = source;
@@ -58,8 +60,8 @@ public class HandleMapping implements Serializable {
     @Override
     public String toString() {
         return "HandleMapping{" +
-            "source=" + source +
-            ", newId=" + newId +
-            '}';
+                "source=" + source +
+                ", newId=" + newId +
+                '}';
     }
 }

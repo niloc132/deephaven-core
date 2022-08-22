@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.util;
 
 import io.deephaven.base.system.PrintStreamGlobals;
@@ -19,6 +22,7 @@ public class SystemStreamAdapter {
 
     /**
      * Redirect System.out to the specified logger, at level STDOUT.
+     * 
      * @param logger the receiving logger
      */
     public static void sendSystemOutToLogger(final Logger logger) {
@@ -27,6 +31,7 @@ public class SystemStreamAdapter {
 
     /**
      * Redirect System.err to the specified logger, at level STDERR.
+     * 
      * @param logger the receiving logger
      */
     public static void sendSystemErrToLogger(final Logger logger) {

@@ -1,6 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking.generator;
 
-import io.deephaven.db.tables.ColumnDefinition;
+import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.benchmarking.generator.random.ExtendedRandom;
 
 public class CharColumnGenerator implements ColumnGenerator<Character> {
@@ -21,7 +24,7 @@ public class CharColumnGenerator implements ColumnGenerator<Character> {
 
     @Override
     public String getUpdateString(String varName) {
-        return def.getName()+"=(char)"+varName+".getChar()";
+        return def.getName() + "=(char)" + varName + ".getChar()";
     }
 
     @Override

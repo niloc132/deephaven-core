@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.process;
 
 import java.util.LinkedHashMap;
@@ -8,10 +11,11 @@ import org.immutables.value.Value;
 /**
  * Represents the loggable environment variables as collected via {@link System#getenv()}.
  */
-@Value.Immutable @Wrapped
+@Value.Immutable
+@Wrapped
 abstract class _EnvironmentVariables extends StringMapWrapper {
 
-    private static final String[] PREFIXES = { "PQ_" };
+    private static final String[] PREFIXES = {"PQ_"};
 
     static EnvironmentVariables of() {
         final Map<String, String> env = System.getenv();
