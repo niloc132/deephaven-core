@@ -7,6 +7,25 @@ import spock.lang.Specification
 
 class ChunkerPythonTest extends Specification implements ChunkerParseTestMixin {
 
+    def "Parser should survive trivial python with classes and defs"() {
+        given:
+        CompletionParser p = new CompletionParser()
+        p.setLanguage(Languages.LANGUAGE_PYTHON)
+        String src
+        when:
+        src = """
+class Foo:
+    def bar(self):
+        print(1)"""
+        println(src)
+        doc = p.parse(src)
+
+        then: "Expect all ast nodes to have a valid structure"
+        // the goal here is merely survival without parse exceptions bubbling out.
+        assertAllValid(doc, src)
+
+    }
+
     def "Parser should survive moderately complex python with classes and defs"() {
         given:
             CompletionParser p = new CompletionParser()

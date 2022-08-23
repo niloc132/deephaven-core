@@ -916,6 +916,8 @@ int numSpace = pythonIndent;
        [ <COLON> {
             wellFormed = true;
        } ]
+       [ Whitespace() ]
+       [ Newline() | Eof() ]
       )
   )
 
