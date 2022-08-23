@@ -75,6 +75,10 @@ public class PendingParse {
         private Boolean parse() {
             try {
                 final Chunker chunker = new Chunker(text);
+                if (language != null) {
+                    // default language is set to groovy, but we don't want to decide that here.
+                    chunker.setLanguage(language);
+                }
                 final ChunkerDocument chunkerDocument = chunker.Document();
                 result = new ParsedDocument(chunkerDocument, text);
                 return true;
