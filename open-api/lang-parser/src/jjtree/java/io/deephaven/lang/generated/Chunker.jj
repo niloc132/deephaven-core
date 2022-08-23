@@ -52,7 +52,7 @@ public class Chunker implements/*@bgen(jjtree)*/ ChunkerTreeConstants, /*@egen*/
     private final ParseState root = new ParseState(null);
     private volatile ParseState current = root;
     private final Stack<ParseState> stack = new Stack<ParseState>();
-    private static int pythonDepth = -1, pythonIndent = 4;
+    private int pythonDepth = -1, pythonIndent = 4;
     private final IdentityHashMap<Node, ParseState> states = new IdentityHashMap<Node, ParseState>();
     private ChunkerInvokable invoker;
     private String language;
