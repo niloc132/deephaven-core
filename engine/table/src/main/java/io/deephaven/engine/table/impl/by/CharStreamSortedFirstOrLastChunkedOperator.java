@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.base.verify.Assert;
@@ -50,8 +53,8 @@ public class CharStreamSortedFirstOrLastChunkedOperator extends CopyingPermutedS
     }
 
     @Override
-    public void resetForStep(@NotNull final TableUpdate upstream) {
-        super.resetForStep(upstream);
+    public void resetForStep(@NotNull final TableUpdate upstream, final int startingDestinationsCount) {
+        super.resetForStep(upstream, startingDestinationsCount);
         if (isCombo) {
             changedDestinationsBuilder = RowSetFactory.builderRandom();
         }

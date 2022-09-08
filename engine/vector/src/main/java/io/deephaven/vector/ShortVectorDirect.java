@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharVectorDirect and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.vector;
 
 import io.deephaven.util.datastructures.LongSizedDataStructure;
@@ -27,6 +26,8 @@ public class ShortVectorDirect implements ShortVector {
     public ShortVectorDirect(short... data){
         this.data = data;
     }
+
+    public static final ShortVector ZERO_LEN_VECTOR = new ShortVectorDirect();
 
     @Override
     public short get(long i) {

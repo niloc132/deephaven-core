@@ -1,14 +1,17 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.table.Table;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.time.DateTimeUtils;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.table.impl.select.DownsampledWhereFilter;
+import io.deephaven.util.SafeCloseable;
 import junit.framework.TestCase;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -19,6 +22,18 @@ import java.util.Random;
 import static io.deephaven.engine.table.impl.TstUtils.*;
 
 public class TestDownsampledWhereFilter {
+    private SafeCloseable executionContext;
+
+    @Before
+    public void setUp() throws Exception {
+        executionContext = ExecutionContext.createForUnitTests().open();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        executionContext.close();
+    }
+
     @Test
     public void testDownsampledWhere() throws IOException {
         Random random = new Random(42);

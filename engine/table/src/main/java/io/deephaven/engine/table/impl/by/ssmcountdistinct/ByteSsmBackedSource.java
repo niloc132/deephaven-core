@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharSsmBackedSource and regenerate
@@ -36,7 +39,7 @@ public class ByteSsmBackedSource extends AbstractColumnSource<ByteVector>
         ByteSegmentedSortedMultiset ssm = underlying.getUnsafe(key);
         if(ssm == null) {
             //region CreateNew
-            underlying.set(key, ssm = new ByteSegmentedSortedMultiset(DistinctOperatorFactory.NODE_SIZE));
+            underlying.set(key, ssm = new ByteSegmentedSortedMultiset(SsmDistinctContext.NODE_SIZE));
             //endregion CreateNew
         }
         ssm.setTrackDeltas(trackingPrevious);
@@ -70,13 +73,13 @@ public class ByteSsmBackedSource extends AbstractColumnSource<ByteVector>
     }
 
     @Override
-    public ByteVector get(long index) {
-        return underlying.get(index);
+    public ByteVector get(long rowKey) {
+        return underlying.get(rowKey);
     }
 
     @Override
-    public ByteVector getPrev(long index) {
-        final ByteSegmentedSortedMultiset maybePrev = underlying.getPrev(index);
+    public ByteVector getPrev(long rowKey) {
+        final ByteSegmentedSortedMultiset maybePrev = underlying.getPrev(rowKey);
         return maybePrev == null ? null : maybePrev.getPrevValues();
     }
 

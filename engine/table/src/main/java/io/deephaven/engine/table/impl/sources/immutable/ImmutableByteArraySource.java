@@ -1,10 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit ImmutableCharArraySource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
- */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
  */
 package io.deephaven.engine.table.impl.sources.immutable;
 
@@ -16,7 +16,7 @@ import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.engine.table.WritableColumnSource;
-import io.deephaven.engine.table.WritableSourceWithEnsurePrevious;
+import io.deephaven.engine.table.WritableSourceWithPrepareForParallelPopulation;
 import io.deephaven.engine.table.impl.DefaultGetContext;
 import io.deephaven.engine.table.impl.ImmutableColumnSourceGetDefaults;
 import io.deephaven.engine.table.impl.sources.*;
@@ -39,7 +39,7 @@ import static io.deephaven.util.QueryConstants.NULL_BYTE;
  *
  * If your size is greater than the maximum capacity of an array, prefer {@link Immutable2DByteArraySource}.
  */
-public class ImmutableByteArraySource extends AbstractDeferredGroupingColumnSource<Byte> implements ImmutableColumnSourceGetDefaults.ForByte, WritableColumnSource<Byte>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithEnsurePrevious {
+public class ImmutableByteArraySource extends AbstractDeferredGroupingColumnSource<Byte> implements ImmutableColumnSourceGetDefaults.ForByte, WritableColumnSource<Byte>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithPrepareForParallelPopulation {
     private byte[] data;
 
     // region constructor
@@ -66,16 +66,27 @@ public class ImmutableByteArraySource extends AbstractDeferredGroupingColumnSour
     // endregion allocateArray
 
     @Override
-    public final byte getByte(long index) {
-        if (index < 0 || index >= data.length) {
+    public final byte getByte(long rowKey) {
+        if (rowKey < 0 || rowKey >= data.length) {
             return NULL_BYTE;
         }
 
-        return getUnsafe(index);
+        return getUnsafe(rowKey);
     }
 
     public final byte getUnsafe(long index) {
         return data[(int)index];
+    }
+
+    public final byte getAndSetUnsafe(long index, byte newValue) {
+        byte oldValue = data[(int)index];
+        data[(int)index] = newValue;
+        return oldValue;
+    }
+
+    @Override
+    public final void setNull(long key) {
+        data[(int)key] = NULL_BYTE;
     }
 
     @Override
@@ -224,7 +235,7 @@ public class ImmutableByteArraySource extends AbstractDeferredGroupingColumnSour
     }
 
     @Override
-    public void ensurePrevious(RowSet rowSet) {
+    public void prepareForParallelPopulation(RowSet rowSet) {
         // we don't track previous values, so we don't care to do any work
     }
 

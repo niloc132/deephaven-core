@@ -1,6 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.figure;
 
 import io.deephaven.api.Selectable;
+import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
 import io.deephaven.gui.shape.JShapes;
 import io.deephaven.gui.shape.NamedShape;
@@ -16,14 +20,15 @@ import io.deephaven.plot.axistransformations.AxisTransformBusinessCalendar;
 import io.deephaven.plot.datasets.AbstractDataSeries;
 import io.deephaven.plot.datasets.category.AbstractCategoryDataSeries;
 import io.deephaven.plot.datasets.category.CategoryDataSeriesMap;
-import io.deephaven.plot.datasets.category.CategoryDataSeriesSwappableTableMap;
-import io.deephaven.plot.datasets.category.CategoryDataSeriesTableMap;
+import io.deephaven.plot.datasets.category.CategoryTreemapDataSeriesTableMap;
+import io.deephaven.plot.datasets.category.CategoryDataSeriesPartitionedTable;
+import io.deephaven.plot.datasets.category.CategoryDataSeriesSwappablePartitionedTable;
 import io.deephaven.plot.datasets.data.IndexableNumericData;
 import io.deephaven.plot.datasets.data.IndexableNumericDataSwappableTable;
 import io.deephaven.plot.datasets.data.IndexableNumericDataTable;
 import io.deephaven.plot.datasets.interval.IntervalXYDataSeriesArray;
 import io.deephaven.plot.datasets.multiseries.AbstractMultiSeries;
-import io.deephaven.plot.datasets.multiseries.AbstractTableMapHandleMultiSeries;
+import io.deephaven.plot.datasets.multiseries.AbstractPartitionedTableHandleMultiSeries;
 import io.deephaven.plot.datasets.multiseries.MultiCatSeries;
 import io.deephaven.plot.datasets.multiseries.MultiXYSeries;
 import io.deephaven.plot.datasets.ohlc.OHLCDataSeriesArray;
@@ -31,12 +36,8 @@ import io.deephaven.plot.datasets.xy.AbstractXYDataSeries;
 import io.deephaven.plot.datasets.xy.XYDataSeriesArray;
 import io.deephaven.plot.datasets.xyerrorbar.XYErrorBarDataSeriesArray;
 import io.deephaven.plot.util.PlotUtils;
-import io.deephaven.plot.util.tables.ColumnHandlerFactory;
-import io.deephaven.plot.util.tables.SwappableTable;
-import io.deephaven.plot.util.tables.SwappableTableOneClickAbstract;
-import io.deephaven.plot.util.tables.SwappableTableOneClickMap;
-import io.deephaven.plot.util.tables.TableHandle;
-import io.deephaven.plot.util.tables.TableMapHandle;
+import io.deephaven.plot.util.tables.*;
+import io.deephaven.plot.util.tables.PartitionedTableHandle;
 import io.deephaven.plugin.type.ObjectType.Exporter;
 import io.deephaven.plugin.type.ObjectType.Exporter.Reference;
 import io.deephaven.proto.backplane.script.grpc.FigureDescriptor;
@@ -82,7 +83,7 @@ public class FigureWidgetTranslator {
 
     private final List<String> errorList = new ArrayList<>();
     private final Map<TableHandle, Integer> tablePositionMap = new HashMap<>();
-    private final Map<TableMapHandle, Integer> tableMapPositionMap = new HashMap<>();
+    private final Map<PartitionedTableHandle, Integer> partitionedTablePositionMap = new HashMap<>();
 
     private FigureWidgetTranslator() {}
 
@@ -112,24 +113,24 @@ public class FigureWidgetTranslator {
             // relying on FetchObjectResponse.export_id for communicating exported tables to the client
         }
 
-        // TODO (deephaven-core#62) implement once tablemaps are ready
-        // i = 0;
-        // for (Map.Entry<TableMap, List<TableMapHandle>> entry :
-        // figure.getTableMapHandles().stream().collect(Collectors.groupingBy(TableMapHandle::getTableMap)).entrySet())
-        // {
-        // Set<String> relevantColumns =
-        // entry.getValue().stream().map(TableMapHandle::getColumns).flatMap(Set::stream).collect(Collectors.toSet());
-        // TableMap tableMap = new TableMapSupplier(entry.getKey(), Collections.singletonList(t ->
-        // t.view(relevantColumns)));
-        //
-        // for (TableMapHandle handle : entry.getValue()) {
-        // tableMapPositionMap.put(handle, i);
-        // }
-        // i++;
-        //
-        // SessionState.ExportObject<TableMap> tableExportObject = sessionState.newServerSideExport(tableMap);
-        // clientFigure.addTableMap(...)
-        // }
+        i = 0;
+        for (Map.Entry<PartitionedTable, List<PartitionedTableHandle>> entry : figure.getPartitionedTableHandles()
+                .stream().collect(Collectors.groupingBy(PartitionedTableHandle::getPartitionedTable)).entrySet()) {
+
+            // TODO deephaven-core#2535 Restore this with a "PartitionedTableSupplier" type, if it is created
+            // Set<String> relevantColumns =
+            // entry.getValue().stream().map(PartitionedTableHandle::getColumns).flatMap(Set::stream).collect(Collectors.toSet());
+            // PartitionedTable partitionedTable = new PartitionedTableSupplier(entry.getKey(),
+            // Collections.singletonList(t -> t.view(relevantColumns)));
+            PartitionedTable partitionedTable = entry.getKey();
+
+            for (PartitionedTableHandle handle : entry.getValue()) {
+                partitionedTablePositionMap.put(handle, i);
+            }
+            i++;
+
+            exporter.reference(partitionedTable, false, true).orElseThrow();
+        }
 
         assignOptionalField(figure.getTitle(), clientFigure::setTitle, clientFigure::clearTitle);
         assignOptionalField(toCssColorString(figure.getTitleColor()), clientFigure::setTitleColor,
@@ -336,16 +337,16 @@ public class FigureWidgetTranslator {
 
                                 // TODO color label size shape
                             } else if (s instanceof AbstractCategoryDataSeries) {
-                                if (s instanceof CategoryDataSeriesTableMap) {// bar and pie from a table
-                                    CategoryDataSeriesTableMap series = (CategoryDataSeriesTableMap) s;
+                                if (s instanceof CategoryDataSeriesPartitionedTable) {// bar and pie from a table
+                                    CategoryDataSeriesPartitionedTable series = (CategoryDataSeriesPartitionedTable) s;
                                     clientAxes
                                             .add(makeSourceDescriptor(series.getTableHandle(), series.getCategoryCol(),
                                                     catAxis == xAxis ? SourceType.X : SourceType.Y, catAxis));
                                     clientAxes.add(makeSourceDescriptor(series.getTableHandle(), series.getValueCol(),
                                             numAxis == xAxis ? SourceType.X : SourceType.Y, numAxis));
-                                } else if (s instanceof CategoryDataSeriesSwappableTableMap) {
-                                    CategoryDataSeriesSwappableTableMap series =
-                                            (CategoryDataSeriesSwappableTableMap) s;
+                                } else if (s instanceof CategoryDataSeriesSwappablePartitionedTable) {
+                                    CategoryDataSeriesSwappablePartitionedTable series =
+                                            (CategoryDataSeriesSwappablePartitionedTable) s;
 
                                     clientAxes.add(
                                             makeSourceDescriptor(series.getSwappableTable(), series.getCategoryCol(),
@@ -354,6 +355,30 @@ public class FigureWidgetTranslator {
                                             makeSourceDescriptor(series.getSwappableTable(), series.getNumericCol(),
                                                     numAxis == xAxis ? SourceType.X : SourceType.Y, numAxis));
 
+                                } else if (s instanceof CategoryTreemapDataSeriesTableMap) {
+                                    CategoryTreemapDataSeriesTableMap series = (CategoryTreemapDataSeriesTableMap) s;
+                                    clientAxes
+                                            .add(makeSourceDescriptor(series.getTableHandle(), series.getCategoryCol(),
+                                                    catAxis == xAxis ? SourceType.X : SourceType.Y, catAxis));
+                                    clientAxes.add(makeSourceDescriptor(series.getTableHandle(),
+                                            series.getParentColumn(), SourceType.PARENT, null));
+                                    if (series.getValueCol() != null) {
+                                        clientAxes
+                                                .add(makeSourceDescriptor(series.getTableHandle(), series.getValueCol(),
+                                                        numAxis == xAxis ? SourceType.X : SourceType.Y, numAxis));
+                                    }
+                                    if (series.getLabelColumn() != null) {
+                                        clientAxes.add(makeSourceDescriptor(series.getTableHandle(),
+                                                series.getLabelColumn(), SourceType.LABEL, null));
+                                    }
+                                    if (series.getColorColumn() != null) {
+                                        clientAxes.add(makeSourceDescriptor(series.getTableHandle(),
+                                                series.getColorColumn(), SourceType.COLOR, null));
+                                    }
+                                    if (series.getHoverTextColumn() != null) {
+                                        clientAxes.add(makeSourceDescriptor(series.getTableHandle(),
+                                                series.getHoverTextColumn(), SourceType.HOVER_TEXT, null));
+                                    }
                                 } else if (s instanceof CategoryDataSeriesMap) {// bar and plot from constant data
                                     errorList.add("OpenAPI presently does not support series of type " + s.getClass());
                                 }
@@ -372,17 +397,18 @@ public class FigureWidgetTranslator {
                             Stream.Builder<MultiSeriesSourceDescriptor> clientAxes = Stream.builder();
 
 
-                            if (multiSeries instanceof AbstractTableMapHandleMultiSeries) {
-                                AbstractTableMapHandleMultiSeries tableMapMultiSeries =
-                                        (AbstractTableMapHandleMultiSeries) multiSeries;
-                                int plotHandleId = tableMapMultiSeries.getTableMapHandle().id();
+                            if (multiSeries instanceof AbstractPartitionedTableHandleMultiSeries) {
+                                AbstractPartitionedTableHandleMultiSeries partitionedTableMultiSeries =
+                                        (AbstractPartitionedTableHandleMultiSeries) multiSeries;
+                                PartitionedTableHandle plotHandle =
+                                        partitionedTableMultiSeries.getPartitionedTableHandle();
 
-                                if (tableMapMultiSeries instanceof MultiXYSeries) {
-                                    MultiXYSeries multiXYSeries = (MultiXYSeries) tableMapMultiSeries;
-                                    clientAxes.add(makeTableMapSourceDescriptor(plotHandleId, multiXYSeries.getXCol(),
-                                            SourceType.X, xAxis));
-                                    clientAxes.add(makeTableMapSourceDescriptor(plotHandleId, multiXYSeries.getYCol(),
-                                            SourceType.Y, yAxis));
+                                if (partitionedTableMultiSeries instanceof MultiXYSeries) {
+                                    MultiXYSeries multiXYSeries = (MultiXYSeries) partitionedTableMultiSeries;
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiXYSeries.getXCol(), SourceType.X, xAxis));
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiXYSeries.getYCol(), SourceType.Y, yAxis));
                                     clientSeries.setLineColor(stringMapWithDefault(mergeColors(
                                             multiXYSeries.lineColorSeriesNameTointMap(),
                                             multiXYSeries.lineColorSeriesNameToStringMap(),
@@ -412,14 +438,14 @@ public class FigureWidgetTranslator {
                                     clientSeries.setPointShape(stringMapWithDefault(mergeShapes(
                                             multiXYSeries.pointShapeSeriesNameToStringMap(),
                                             multiXYSeries.pointShapeSeriesNameToShapeMap())));
-                                } else if (tableMapMultiSeries instanceof MultiCatSeries) {
-                                    MultiCatSeries multiCatSeries = (MultiCatSeries) tableMapMultiSeries;
-                                    clientAxes.add(
-                                            makeTableMapSourceDescriptor(plotHandleId, multiCatSeries.getCategoryCol(),
-                                                    catAxis == xAxis ? SourceType.X : SourceType.Y, catAxis));
-                                    clientAxes.add(
-                                            makeTableMapSourceDescriptor(plotHandleId, multiCatSeries.getNumericCol(),
-                                                    numAxis == xAxis ? SourceType.X : SourceType.Y, numAxis));
+                                } else if (partitionedTableMultiSeries instanceof MultiCatSeries) {
+                                    MultiCatSeries multiCatSeries = (MultiCatSeries) partitionedTableMultiSeries;
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiCatSeries.getCategoryCol(),
+                                            catAxis == xAxis ? SourceType.X : SourceType.Y, catAxis));
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiCatSeries.getNumericCol(),
+                                            numAxis == xAxis ? SourceType.X : SourceType.Y, numAxis));
                                     clientSeries.setLineColor(stringMapWithDefault(mergeColors(
                                             multiCatSeries.lineColorSeriesNameTointMap(),
                                             multiCatSeries.lineColorSeriesNameToStringMap(),
@@ -491,6 +517,9 @@ public class FigureWidgetTranslator {
         businessCalendarDescriptor.setName(businessCalendar.name());
         businessCalendarDescriptor.setTimeZone(businessCalendar.timeZone().getTimeZone().getID());
         Arrays.stream(BusinessCalendarDescriptor.DayOfWeek.values()).filter(dayOfWeek -> {
+            if (dayOfWeek == BusinessCalendarDescriptor.DayOfWeek.UNRECOGNIZED) {
+                return false;
+            }
             final DayOfWeek day = DayOfWeek.valueOf(dayOfWeek.name());
             return businessCalendar.isBusinessDay(day);
         }).forEach(businessCalendarDescriptor::addBusinessDays);
@@ -626,7 +655,10 @@ public class FigureWidgetTranslator {
     private <T> StringMapWithDefault stringMapWithDefault(PlotUtils.HashMapWithDefault<? extends Comparable<?>, T> map,
             Function<T, String> mappingFunc) {
         StringMapWithDefault.Builder result = StringMapWithDefault.newBuilder();
-        result.setDefaultString(mappingFunc.apply(map.getDefault()));
+        String defaultString = mappingFunc.apply(map.getDefault());
+        if (defaultString != null) {
+            result.setDefaultString(defaultString);
+        }
         LinkedHashMap<? extends Comparable<?>, T> ordered = new LinkedHashMap<>(map);
         result.addAllKeys(ordered.keySet().stream().map(Comparable::toString).collect(Collectors.toList()));
         result.addAllValues(ordered.values().stream().map(mappingFunc).collect(Collectors.toList()));
@@ -641,7 +673,10 @@ public class FigureWidgetTranslator {
     private <T> DoubleMapWithDefault doubleMapWithDefault(PlotUtils.HashMapWithDefault<? extends Comparable<?>, T> map,
             Function<T, Double> mappingFunc) {
         DoubleMapWithDefault.Builder result = DoubleMapWithDefault.newBuilder();
-        result.setDefaultDouble(mappingFunc.apply(map.getDefault()));
+        Double defaultDouble = mappingFunc.apply(map.getDefault());
+        if (defaultDouble != null) {
+            result.setDefaultDouble(defaultDouble);
+        }
         LinkedHashMap<? extends Comparable<?>, T> ordered = new LinkedHashMap<>(map);
         result.addAllKeys(ordered.keySet().stream().map(Comparable::toString).collect(Collectors.toList()));
         result.addAllValues(ordered.values().stream().map(mappingFunc).collect(Collectors.toList()));
@@ -651,17 +686,22 @@ public class FigureWidgetTranslator {
     private BoolMapWithDefault boolMapWithDefault(PlotUtils.HashMapWithDefault<? extends Comparable<?>, Boolean> map) {
         BoolMapWithDefault.Builder result = BoolMapWithDefault.newBuilder();
         LinkedHashMap<? extends Comparable<?>, Boolean> ordered = new LinkedHashMap<>(map);
+        Boolean defaultBoolean = map.getDefault();
+        if (defaultBoolean != null) {
+            result.setDefaultBool(defaultBoolean);
+        }
         result.addAllKeys(ordered.keySet().stream().map(Comparable::toString).collect(Collectors.toList()));
         result.addAllValues(new ArrayList<>(ordered.values()));
         return result.build();
     }
 
-    private MultiSeriesSourceDescriptor makeTableMapSourceDescriptor(int plotHandleId, String columnName,
+    private MultiSeriesSourceDescriptor makePartitionedTableSourceDescriptor(PartitionedTableHandle plotHandle,
+            String columnName,
             SourceType sourceType, AxisDescriptor axis) {
         MultiSeriesSourceDescriptor.Builder source = MultiSeriesSourceDescriptor.newBuilder();
         source.setAxisId(axis.getId());
         source.setType(sourceType);
-        source.setTableMapId(plotHandleId);
+        source.setPartitionedTableId(partitionedTablePositionMap.get(plotHandle));
         source.setColumnName(columnName);
         return source.build();
     }
@@ -672,7 +712,8 @@ public class FigureWidgetTranslator {
 
         source.setColumnName(columnName);
         source.setTableId(tablePositionMap.get(tableHandle));
-        source.setAxisId(axis.getId());
+        source.setPartitionedTableId(-1);
+        source.setAxisId(axis == null ? "-1" : axis.getId());
         source.setType(sourceType);
 
         return source.build();
@@ -684,13 +725,14 @@ public class FigureWidgetTranslator {
 
         source.setAxisId(axis.getId());
         source.setType(sourceType);
+        source.setTableId(-1);
 
         if (swappableTable instanceof SwappableTableOneClickAbstract) {
             SwappableTableOneClickAbstract oneClick = (SwappableTableOneClickAbstract) swappableTable;
             source.setColumnName(columnName);
             source.setColumnType(
                     swappableTable.getTableDefinition().getColumn(columnName).getDataType().getCanonicalName());
-            source.setTableMapId(oneClick.getTableMapHandle().id());
+            source.setPartitionedTableId(partitionedTablePositionMap.get(oneClick.getPartitionedTableHandle()));
             source.setOneClick(makeOneClick(oneClick));
 
         } else {
@@ -710,13 +752,14 @@ public class FigureWidgetTranslator {
 
             source.setColumnName(columnHandler.getColumnName());
             source.setTableId(tablePositionMap.get(columnHandler.getTableHandle()));
+            source.setPartitionedTableId(-1);
         } else if (data instanceof IndexableNumericDataSwappableTable) {
             IndexableNumericDataSwappableTable swappableTable = (IndexableNumericDataSwappableTable) data;
             if (swappableTable.getSwappableTable() instanceof SwappableTableOneClickAbstract) {
                 SwappableTableOneClickAbstract oneClick =
                         (SwappableTableOneClickAbstract) swappableTable.getSwappableTable();
-                if (oneClick instanceof SwappableTableOneClickMap
-                        && ((SwappableTableOneClickMap) oneClick).getTransform() != null) {
+                if (oneClick instanceof SwappableTableOneClickPartitioned
+                        && ((SwappableTableOneClickPartitioned) oneClick).getTransform() != null) {
                     errorList.add(
                             "OpenAPI does not presently support swappable tables that also use transform functions");
                     return source.build();
@@ -724,7 +767,8 @@ public class FigureWidgetTranslator {
                 source.setColumnName(swappableTable.getColumn());
                 source.setColumnType(swappableTable.getSwappableTable().getTableDefinition()
                         .getColumn(swappableTable.getColumn()).getDataType().getCanonicalName());
-                source.setTableMapId(oneClick.getTableMapHandle().id());
+                source.setTableId(-1);
+                source.setPartitionedTableId(partitionedTablePositionMap.get(oneClick.getPartitionedTableHandle()));
                 source.setOneClick(makeOneClick(oneClick));
             } else {
                 errorList.add("OpenAPI does not presently support swappable table of type "
@@ -743,14 +787,17 @@ public class FigureWidgetTranslator {
         oneClick.addAllColumns(swappableTable.getByColumns());
         oneClick.addAllColumnTypes(swappableTable.getByColumns()
                 .stream()
-                .map(colName -> swappableTable.getTableMapHandle().getTableDefinition().getColumn(colName).getDataType()
-                        .getCanonicalName())
+                .map(colName -> swappableTable.getPartitionedTableHandle().getTableDefinition()
+                        .getColumn(colName).getDataType().getCanonicalName())
                 .collect(Collectors.toList()));
         oneClick.setRequireAllFiltersToDisplay(swappableTable.isRequireAllFiltersToDisplay());
         return oneClick.build();
     }
 
     private String toCssColorString(io.deephaven.gui.color.Paint color) {
+        if (color == null) {
+            return null;
+        }
         if (!(color instanceof io.deephaven.gui.color.Color)) {
             errorList.add("OpenAPI does not presently support paint of type " + color);
             return null;

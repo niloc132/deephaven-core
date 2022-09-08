@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit UngroupedCharArrayColumnSource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.ColumnSource;
@@ -29,12 +28,12 @@ public class UngroupedFloatArrayColumnSource extends UngroupedColumnSource<Float
     }
 
     @Override
-    public float getFloat(long index) {
-        if (index < 0) {
+    public float getFloat(long rowKey) {
+        if (rowKey < 0) {
             return NULL_FLOAT;
         }
-        long segment = index>>base;
-        int offset = (int) (index & ((1<<base) - 1));
+        long segment = rowKey >>base;
+        int offset = (int) (rowKey & ((1<<base) - 1));
         float[] array = innerSource.get(segment);
         if(array == null || offset >= array.length) {
             return NULL_FLOAT;
@@ -43,12 +42,12 @@ public class UngroupedFloatArrayColumnSource extends UngroupedColumnSource<Float
     }
 
     @Override
-    public float getPrevFloat(long index) {
-        if (index < 0) {
+    public float getPrevFloat(long rowKey) {
+        if (rowKey < 0) {
             return NULL_FLOAT;
         }
-        long segment = index>> getPrevBase();
-        int offset = (int) (index & ((1<< getPrevBase()) - 1));
+        long segment = rowKey >> getPrevBase();
+        int offset = (int) (rowKey & ((1<< getPrevBase()) - 1));
         float[] array = innerSource.getPrev(segment);
         if(array == null || offset >= array.length) {
             return NULL_FLOAT;
@@ -60,7 +59,7 @@ public class UngroupedFloatArrayColumnSource extends UngroupedColumnSource<Float
     public boolean isImmutable() {
         return innerSource.isImmutable();
     }
-    
+
     @Override
     public boolean preventsParallelism() {
         return innerSource.preventsParallelism();

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit RegionedColumnSourceChar and regenerate
@@ -29,8 +32,8 @@ abstract class RegionedColumnSourceShort<ATTR extends Values>
     }
 
     @Override
-    public short getShort(final long elementIndex) {
-        return (elementIndex == RowSequence.NULL_ROW_KEY ? getNullRegion() : lookupRegion(elementIndex)).getShort(elementIndex);
+    public short getShort(final long rowKey) {
+        return (rowKey == RowSequence.NULL_ROW_KEY ? getNullRegion() : lookupRegion(rowKey)).getShort(rowKey);
     }
 
     interface MakeRegionDefault extends MakeRegion<Values, ColumnRegionShort<Values>> {
@@ -66,8 +69,8 @@ abstract class RegionedColumnSourceShort<ATTR extends Values>
         }
 
         @Override
-        public short getShort(final long elementIndex) {
-            return (elementIndex == RowSequence.NULL_ROW_KEY ? getNullRegion() : lookupRegion(elementIndex)).getShort(elementIndex);
+        public short getShort(final long rowKey) {
+            return (rowKey == RowSequence.NULL_ROW_KEY ? getNullRegion() : lookupRegion(rowKey)).getShort(rowKey);
         }
 
         static final class AsValues<DATA_TYPE> extends NativeType<DATA_TYPE, Values> implements MakeRegionDefault {

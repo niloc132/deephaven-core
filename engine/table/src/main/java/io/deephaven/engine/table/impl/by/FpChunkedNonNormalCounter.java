@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.chunk.attributes.Values;
@@ -233,22 +236,22 @@ abstract class FpChunkedNonNormalCounter {
         }
 
         @Override
-        public long getLong(long index) {
+        public long getLong(long rowKey) {
             final LongArraySource longArraySource = sourceSupplier.get();
             if (longArraySource == null) {
                 return QueryConstants.NULL_LONG;
             } else {
-                return longArraySource.getLong(index);
+                return longArraySource.getLong(rowKey);
             }
         }
 
         @Override
-        public long getPrevLong(long index) {
+        public long getPrevLong(long rowKey) {
             final LongArraySource longArraySource = sourceSupplier.get();
             if (longArraySource == null) {
                 return QueryConstants.NULL_LONG;
             } else {
-                return longArraySource.getPrevLong(index);
+                return longArraySource.getPrevLong(rowKey);
             }
         }
 

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Assert;
@@ -73,7 +76,11 @@ public class ComparableRangeFilter extends AbstractRangeFilter {
 
     @Override
     public WhereFilter copy() {
-        return new ComparableRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        final ComparableRangeFilter copy =
+                new ComparableRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        copy.chunkFilter = chunkFilter;
+        copy.longFilter = longFilter;
+        return copy;
     }
 
     @Override

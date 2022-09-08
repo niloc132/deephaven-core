@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.util;
 
 import io.deephaven.base.verify.Assert;
@@ -12,7 +11,6 @@ import io.deephaven.qst.type.Type;
 import io.deephaven.tablelogger.Row;
 import io.deephaven.tablelogger.RowSetter;
 import io.deephaven.tablelogger.TableWriter;
-import io.deephaven.engine.table.DataColumn;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.util.QueryConstants;
@@ -33,7 +31,8 @@ import java.util.stream.Collectors;
  * The DynamicTableWriter creates an in-memory table using ArrayBackedColumnSources of the type specified in the
  * constructor. You can retrieve the table using the {@code getTable} function.
  * <p>
- * This class is not thread safe, you must synchronize externally.
+ * This class is not thread safe, you must synchronize externally. However, multiple setters may safely log
+ * concurrently.
  */
 public class DynamicTableWriter implements TableWriter {
     private final UpdateSourceQueryTable table;
@@ -392,19 +391,20 @@ public class DynamicTableWriter implements TableWriter {
         this.columnNames = new String[nCols];
         this.arrayColumnSources = new ArrayBackedColumnSource[nCols];
         int ii = 0;
-        final DataColumn[] columns = table.getColumns();
         for (Map.Entry<String, ColumnSource<?>> entry : sources.entrySet()) {
-            columnNames[ii] = entry.getKey();
-            ColumnSource<?> source = entry.getValue();
-            if (source instanceof ArrayBackedColumnSource) {
-                arrayColumnSources[ii] = (ArrayBackedColumnSource) source;
-            }
-            if (constantValues.containsKey(columnNames[ii])) {
+            final String columnName = columnNames[ii] = entry.getKey();
+            final ColumnSource<?> source = entry.getValue();
+            if (constantValues.containsKey(columnName)) {
                 continue;
             }
-            final int index = ii;
-            factoryMap.put(columns[index].getName(),
-                    (currentRow) -> createRowSetter(columns[index].getType(), arrayColumnSources[index]));
+            if (source instanceof ArrayBackedColumnSource) {
+                arrayColumnSources[ii] = (ArrayBackedColumnSource) source;
+            } else {
+                throw new IllegalStateException(
+                        "Expected ArrayBackedColumnSource, instead found " + source.getClass());
+            }
+            factoryMap.put(columnName,
+                    (currentRow) -> createRowSetter(source.getType(), (ArrayBackedColumnSource) source));
             ++ii;
         }
         UpdateGraphProcessor.DEFAULT.addSource(table);
@@ -783,32 +783,34 @@ public class DynamicTableWriter implements TableWriter {
 
         @Override
         public void writeRow() {
-            boolean doFlush = false;
-            switch (flags) {
-                case SingleRow:
-                    doFlush = true;
-                case StartTransaction:
-                    if (lastCommittedRow != lastSetterRow) {
-                        lastSetterRow = lastCommittedRow + 1;
-                    }
-                    break;
-                case EndTransaction:
-                    doFlush = true;
-                    break;
-                case None:
-                    break;
-            }
-            row = lastSetterRow++;
+            synchronized (DynamicTableWriter.this) {
+                boolean doFlush = false;
+                switch (flags) {
+                    case SingleRow:
+                        doFlush = true;
+                    case StartTransaction:
+                        if (lastCommittedRow != lastSetterRow) {
+                            lastSetterRow = lastCommittedRow + 1;
+                        }
+                        break;
+                    case EndTransaction:
+                        doFlush = true;
+                        break;
+                    case None:
+                        break;
+                }
+                row = lastSetterRow++;
 
-            // Before this row can be returned to a pool, it needs to ensure that the underlying sources
-            // are appropriately sized to avoid race conditions.
-            ensureCapacity(row);
-            columnToSetter.values().forEach((x) -> x.setRow(row));
+                // Before this row can be returned to a pool, it needs to ensure that the underlying sources
+                // are appropriately sized to avoid race conditions.
+                ensureCapacity(row);
+                columnToSetter.values().forEach((x) -> x.setRow(row));
 
-            // The row has been committed during set, we just need to insert the row keys into the table
-            if (doFlush) {
-                DynamicTableWriter.this.addRangeToTableIndex(lastCommittedRow + 1, row);
-                lastCommittedRow = row;
+                // The row has been committed during set, we just need to insert the row keys into the table
+                if (doFlush) {
+                    DynamicTableWriter.this.addRangeToTableIndex(lastCommittedRow + 1, row);
+                    lastCommittedRow = row;
+                }
             }
         }
 

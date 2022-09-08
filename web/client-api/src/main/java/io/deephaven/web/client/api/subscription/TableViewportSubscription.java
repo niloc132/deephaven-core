@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.subscription;
 
 import elemental2.core.Int8Array;
@@ -42,7 +45,6 @@ import jsinterop.base.Js;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.stream.Collectors;
 
 import static io.deephaven.web.client.api.barrage.BarrageUtils.makeUint8ArrayFromBitset;
 import static io.deephaven.web.client.api.barrage.BarrageUtils.serializeRanges;
@@ -190,7 +192,10 @@ public class TableViewportSubscription extends HasEventHandling {
                     "Can't change refreshIntervalMs on a later call to setViewport, it must be consistent or omitted");
         }
         copy.then(table -> {
-            table.setInternalViewport(firstRow, lastRow, columns);
+            if (!table.isStreamTable()) {
+                // we only set stream table viewports once; and that's in the constructor
+                table.setInternalViewport(firstRow, lastRow, columns);
+            }
             return Promise.resolve(table);
         });
     }
@@ -279,11 +284,10 @@ public class TableViewportSubscription extends HasEventHandling {
                 WorkerConnection connection = table.getConnection();
                 BiDiStream<FlightData, FlightData> stream = connection.<FlightData, FlightData>streamFactory().create(
                         headers -> connection.flightServiceClient().doExchange(headers),
-                        (firstPayload, headers) -> connection.browserFlightServiceClient().openDoExchange(firstPayload,
-                                headers),
-                        (nextPayload, headers, c) -> connection.browserFlightServiceClient().nextDoExchange(nextPayload,
-                                headers,
-                                c::apply));
+                        (first, headers) -> connection.browserFlightServiceClient().openDoExchange(first, headers),
+                        (next, headers, c) -> connection.browserFlightServiceClient().nextDoExchange(next, headers,
+                                c::apply),
+                        new FlightData());
 
                 Builder doGetRequest = new Builder(1024);
                 double columnsOffset = BarrageSubscriptionRequest.createColumnsVector(doGetRequest,
@@ -291,7 +295,7 @@ public class TableViewportSubscription extends HasEventHandling {
                 double viewportOffset = BarrageSubscriptionRequest.createViewportVector(doGetRequest, serializeRanges(
                         Collections.singleton(rows.getRange())));
                 double serializationOptionsOffset = BarrageSnapshotOptions
-                        .createBarrageSnapshotOptions(doGetRequest, ColumnConversionMode.Stringify, true, 0);
+                        .createBarrageSnapshotOptions(doGetRequest, ColumnConversionMode.Stringify, true, 0, 0);
                 double tableTicketOffset =
                         BarrageSubscriptionRequest.createTicketVector(doGetRequest, state.getHandle().getTicket());
                 BarrageSnapshotRequest.startBarrageSnapshotRequest(doGetRequest);

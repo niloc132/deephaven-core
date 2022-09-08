@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.base.verify.Assert;
@@ -58,6 +57,11 @@ public class ObjectArraySource<T> extends ArraySourceHelper<T, T[]> implements M
     }
 
     @Override
+    public void setNull(long key) {
+        set(key, null);
+    }
+
+    @Override
     public void set(long key, T value) {
         final int block = (int) (key >> LOG_BLOCK_SIZE);
         final int indexWithinBlock = (int) (key & INDEX_MASK);
@@ -68,11 +72,11 @@ public class ObjectArraySource<T> extends ArraySourceHelper<T, T[]> implements M
     }
 
     @Override
-    final public T get(long index) {
-        if (index < 0 || index > maxIndex) {
+    final public T get(long rowKey) {
+        if (rowKey < 0 || rowKey > maxIndex) {
             return null;
         }
-        return getUnsafe(index);
+        return getUnsafe(rowKey);
     }
 
     final public T getUnsafe(long index) {
@@ -98,13 +102,13 @@ public class ObjectArraySource<T> extends ArraySourceHelper<T, T[]> implements M
     }
 
     @Override
-    public T getPrev(long index) {
-        if (index < 0 || index > maxIndex) {
+    public T getPrev(long rowKey) {
+        if (rowKey < 0 || rowKey > maxIndex) {
             return null;
         }
-        final int blockIndex = (int) (index >> LOG_BLOCK_SIZE);
-        final int indexWithinBlock = (int) (index & INDEX_MASK);
-        if (shouldUsePrevious(index)) {
+        final int blockIndex = (int) (rowKey >> LOG_BLOCK_SIZE);
+        final int indexWithinBlock = (int) (rowKey & INDEX_MASK);
+        if (shouldUsePrevious(rowKey)) {
             return prevBlocks[blockIndex][indexWithinBlock];
         } else {
             return blocks[blockIndex][indexWithinBlock];

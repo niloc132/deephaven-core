@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.time;
 
 import io.deephaven.base.CompareUtils;
@@ -13,6 +12,7 @@ import junit.framework.TestCase;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalTime;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 
@@ -699,5 +699,10 @@ public class TestDateTimeUtils extends BaseArrayTestCase {
         final DateTime dateTime3 = DateTimeUtils.convertDateTime("2050-07-31T20:40 NY");
         TestCase.assertEquals(dateTime3,
                 DateTimeUtils.toDateTime(DateTimeUtils.getZonedDateTime(dateTime3, TimeZone.TZ_NY)));
+    }
+
+    public void testISO8601() {
+        final String iso8601 = "2022-04-26T00:30:31.087360Z";
+        assertEquals(DateTime.of(Instant.parse(iso8601)), DateTimeUtils.convertDateTime(iso8601));
     }
 }

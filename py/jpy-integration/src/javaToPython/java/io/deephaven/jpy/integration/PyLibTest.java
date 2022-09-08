@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.jpy.integration;
 
 import io.deephaven.jpy.PythonTest;
@@ -11,6 +14,11 @@ import org.jpy.PyLib;
 import org.jpy.PyObject;
 import org.junit.Assert;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class PyLibTest extends PythonTest {
 
@@ -105,6 +113,28 @@ public class PyLibTest extends PythonTest {
     public void pingPong4() {
         Assert.assertEquals("PyLibTest(java,4)(python,3)(java,2)(python,1)",
                 PingPongStack.pingPongPython("PyLibTest", 4));
+    }
+
+    @Test
+    public void testEnsureGIL() {
+        assertFalse(PyLib.hasGil());
+        boolean[] lambdaSuccessfullyRan = {false};
+        Integer intResult = PyLib.ensureGil(() -> {
+            assertTrue(PyLib.hasGil());
+            lambdaSuccessfullyRan[0] = true;
+            return 123;
+        });
+        assertEquals((Integer) 123, intResult);
+        assertTrue(lambdaSuccessfullyRan[0]);
+
+        try {
+            Object result = PyLib.ensureGil(() -> {
+                throw new IllegalStateException("Error from inside GIL block");
+            });
+            fail("Exception expected");
+        } catch (IllegalStateException expectedException) {
+            assertEquals("Error from inside GIL block", expectedException.getMessage());
+        } // let anything else rethrow as a failure
     }
 
     private static String readResource(String name) {

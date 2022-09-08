@@ -1,10 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit ImmutableCharArraySource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
- */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
  */
 package io.deephaven.engine.table.impl.sources.immutable;
 
@@ -14,7 +14,7 @@ import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.engine.table.WritableColumnSource;
-import io.deephaven.engine.table.WritableSourceWithEnsurePrevious;
+import io.deephaven.engine.table.WritableSourceWithPrepareForParallelPopulation;
 import io.deephaven.engine.table.impl.DefaultGetContext;
 import io.deephaven.engine.table.impl.ImmutableColumnSourceGetDefaults;
 import io.deephaven.engine.table.impl.sources.*;
@@ -37,7 +37,7 @@ import static io.deephaven.util.QueryConstants.NULL_FLOAT;
  *
  * If your size is greater than the maximum capacity of an array, prefer {@link Immutable2DFloatArraySource}.
  */
-public class ImmutableFloatArraySource extends AbstractDeferredGroupingColumnSource<Float> implements ImmutableColumnSourceGetDefaults.ForFloat, WritableColumnSource<Float>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithEnsurePrevious {
+public class ImmutableFloatArraySource extends AbstractDeferredGroupingColumnSource<Float> implements ImmutableColumnSourceGetDefaults.ForFloat, WritableColumnSource<Float>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithPrepareForParallelPopulation {
     private float[] data;
 
     // region constructor
@@ -64,16 +64,27 @@ public class ImmutableFloatArraySource extends AbstractDeferredGroupingColumnSou
     // endregion allocateArray
 
     @Override
-    public final float getFloat(long index) {
-        if (index < 0 || index >= data.length) {
+    public final float getFloat(long rowKey) {
+        if (rowKey < 0 || rowKey >= data.length) {
             return NULL_FLOAT;
         }
 
-        return getUnsafe(index);
+        return getUnsafe(rowKey);
     }
 
     public final float getUnsafe(long index) {
         return data[(int)index];
+    }
+
+    public final float getAndSetUnsafe(long index, float newValue) {
+        float oldValue = data[(int)index];
+        data[(int)index] = newValue;
+        return oldValue;
+    }
+
+    @Override
+    public final void setNull(long key) {
+        data[(int)key] = NULL_FLOAT;
     }
 
     @Override
@@ -222,7 +233,7 @@ public class ImmutableFloatArraySource extends AbstractDeferredGroupingColumnSou
     }
 
     @Override
-    public void ensurePrevious(RowSet rowSet) {
+    public void prepareForParallelPopulation(RowSet rowSet) {
         // we don't track previous values, so we don't care to do any work
     }
 

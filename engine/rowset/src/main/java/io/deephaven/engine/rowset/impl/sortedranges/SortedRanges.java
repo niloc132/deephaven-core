@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.rowset.impl.sortedranges;
 
 import io.deephaven.base.verify.Assert;
@@ -455,6 +458,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
 
     private static final class Iterator implements RowSet.Iterator {
         private int nextRangeIdx = 0;
+        private long nextValue;
         private long rangeCurr = -1;
         private long rangeEnd = -1;
         private SortedRanges sar;
@@ -466,6 +470,8 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
             }
             sar.acquire();
             this.sar = sar;
+            // preload the cached value for the first call, reload after every change to `nextRangeIdx`
+            nextValue = sar.unpackedGet(nextRangeIdx);
         }
 
         @Override
@@ -482,18 +488,21 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         }
 
         private void nextRange() {
-            rangeCurr = sar.unpackedGet(nextRangeIdx);
+            rangeCurr = nextValue;
             if (++nextRangeIdx == sar.count) {
                 rangeEnd = rangeCurr;
                 close();
                 return;
             }
-            final long after = sar.unpackedGet(nextRangeIdx);
-            if (after < 0) {
-                rangeEnd = -after;
+            // this is the "hot" path for which we are optimizing
+            nextValue = sar.unpackedGet(nextRangeIdx);
+            if (nextValue < 0) {
+                rangeEnd = -nextValue;
                 ++nextRangeIdx;
                 if (nextRangeIdx == sar.count) {
                     close();
+                } else {
+                    nextValue = sar.unpackedGet(nextRangeIdx);
                 }
             } else {
                 rangeEnd = rangeCurr;
@@ -515,6 +524,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
 
     private static class RangeIteratorBase {
         protected int nextRangeIdx = 0;
+        protected long nextValue;
         protected long currRangeStart = -1;
         protected long currRangeEnd = -1;
         protected SortedRanges sar;
@@ -526,21 +536,25 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
             }
             sar.acquire();
             this.sar = sar;
+            nextValue = sar.unpackedGet(nextRangeIdx);
         }
 
         protected final void nextRange() {
-            currRangeStart = sar.unpackedGet(nextRangeIdx);
+            currRangeStart = nextValue;
             if (++nextRangeIdx == sar.count) {
                 currRangeEnd = currRangeStart;
                 closeImpl();
                 return;
             }
-            final long after = sar.unpackedGet(nextRangeIdx);
-            if (after < 0) {
-                currRangeEnd = -after;
+            // this is the "hot" path for which we are optimizing
+            nextValue = sar.unpackedGet(nextRangeIdx);
+            if (nextValue < 0) {
+                currRangeEnd = -nextValue;
                 ++nextRangeIdx;
                 if (nextRangeIdx == sar.count) {
                     closeImpl();
+                } else {
+                    nextValue = sar.unpackedGet(nextRangeIdx);
                 }
                 return;
             }
@@ -587,14 +601,18 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
                 nextRangeIdx = sar.count;
                 return true;
             }
-            final long after = sar.unpackedGet(p);
-            if (after < 0) {
-                currRangeEnd = -after;
+            nextValue = sar.unpackedGet(p);
+            if (nextValue < 0) {
+                currRangeEnd = -nextValue;
                 nextRangeIdx = p + 1;
+                if (nextRangeIdx < sar.count) {
+                    nextValue = sar.unpackedGet(nextRangeIdx);
+                }
                 return true;
             }
             currRangeEnd = currRangeStart;
             nextRangeIdx = p;
+            nextValue = sar.unpackedGet(nextRangeIdx);
             return true;
         }
 
@@ -790,6 +808,9 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
             if (neg) {
                 currRangeStart = currRangeEnd = -data;
                 nextRangeIdx = i + 1;
+                if (nextRangeIdx < sar.count) {
+                    nextValue = sar.unpackedGet(nextRangeIdx);
+                }
                 return currRangeStart;
             }
             final int next = i + 1;
@@ -806,10 +827,14 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
                         (final long v) -> comp.compareTargetTo(v, dir));
                 currRangeEnd = -nextData;
                 nextRangeIdx = next + 1;
+                if (nextRangeIdx < sar.count) {
+                    nextValue = sar.unpackedGet(nextRangeIdx);
+                }
                 return currRangeStart;
             }
             currRangeStart = currRangeEnd = data;
             nextRangeIdx = next;
+            nextValue = sar.unpackedGet(nextRangeIdx);
             return currRangeStart;
         }
     }
@@ -1364,7 +1389,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
             builder.appendRange(start, end);
             return true;
         });
-        return builder.getTreeIndexImpl();
+        return builder.getOrderedLongSet();
     }
 
     public static boolean isDenseShort(final short[] data, final int count) {
@@ -1403,7 +1428,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         return !isDense();
     }
 
-    private static OrderedLongSet makeTreeIndexImplFromLongRangesArray(
+    private static OrderedLongSet makeOrderedLongSetFromLongRangesArray(
             final long[] ranges, final int count, final long card, final SortedRanges out) {
         if (count == 0) {
             return OrderedLongSet.EMPTY;
@@ -1731,7 +1756,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         if (sr == null) {
             return toRsp().ixRetain(tix);
         }
-        return makeTreeIndexImplFromLongRangesArray(sr.data, sr.count, sr.cardinality, this);
+        return makeOrderedLongSetFromLongRangesArray(sr.data, sr.count, sr.cardinality, this);
     }
 
     private static boolean retainLegacy(final MutableObject<SortedRanges> sarOut, final OrderedLongSet tix) {
@@ -1792,7 +1817,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         if (sr == null) {
             return null;
         }
-        return makeTreeIndexImplFromLongRangesArray(sr.data, sr.count, sr.cardinality, null);
+        return makeOrderedLongSetFromLongRangesArray(sr.data, sr.count, sr.cardinality, null);
     }
 
     public final int count() {
@@ -1829,7 +1854,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         if (sr == null) {
             return null;
         }
-        return makeTreeIndexImplFromLongRangesArray(sr.data, sr.count, sr.cardinality, null);
+        return makeOrderedLongSetFromLongRangesArray(sr.data, sr.count, sr.cardinality, null);
     }
 
     private SortedRanges minusOnNewLegacy(final RowSet.RangeIterator ritOther) {
@@ -1956,7 +1981,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         if (sr == null) {
             return null;
         }
-        return makeTreeIndexImplFromLongRangesArray(sr.data, sr.count, sr.cardinality, null);
+        return makeOrderedLongSetFromLongRangesArray(sr.data, sr.count, sr.cardinality, null);
     }
 
     public static SortedRanges unionOnNewLegacy(final SortedRanges sar, final SortedRanges otherSar) {
@@ -2072,12 +2097,12 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         } else {
             final SortedRangesLong sr = union(this, other);
             if (sr != null) {
-                return makeTreeIndexImplFromLongRangesArray(sr.data, sr.count, sr.cardinality,
+                return makeOrderedLongSetFromLongRangesArray(sr.data, sr.count, sr.cardinality,
                         (!writeCheck || canWrite()) ? this : null);
             }
         }
         final RspBitmap rb = ixToRspOnNew();
-        rb.insertTreeIndexUnsafeNoWriteCheck(other);
+        rb.insertOrderedLongSetUnsafeNoWriteCheck(other);
         rb.finishMutations();
         return rb;
     }
@@ -3063,7 +3088,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
     protected abstract SortedRanges checkSizeAndMoveData(
             final int srcPos, final int dstPos, final int len, final long first, boolean writeCheck);
 
-    // Note the returned SortedRangesTreeIndexImpl might have a different offset.
+    // Note the returned SortedRangesOrderedLongSet might have a different offset.
     // packedData >= 0 on entry.
     private SortedRanges open(final int pos, final long packedData, final boolean writeCheck) {
         final long first = (pos == 0) ? unpack(packedData) : first();
@@ -3083,7 +3108,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         return ans;
     }
 
-    // Note the returned SortedRangesTreeIndexImpl might have a different offset.
+    // Note the returned SortedRangesOrderedLongSet might have a different offset.
     // packedData < 0 on entry.
     private SortedRanges openNeg(final int pos, final long packedData, final boolean writeCheck) {
         final long offset = unpack(0);
@@ -3102,7 +3127,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         return ans;
     }
 
-    // Note the returned SortedRangesTreeIndexImpl might have a different offset.
+    // Note the returned SortedRangesOrderedLongSet might have a different offset.
     // packedData1 > 0 && packedData2 < 0 on entry.
     private SortedRanges open(final int pos, final long packedData1, final long packedData2, final boolean writeCheck) {
         final long first = (pos == 0) ? unpack(packedData1) : first();
@@ -3124,7 +3149,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         return ans;
     }
 
-    // Note the returned SortedRangesTreeIndexImpl might have a different offset.
+    // Note the returned SortedRangesOrderedLongSet might have a different offset.
     // packedData1 < 0 && packedData2 > 0 on entry.
     private SortedRanges openNeg(final int pos, final long packedData1, final long packedData2,
             final boolean writeCheck) {
@@ -3146,7 +3171,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         return ans;
     }
 
-    // Note the returned SortedRangesTreeIndexImpl might have a different offset.
+    // Note the returned SortedRangesOrderedLongSet might have a different offset.
     // packedData1 >= 0 && packedData2 < 0 on entry.
     private SortedRanges open2(final int pos, final long packedData1, final long packedData2,
             final boolean writeCheck) {
@@ -3169,7 +3194,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         return ans;
     }
 
-    // Note the returned SortedRangesTreeIndexImpl might have a different offset.
+    // Note the returned SortedRangesOrderedLongSet might have a different offset.
     // packedData1 < 0 && packedData2 > 0 on entry.
     private SortedRanges open2Neg(final int pos, final long packedData1, final long packedData2,
             final boolean writeCheck) {
@@ -4650,7 +4675,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         if (sr == null) {
             return null;
         }
-        return makeTreeIndexImplFromLongRangesArray(sr.data, sr.count, sr.cardinality, canWrite() ? this : null);
+        return makeOrderedLongSetFromLongRangesArray(sr.data, sr.count, sr.cardinality, canWrite() ? this : null);
     }
 
     @Override
@@ -4903,7 +4928,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
         }
         RspBitmap rsp = (RspBitmap) other;
         rsp = rsp.applyOffsetOnNew(shiftAmount);
-        rsp.insertTreeIndexUnsafeNoWriteCheck(this);
+        rsp.insertOrderedLongSetUnsafeNoWriteCheck(this);
         rsp.finishMutations();
         return rsp;
     }
@@ -4998,7 +5023,7 @@ public abstract class SortedRanges extends RefCountedCow<SortedRanges> implement
             final RowSet.RangeIterator rit = keys.ixRangeIterator();
             final OrderedLongSetBuilderSequential builder = new OrderedLongSetBuilderSequential();
             if (invertOnNew(rit, builder, maxPosition)) {
-                return builder.getTreeIndexImpl();
+                return builder.getOrderedLongSet();
             }
         }
         throw new IllegalArgumentException("keys argument has elements not in the rowSet");

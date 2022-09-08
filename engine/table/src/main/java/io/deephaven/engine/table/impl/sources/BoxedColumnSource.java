@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.base.verify.Assert;
@@ -28,10 +31,10 @@ public abstract class BoxedColumnSource<DATA_TYPE> extends AbstractColumnSource<
     }
 
     @Override
-    public abstract DATA_TYPE get(long index);
+    public abstract DATA_TYPE get(long rowKey);
 
     @Override
-    public abstract DATA_TYPE getPrev(long index);
+    public abstract DATA_TYPE getPrev(long rowKey);
 
     abstract void transformChunk(@NotNull final Chunk<? extends Values> source,
             @NotNull final WritableChunk<? super Values> destination);
@@ -97,13 +100,13 @@ public abstract class BoxedColumnSource<DATA_TYPE> extends AbstractColumnSource<
         }
 
         @Override
-        public final Boolean get(final long index) {
-            return BooleanUtils.byteAsBoolean(originalSource.getByte(index));
+        public final Boolean get(final long rowKey) {
+            return BooleanUtils.byteAsBoolean(originalSource.getByte(rowKey));
         }
 
         @Override
-        public final Boolean getPrev(final long index) {
-            return BooleanUtils.byteAsBoolean(originalSource.getPrevByte(index));
+        public final Boolean getPrev(final long rowKey) {
+            return BooleanUtils.byteAsBoolean(originalSource.getPrevByte(rowKey));
         }
 
         @Override
@@ -128,13 +131,13 @@ public abstract class BoxedColumnSource<DATA_TYPE> extends AbstractColumnSource<
         }
 
         @Override
-        public final DateTime get(final long index) {
-            return DateTimeUtils.nanosToTime(originalSource.getLong(index));
+        public final DateTime get(final long rowKey) {
+            return DateTimeUtils.nanosToTime(originalSource.getLong(rowKey));
         }
 
         @Override
-        public final DateTime getPrev(final long index) {
-            return DateTimeUtils.nanosToTime(originalSource.getPrevLong(index));
+        public final DateTime getPrev(final long rowKey) {
+            return DateTimeUtils.nanosToTime(originalSource.getPrevLong(rowKey));
         }
 
         @Override

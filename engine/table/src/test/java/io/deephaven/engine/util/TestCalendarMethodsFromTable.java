@@ -1,9 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.util;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.lang.QueryLibrary;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.time.DateTime;
 import io.deephaven.time.DateTimeUtils;
 import io.deephaven.time.calendar.BusinessCalendar;
@@ -46,8 +49,8 @@ public class TestCalendarMethodsFromTable extends BaseArrayTestCase {
     // test to make sure these methods work inside the query strings
     // previous clash with DateTimeUtils
     public void testCalendarMethodsTable() {
-        if (!QueryLibrary.getStaticImports().contains(StaticCalendarMethods.class)) {
-            QueryLibrary.importStatic(StaticCalendarMethods.class);
+        if (!ExecutionContext.getContext().getQueryLibrary().getStaticImports().contains(StaticCalendarMethods.class)) {
+            ExecutionContext.getContext().getQueryLibrary().importStatic(StaticCalendarMethods.class);
         }
         QueryScope.addParam("time1", time1);
         QueryScope.addParam("time2", time2);
@@ -117,8 +120,8 @@ public class TestCalendarMethodsFromTable extends BaseArrayTestCase {
 
     public void testBusinessCalendarMethodsTable() {
 
-        if (!QueryLibrary.getStaticImports().contains(StaticCalendarMethods.class)) {
-            QueryLibrary.importStatic(StaticCalendarMethods.class);
+        if (!ExecutionContext.getContext().getQueryLibrary().getStaticImports().contains(StaticCalendarMethods.class)) {
+            ExecutionContext.getContext().getQueryLibrary().importStatic(StaticCalendarMethods.class);
         }
         final LocalDate localDate = LocalDate.now();
         QueryScope.addParam("localDate", localDate);

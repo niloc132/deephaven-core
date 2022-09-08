@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.server.table;
 
 import com.google.rpc.Code;
@@ -137,7 +136,7 @@ public class ExportedTableUpdateListener implements StreamObserver<ExportNotific
         updateListenerMap.put(exportId, listener);
 
         final MutableLong initSize = new MutableLong();
-        table.initializeWithSnapshot(logPrefix, swapListener, (usePrev, beforeClockValue) -> {
+        BaseTable.initializeWithSnapshot(logPrefix, swapListener, (usePrev, beforeClockValue) -> {
             swapListener.setListenerAndResult(listener, NOOP_NOTIFICATION_STEP_RECEIVER);
             final TrackingRowSet rowSet = table.getRowSet();
             initSize.setValue(usePrev ? rowSet.sizePrev() : rowSet.size());

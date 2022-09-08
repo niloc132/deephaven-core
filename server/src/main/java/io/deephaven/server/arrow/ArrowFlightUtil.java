@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.server.arrow;
 
 import com.google.flatbuffers.FlatBufferBuilder;
@@ -9,20 +12,20 @@ import gnu.trove.iterator.TLongIterator;
 import gnu.trove.list.array.TLongArrayList;
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.barrage.flatbuf.BarrageMessageType;
-import io.deephaven.barrage.flatbuf.BarrageMessageWrapper;
 import io.deephaven.barrage.flatbuf.BarrageSnapshotRequest;
 import io.deephaven.barrage.flatbuf.BarrageSubscriptionRequest;
 import io.deephaven.chunk.ChunkType;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.liveness.SingletonLivenessManager;
-import io.deephaven.engine.rowset.RowSet;
-import io.deephaven.engine.rowset.RowSetFactory;
-import io.deephaven.engine.rowset.RowSetShiftData;
+import io.deephaven.engine.rowset.*;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.BaseTable;
 import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.remote.ConstructSnapshot;
 import io.deephaven.engine.table.impl.util.BarrageMessage;
+import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.extensions.barrage.BarragePerformanceLog;
+import io.deephaven.extensions.barrage.BarrageSnapshotOptions;
 import io.deephaven.extensions.barrage.BarrageSubscriptionOptions;
 import io.deephaven.extensions.barrage.chunk.ChunkInputStreamGenerator;
 import io.deephaven.extensions.barrage.table.BarrageTable;
@@ -44,20 +47,21 @@ import org.apache.arrow.flatbuf.MessageHeader;
 import org.apache.arrow.flatbuf.RecordBatch;
 import org.apache.arrow.flatbuf.Schema;
 import org.apache.arrow.flight.impl.Flight;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import javax.validation.constraints.NotNull;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayDeque;
-import java.util.BitSet;
-import java.util.Iterator;
-import java.util.Queue;
+import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static io.deephaven.extensions.barrage.util.BarrageProtoUtil.DEFAULT_SER_OPTIONS;
 import static io.deephaven.server.arrow.FlightServiceGrpcImpl.DEFAULT_SNAPSHOT_DESER_OPTIONS;
+import static io.deephaven.server.barrage.BarrageMessageProducer.*;
+import static io.deephaven.server.barrage.BarrageMessageProducer.TARGET_SNAPSHOT_PERCENTAGE;
 
 public class ArrowFlightUtil {
     private static final Logger log = LoggerFactory.getLogger(ArrowFlightUtil.class);
@@ -67,18 +71,198 @@ public class ArrowFlightUtil {
 
     static final BarrageMessage.ModColumnData[] ZERO_MOD_COLUMNS = new BarrageMessage.ModColumnData[0];
 
+    public static void DoGetCustom(@Nullable final ScheduledExecutorService executorService,
+            final SessionState session,
+            final TicketRouter ticketRouter,
+            final Flight.Ticket request,
+            final StreamObserver<InputStream> observer) {
+
+        final SessionState.ExportObject<BaseTable> export =
+                ticketRouter.resolve(session, request, "request");
+
+        final BarragePerformanceLog.SnapshotMetricsHelper metrics =
+                new BarragePerformanceLog.SnapshotMetricsHelper();
+
+        final long queueStartTm = System.nanoTime();
+        session.nonExport()
+                .require(export)
+                .onError(observer)
+                .submit(() -> {
+                    metrics.queueNanos = System.nanoTime() - queueStartTm;
+                    final BaseTable table = export.get();
+                    metrics.tableId = Integer.toHexString(System.identityHashCode(table));
+                    metrics.tableKey = BarragePerformanceLog.getKeyFor(table);
+
+                    // create an adapter for the response observer
+                    final StreamObserver<BarrageStreamGenerator.View> listener =
+                            ArrowModule.provideListenerAdapter().adapt(observer);
+
+                    // Send Schema wrapped in Message
+                    final FlatBufferBuilder builder = new FlatBufferBuilder();
+                    final int schemaOffset = BarrageUtil.makeSchemaPayload(builder, table.getDefinition(),
+                            table.getAttributes());
+                    builder.finish(MessageHelper.wrapInMessage(builder, schemaOffset,
+                            org.apache.arrow.flatbuf.MessageHeader.Schema));
+                    final ByteBuffer serializedMessage = builder.dataBuffer();
+
+                    // leverage the stream generator SchemaView constructor
+                    final BarrageStreamGenerator.SchemaView schemaView =
+                            new BarrageStreamGenerator.SchemaView(serializedMessage);
+
+                    // push the schema to the listener
+                    listener.onNext(schemaView);
+
+                    // shared code between `DoGet` and `BarrageSnapshotRequest`
+                    createAndSendSnapshot(table, null, null, false, DEFAULT_SNAPSHOT_DESER_OPTIONS, listener, metrics);
+
+                    listener.onCompleted();
+                });
+    }
+
+
+    private static void createAndSendStaticSnapshot(BaseTable table, BitSet columns, RowSet viewport,
+            boolean reverseViewport, BarrageSnapshotOptions snapshotRequestOptions,
+            StreamObserver<BarrageStreamGenerator.View> listener, BarragePerformanceLog.SnapshotMetricsHelper metrics) {
+        // start with small value and grow
+        long snapshotTargetCellCount = MIN_SNAPSHOT_CELL_COUNT;
+        double snapshotNanosPerCell = 0.0;
+
+        final long columnCount =
+                Math.max(1, columns != null ? columns.cardinality() : table.getDefinition().getColumns().size());
+
+        try (final WritableRowSet snapshotViewport = RowSetFactory.empty();
+                final WritableRowSet targetViewport = RowSetFactory.empty()) {
+            // compute the target viewport
+            if (viewport == null) {
+                targetViewport.insertRange(0, table.size() - 1);
+            } else if (!reverseViewport) {
+                targetViewport.insert(viewport);
+            } else {
+                // compute the forward version of the reverse viewport
+                try (final RowSet rowKeys = table.getRowSet().subSetForReversePositions(viewport);
+                        final RowSet inverted = table.getRowSet().invert(rowKeys)) {
+                    targetViewport.insert(inverted);
+                }
+            }
+
+            try (final RowSequence.Iterator rsIt = targetViewport.getRowSequenceIterator()) {
+                while (rsIt.hasMore()) {
+                    // compute the next range to snapshot
+                    final long cellCount =
+                            Math.max(MIN_SNAPSHOT_CELL_COUNT,
+                                    Math.min(snapshotTargetCellCount, MAX_SNAPSHOT_CELL_COUNT));
+
+                    final RowSequence snapshotPartialViewport = rsIt.getNextRowSequenceWithLength(cellCount);
+                    // add these ranges to the running total
+                    snapshotPartialViewport.forEachRowKeyRange((start, end) -> {
+                        snapshotViewport.insertRange(start, end);
+                        return true;
+                    });
+
+                    // grab the snapshot and measure elapsed time for next projections
+                    long start = System.nanoTime();
+                    final BarrageMessage msg =
+                            ConstructSnapshot.constructBackplaneSnapshotInPositionSpace(log, table,
+                                    columns, snapshotPartialViewport, null);
+                    msg.modColumnData = ZERO_MOD_COLUMNS; // no mod column data for DoGet
+                    long elapsed = System.nanoTime() - start;
+                    // accumulate snapshot time in the metrics
+                    metrics.snapshotNanos += elapsed;
+
+                    // send out the data. Note that although a `BarrageUpdateMetaData` object will
+                    // be provided with each unique snapshot, vanilla Flight clients will ignore
+                    // these and see only an incoming stream of batches
+                    try (final BarrageStreamGenerator bsg = new BarrageStreamGenerator(msg, metrics)) {
+                        if (rsIt.hasMore()) {
+                            listener.onNext(bsg.getSnapshotView(snapshotRequestOptions,
+                                    snapshotViewport, false,
+                                    msg.rowsIncluded, columns));
+                        } else {
+                            listener.onNext(bsg.getSnapshotView(snapshotRequestOptions,
+                                    viewport, reverseViewport,
+                                    msg.rowsIncluded, columns));
+                        }
+                    }
+
+                    if (msg.rowsIncluded.size() > 0) {
+                        // very simplistic logic to take the last snapshot and extrapolate max
+                        // number of rows that will not exceed the target UGP processing time
+                        // percentage
+                        long targetNanos = (long) (TARGET_SNAPSHOT_PERCENTAGE
+                                * UpdateGraphProcessor.DEFAULT.getTargetCycleDurationMillis()
+                                * 1000000);
+
+                        long nanosPerCell = elapsed / (msg.rowsIncluded.size() * columnCount);
+
+                        // apply an exponential moving average to filter the data
+                        if (snapshotNanosPerCell == 0) {
+                            snapshotNanosPerCell = nanosPerCell; // initialize to first value
+                        } else {
+                            // EMA smoothing factor is 0.1 (N = 10)
+                            snapshotNanosPerCell =
+                                    (snapshotNanosPerCell * 0.9) + (nanosPerCell * 0.1);
+                        }
+
+                        snapshotTargetCellCount =
+                                (long) (targetNanos / Math.max(1, snapshotNanosPerCell));
+                    }
+                }
+            }
+        }
+    }
+
+    private static void createAndSendSnapshot(BaseTable table, BitSet columns, RowSet viewport, boolean reverseViewport,
+            BarrageSnapshotOptions snapshotRequestOptions, StreamObserver<BarrageStreamGenerator.View> listener,
+            BarragePerformanceLog.SnapshotMetricsHelper metrics) {
+
+        // if the table is static and a full snapshot is requested, we can make and send multiple
+        // snapshots to save memory and operate more efficiently
+        if (!table.isRefreshing()) {
+            createAndSendStaticSnapshot(table, columns, viewport, reverseViewport, snapshotRequestOptions, listener,
+                    metrics);
+            return;
+        }
+
+        // otherwise snapshot the entire request and send to the client
+        final BarrageMessage msg;
+
+        final long snapshotStartTm = System.nanoTime();
+        if (reverseViewport) {
+            msg = ConstructSnapshot.constructBackplaneSnapshotInPositionSpace(log, table,
+                    columns, null, viewport);
+        } else {
+            msg = ConstructSnapshot.constructBackplaneSnapshotInPositionSpace(log, table,
+                    columns, viewport, null);
+        }
+        metrics.snapshotNanos = System.nanoTime() - snapshotStartTm;
+
+        msg.modColumnData = ZERO_MOD_COLUMNS; // no mod column data
+
+        // translate the viewport to keyspace and make the call
+        try (final BarrageStreamGenerator bsg = new BarrageStreamGenerator(msg, metrics);
+                final RowSet keySpaceViewport =
+                        viewport != null
+                                ? msg.rowsAdded.subSetForPositions(viewport, reverseViewport)
+                                : null) {
+            listener.onNext(
+                    bsg.getSnapshotView(snapshotRequestOptions, viewport,
+                            reverseViewport, keySpaceViewport, columns));
+        }
+    }
+
     /**
      * This is a stateful observer; a DoPut stream begins with its schema.
      */
-    public static class DoPutObserver extends SingletonLivenessManager
-            implements StreamObserver<InputStream>, Closeable {
+    public static class DoPutObserver implements StreamObserver<InputStream>, Closeable {
 
+        private final ScheduledExecutorService executorService;
         private final SessionState session;
         private final TicketRouter ticketRouter;
         private final StreamObserver<Flight.PutResult> observer;
 
         private BarrageTable resultTable;
         private SessionState.ExportBuilder<Table> resultExportBuilder;
+        private Flight.FlightDescriptor flightDescriptor;
 
         private ChunkType[] columnChunkTypes;
         private int[] columnConversionFactors;
@@ -88,9 +272,11 @@ public class ArrowFlightUtil {
         private BarrageSubscriptionOptions options = DEFAULT_SER_OPTIONS;
 
         public DoPutObserver(
+                @Nullable final ScheduledExecutorService executorService,
                 final SessionState session,
                 final TicketRouter ticketRouter,
                 final StreamObserver<Flight.PutResult> observer) {
+            this.executorService = executorService;
             this.session = session;
             this.ticketRouter = ticketRouter;
             this.observer = observer;
@@ -107,14 +293,17 @@ public class ArrowFlightUtil {
             GrpcUtil.rpcWrapper(log, observer, () -> {
                 final BarrageProtoUtil.MessageInfo mi = BarrageProtoUtil.parseProtoMessage(request);
                 if (mi.descriptor != null) {
-                    if (resultExportBuilder != null) {
-                        throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                                "Only one descriptor definition allowed");
+                    if (flightDescriptor != null) {
+                        if (!flightDescriptor.equals(mi.descriptor)) {
+                            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                                    "additional flight descriptor sent does not match original descriptor");
+                        }
+                    } else {
+                        flightDescriptor = mi.descriptor;
+                        resultExportBuilder = ticketRouter
+                                .<Table>publish(session, mi.descriptor, "Flight.Descriptor")
+                                .onError(observer);
                     }
-                    resultExportBuilder = ticketRouter
-                            .<Table>publish(session, mi.descriptor, "Flight.Descriptor")
-                            .onError(observer);
-                    manage(resultExportBuilder.getExport());
                 }
 
                 if (mi.app_metadata != null
@@ -169,16 +358,17 @@ public class ArrowFlightUtil {
                 for (int ci = 0; ci < numColumns; ++ci) {
                     final BarrageMessage.AddColumnData acd = new BarrageMessage.AddColumnData();
                     msg.addColumnData[ci] = acd;
+                    msg.addColumnData[ci].data = new ArrayList<>();
                     final int factor = (columnConversionFactors == null) ? 1 : columnConversionFactors[ci];
                     try {
-                        acd.data = ChunkInputStreamGenerator.extractChunkFromInputStream(options, factor,
+                        acd.data.add(ChunkInputStreamGenerator.extractChunkFromInputStream(options, factor,
                                 columnChunkTypes[ci], columnTypes[ci], componentTypes[ci], fieldNodeIter,
-                                bufferInfoIter, mi.inputStream);
+                                bufferInfoIter, mi.inputStream, null, 0, 0));
                     } catch (final IOException unexpected) {
                         throw new UncheckedDeephavenException(unexpected);
                     }
 
-                    if (acd.data.size() != numRowsAdded) {
+                    if (acd.data.get(0).size() != numRowsAdded) {
                         throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
                                 "Inconsistent num records per column: " + numRowsAdded + " != " + acd.data.size());
                     }
@@ -210,6 +400,8 @@ public class ArrowFlightUtil {
                 });
                 resultExportBuilder = null;
             }
+
+            session.removeOnCloseCallback(this);
         }
 
         @Override
@@ -226,6 +418,8 @@ public class ArrowFlightUtil {
                 });
                 resultExportBuilder = null;
             }
+
+            session.removeOnCloseCallback(this);
         }
 
         public void onCompleted() {
@@ -238,16 +432,31 @@ public class ArrowFlightUtil {
                     throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Result flight schema never provided");
                 }
 
+                final BarrageTable localResultTable = resultTable;
+                resultTable = null;
+                final SessionState.ExportBuilder<Table> localExportBuilder = resultExportBuilder;
+                resultExportBuilder = null;
+
+
+                // gRPC is about to remove its hard reference to this observer. We must keep the result table hard
+                // referenced until the export is complete, so that the export can properly be satisfied. ExportObject's
+                // LivenessManager enforces strong reachability.
+                if (!localExportBuilder.getExport().tryManage(localResultTable)) {
+                    GrpcUtil.safelyError(observer, Code.DATA_LOSS, "Result export already destroyed");
+                    localResultTable.dropReference();
+                    session.removeOnCloseCallback(this);
+                    return;
+                }
+                localResultTable.dropReference();
+
                 // no more changes allowed; this is officially static content
-                resultTable.sealTable(() -> resultExportBuilder.submit(() -> {
-                    // transfer ownership to submit's liveness scope, drop our extra reference
-                    resultTable.manageWithCurrentScope();
-                    resultTable.dropReference();
+                localResultTable.sealTable(() -> localExportBuilder.submit(() -> {
                     GrpcUtil.safelyExecuteLocked(observer, observer::onCompleted);
-                    return resultTable;
+                    session.removeOnCloseCallback(this);
+                    return localResultTable;
                 }), () -> {
                     GrpcUtil.safelyError(observer, Code.DATA_LOSS, "Do put could not be sealed");
-                    resultExportBuilder = null;
+                    session.removeOnCloseCallback(this);
                 });
             });
         }
@@ -255,7 +464,6 @@ public class ArrowFlightUtil {
         @Override
         public void close() {
             // close() is intended to be invoked only though session expiration
-            release();
             GrpcUtil.safelyError(observer, Code.UNAUTHENTICATED, "Session expired");
         }
 
@@ -265,7 +473,7 @@ public class ArrowFlightUtil {
             }
 
             final BarrageUtil.ConvertedArrowSchema result = BarrageUtil.convertArrowSchema(header);
-            resultTable = BarrageTable.make(result.tableDef, false);
+            resultTable = BarrageTable.make(executorService, result.tableDef, result.attributes, -1);
             columnConversionFactors = result.conversionFactors;
             columnChunkTypes = resultTable.getWireChunkTypes();
             columnTypes = resultTable.getWireTypes();
@@ -293,8 +501,6 @@ public class ArrowFlightUtil {
         private final String myPrefix;
         private final SessionState session;
 
-        private boolean isViewport;
-
         private final StreamObserver<BarrageStreamGenerator.View> listener;
 
         private boolean isClosed = false;
@@ -303,7 +509,8 @@ public class ArrowFlightUtil {
 
         private final TicketRouter ticketRouter;
         private final BarrageMessageProducer.Operation.Factory<BarrageStreamGenerator.View> operationFactory;
-        private final BarrageMessageProducer.Adapter<BarrageSubscriptionRequest, BarrageSubscriptionOptions> optionsAdapter;
+        private final BarrageMessageProducer.Adapter<BarrageSubscriptionRequest, BarrageSubscriptionOptions> subscriptionOptAdapter;
+        private final BarrageMessageProducer.Adapter<BarrageSnapshotRequest, BarrageSnapshotOptions> snapshotOptAdapter;
 
         /**
          * Interface for the individual handlers for the DoExchange.
@@ -319,13 +526,15 @@ public class ArrowFlightUtil {
                 final TicketRouter ticketRouter,
                 final BarrageMessageProducer.Operation.Factory<BarrageStreamGenerator.View> operationFactory,
                 final BarrageMessageProducer.Adapter<StreamObserver<InputStream>, StreamObserver<BarrageStreamGenerator.View>> listenerAdapter,
-                final BarrageMessageProducer.Adapter<BarrageSubscriptionRequest, BarrageSubscriptionOptions> optionsAdapter,
+                final BarrageMessageProducer.Adapter<BarrageSubscriptionRequest, BarrageSubscriptionOptions> subscriptionOptAdapter,
+                final BarrageMessageProducer.Adapter<BarrageSnapshotRequest, BarrageSnapshotOptions> snapshotOptAdapter,
                 @Assisted final SessionState session, @Assisted final StreamObserver<InputStream> responseObserver) {
 
             this.myPrefix = "DoExchangeMarshaller{" + Integer.toHexString(System.identityHashCode(this)) + "}: ";
             this.ticketRouter = ticketRouter;
             this.operationFactory = operationFactory;
-            this.optionsAdapter = optionsAdapter;
+            this.subscriptionOptAdapter = subscriptionOptAdapter;
+            this.snapshotOptAdapter = snapshotOptAdapter;
             this.session = session;
             this.listener = listenerAdapter.adapt(responseObserver);
 
@@ -479,11 +688,18 @@ public class ArrowFlightUtil {
                     final SessionState.ExportObject<BaseTable> parent =
                             ticketRouter.resolve(session, snapshotRequest.ticketAsByteBuffer(), "ticket");
 
+                    final BarragePerformanceLog.SnapshotMetricsHelper metrics =
+                            new BarragePerformanceLog.SnapshotMetricsHelper();
+
+                    final long queueStartTm = System.nanoTime();
                     session.nonExport()
                             .require(parent)
                             .onError(listener)
                             .submit(() -> {
+                                metrics.queueNanos = System.nanoTime() - queueStartTm;
                                 final BaseTable table = parent.get();
+                                metrics.tableId = Integer.toHexString(System.identityHashCode(table));
+                                metrics.tableKey = BarragePerformanceLog.getKeyFor(table);
 
                                 // Send Schema wrapped in Message
                                 final FlatBufferBuilder builder = new FlatBufferBuilder();
@@ -513,27 +729,9 @@ public class ArrowFlightUtil {
 
                                 final boolean reverseViewport = snapshotRequest.reverseViewport();
 
-                                // get ourselves some data (reversing viewport as instructed)
-                                final BarrageMessage msg;
-                                if (reverseViewport) {
-                                    msg = ConstructSnapshot.constructBackplaneSnapshotInPositionSpace(this, table,
-                                            columns, null, viewport);
-                                } else {
-                                    msg = ConstructSnapshot.constructBackplaneSnapshotInPositionSpace(this, table,
-                                            columns, viewport, null);
-                                }
-                                msg.modColumnData = ZERO_MOD_COLUMNS; // no mod column data
-
-                                // translate the viewport to keyspace and make the call
-                                try (final BarrageStreamGenerator bsg = new BarrageStreamGenerator(msg);
-                                        final RowSet keySpaceViewport =
-                                                hasViewport
-                                                        ? msg.rowsAdded.subSetForPositions(viewport, reverseViewport)
-                                                        : null) {
-                                    listener.onNext(
-                                            bsg.getSnapshotView(DEFAULT_SNAPSHOT_DESER_OPTIONS, viewport,
-                                                    reverseViewport, keySpaceViewport, columns));
-                                }
+                                // leverage common code for `DoGet` and `BarrageSnapshotOptions`
+                                createAndSendSnapshot(table, columns, viewport, reverseViewport,
+                                        snapshotOptAdapter.adapt(snapshotRequest), listener, metrics);
 
                                 listener.onCompleted();
                             });
@@ -647,13 +845,13 @@ public class ArrowFlightUtil {
                 final BitSet columns =
                         hasColumns ? BitSet.valueOf(subscriptionRequest.columnsAsByteBuffer()) : null;
 
-                isViewport = subscriptionRequest.viewportVector() != null;
+                final boolean hasViewport = subscriptionRequest.viewportVector() != null;
                 final RowSet viewport =
-                        isViewport ? BarrageProtoUtil.toRowSet(subscriptionRequest.viewportAsByteBuffer()) : null;
+                        hasViewport ? BarrageProtoUtil.toRowSet(subscriptionRequest.viewportAsByteBuffer()) : null;
 
                 final boolean reverseViewport = subscriptionRequest.reverseViewport();
 
-                bmp.addSubscription(listener, optionsAdapter.adapt(subscriptionRequest), columns, viewport,
+                bmp.addSubscription(listener, subscriptionOptAdapter.adapt(subscriptionRequest), columns, viewport,
                         reverseViewport);
 
                 for (final BarrageSubscriptionRequest request : preExportSubscriptions) {
@@ -672,22 +870,16 @@ public class ArrowFlightUtil {
             private void apply(final BarrageSubscriptionRequest subscriptionRequest) {
                 final boolean hasColumns = subscriptionRequest.columnsVector() != null;
                 final BitSet columns =
-                        hasColumns ? BitSet.valueOf(subscriptionRequest.columnsAsByteBuffer()) : new BitSet();
+                        hasColumns ? BitSet.valueOf(subscriptionRequest.columnsAsByteBuffer()) : null;
 
                 final boolean hasViewport = subscriptionRequest.viewportVector() != null;
                 final RowSet viewport =
-                        isViewport ? BarrageProtoUtil.toRowSet(subscriptionRequest.viewportAsByteBuffer()) : null;
+                        hasViewport ? BarrageProtoUtil.toRowSet(subscriptionRequest.viewportAsByteBuffer()) : null;
 
-                final boolean subscriptionFound;
-                if (isViewport && hasColumns && hasViewport) {
-                    subscriptionFound = bmp.updateViewportAndColumns(listener, viewport, columns);
-                } else if (isViewport && hasViewport) {
-                    subscriptionFound = bmp.updateViewport(listener, viewport);
-                } else if (hasColumns) {
-                    subscriptionFound = bmp.updateSubscription(listener, columns);
-                } else {
-                    subscriptionFound = true;
-                }
+                final boolean reverseViewport = subscriptionRequest.reverseViewport();
+
+
+                final boolean subscriptionFound = bmp.updateSubscription(listener, viewport, columns, reverseViewport);
 
                 if (!subscriptionFound) {
                     throw GrpcUtil.statusRuntimeException(Code.NOT_FOUND, "Subscription was not found.");
@@ -695,7 +887,7 @@ public class ArrowFlightUtil {
             }
 
             @Override
-            public void close() {
+            public synchronized void close() {
                 if (onExportResolvedContinuation != null) {
                     onExportResolvedContinuation.cancel();
                     onExportResolvedContinuation = null;
@@ -704,6 +896,8 @@ public class ArrowFlightUtil {
                 if (bmp != null) {
                     bmp.removeSubscription(listener);
                     bmp = null;
+                } else {
+                    GrpcUtil.safelyExecuteLocked(listener, listener::onCompleted);
                 }
 
                 if (preExportSubscriptions != null) {
@@ -711,6 +905,5 @@ public class ArrowFlightUtil {
                 }
             }
         }
-
     }
 }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.server.table.ops;
 
 import com.google.rpc.Code;
@@ -44,9 +47,7 @@ public class TimeTableGrpcImpl extends GrpcTableOperation<TimeTableRequest> {
         Assert.eq(sourceTables.size(), "sourceTables.size()", 0);
         final long startTime = request.getStartTimeNanos();
         final long periodValue = request.getPeriodNanos();
-        final TimeTable timeTable =
-                new TimeTable(scheduler, startTime <= 0 ? null : DateTimeUtils.nanosToTime(startTime), periodValue);
-        updateGraphProcessor.addSource(timeTable);
-        return timeTable;
+        return new TimeTable(updateGraphProcessor, scheduler,
+                startTime <= 0 ? null : DateTimeUtils.nanosToTime(startTime), periodValue, false);
     }
 }

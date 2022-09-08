@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.util;
 
 import com.google.auto.service.AutoService;
@@ -12,11 +11,12 @@ import groovy.lang.MissingPropertyException;
 import io.deephaven.base.FileUtils;
 import io.deephaven.base.Pair;
 import io.deephaven.base.StringUtils;
-import io.deephaven.compilertools.CompilerTools;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.exceptions.CancellationException;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.api.util.NameValidator;
 import io.deephaven.engine.util.GroovyDeephavenSession.GroovySnapshot;
 import io.deephaven.engine.util.scripts.ScriptPathLoader;
@@ -55,11 +55,11 @@ import java.util.stream.StreamSupport;
 /**
  * Groovy {@link ScriptSession}. Not safe for concurrent use.
  */
-public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot> implements ScriptSession {
+public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot> {
     private static final Logger log = LoggerFactory.getLogger(GroovyDeephavenSession.class);
 
     public static final String SCRIPT_TYPE = "Groovy";
-    private static final String PACKAGE = CompilerTools.DYNAMIC_GROOVY_CLASS_PREFIX;
+    private static final String PACKAGE = QueryCompiler.DYNAMIC_GROOVY_CLASS_PREFIX;
     private static final String SCRIPT_PREFIX = "io.deephaven.engine.util.Script";
 
     private static final String DEFAULT_SCRIPT_PATH = Configuration.getInstance()
@@ -127,21 +127,22 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
     public GroovyDeephavenSession(ObjectTypeLookup objectTypeLookup, final RunScripts runScripts)
             throws IOException {
-        this(objectTypeLookup, null, runScripts, false);
+        this(objectTypeLookup, null, runScripts);
     }
 
     public GroovyDeephavenSession(
-            ObjectTypeLookup objectTypeLookup, @Nullable final Listener changeListener,
-            final RunScripts runScripts, boolean isDefaultScriptSession)
+            ObjectTypeLookup objectTypeLookup,
+            @Nullable final Listener changeListener,
+            final RunScripts runScripts)
             throws IOException {
-        super(objectTypeLookup, changeListener, isDefaultScriptSession);
+        super(objectTypeLookup, changeListener);
 
         this.scriptFinder = new ScriptFinder(DEFAULT_SCRIPT_PATH);
 
         groovyShell.setVariable("__groovySession", this);
         groovyShell.setVariable("DB_SCRIPT_PATH", DEFAULT_SCRIPT_PATH);
 
-        compilerContext.setParentClassLoader(getShell().getClassLoader());
+        executionContext.getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
 
         publishInitial();
 
@@ -520,6 +521,9 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
                 "import io.deephaven.api.filter.*;\n" +
                 "import io.deephaven.engine.table.DataColumn;\n" +
                 "import io.deephaven.engine.table.Table;\n" +
+                "import io.deephaven.engine.table.TableFactory;\n" +
+                "import io.deephaven.engine.table.PartitionedTable;\n" +
+                "import io.deephaven.engine.table.PartitionedTableFactory;\n" +
                 "import java.lang.reflect.Array;\n" +
                 "import io.deephaven.util.type.TypeUtils;\n" +
                 "import io.deephaven.util.type.ArrayTypeUtils;\n" +
@@ -529,8 +533,8 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
                 "import static io.deephaven.base.string.cache.CompressedString.compress;\n" +
                 "import org.joda.time.LocalTime;\n" +
                 "import io.deephaven.time.Period;\n" +
-                "import io.deephaven.engine.table.lang.QueryScopeParam;\n" +
-                "import io.deephaven.engine.table.lang.QueryScope;\n" +
+                "import io.deephaven.engine.context.QueryScopeParam;\n" +
+                "import io.deephaven.engine.context.QueryScope;\n" +
                 "import java.util.*;\n" +
                 "import java.lang.*;\n" +
                 "import static io.deephaven.util.QueryConstants.*;\n" +
@@ -539,13 +543,15 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
                 "import static io.deephaven.time.TimeZone.*;\n" +
                 "import static io.deephaven.engine.table.impl.lang.QueryLanguageFunctionUtils.*;\n" +
                 "import static io.deephaven.api.agg.Aggregation.*;\n" +
+                "import static io.deephaven.api.updateby.UpdateByOperation.*;\n" +
+
                 StringUtils.joinStrings(scriptImports, "\n") + "\n";
         return new Pair<>(commandPrefix, commandPrefix + command
                 + "\n\n// this final true prevents Groovy from interpreting a trailing class definition as something to execute\n;\ntrue;\n");
     }
 
     public static byte[] getDynamicClass(String name) {
-        return readClass(CompilerTools.getContext().getFakeClassDestination(), name);
+        return readClass(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination(), name);
     }
 
     private static byte[] readClass(final File rootDirectory, final String className) {
@@ -568,7 +574,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         } catch (RuntimeException e) {
             throw new GroovyExceptionWrapper(e);
         }
-        final File dynamicClassDestination = CompilerTools.getContext().getFakeClassDestination();
+        final File dynamicClassDestination = ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination();
         if (dynamicClassDestination == null) {
             return;
         }
@@ -592,11 +598,11 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
                 // only increment QueryLibrary version if some dynamic class overrides an existing class
                 if (!dynamicClasses.add(entry.getKey()) && !notifiedQueryLibrary) {
                     notifiedQueryLibrary = true;
-                    queryLibrary.updateVersionString();
+                    executionContext.getQueryLibrary().updateVersionString();
                 }
 
                 try {
-                    CompilerTools.writeClass(dynamicClassDestination, entry.getKey(), entry.getValue());
+                    QueryCompiler.writeClass(dynamicClassDestination, entry.getKey(), entry.getValue());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -634,7 +640,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     @Override
     protected GroovySnapshot takeSnapshot() {
         // noinspection unchecked,rawtypes
-        return new GroovySnapshot(new HashMap<>(groovyShell.getContext().getVariables()));
+        return new GroovySnapshot(new LinkedHashMap<>(groovyShell.getContext().getVariables()));
     }
 
     @Override
@@ -663,6 +669,11 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
         public GroovySnapshot(Map<String, Object> existingScope) {
             this.scope = Objects.requireNonNull(existingScope);
+        }
+
+        @Override
+        public void close() {
+            // no-op
         }
     }
 
@@ -704,7 +715,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     @Override
     public void onApplicationInitializationBegin(Supplier<ScriptPathLoader> pathLoaderSupplier,
             ScriptPathLoaderState scriptLoaderState) {
-        CompilerTools.getContext().setParentClassLoader(getShell().getClassLoader());
+        ExecutionContext.getContext().getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
         setScriptPathLoader(pathLoaderSupplier, true);
     }
 
@@ -754,7 +765,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
             }
         } else {
             log.warn().append("Incorrect closure type for query: ")
-                    .append(sourceClosure == null ? "(null)" : sourceClosure.getClass().toString()).endl();
+                    .append(sourceClosure.getClass().toString()).endl();
         }
 
         return false;

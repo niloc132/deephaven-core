@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
@@ -29,14 +28,14 @@ public class LongAsDateTimeColumnSource extends AbstractColumnSource<DateTime> i
     }
 
     @Override
-    public DateTime get(final long index) {
-        final long longValue = alternateColumnSource.getLong(index);
+    public DateTime get(final long rowKey) {
+        final long longValue = alternateColumnSource.getLong(rowKey);
         return DateTimeUtils.nanosToTime(longValue);
     }
 
     @Override
-    public DateTime getPrev(final long index) {
-        final long longValue = alternateColumnSource.getPrevLong(index);
+    public DateTime getPrev(final long rowKey) {
+        final long longValue = alternateColumnSource.getPrevLong(rowKey);
         return DateTimeUtils.nanosToTime(longValue);
     }
 
@@ -136,7 +135,7 @@ public class LongAsDateTimeColumnSource extends AbstractColumnSource<DateTime> i
         }
         dateTimeObjectDestination.setSize(longChunk.size());
     }
-    
+
     @Override
     public boolean preventsParallelism() {
         return alternateColumnSource.preventsParallelism();

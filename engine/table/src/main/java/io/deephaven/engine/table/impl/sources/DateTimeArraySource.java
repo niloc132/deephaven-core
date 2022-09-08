@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.SharedContext;
@@ -30,19 +29,24 @@ public class DateTimeArraySource extends AbstractLongArraySource<DateTime> {
     }
 
     @Override
+    public void setNull(long key) {
+        set(key, NULL_LONG);
+    }
+
+    @Override
     public void set(long key, DateTime value) {
         set(key, value == null ? NULL_LONG : value.getNanos());
     }
 
     @Override
-    public DateTime get(long index) {
-        final long nanos = getLong(index);
+    public DateTime get(long rowKey) {
+        final long nanos = getLong(rowKey);
         return DateTimeUtils.nanosToTime(nanos);
     }
 
     @Override
-    public DateTime getPrev(long index) {
-        final long nanos = getPrevLong(index);
+    public DateTime getPrev(long rowKey) {
+        final long nanos = getPrevLong(rowKey);
         return DateTimeUtils.nanosToTime(nanos);
     }
 
@@ -145,13 +149,13 @@ public class DateTimeArraySource extends AbstractLongArraySource<DateTime> {
         }
 
         @Override
-        public long getLong(long index) {
-            return DateTimeArraySource.this.getLong(index);
+        public long getLong(long rowKey) {
+            return DateTimeArraySource.this.getLong(rowKey);
         }
 
         @Override
-        public long getPrevLong(long index) {
-            return DateTimeArraySource.this.getPrevLong(index);
+        public long getPrevLong(long rowKey) {
+            return DateTimeArraySource.this.getPrevLong(rowKey);
         }
 
         @Override
@@ -212,6 +216,11 @@ public class DateTimeArraySource extends AbstractLongArraySource<DateTime> {
                 @NotNull final WritableChunk<? super Values> destination,
                 @NotNull final LongChunk<? extends RowKeys> keyIndices) {
             fillSparsePrevLongChunkUnordered(destination, keyIndices);
+        }
+
+        @Override
+        public void setNull(long key) {
+            set(key, NULL_LONG);
         }
 
         @Override

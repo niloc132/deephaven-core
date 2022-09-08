@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharRangeFilter and regenerate
@@ -73,7 +76,10 @@ public class ShortRangeFilter extends AbstractRangeFilter {
 
     @Override
     public ShortRangeFilter copy() {
-        return new ShortRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        final ShortRangeFilter copy = new ShortRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        copy.chunkFilter = chunkFilter;
+        copy.longFilter = longFilter;
+        return copy;
     }
 
     @Override

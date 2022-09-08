@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf;
 
 import elemental2.core.Int8Array;
@@ -250,6 +253,9 @@ public class BarrageUpdateMetadata {
 
     public static native void addEffectiveColumnSet(Builder builder, double effectiveColumnSetOffset);
 
+    public static native void addEffectiveReverseViewport(
+            Builder builder, boolean effectiveReverseViewport);
+
     public static native void addEffectiveViewport(Builder builder, double effectiveViewportOffset);
 
     public static native void addFirstSeq(Builder builder, Long firstSeq);
@@ -259,10 +265,6 @@ public class BarrageUpdateMetadata {
     public static native void addLastSeq(Builder builder, Long lastSeq);
 
     public static native void addModColumnNodes(Builder builder, double modColumnNodesOffset);
-
-    public static native void addNumAddBatches(Builder builder, double numAddBatches);
-
-    public static native void addNumModBatches(Builder builder, double numModBatches);
 
     public static native void addRemovedRows(Builder builder, double removedRowsOffset);
 
@@ -335,12 +337,11 @@ public class BarrageUpdateMetadata {
 
     public static native double createBarrageUpdateMetadata(
             Builder builder,
-            double numAddBatches,
-            double numModBatches,
             Long firstSeq,
             Long lastSeq,
             boolean isSnapshot,
             double effectiveViewportOffset,
+            boolean effectiveReverseViewport,
             double effectiveColumnSetOffset,
             double addedRowsOffset,
             double removedRowsOffset,
@@ -540,6 +541,8 @@ public class BarrageUpdateMetadata {
 
     public native double effectiveColumnSetLength();
 
+    public native boolean effectiveReverseViewport();
+
     public native double effectiveViewport(double index);
 
     public native Int8Array effectiveViewportArray();
@@ -557,10 +560,6 @@ public class BarrageUpdateMetadata {
     public native BarrageModColumnMetadata modColumnNodes(double index);
 
     public native double modColumnNodesLength();
-
-    public native double numAddBatches();
-
-    public native double numModBatches();
 
     public native double removedRows(double index);
 

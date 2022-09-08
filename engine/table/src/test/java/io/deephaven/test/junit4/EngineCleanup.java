@@ -1,7 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.test.junit4;
 
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.impl.QueryTableTestBase;
 import io.deephaven.engine.table.impl.RefreshingTableTestCase;
+import io.deephaven.util.SafeCloseable;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -12,14 +17,18 @@ import org.junit.runners.model.Statement;
  * instead create a {@code @Rule public final EngineCleanup field = new EngineCleanup();}.
  */
 public class EngineCleanup extends QueryTableTestBase implements TestRule {
+    private SafeCloseable executionContext;
+
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executionContext = ExecutionContext.createForUnitTests().open();
     }
 
     @Override
     public void tearDown() throws Exception {
         super.tearDown();
+        executionContext.close();
     }
 
     // We use this class as a field in JUnit 4 tests which should not extend TestCase. This method is a no-op test

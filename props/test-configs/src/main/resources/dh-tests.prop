@@ -3,7 +3,7 @@ include=
 
 measurement.per_thread_cpu=false
 
-CompilerTools.logEnabledDefault=false
+QueryCompiler.logEnabledDefault=false
 UpdatePerformanceTracker.reportingMode=NONE
 UpdatePerformanceTracker.reportIntervalMillis=60000
 
@@ -20,7 +20,6 @@ NIO.driver.initialThreadCount=20
 NIO.driver.maxThreadCount=400
 NIO.driver.useFast=true
 
-#TreeIndex.useRspBitmapTreeIndexImpl=true
 TableUpdateValidator.aggressiveUpdateValidation=true
 
 RefCounted.debug=true
@@ -84,8 +83,7 @@ RspSequentialBuilder.check=true
 MetricsManager.toStdout=true
 MetricsManager.logPeriodSeconds=30
 
-# TreeIndexImplSequentialBuilder
-TreeIndexImplSequentialBuilder.check=true
+OrderedLongSetSequentialBuilder.check=true
 
 # SortedRanges
 SortedRanges.debug=false
@@ -98,3 +96,12 @@ Liveness.cleanupLogEnabled=false
 
 # Force more parallelism
 QueryTable.minimumParallelSelectRows=1024
+
+BarrageMessageProducer.subscriptionGrowthEnabled=true
+BarrageMessageProducer.targetSnapshotPercentage=0.1
+BarrageMessageProducer.minSnapshotCellCount=50
+BarrageMessageProducer.maxSnapshotCellCount=50
+BarrageStreamGenerator.batchSize=4
+
+#BarrageTable.debug=true
+#BarrageMessageProducer.debug=true

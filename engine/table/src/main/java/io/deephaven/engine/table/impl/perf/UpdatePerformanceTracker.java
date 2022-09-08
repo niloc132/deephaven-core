@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2019 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.perf;
 
 import io.deephaven.configuration.Configuration;
@@ -23,9 +22,6 @@ import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static io.deephaven.engine.table.impl.lang.QueryLanguageFunctionUtils.minus;
-import static io.deephaven.engine.table.impl.lang.QueryLanguageFunctionUtils.plus;
 
 /**
  * <p>

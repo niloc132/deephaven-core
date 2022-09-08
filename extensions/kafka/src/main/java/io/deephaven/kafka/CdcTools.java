@@ -1,5 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.kafka;
 
+import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.DataColumn;
 import io.deephaven.engine.table.Table;
 import io.deephaven.util.annotations.ScriptApi;
@@ -40,7 +44,7 @@ public class CdcTools {
      * instance, if the parent field is called "after", and the nested field separator is ".", this constant should be
      * "after."
      */
-    public static final String CDC_AFTER_COLUMN_PREFIX = "after" + KafkaTools.NESTED_FIELD_NAME_SEPARATOR;
+    public static final String CDC_AFTER_COLUMN_PREFIX = "after" + KafkaTools.NESTED_FIELD_COLUMN_NAME_SEPARATOR;
     /**
      * The name of the sub-field in the Value field that indicates the type of operation that triggered the CDC event
      * (eg, insert, delete).
@@ -55,7 +59,7 @@ public class CdcTools {
      * Users specify CDC streams via objects satisfying this interface; the objects are created with static factory
      * methods, the classes implementing this interface are opaque from a user perspective.
      */
-    private interface CdcSpec {
+    public interface CdcSpec {
         /**
          * @return CDC stream kafka topic
          */
@@ -303,7 +307,7 @@ public class CdcTools {
                 KafkaTools.ALL_PARTITIONS_SEEK_TO_BEGINNING,
                 KafkaTools.Consume.avroSpec(keySchema),
                 KafkaTools.Consume.avroSpec(valueSchema),
-                KafkaTools.TableType.Stream);
+                KafkaTools.TableType.stream());
         final List<String> dbTableColumnNames = dbTableColumnNames(streamingIn);
         List<String> allDroppedColumns = null;
         if (dropColumns != null && dropColumns.size() > 0) {
@@ -370,7 +374,7 @@ public class CdcTools {
     private static List<String> dbTableColumnNames(final Table streamingIn) {
         final List<String> columnNames = new ArrayList<>();
         final int nameOffset = CDC_AFTER_COLUMN_PREFIX.length();
-        for (final DataColumn<?> col : streamingIn.getColumns()) {
+        for (final ColumnDefinition<?> col : streamingIn.getDefinition().getColumns()) {
             final String name = col.getName();
             if (name.startsWith(CDC_AFTER_COLUMN_PREFIX)) {
                 columnNames.add(name.substring(nameOffset));

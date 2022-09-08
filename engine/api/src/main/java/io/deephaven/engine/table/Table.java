@@ -1,17 +1,15 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table;
 
 import io.deephaven.api.*;
 import io.deephaven.api.agg.Aggregation;
-import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.api.filter.Filter;
 import io.deephaven.engine.liveness.LivenessNode;
 import io.deephaven.engine.rowset.TrackingRowSet;
 import io.deephaven.engine.table.iterators.*;
-import io.deephaven.engine.updategraph.ConcurrentMethod;
+import io.deephaven.api.util.ConcurrentMethod;
 import io.deephaven.engine.updategraph.DynamicNode;
 import io.deephaven.engine.updategraph.NotificationQueue;
 import io.deephaven.engine.util.systemicmarking.SystemicObject;
@@ -52,6 +50,14 @@ public interface Table extends
 
     @ConcurrentMethod
     String getDescription();
+
+    /**
+     * Get the number of columns defined for this table. Equivalent to {@code getDefinition().getColumns().length}.
+     *
+     * @return The number of columns defined for this table
+     */
+    @ConcurrentMethod
+    int numColumns();
 
     /**
      * Determines whether this Table contains a column for each string in the specified array of {@code columnNames}.
@@ -108,7 +114,6 @@ public interface Table extends
     // Attributes
     // -----------------------------------------------------------------------------------------------------------------
 
-    String DO_NOT_MAKE_REMOTE_ATTRIBUTE = "DoNotMakeRemote";
     String INPUT_TABLE_ATTRIBUTE = "InputTable";
     String KEY_COLUMNS_ATTRIBUTE = "keyColumns";
     String UNIQUE_KEYS_ATTRIBUTE = "uniqueKeys";
@@ -134,9 +139,11 @@ public interface Table extends
      * all rows:
      * <ol>
      * <li>{@link #groupBy} is unsupported
-     * <li>{@link #aggBy} is unsupported if {@link Aggregation#AggGroup(String...)} is used
      * <li>{@link #partitionBy} is unsupported</li>
-     * <li>{@link #rollup(Collection, boolean, Selectable...) rollup()} is unsupported if
+     * <li>{@link #partitionedAggBy(Collection, boolean, Table, String...) partitionedAggBy} is unsupported</li>
+     * <li>{@link #aggBy} is unsupported if either of {@link io.deephaven.api.agg.spec.AggSpecGroup group} or
+     * {@link io.deephaven.api.agg.Partition partition} are used</li>
+     * <li>{@link #rollup(Collection, boolean, ColumnName...) rollup()} is unsupported if
      * {@code includeConstituents == true}</li>
      * <li>{@link #treeTable(String, String) treeTable()} is unsupported</li>
      * </ol>
@@ -152,6 +159,9 @@ public interface Table extends
     // TODO: Might be good to take a pass through these and see what we can condense into
     // TODO: TreeTableInfo and RollupInfo to reduce the attribute noise.
     String ROLLUP_LEAF_ATTRIBUTE = "RollupLeaf";
+    // TODO (https://github.com/deephaven/deephaven-core/issues/64 or
+    // https://github.com/deephaven/deephaven-core/issues/65):
+    // Rename and repurpose this attribute
     String HIERARCHICAL_CHILDREN_TABLE_MAP_ATTRIBUTE = "HierarchicalChildrenTableMap";
     String HIERARCHICAL_SOURCE_TABLE_ATTRIBUTE = "HierarchicalSourceTable";
     String TREE_TABLE_FILTER_REVERSE_LOOKUP_ATTRIBUTE = "TreeTableFilterReverseLookup";
@@ -187,15 +197,19 @@ public interface Table extends
      * Set this attribute to load a plugin for this table in the Web Client
      */
     String PLUGIN_NAME = "PluginName";
+    /**
+     * Set this attribute to enable collection of barrage performance stats.
+     */
+    String BARRAGE_PERFORMANCE_KEY_ATTRIBUTE = "BarragePerformanceTableKey";
 
     /**
      * Set the value of an attribute.
      *
-     * @param key the name of the attribute
-     * @param object the value
+     * @param key The name of the attribute; must not be {@code null}
+     * @param object The value to be assigned; must not be {@code null}
      */
     @ConcurrentMethod
-    void setAttribute(@NotNull String key, @Nullable Object object);
+    void setAttribute(@NotNull String key, @NotNull Object object);
 
     /**
      * Get the value of the specified attribute.
@@ -228,16 +242,16 @@ public interface Table extends
     /**
      * Get all attributes from this Table.
      *
-     * @return A map containing all attributes from this Table
+     * @return An unmodifiable map containing all attributes from this Table
      */
     @ConcurrentMethod
     Map<String, Object> getAttributes();
 
     /**
-     * Get all attributes from this Table except the items that appear in excluded.
+     * Get all attributes from this Table except the items that appear in {@code excluded}.
      *
      * @param excluded A set of attributes to exclude from the result
-     * @return This Table's attributes, except the ones present in excluded
+     * @return An unmodifiable map containing Table's attributes, except the ones present in {@code excluded}
      */
     @ConcurrentMethod
     Map<String, Object> getAttributes(Collection<String> excluded);
@@ -287,19 +301,21 @@ public interface Table extends
 
     <TYPE> Iterator<TYPE> columnIterator(@NotNull String columnName);
 
-    ByteColumnIterator byteColumnIterator(@NotNull String columnName);
-
     CharacterColumnIterator characterColumnIterator(@NotNull String columnName);
 
-    DoubleColumnIterator doubleColumnIterator(@NotNull String columnName);
+    ByteColumnIterator byteColumnIterator(@NotNull String columnName);
 
-    FloatColumnIterator floatColumnIterator(@NotNull String columnName);
+    ShortColumnIterator shortColumnIterator(@NotNull String columnName);
 
     IntegerColumnIterator integerColumnIterator(@NotNull String columnName);
 
     LongColumnIterator longColumnIterator(@NotNull String columnName);
 
-    ShortColumnIterator shortColumnIterator(@NotNull String columnName);
+    FloatColumnIterator floatColumnIterator(@NotNull String columnName);
+
+    DoubleColumnIterator doubleColumnIterator(@NotNull String columnName);
+
+    <DATA_TYPE> ObjectColumnIterator<DATA_TYPE> objectColumnIterator(@NotNull String columnName);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Convenience data fetching; highly inefficient
@@ -311,16 +327,8 @@ public interface Table extends
     // Filter Operations
     // -----------------------------------------------------------------------------------------------------------------
 
-    @Override
-    @ConcurrentMethod
-    Table where(Collection<? extends Filter> filters);
-
     @ConcurrentMethod
     Table where(Filter... filters);
-
-    @Override
-    @ConcurrentMethod
-    Table where(String... filters);
 
     /**
      * A table operation that applies the supplied predicate to each row in the table and produces columns containing
@@ -335,95 +343,23 @@ public interface Table extends
     @ConcurrentMethod
     Table wouldMatch(String... expressions);
 
-    @Override
-    Table whereIn(Table rightTable, Collection<? extends JoinMatch> columnsToMatch);
-
-    Table whereIn(Table rightTable, String... columnsToMatch);
-
-    @Override
-    Table whereNotIn(Table rightTable, Collection<? extends JoinMatch> columnsToMatch);
-
-    Table whereNotIn(Table rightTable, String... columnsToMatch);
-
     // -----------------------------------------------------------------------------------------------------------------
     // Column Selection Operations
     // -----------------------------------------------------------------------------------------------------------------
 
-    @Override
-    Table select(Collection<? extends Selectable> columns);
-
     Table select(Selectable... columns);
-
-    @Override
-    Table select(String... columns);
 
     Table select();
 
-    @ConcurrentMethod
-    Table selectDistinct(Collection<? extends Selectable> columns);
-
-    @ConcurrentMethod
-    Table selectDistinct(Selectable... columns);
-
-    @ConcurrentMethod
-    Table selectDistinct(String... columns);
-
-    @ConcurrentMethod
-    Table selectDistinct();
-
-    @Override
-    Table update(Collection<? extends Selectable> newColumns);
-
     Table update(Selectable... newColumns);
 
-    @Override
-    Table update(String... newColumns);
-
-    /**
-     * Compute column formulas on demand.
-     *
-     * <p>
-     * Lazy update defers computation until required for a set of values, and caches the results for a set of input
-     * values. This uses less RAM than an update statement when you have a smaller set of unique values. Less
-     * computation than an updateView is needed, because the results are saved in a cache.
-     * </p>
-     *
-     * <p>
-     * If you have many unique values, you should instead use an update statement, which will have more memory efficient
-     * structures. Values are never removed from the lazyUpdate cache, so it should be used judiciously on a ticking
-     * table.
-     * </p>
-     *
-     * @param newColumns the columns to add
-     * @return a new Table with the columns added; to be computed on demand
-     */
-    Table lazyUpdate(Collection<? extends Selectable> newColumns);
-
     Table lazyUpdate(Selectable... newColumns);
-
-    Table lazyUpdate(String... newColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table view(Collection<? extends Selectable> columns);
 
     @ConcurrentMethod
     Table view(Selectable... columns);
 
-    @Override
-    @ConcurrentMethod
-    Table view(String... columns);
-
-    @Override
-    @ConcurrentMethod
-    Table updateView(Collection<? extends Selectable> newColumns);
-
     @ConcurrentMethod
     Table updateView(Selectable... newColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table updateView(String... newColumns);
 
     @ConcurrentMethod
     Table dropColumns(Collection<String> columnNames);
@@ -511,12 +447,6 @@ public interface Table extends
     // Slice Operations
     // -----------------------------------------------------------------------------------------------------------------
 
-    @ConcurrentMethod
-    Table head(long size);
-
-    @ConcurrentMethod
-    Table tail(long size);
-
     /**
      * Extracts a subset of a table by row position.
      * <p>
@@ -531,7 +461,7 @@ public interface Table extends
      * If firstPosition is negative, and lastPosition is zero, then the firstRow is counted from the end of the table,
      * and the end of the slice is the size of the table. slice(-N, 0) is equivalent to {@link #tail}(N).
      * <p>
-     * If the firstPosition is nega tive and the lastPosition is negative, they are both counted from the end of the
+     * If the firstPosition is negative and the lastPosition is negative, they are both counted from the end of the
      * table. For example, slice(-2, -1) returns the second to last row of the table.
      *
      * @param firstPositionInclusive the first position to include in the result
@@ -558,16 +488,6 @@ public interface Table extends
     // -----------------------------------------------------------------------------------------------------------------
 
     Table exactJoin(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
-
-    @Override
-    Table exactJoin(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd);
-
-    @Override
-    Table exactJoin(Table rightTable, String columnsToMatch, String columnsToAdd);
-
-    @Override
-    Table exactJoin(Table rightTable, String columnsToMatch);
 
     /**
      * Rules for the inexact matching performed on the final column to match by in {@link #aj} and {@link #raj}.
@@ -626,14 +546,6 @@ public interface Table extends
      */
     Table aj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
 
-    @Override
-    Table aj(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd);
-
-    @Override
-    Table aj(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd, AsOfJoinRule asOfJoinRule);
-
     /**
      * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
      * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
@@ -645,12 +557,6 @@ public interface Table extends
      * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
      */
     Table aj(Table rightTable, Collection<String> columnsToMatch);
-
-    @Override
-    Table aj(Table rightTable, String columnsToMatch, String columnsToAdd);
-
-    @Override
-    Table aj(Table rightTable, String columnsToMatch);
 
     /**
      * Just like .aj(), but the matching on the last column is in reverse order, so that you find the row after the
@@ -688,14 +594,6 @@ public interface Table extends
      */
     Table raj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
 
-    @Override
-    Table raj(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd);
-
-    @Override
-    Table raj(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd, ReverseAsOfJoinRule reverseAsOfJoinRule);
-
     /**
      * Just like .aj(), but the matching on the last column is in reverse order, so that you find the row after the
      * given timestamp instead of the row before.
@@ -711,39 +609,7 @@ public interface Table extends
      */
     Table raj(Table rightTable, Collection<String> columnsToMatch);
 
-    /**
-     * Just like .aj(), but the matching on the last column is in reverse order, so that you find the row after the
-     * given timestamp instead of the row before.
-     * <p>
-     * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
-     * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
-     * original table are returned intact, together with the columns from rightTable defined in a comma separated list
-     * "columnsToAdd"
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @param columnsToAdd A comma separated list with the columns from the left side that need to be added to the right
-     *        side as a result of the match.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    @Override
-    Table raj(Table rightTable, String columnsToMatch, String columnsToAdd);
-
-    @Override
-    Table raj(Table rightTable, String columnsToMatch);
-
     Table naturalJoin(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
-
-    @Override
-    Table naturalJoin(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd);
-
-    @Override
-    Table naturalJoin(Table rightTable, String columnsToMatch, String columnsToAdd);
-
-    @Override
-    Table naturalJoin(Table rightTable, String columnsToMatch);
 
     /**
      * Perform a cross join with the right table.
@@ -800,9 +666,6 @@ public interface Table extends
      */
     Table join(Table rightTable, int numRightBitsToReserve);
 
-    @Override
-    Table join(Table rightTable, String columnsToMatch);
-
     /**
      * Perform a cross join with the right table.
      * <p>
@@ -834,9 +697,6 @@ public interface Table extends
      *         the right table
      */
     Table join(Table rightTable, String columnsToMatch, int numRightBitsToReserve);
-
-    @Override
-    Table join(Table rightTable, String columnsToMatch, String columnsToAdd);
 
     /**
      * Perform a cross join with the right table.
@@ -934,69 +794,9 @@ public interface Table extends
      */
     Table join(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd, int numRightBitsToReserve);
 
-    @Override
-    Table join(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd);
-
-    @Override
-    Table join(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd, int numRightBitsToReserve);
-
     // -----------------------------------------------------------------------------------------------------------------
     // Aggregation Operations
     // -----------------------------------------------------------------------------------------------------------------
-
-    @Override
-    @ConcurrentMethod
-    Table groupBy(Collection<? extends Selectable> groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table groupBy(String... groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table groupBy();
-
-    @Override
-    @ConcurrentMethod
-    Table aggAllBy(AggSpec spec);
-
-    @Override
-    @ConcurrentMethod
-    Table aggAllBy(AggSpec spec, String... groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table aggAllBy(AggSpec spec, Selectable... groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table aggAllBy(AggSpec spec, Collection<String> groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table aggBy(Aggregation aggregation);
-
-    @Override
-    @ConcurrentMethod
-    Table aggBy(Aggregation aggregation, String... groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table aggBy(Aggregation aggregation, Collection<? extends Selectable> groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table aggBy(Collection<? extends Aggregation> aggregations, Collection<? extends Selectable> groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table aggBy(Collection<? extends Aggregation> aggregations, String... groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table aggBy(Collection<? extends Aggregation> aggregations);
 
     Table headBy(long nRows, Collection<String> groupByColumnNames);
 
@@ -1013,10 +813,10 @@ public interface Table extends
      *
      * @param formulaColumn Formula applied to each column
      * @param columnParamName The parameter name used as a placeholder for each column
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy(Collection)}
+     * @param groupByColumns The grouping columns as in {@link TableOperations#groupBy(Collection)}
      */
     @ConcurrentMethod
-    Table applyToAllBy(String formulaColumn, String columnParamName, Collection<? extends Selectable> groupByColumns);
+    Table applyToAllBy(String formulaColumn, String columnParamName, Collection<? extends ColumnName> groupByColumns);
 
     /**
      * Groups data according to groupByColumns and applies formulaColumn to each of columns not altered by the grouping
@@ -1024,10 +824,10 @@ public interface Table extends
      *
      * @param formulaColumn Formula applied to each column, uses parameter <i>each</i> to refer to each colum it being
      *        applied to
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy(Collection)}
+     * @param groupByColumns The grouping columns as in {@link TableOperations#groupBy(Collection)}
      */
     @ConcurrentMethod
-    Table applyToAllBy(String formulaColumn, Collection<? extends Selectable> groupByColumns);
+    Table applyToAllBy(String formulaColumn, Collection<? extends ColumnName> groupByColumns);
 
     /**
      * Groups data according to groupByColumns and applies formulaColumn to each of columns not altered by the grouping
@@ -1039,488 +839,6 @@ public interface Table extends
      */
     @ConcurrentMethod
     Table applyToAllBy(String formulaColumn, String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the sum for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table sumBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the sum for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table sumBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the sum for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table sumBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the sum of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table sumBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the sum of the absolute values for
-     * the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table absSumBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the sum of the absolute values for
-     * the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table absSumBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the sum of the absolute values for
-     * the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table absSumBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the absolute sum of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table absSumBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the average for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table avgBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the average for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table avgBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the average for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table avgBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the average of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table avgBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the weighted average using
-     * weightColumn for the rest of the fields
-     *
-     * @param weightColumn the column to use for the weight
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table wavgBy(String weightColumn, Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the weighted average using
-     * weightColumn for the rest of the fields
-     *
-     * @param weightColumn the column to use for the weight
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table wavgBy(String weightColumn, String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the weighted average using
-     * weightColumn for the rest of the fields
-     *
-     * @param weightColumn the column to use for the weight
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table wavgBy(String weightColumn, Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the weighted average using weightColumn for the rest of the fields
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     *
-     * @param weightColumn the column to use for the weight
-     */
-    @Override
-    @ConcurrentMethod
-    Table wavgBy(String weightColumn);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the weighted sum using weightColumn
-     * for the rest of the fields
-     * <p>
-     * If the weight column is a floating point type, all result columns will be doubles. If the weight column is an
-     * integral type, all integral input columns will have long results and all floating point input columns will have
-     * double results.
-     *
-     * @param weightColumn the column to use for the weight
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table wsumBy(String weightColumn, Selectable... groupByColumns);
-
-    /**
-     * Computes the weighted sum for all rows in the table using weightColumn for the rest of the fields
-     * <p>
-     * If the weight column is a floating point type, all result columns will be doubles. If the weight column is an
-     * integral type, all integral input columns will have long results and all floating point input columns will have
-     * double results.
-     *
-     * @param weightColumn the column to use for the weight
-     */
-    @Override
-    @ConcurrentMethod
-    Table wsumBy(String weightColumn);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the weighted sum using weightColumn
-     * for the rest of the fields
-     * <p>
-     * If the weight column is a floating point type, all result columns will be doubles. If the weight column is an
-     * integral type, all integral input columns will have long results and all floating point input columns will have
-     * double results.
-     *
-     * @param weightColumn the column to use for the weight
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table wsumBy(String weightColumn, String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the weighted sum using weightColumn
-     * for the rest of the fields
-     * <p>
-     * If the weight column is a floating point type, all result columns will be doubles. If the weight column is an
-     * integral type, all integral input columns will have long results and all floating point input columns will have
-     * double results.
-     *
-     * @param weightColumn the column to use for the weight
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table wsumBy(String weightColumn, Collection<String> groupByColumns);
-
-    @Override
-    @ConcurrentMethod
-    Table stdBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the standard deviation for the rest
-     * of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table stdBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the standard deviation for the rest
-     * of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table stdBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the standard deviation of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table stdBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the variance for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table varBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the variance for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table varBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the variance for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table varBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the variance of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table varBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and retrieves the last for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table lastBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and retrieves the last for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table lastBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and retrieves the last for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table lastBy(Collection<String> groupByColumns);
-
-    /**
-     * Returns the last row of the given table.
-     */
-    @Override
-    @ConcurrentMethod
-    Table lastBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and retrieves the first for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table firstBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and retrieves the first for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table firstBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and retrieves the first for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table firstBy(Collection<String> groupByColumns);
-
-    /**
-     * Returns the first row of the given table.
-     */
-    @Override
-    @ConcurrentMethod
-    Table firstBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the min for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table minBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the min for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table minBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the min for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy}
-     */
-    @Override
-    @ConcurrentMethod
-    Table minBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the minimum of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table minBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the max for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy} }
-     */
-    @Override
-    @ConcurrentMethod
-    Table maxBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the max for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy} }
-     */
-    @Override
-    @ConcurrentMethod
-    Table maxBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the max for the rest of the fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy} }
-     */
-    @Override
-    @ConcurrentMethod
-    Table maxBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the maximum of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table maxBy();
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the median for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy} }
-     */
-    @Override
-    @ConcurrentMethod
-    Table medianBy(Selectable... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the median for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy} }
-     */
-    @Override
-    @ConcurrentMethod
-    Table medianBy(String... groupByColumns);
-
-    /**
-     * Groups the data column according to <code>groupByColumns</code> and computes the median for the rest of the
-     * fields
-     *
-     * @param groupByColumns The grouping columns as in {@link Table#groupBy} }
-     */
-    @Override
-    @ConcurrentMethod
-    Table medianBy(Collection<String> groupByColumns);
-
-    /**
-     * Produces a single row table with the median of each column.
-     * <p>
-     * When the input table is empty, zero output rows are produced.
-     */
-    @Override
-    @ConcurrentMethod
-    Table medianBy();
-
-    @ConcurrentMethod
-    Table countBy(String countColumnName, Selectable... groupByColumns);
-
-    @ConcurrentMethod
-    Table countBy(String countColumnName, String... groupByColumns);
-
-    @ConcurrentMethod
-    Table countBy(String countColumnName, Collection<String> groupByColumns);
-
-    @ConcurrentMethod
-    Table countBy(String countColumnName);
 
     /**
      * If this table is a stream table, i.e. it has {@link #STREAM_TABLE_ATTRIBUTE} set to {@code true}, return a child
@@ -1558,55 +876,54 @@ public interface Table extends
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Create a {@link TableMap} from this table, keyed by the specified columns.
-     *
+     * Create a {@link PartitionedTable} from this table, partitioned according to the specified key columns.
      * <p>
-     * The returned TableMap contains each row in this table in exactly one of the tables within the map. If you have
-     * exactly one key column the TableMap is keyed by the value in that column. If you have zero key columns, then the
-     * TableMap is keyed by {@code io.deephaven.datastructures.util.SmartKey.EMPTY} (and will contain this table as the
-     * value). If you have multiple key columns, then the TableMap is keyed by a
-     * {@code io.deephaven.datastructures.util.SmartKey}. The SmartKey will have one value for each of your column
-     * values, in the order specified by keyColumnNames.
-     * </p>
+     * The underlying partitioned table backing the result contains each row in {@code this} table in exactly one of the
+     * result's constituent tables.
      *
-     * <p>
-     * For example if you have a Table keyed by a String column named USym, and a DateTime column named Expiry; a value
-     * could be retrieved from the TableMap with
-     * {@code tableMap.get(new SmartKey("SPY";, DateTimeUtils.convertDateTime("2020-06-19T16:15:00 NY")))}. For a table
-     * with an Integer column named Bucket, you simply use the desired value as in {@code tableMap.get(1)}.
-     * </p>
-     *
-     * @param dropKeys if true, drop key columns in the output Tables
-     * @param keyColumnNames the name of the key columns to use.
-     * @return a TableMap keyed by keyColumnNames
+     * @param dropKeys Whether to drop key columns in the output constituent tables
+     * @param keyColumnNames The name of the key columns to partition by
+     * @return A {@link PartitionedTable} keyed by {@code keyColumnNames}
      */
     @ConcurrentMethod
-    TableMap partitionBy(boolean dropKeys, String... keyColumnNames);
+    PartitionedTable partitionBy(boolean dropKeys, String... keyColumnNames);
 
     /**
-     * Create a {@link TableMap} from this table, keyed by the specified columns.
-     *
+     * Equivalent to {@code partitionBy(false, keyColumnNames)}
      * <p>
-     * The returned TableMap contains each row in this table in exactly one of the tables within the map. If you have
-     * exactly one key column the TableMap is keyed by the value in that column. If you have zero key columns, then the
-     * TableMap is keyed by {@code io.deephaven.datastructures.util.SmartKey.EMPTY} (and will contain this table as the
-     * value). If you have multiple key columns, then the TableMap is keyed by a
-     * {@code io.deephaven.datastructures.util.SmartKey}. The SmartKey will have one value for each of your column
-     * values, in the order specified by keyColumnNames.
-     * </p>
-     *
+     * Create a {@link PartitionedTable} from this table, partitioned according to the specified key columns. Key
+     * columns are never dropped from the output constituent tables.
      * <p>
-     * For example if you have a Table keyed by a String column named USym, and a DateTime column named Expiry; a value
-     * could be retrieved from the TableMap with
-     * {@code tableMap.get(new SmartKey("SPY";, DateTimeUtils.convertDateTime("2020-06-19T16:15:00 NY")))}. For a table
-     * with an Integer column named Bucket, you simply use the desired value as in {@code tableMap.get(1)}.
-     * </p>
+     * The underlying partitioned table backing the result contains each row in {@code this} table in exactly one of the
+     * result's constituent tables.
      *
-     * @param keyColumnNames the name of the key columns to use.
-     * @return a TableMap keyed by keyColumnNames
+     * @param keyColumnNames The name of the key columns to partition by
+     * @return A {@link PartitionedTable} keyed by {@code keyColumnNames}
      */
     @ConcurrentMethod
-    TableMap partitionBy(String... keyColumnNames);
+    PartitionedTable partitionBy(String... keyColumnNames);
+
+    /**
+     * Convenience method that performs an {@link #aggBy} and wraps the result in a {@link PartitionedTable}. If
+     * {@code aggregations} does not include a {@link io.deephaven.api.agg.Partition partition}, one will be added
+     * automatically with the default constituent column name and behavior used in {@link #partitionBy(String...)}.
+     *
+     * @param aggregations The {@link Aggregation aggregations} to apply
+     * @param preserveEmpty Whether to keep result rows for groups that are initially empty or become empty as a result
+     *        of updates. Each aggregation operator defines its own value for empty groups.
+     * @param initialGroups A table whose distinct combinations of values for the {@code groupByColumns} should be used
+     *        to create an initial set of aggregation groups. All other columns are ignored. This is useful in
+     *        combination with {@code preserveEmpty == true} to ensure that particular groups appear in the result
+     *        table, or with {@code preserveEmpty == false} to control the encounter order for a collection of groups
+     *        and thus their relative order in the result. Changes to {@code initialGroups} are not expected or handled;
+     *        if {@code initialGroups} is a refreshing table, only its contents at instantiation time will be used. If
+     *        {@code initialGroups == null}, the result will be the same as if a table with no rows was supplied.
+     * @param keyColumnNames The names of the key columns to aggregate by
+     * @return A {@link PartitionedTable} keyed by {@code keyColumnNames}
+     */
+    @ConcurrentMethod
+    PartitionedTable partitionedAggBy(Collection<? extends Aggregation> aggregations, boolean preserveEmpty,
+            Table initialGroups, String... keyColumnNames);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Hierarchical table operations (rollup and treeTable).
@@ -1620,11 +937,11 @@ public interface Table extends
      * replaced with null on each level.
      *
      * @param aggregations The aggregations to perform
-     * @param columns the columns to group by
+     * @param groupByColumns the columns to group by
      * @return a hierarchical table with the rollup applied
      */
     @ConcurrentMethod
-    Table rollup(Collection<? extends Aggregation> aggregations, Collection<String> columns);
+    Table rollup(Collection<? extends Aggregation> aggregations, Collection<String> groupByColumns);
 
     /**
      * Create a rollup table.
@@ -1635,12 +952,12 @@ public interface Table extends
      *
      * @param aggregations The aggregations to perform
      * @param includeConstituents set to true to include the constituent rows at the leaf level
-     * @param columns the columns to group by
+     * @param groupByColumns the columns to group by
      * @return a hierarchical table with the rollup applied
      */
     @ConcurrentMethod
     Table rollup(Collection<? extends Aggregation> aggregations, boolean includeConstituents,
-            Collection<String> columns);
+            Collection<String> groupByColumns);
 
     /**
      * Create a rollup table.
@@ -1650,11 +967,11 @@ public interface Table extends
      * replaced with null on each level.
      *
      * @param aggregations The aggregations to perform
-     * @param columns the columns to group by
+     * @param groupByColumns the columns to group by
      * @return a hierarchical table with the rollup applied
      */
     @ConcurrentMethod
-    Table rollup(Collection<? extends Aggregation> aggregations, String... columns);
+    Table rollup(Collection<? extends Aggregation> aggregations, String... groupByColumns);
 
     /**
      * Create a rollup table.
@@ -1664,12 +981,12 @@ public interface Table extends
      * replaced with null on each level.
      *
      * @param aggregations The aggregations to perform
-     * @param columns the columns to group by
+     * @param groupByColumns the columns to group by
      * @param includeConstituents set to true to include the constituent rows at the leaf level
      * @return a hierarchical table with the rollup applied
      */
     @ConcurrentMethod
-    Table rollup(Collection<? extends Aggregation> aggregations, boolean includeConstituents, String... columns);
+    Table rollup(Collection<? extends Aggregation> aggregations, boolean includeConstituents, String... groupByColumns);
 
     /**
      * Create a rollup table.
@@ -1679,11 +996,11 @@ public interface Table extends
      * replaced with null on each level.
      *
      * @param aggregations The aggregations to perform
-     * @param columns the columns to group by
+     * @param groupByColumns the columns to group by
      * @return a hierarchical table with the rollup applied
      */
     @ConcurrentMethod
-    Table rollup(Collection<? extends Aggregation> aggregations, Selectable... columns);
+    Table rollup(Collection<? extends Aggregation> aggregations, ColumnName... groupByColumns);
 
     /**
      * Create a rollup table.
@@ -1709,7 +1026,8 @@ public interface Table extends
     Table rollup(Collection<? extends Aggregation> aggregations, boolean includeConstituents);
 
     @ConcurrentMethod
-    Table rollup(Collection<? extends Aggregation> aggregations, boolean includeConstituents, Selectable... columns);
+    Table rollup(Collection<? extends Aggregation> aggregations, boolean includeConstituents,
+            ColumnName... groupByColumns);
 
     /**
      * Create a hierarchical tree table.
@@ -1730,22 +1048,6 @@ public interface Table extends
     // -----------------------------------------------------------------------------------------------------------------
     // Sort Operations
     // -----------------------------------------------------------------------------------------------------------------
-
-    @Override
-    @ConcurrentMethod
-    Table sort(String... columnsToSortBy);
-
-    @Override
-    @ConcurrentMethod
-    Table sortDescending(String... columnsToSortBy);
-
-    @Override
-    @ConcurrentMethod
-    Table sort(Collection<SortColumn> columnsToSortBy);
-
-    @Override
-    @ConcurrentMethod
-    Table reverse();
 
     /**
      * <p>
@@ -1782,20 +1084,11 @@ public interface Table extends
     // Snapshot Operations
     // -----------------------------------------------------------------------------------------------------------------
 
-    @Override
-    Table snapshot(Table baseTable, boolean doInitialSnapshot, String... stampColumns);
-
-    @Override
-    Table snapshot(Table baseTable, String... stampColumns);
-
     Table snapshotIncremental(Table rightTable, boolean doInitialSnapshot, String... stampColumns);
 
     Table snapshotIncremental(Table rightTable, String... stampColumns);
 
     Table snapshotHistory(Table rightTable);
-
-    @Override
-    Table snapshot(Table baseTable, boolean doInitialSnapshot, Collection<ColumnName> stampColumns);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Merge Operations
@@ -1837,12 +1130,17 @@ public interface Table extends
      *
      * @return This table, or a fully-coalesced child
      */
+    @ConcurrentMethod
     Table coalesce();
 
     /**
-     * Get a {@link Table} that contains a sub-set of the rows from {@code this}.
+     * Get a {@link Table} that contains a sub-set of the rows from {@code this}. The result will share the same
+     * {@link #getColumnSources() column sources} and {@link #getDefinition() definition} as this table.
      *
-     * @param rowSet The {@link TrackingRowSet row set} for the result.
+     * The result will not update on its own. The caller must also establish an appropriate listener to update
+     * {@code rowSet} and propagate {@link TableUpdate updates}.
+     *
+     * @param rowSet The {@link TrackingRowSet row set} for the result
      * @return A new sub-table
      */
     Table getSubTable(TrackingRowSet rowSet);

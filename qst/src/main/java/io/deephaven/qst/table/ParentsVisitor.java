@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.qst.table;
 
 import io.deephaven.qst.table.TableSpec.Visitor;
@@ -240,13 +243,22 @@ public class ParentsVisitor implements Visitor {
     }
 
     @Override
+    public void visit(LazyUpdateTable lazyUpdateTable) {
+        out = single(lazyUpdateTable);
+    }
+
+    @Override
     public void visit(AggregateAllByTable aggAllByTable) {
         out = single(aggAllByTable);
     }
 
     @Override
     public void visit(AggregationTable aggregationTable) {
-        out = single(aggregationTable);
+        if (aggregationTable.initialGroups().isPresent()) {
+            out = Stream.of(aggregationTable.initialGroups().get(), aggregationTable.parent());
+        } else {
+            out = Stream.of(aggregationTable.parent());
+        }
     }
 
     @Override
@@ -277,6 +289,11 @@ public class ParentsVisitor implements Visitor {
     @Override
     public void visit(CountByTable countByTable) {
         out = single(countByTable);
+    }
+
+    @Override
+    public void visit(UpdateByTable updateByTable) {
+        out = single(updateByTable);
     }
 
     private static class Search {

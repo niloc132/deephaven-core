@@ -1,21 +1,33 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.parquet.table.location;
 
 import io.deephaven.base.verify.Assert;
 import io.deephaven.base.verify.Require;
+import io.deephaven.chunk.*;
+import io.deephaven.chunk.attributes.Any;
+import io.deephaven.chunk.attributes.Values;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.rowset.RowSequence;
+import io.deephaven.engine.rowset.RowSequenceFactory;
+import io.deephaven.engine.rowset.chunkattributes.UnorderedRowKeys;
 import io.deephaven.engine.table.ChunkSource;
+import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Context;
 import io.deephaven.engine.table.impl.CodecLookup;
-import io.deephaven.engine.table.ColumnDefinition;
-import io.deephaven.vector.Vector;
+import io.deephaven.engine.table.impl.chunkattributes.DictionaryKeys;
+import io.deephaven.engine.table.impl.chunkboxer.ChunkBoxer;
 import io.deephaven.engine.table.impl.locations.TableDataException;
 import io.deephaven.engine.table.impl.locations.impl.AbstractColumnLocation;
-import io.deephaven.parquet.table.pagestore.ColumnChunkPageStore;
-import io.deephaven.parquet.table.pagestore.PageCache;
+import io.deephaven.engine.table.impl.sources.regioned.*;
+import io.deephaven.internal.log.LoggerFactory;
+import io.deephaven.io.logger.Logger;
+import io.deephaven.parquet.base.ColumnChunkReader;
+import io.deephaven.parquet.base.ParquetFileReader;
+import io.deephaven.parquet.base.RowGroupReader;
+import io.deephaven.parquet.base.tempfix.ParquetMetadataConverter;
+import io.deephaven.parquet.table.BigDecimalParquetBytesCodec;
 import io.deephaven.parquet.table.ParquetInstructions;
 import io.deephaven.parquet.table.ParquetSchemaReader;
 import io.deephaven.parquet.table.ParquetTableWriter;
@@ -23,27 +35,14 @@ import io.deephaven.parquet.table.metadata.CodecInfo;
 import io.deephaven.parquet.table.metadata.ColumnTypeInfo;
 import io.deephaven.parquet.table.metadata.GroupingColumnInfo;
 import io.deephaven.parquet.table.metadata.TableInfo;
-import io.deephaven.chunk.attributes.Any;
-import io.deephaven.engine.table.impl.chunkattributes.DictionaryKeys;
-import io.deephaven.engine.rowset.chunkattributes.UnorderedRowKeys;
-import io.deephaven.chunk.attributes.Values;
-import io.deephaven.chunk.*;
-import io.deephaven.engine.table.impl.sources.regioned.*;
-import io.deephaven.engine.table.impl.chunkboxer.ChunkBoxer;
-import io.deephaven.engine.rowset.RowSequence;
-import io.deephaven.engine.rowset.RowSequenceFactory;
-import io.deephaven.internal.log.LoggerFactory;
-import io.deephaven.io.logger.Logger;
-import io.deephaven.parquet.base.ColumnChunkReader;
-import io.deephaven.parquet.base.ParquetFileReader;
-import io.deephaven.parquet.base.RowGroupReader;
-import io.deephaven.parquet.base.tempfix.ParquetMetadataConverter;
+import io.deephaven.parquet.table.pagestore.ColumnChunkPageStore;
+import io.deephaven.parquet.table.pagestore.PageCache;
 import io.deephaven.parquet.table.pagestore.topage.*;
 import io.deephaven.parquet.table.region.*;
-import io.deephaven.parquet.table.BigDecimalParquetBytesCodec;
 import io.deephaven.util.codec.CodecCache;
 import io.deephaven.util.codec.ObjectCodec;
 import io.deephaven.util.codec.SimpleByteArrayCodec;
+import io.deephaven.vector.Vector;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.jetbrains.annotations.NotNull;
@@ -59,8 +58,8 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static io.deephaven.parquet.table.ParquetTableWriter.*;
 import static io.deephaven.engine.table.impl.sources.regioned.RegionedColumnSource.ROW_KEY_TO_SUB_REGION_ROW_INDEX_MASK;
+import static io.deephaven.parquet.table.ParquetTableWriter.*;
 
 final class ParquetColumnLocation<ATTR extends Values> extends AbstractColumnLocation {
 
@@ -68,9 +67,10 @@ final class ParquetColumnLocation<ATTR extends Values> extends AbstractColumnLoc
 
     private static final int CHUNK_SIZE = Configuration.getInstance()
             .getIntegerForClassWithDefault(ParquetColumnLocation.class, "chunkSize", 4096);
-    private static final int PAGE_CACHE_SIZE =
-            Configuration.getInstance().getIntegerForClassWithDefault(ParquetColumnLocation.class, "pageCacheSize",
-                    1 << 13);
+    private static final int INITIAL_PAGE_CACHE_SIZE = Configuration.getInstance()
+            .getIntegerForClassWithDefault(ParquetColumnLocation.class, "initialPageCacheSize", 128);
+    private static final int MAX_PAGE_CACHE_SIZE = Configuration.getInstance()
+            .getIntegerForClassWithDefault(ParquetColumnLocation.class, "maxPageCacheSize", 8192);
 
     private static final Logger log = LoggerFactory.getLogger(ParquetColumnLocation.class);
 
@@ -83,7 +83,7 @@ final class ParquetColumnLocation<ATTR extends Values> extends AbstractColumnLoc
     private final boolean hasGroupingTable;
 
     // We should consider moving this to column level if needed. Column-location level likely allows more parallelism.
-    private final PageCache<ATTR> pageCache = new PageCache<>(PAGE_CACHE_SIZE);
+    private volatile PageCache<ATTR> pageCache;
 
     private ColumnChunkPageStore<ATTR>[] pageStores;
     private Supplier<Chunk<ATTR>>[] dictionaryChunkSuppliers;
@@ -106,6 +106,20 @@ final class ParquetColumnLocation<ATTR extends Values> extends AbstractColumnLoc
         this.parquetColumnName = parquetColumnName;
         this.columnChunkReaders = columnChunkReaders;
         this.hasGroupingTable = hasGroupingTable;
+    }
+
+    private PageCache<ATTR> ensurePageCache() {
+        PageCache<ATTR> localPageCache;
+        if ((localPageCache = pageCache) != null) {
+            return localPageCache;
+        }
+
+        synchronized (this) {
+            if ((localPageCache = pageCache) != null) {
+                return localPageCache;
+            }
+            return pageCache = new PageCache<>(INITIAL_PAGE_CACHE_SIZE, MAX_PAGE_CACHE_SIZE);
+        }
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -154,7 +168,7 @@ final class ParquetColumnLocation<ATTR extends Values> extends AbstractColumnLoc
                             .resolve(groupingColumnInfo.groupingTablePath()).toString();
             try {
                 parquetFileReader =
-                        new ParquetFileReader(groupingFileName, tl().getChannelProvider(), -1);
+                        new ParquetFileReader(groupingFileName, tl().getChannelProvider());
             } catch (Exception e) {
                 log.warn().append("Failed to read expected grouping file ").append(groupingFileName)
                         .append(" for table location ").append(tl()).append(", column ")
@@ -180,22 +194,26 @@ final class ParquetColumnLocation<ATTR extends Values> extends AbstractColumnLoc
                 return null;
             }
 
+
+            final PageCache<ATTR> localPageCache = ensurePageCache();
+
             // noinspection unchecked
             return (METADATA_TYPE) new MetaDataTableFactory(
                     ColumnChunkPageStore.<Values>create(
-                            pageCache.castAttr(), groupingKeyReader,
+                            localPageCache.castAttr(), groupingKeyReader,
                             ROW_KEY_TO_SUB_REGION_ROW_INDEX_MASK,
                             makeToPage(columnTypes.get(GROUPING_KEY), ParquetInstructions.EMPTY,
                                     GROUPING_KEY, groupingKeyReader, columnDefinition)).pageStore,
                     ColumnChunkPageStore.<UnorderedRowKeys>create(
-                            pageCache.castAttr(), beginPosReader,
+                            localPageCache.castAttr(), beginPosReader,
                             ROW_KEY_TO_SUB_REGION_ROW_INDEX_MASK,
                             makeToPage(columnTypes.get(BEGIN_POS), ParquetInstructions.EMPTY, BEGIN_POS,
                                     beginPosReader, FIRST_KEY_COL_DEF)).pageStore,
-                    ColumnChunkPageStore.<UnorderedRowKeys>create(pageCache.castAttr(), endPosReader,
+                    ColumnChunkPageStore.<UnorderedRowKeys>create(
+                            localPageCache.castAttr(), endPosReader,
                             ROW_KEY_TO_SUB_REGION_ROW_INDEX_MASK,
                             makeToPage(columnTypes.get(END_POS), ParquetInstructions.EMPTY, END_POS,
-                                    beginPosReader, LAST_KEY_COL_DEF)).pageStore).get();
+                                    endPosReader, LAST_KEY_COL_DEF)).pageStore).get();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -385,7 +403,7 @@ final class ParquetColumnLocation<ATTR extends Values> extends AbstractColumnLoc
                 try {
                     final ColumnChunkPageStore.CreatorResult<ATTR> creatorResult =
                             ColumnChunkPageStore.create(
-                                    pageCache,
+                                    ensurePageCache(),
                                     columnChunkReader,
                                     tl().getRegionParameters().regionMask,
                                     makeToPage(tl().getColumnTypes().get(parquetColumnName),

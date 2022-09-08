@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.api.ColumnName;
@@ -9,6 +8,7 @@ import io.deephaven.api.RawString;
 import io.deephaven.api.Selectable;
 import io.deephaven.api.expression.Expression;
 import io.deephaven.api.value.Value;
+import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.rowset.TrackingRowSet;
@@ -33,6 +33,10 @@ public interface SelectColumn extends Selectable {
 
     static SelectColumn[] from(Collection<? extends Selectable> selectables) {
         return selectables.stream().map(SelectColumn::of).toArray(SelectColumn[]::new);
+    }
+
+    static SelectColumn[] copyFrom(SelectColumn[] selectColumns) {
+        return Arrays.stream(selectColumns).map(SelectColumn::copy).toArray(SelectColumn[]::new);
     }
 
     /**
@@ -65,6 +69,8 @@ public interface SelectColumn extends Selectable {
      * @param columnDefinitionMap the starting set of column definitions
      *
      * @return a list of columns on which the result of this is dependent
+     * @apiNote Any {@link io.deephaven.engine.context.QueryLibrary}, {@link io.deephaven.engine.context.QueryScope}, or
+     *          {@link QueryCompiler} usage needs to be resolved within initDef. Implementations must be idempotent.
      */
     List<String> initDef(Map<String, ColumnDefinition<?>> columnDefinitionMap);
 

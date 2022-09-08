@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit BaseTestCharTimSortKernel and regenerate
@@ -66,6 +69,13 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
         void check(List<ShortLongTuple> expected) {
             verify(expected.size(), expected, shortChunk, rowKeys);
         }
+
+        @Override
+        public void close() {
+            super.close();
+            shortChunk.close();
+            context.close();
+        }
     }
 
     public static class ShortPartitionKernelStuff extends PartitionKernelStuff<ShortLongTuple> {
@@ -91,13 +101,13 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
             columnSource = new AbstractColumnSource.DefaultedImmutable<Short>(short.class) {
                 // region tuple column source
                 @Override
-                public Short get(long index) {
-                    return getShort(index);
+                public Short get(long rowKey) {
+                    return getShort(rowKey);
                 }
 
                 @Override
-                public short getShort(long index) {
-                    return javaTuples.get(((int)index) / 10).getFirstElement();
+                public short getShort(long rowKey) {
+                    return javaTuples.get(((int) rowKey) / 10).getFirstElement();
                 }
                 // endregion tuple column source
             };
@@ -115,6 +125,14 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
         @Override
         void check(List<ShortLongTuple> expected) {
             verifyPartition(context, rowSet, expected.size(), expected, valuesChunk, rowKeys, columnSource);
+        }
+
+        @Override
+        public void close() {
+            super.close();
+            valuesChunk.close();
+            context.close();
+            rowSet.close();
         }
     }
 
@@ -171,14 +189,14 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
 
             secondaryColumnSource = new AbstractColumnSource.DefaultedImmutable<Long>(long.class) {
                 @Override
-                public Long get(long index) {
-                    final long result = getLong(index);
+                public Long get(long rowKey) {
+                    final long result = getLong(rowKey);
                     return result == QueryConstants.NULL_LONG ? null : result;
                 }
 
                 @Override
-                public long getLong(long index) {
-                    final ShortLongLongTuple shortLongLongTuple = javaTuples.get((int) (index / 10));
+                public long getLong(long rowKey) {
+                    final ShortLongLongTuple shortLongLongTuple = javaTuples.get((int) (rowKey / 10));
                     return shortLongLongTuple.getSecondElement();
                 }
             };
@@ -238,6 +256,20 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
         @Override
         void check(List<ShortLongLongTuple> expected) {
             verify(expected.size(), expected, primaryChunk, secondaryChunk, rowKeys);
+        }
+
+        @Override
+        public void close() {
+            super.close();
+            primaryChunk.close();
+            secondaryChunk.close();
+            secondaryChunkPermuted.close();
+            sortIndexContext.close();
+            indicesToFetch.close();
+            originalPositions.close();
+            context.close();
+            secondarySortContext.close();
+            secondaryColumnSourceContext.close();
         }
     }
 

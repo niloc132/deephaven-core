@@ -1,23 +1,21 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.util;
 
 import com.github.f4b6a3.uuid.UuidCreator;
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.api.util.NameValidator;
 import io.deephaven.base.FileUtils;
-import io.deephaven.compilertools.CompilerTools;
+import io.deephaven.engine.context.QueryCompiler;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
+import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.table.TableMap;
-import io.deephaven.engine.table.lang.QueryLibrary;
-import io.deephaven.engine.table.lang.QueryScope;
-import io.deephaven.engine.table.lang.QueryScopeParam;
-import io.deephaven.engine.util.AbstractScriptSession.Snapshot;
+import io.deephaven.engine.context.QueryScope;
+import io.deephaven.engine.context.QueryScopeParam;
 import io.deephaven.plugin.type.ObjectType;
 import io.deephaven.plugin.type.ObjectTypeLookup;
 import io.deephaven.util.SafeCloseable;
@@ -27,7 +25,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Objects;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -39,7 +37,7 @@ import static io.deephaven.engine.table.Table.NON_DISPLAY_TABLE;
  * This class exists to make all script sessions to be liveness artifacts, and provide a default implementation for
  * evaluateScript which handles liveness and diffs in a consistent way.
  */
-public abstract class AbstractScriptSession<S extends Snapshot> extends LivenessScope
+public abstract class AbstractScriptSession<S extends AbstractScriptSession.Snapshot> extends LivenessScope
         implements ScriptSession, VariableProvider {
 
     private static final Path CLASS_CACHE_LOCATION = CacheDir.get().resolve("script-session-classes");
@@ -61,15 +59,12 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
 
     private final File classCacheDirectory;
 
-    protected final QueryScope queryScope;
-    protected final QueryLibrary queryLibrary;
-    protected final CompilerTools.Context compilerContext;
+    protected final ExecutionContext executionContext;
 
     private final ObjectTypeLookup objectTypeLookup;
     private final Listener changeListener;
 
-    protected AbstractScriptSession(ObjectTypeLookup objectTypeLookup, @Nullable Listener changeListener,
-            boolean isDefaultScriptSession) {
+    protected AbstractScriptSession(ObjectTypeLookup objectTypeLookup, @Nullable Listener changeListener) {
         this.objectTypeLookup = objectTypeLookup;
         this.changeListener = changeListener;
 
@@ -78,39 +73,48 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
         classCacheDirectory = CLASS_CACHE_LOCATION.resolve(UuidCreator.toString(scriptCacheId)).toFile();
         createOrClearDirectory(classCacheDirectory);
 
-        queryScope = newQueryScope();
-        queryLibrary = QueryLibrary.makeNewLibrary();
+        final QueryScope queryScope = newQueryScope();
+        final QueryCompiler compilerContext = QueryCompiler.create(classCacheDirectory, getClass().getClassLoader());
 
-        compilerContext = new CompilerTools.Context(classCacheDirectory, getClass().getClassLoader()) {
-            {
-                addClassSource(getFakeClassDestination());
-            }
+        executionContext = ExecutionContext.newBuilder()
+                .markSystemic()
+                .newQueryLibrary()
+                .setQueryScope(queryScope)
+                .setQueryCompiler(compilerContext)
+                .build();
+    }
 
-            @Override
-            public File getFakeClassDestination() {
-                return classCacheDirectory;
-            }
-
-            @Override
-            public String getClassPath() {
-                return classCacheDirectory.getAbsolutePath() + File.pathSeparatorChar + super.getClassPath();
-            }
-        };
-
-        if (isDefaultScriptSession) {
-            CompilerTools.setDefaultContext(compilerContext);
-            QueryScope.setDefaultScope(queryScope);
-            QueryLibrary.setDefaultLibrary(queryLibrary);
-        }
+    @Override
+    public ExecutionContext getExecutionContext() {
+        return executionContext;
     }
 
     protected synchronized void publishInitial() {
-        applyDiff(emptySnapshot(), takeSnapshot(), null);
+        try (S empty = emptySnapshot(); S snapshot = takeSnapshot()) {
+            applyDiff(empty, snapshot, null);
+        }
     }
 
-    interface Snapshot {
+    protected interface Snapshot extends SafeCloseable {
 
     }
+
+    @Override
+    public synchronized SnapshotScope snapshot(@Nullable SnapshotScope previousIfPresent) {
+        // TODO deephaven-core#2453 this should be redone, along with other scope change handling
+        if (previousIfPresent != null) {
+            previousIfPresent.close();
+        }
+        S snapshot = takeSnapshot();
+        return () -> finishSnapshot(snapshot);
+    }
+
+    private synchronized void finishSnapshot(S beforeSnapshot) {
+        try (beforeSnapshot; S afterSnapshot = takeSnapshot()) {
+            applyDiff(beforeSnapshot, afterSnapshot, null);
+        }
+    }
+
 
     protected abstract S emptySnapshot();
 
@@ -129,34 +133,23 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
     @Override
     public synchronized final Changes evaluateScript(final String script, final @Nullable String scriptName) {
         RuntimeException evaluateErr = null;
-        final S fromSnapshot = takeSnapshot();
+        final Changes diff;
+        // retain any objects which are created in the executed code, we'll release them when the script session
+        // closes
+        try (S fromSnapshot = takeSnapshot();
+                final SafeCloseable ignored = LivenessScopeStack.open(this, false)) {
 
-        // store pointers to exist query scope static variables
-        final QueryLibrary prevQueryLibrary = QueryLibrary.getLibrary();
-        final CompilerTools.Context prevCompilerContext = CompilerTools.getContext();
-        final QueryScope prevQueryScope = QueryScope.getScope();
+            try {
+                // actually evaluate the script
+                executionContext.apply(() -> evaluate(script, scriptName));
+            } catch (final RuntimeException err) {
+                evaluateErr = err;
+            }
 
-        // retain any objects which are created in the executed code, we'll release them when the script session closes
-        try (final SafeCloseable ignored = LivenessScopeStack.open(this, false)) {
-            // point query scope static state to our session's state
-            QueryScope.setScope(queryScope);
-            CompilerTools.setContext(compilerContext);
-            QueryLibrary.setLibrary(queryLibrary);
-
-            // actually evaluate the script
-            evaluate(script, scriptName);
-        } catch (final RuntimeException err) {
-            evaluateErr = err;
-        } finally {
-            // restore pointers to query scope static variables
-            QueryScope.setScope(prevQueryScope);
-            CompilerTools.setContext(prevCompilerContext);
-            QueryLibrary.setLibrary(prevQueryLibrary);
+            try (S toSnapshot = takeSnapshot()) {
+                diff = applyDiff(fromSnapshot, toSnapshot, evaluateErr);
+            }
         }
-
-        final S toSnapshot = takeSnapshot();
-
-        final Changes diff = applyDiff(fromSnapshot, toSnapshot, evaluateErr);
 
         // re-throw any captured exception now that our listener knows what query scope state had changed prior
         // to the script session execution error
@@ -214,10 +207,8 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
             }
             return Optional.of("Table");
         }
-        if (object instanceof TableMap) {
-            return Optional.empty();
-            // TODO(deephaven-core#1762): Implement Smart-Keys and Table-Maps
-            // return Optional.of("TableMap");
+        if (object instanceof PartitionedTable) {
+            return Optional.of("PartitionedTable");
         }
         return objectTypeLookup.findObjectType(object).map(ObjectType::name);
     }
@@ -269,7 +260,7 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
     protected abstract QueryScope newQueryScope();
 
     @Override
-    public Class getVariableType(final String var) {
+    public Class<?> getVariableType(final String var) {
         final Object result = getVariable(var, null);
         if (result == null) {
             return null;
@@ -307,44 +298,9 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
         public void putObjectFields(Object object) {
             throw new UnsupportedOperationException();
         }
-    }
 
-    public static class SynchronizedScriptSessionQueryScope extends ScriptSessionQueryScope {
-        public SynchronizedScriptSessionQueryScope(@NotNull final ScriptSession scriptSession) {
-            super(scriptSession);
-        }
-
-        @Override
-        public synchronized Set<String> getParamNames() {
-            return scriptSession.getVariableNames();
-        }
-
-        @Override
-        public boolean hasParamName(String name) {
-            return scriptSession.hasVariableName(name);
-        }
-
-        @Override
-        protected synchronized <T> QueryScopeParam<T> createParam(final String name)
-                throws QueryScope.MissingVariableException {
-            // noinspection unchecked
-            return new QueryScopeParam<>(name, (T) scriptSession.getVariable(name));
-        }
-
-        @Override
-        public synchronized <T> T readParamValue(final String name) throws QueryScope.MissingVariableException {
-            // noinspection unchecked
-            return (T) scriptSession.getVariable(name);
-        }
-
-        @Override
-        public synchronized <T> T readParamValue(final String name, final T defaultValue) {
-            return scriptSession.getVariable(name, defaultValue);
-        }
-
-        @Override
-        public synchronized <T> void putParam(final String name, final T value) {
-            scriptSession.setVariable(NameValidator.validateQueryParameterName(name), value);
+        public ScriptSession scriptSession() {
+            return scriptSession;
         }
     }
 
@@ -355,34 +311,87 @@ public abstract class AbstractScriptSession<S extends Snapshot> extends Liveness
 
         @Override
         public Set<String> getParamNames() {
-            return scriptSession.getVariableNames();
+            final Set<String> result = new LinkedHashSet<>();
+            for (final String name : scriptSession.getVariableNames()) {
+                if (NameValidator.isValidQueryParameterName(name)) {
+                    result.add(name);
+                }
+            }
+            return result;
         }
 
         @Override
         public boolean hasParamName(String name) {
-            return scriptSession.hasVariableName(name);
+            return NameValidator.isValidQueryParameterName(name) && scriptSession.hasVariableName(name);
         }
 
         @Override
-        protected <T> QueryScopeParam<T> createParam(final String name) throws QueryScope.MissingVariableException {
+        protected <T> QueryScopeParam<T> createParam(final String name)
+                throws QueryScope.MissingVariableException {
+            if (!NameValidator.isValidQueryParameterName(name)) {
+                throw new QueryScope.MissingVariableException("Name " + name + " is invalid");
+            }
             // noinspection unchecked
             return new QueryScopeParam<>(name, (T) scriptSession.getVariable(name));
         }
 
         @Override
         public <T> T readParamValue(final String name) throws QueryScope.MissingVariableException {
+            if (!NameValidator.isValidQueryParameterName(name)) {
+                throw new QueryScope.MissingVariableException("Name " + name + " is invalid");
+            }
             // noinspection unchecked
             return (T) scriptSession.getVariable(name);
         }
 
         @Override
         public <T> T readParamValue(final String name, final T defaultValue) {
+            if (!NameValidator.isValidQueryParameterName(name)) {
+                return defaultValue;
+            }
             return scriptSession.getVariable(name, defaultValue);
         }
 
         @Override
         public <T> void putParam(final String name, final T value) {
             scriptSession.setVariable(NameValidator.validateQueryParameterName(name), value);
+        }
+    }
+
+    public static class SynchronizedScriptSessionQueryScope extends UnsynchronizedScriptSessionQueryScope {
+        public SynchronizedScriptSessionQueryScope(@NotNull final ScriptSession scriptSession) {
+            super(scriptSession);
+        }
+
+        @Override
+        public synchronized Set<String> getParamNames() {
+            return super.getParamNames();
+        }
+
+        @Override
+        public synchronized boolean hasParamName(String name) {
+            return super.hasParamName(name);
+        }
+
+        @Override
+        protected synchronized <T> QueryScopeParam<T> createParam(final String name)
+                throws QueryScope.MissingVariableException {
+            return super.createParam(name);
+        }
+
+        @Override
+        public synchronized <T> T readParamValue(final String name) throws QueryScope.MissingVariableException {
+            return super.readParamValue(name);
+        }
+
+        @Override
+        public synchronized <T> T readParamValue(final String name, final T defaultValue) {
+            return super.readParamValue(name, defaultValue);
+        }
+
+        @Override
+        public synchronized <T> void putParam(final String name, final T value) {
+            super.putParam(name, value);
         }
     }
 }

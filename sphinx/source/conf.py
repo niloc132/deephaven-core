@@ -70,13 +70,38 @@ autodoc_typehints = 'none'
 
 #########################################################################################################################################################################
 
-import deephaven
-import deephaven2
+
+# Turn on jpy so the modern deephaven API can reference Java types.
+# The Deephaven wheel can't be used without the JVM running and the
+# server classpath being present, so we must at least set this much
+# up.
+from glob import glob
+import os
+
+workspace = os.environ.get('DEEPHAVEN_WORKSPACE', '.')
+devroot = os.environ.get('DEEPHAVEN_DEVROOT', '.')
+propfile = os.environ.get('DEEPHAVEN_PROPFILE', 'dh-defaults.prop')
+jvm_properties = {
+            'Configuration.rootFile': propfile,
+            'devroot': os.path.realpath(devroot),
+            'workspace': os.path.realpath(workspace),
+        }
+
+from deephaven_internal import jvm
+jvm.init_jvm(
+    jvm_classpath=glob(os.environ.get('DEEPHAVEN_CLASSPATH')),
+    jvm_properties=jvm_properties,
+)
+
 import jpy
+py_scope_jpy = jpy.get_type("io.deephaven.engine.util.PythonScopeJpyImpl").ofMainGlobals()
+py_dh_session = jpy.get_type("io.deephaven.integrations.python.PythonDeephavenSession")(py_scope_jpy)
+py_dh_session.getExecutionContext().open()
+
+import deephaven
 docs_title = "Deephaven python modules."
-package_roots = [jpy, deephaven, deephaven2]
+package_roots = [jpy, deephaven]
 package_excludes = ['._']
 
 import dh_sphinx
 dh_sphinx.gen_sphinx_modules(docs_title, package_roots, package_excludes)
-

@@ -1,18 +1,17 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.server.console;
 
 import com.google.rpc.Code;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.table.Table;
+import io.deephaven.engine.table.impl.util.RuntimeMemory;
+import io.deephaven.engine.table.impl.util.RuntimeMemory.Sample;
 import io.deephaven.engine.updategraph.DynamicNode;
 import io.deephaven.engine.util.DelegatingScriptSession;
-import io.deephaven.engine.util.NoLanguageDeephavenSession;
 import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.engine.util.VariableProvider;
-import io.deephaven.engine.util.jpy.JpyInit;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.LogBuffer;
@@ -29,43 +28,21 @@ import io.deephaven.proto.backplane.grpc.FieldInfo;
 import io.deephaven.proto.backplane.grpc.FieldsChangeUpdate;
 import io.deephaven.proto.backplane.grpc.Ticket;
 import io.deephaven.proto.backplane.grpc.TypedTicket;
-import io.deephaven.proto.backplane.script.grpc.AutoCompleteRequest;
-import io.deephaven.proto.backplane.script.grpc.AutoCompleteResponse;
-import io.deephaven.proto.backplane.script.grpc.BindTableToVariableRequest;
-import io.deephaven.proto.backplane.script.grpc.BindTableToVariableResponse;
-import io.deephaven.proto.backplane.script.grpc.CancelCommandRequest;
-import io.deephaven.proto.backplane.script.grpc.CancelCommandResponse;
-import io.deephaven.proto.backplane.script.grpc.ChangeDocumentRequest;
-import io.deephaven.proto.backplane.script.grpc.CloseDocumentRequest;
-import io.deephaven.proto.backplane.script.grpc.CompletionItem;
-import io.deephaven.proto.backplane.script.grpc.ConsoleServiceGrpc;
-import io.deephaven.proto.backplane.script.grpc.ExecuteCommandRequest;
-import io.deephaven.proto.backplane.script.grpc.ExecuteCommandResponse;
-import io.deephaven.proto.backplane.script.grpc.GetCompletionItemsRequest;
-import io.deephaven.proto.backplane.script.grpc.GetCompletionItemsResponse;
-import io.deephaven.proto.backplane.script.grpc.GetConsoleTypesRequest;
-import io.deephaven.proto.backplane.script.grpc.GetConsoleTypesResponse;
-import io.deephaven.proto.backplane.script.grpc.LogSubscriptionData;
-import io.deephaven.proto.backplane.script.grpc.LogSubscriptionRequest;
-import io.deephaven.proto.backplane.script.grpc.StartConsoleRequest;
-import io.deephaven.proto.backplane.script.grpc.StartConsoleResponse;
-import io.deephaven.proto.backplane.script.grpc.TextDocumentItem;
-import io.deephaven.proto.backplane.script.grpc.VersionedTextDocumentIdentifier;
+import io.deephaven.proto.backplane.script.grpc.*;
 import io.deephaven.server.session.SessionCloseableObserver;
 import io.deephaven.server.session.SessionService;
 import io.deephaven.server.session.SessionState;
 import io.deephaven.server.session.SessionState.ExportBuilder;
 import io.deephaven.server.session.TicketRouter;
+import io.deephaven.util.SafeCloseable;
 import io.grpc.stub.StreamObserver;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyExecute;
@@ -75,50 +52,29 @@ import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyExecuteLocked;
 public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImplBase {
     private static final Logger log = LoggerFactory.getLogger(ConsoleServiceGrpcImpl.class);
 
-    private static final String PYTHON_TYPE = "python";
-
-    public static final String WORKER_CONSOLE_TYPE =
-            Configuration.getInstance().getStringWithDefault("deephaven.console.type", PYTHON_TYPE);
     public static final boolean REMOTE_CONSOLE_DISABLED =
             Configuration.getInstance().getBooleanWithDefault("deephaven.console.disable", false);
 
     public static final boolean QUIET_AUTOCOMPLETE_ERRORS =
             Configuration.getInstance().getBooleanWithDefault("deephaven.console.autocomplete.quiet", true);
 
-    public static boolean isPythonSession() {
-        return PYTHON_TYPE.equals(WORKER_CONSOLE_TYPE);
-    }
-
-    private final Map<String, Provider<ScriptSession>> scriptTypes;
     private final TicketRouter ticketRouter;
     private final SessionService sessionService;
     private final LogBuffer logBuffer;
 
     private final Map<SessionState, CompletionParser> parsers = new ConcurrentHashMap<>();
 
-    private final GlobalSessionProvider globalSessionProvider;
+    private final Provider<ScriptSession> scriptSessionProvider;
 
     @Inject
-    public ConsoleServiceGrpcImpl(final Map<String, Provider<ScriptSession>> scriptTypes,
-            final TicketRouter ticketRouter,
+    public ConsoleServiceGrpcImpl(final TicketRouter ticketRouter,
             final SessionService sessionService,
             final LogBuffer logBuffer,
-            final GlobalSessionProvider globalSessionProvider) {
-        this.scriptTypes = scriptTypes;
+            final Provider<ScriptSession> scriptSessionProvider) {
         this.ticketRouter = ticketRouter;
         this.sessionService = sessionService;
         this.logBuffer = logBuffer;
-        this.globalSessionProvider = globalSessionProvider;
-        if (!scriptTypes.containsKey(WORKER_CONSOLE_TYPE)) {
-            throw new IllegalArgumentException("Console type not found: " + WORKER_CONSOLE_TYPE);
-        }
-    }
-
-    public void initializeGlobalScriptSession() throws IOException, InterruptedException, TimeoutException {
-        if (isPythonSession()) {
-            JpyInit.init(log);
-        }
-        globalSessionProvider.initializeGlobalScriptSession(scriptTypes.get(WORKER_CONSOLE_TYPE).get());
+        this.scriptSessionProvider = scriptSessionProvider;
     }
 
     @Override
@@ -129,8 +85,10 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
                 // TODO (#702): initially show all console types; the first console determines the global console type
                 // thereafter
                 responseObserver.onNext(GetConsoleTypesResponse.newBuilder()
-                        .addConsoleTypes(WORKER_CONSOLE_TYPE)
+                        .addConsoleTypes(scriptSessionProvider.get().scriptType().toLowerCase())
                         .build());
+            } else {
+                responseObserver.onNext(GetConsoleTypesResponse.getDefaultInstance());
             }
             responseObserver.onCompleted();
         });
@@ -152,7 +110,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
             // TODO (#702): initially global session will be null; set it here if applicable
 
             final String sessionType = request.getSessionType();
-            if (!scriptTypes.containsKey(sessionType)) {
+            if (!scriptSessionProvider.get().scriptType().equalsIgnoreCase(sessionType)) {
                 throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION,
                         "session type '" + sessionType + "' is not supported");
             }
@@ -160,14 +118,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
             session.newExport(request.getResultId(), "resultId")
                     .onError(responseObserver)
                     .submit(() -> {
-                        final ScriptSession scriptSession;
-                        if (sessionType.equals(WORKER_CONSOLE_TYPE)) {
-                            scriptSession = new DelegatingScriptSession(globalSessionProvider.getGlobalSession());
-                        } else {
-                            scriptSession = new NoLanguageDeephavenSession(sessionType);
-                            log.error().append("Session type '" + sessionType + "' is disabled." +
-                                    "Use the session type '" + WORKER_CONSOLE_TYPE + "' instead.").endl();
-                        }
+                        final ScriptSession scriptSession = new DelegatingScriptSession(scriptSessionProvider.get());
 
                         safelyExecute(() -> {
                             responseObserver.onNext(StartConsoleResponse.newBuilder()
@@ -231,6 +182,22 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         });
     }
 
+    @Override
+    public void getHeapInfo(GetHeapInfoRequest request, StreamObserver<GetHeapInfoResponse> responseObserver) {
+        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
+            final RuntimeMemory runtimeMemory = RuntimeMemory.getInstance();
+            final Sample sample = new Sample();
+            runtimeMemory.read(sample);
+            final GetHeapInfoResponse infoResponse = GetHeapInfoResponse.newBuilder()
+                    .setTotalMemory(sample.totalMemory)
+                    .setFreeMemory(sample.freeMemory)
+                    .setMaxMemory(runtimeMemory.maxMemory())
+                    .build();
+            responseObserver.onNext(infoResponse);
+            responseObserver.onCompleted();
+        });
+    }
+
     private static FieldInfo makeVariableDefinition(Map.Entry<String, String> entry) {
         return makeVariableDefinition(entry.getKey(), entry.getValue());
     }
@@ -280,7 +247,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
 
             exportBuilder.submit(() -> {
                 ScriptSession scriptSession =
-                        exportedConsole != null ? exportedConsole.get() : globalSessionProvider.getGlobalSession();
+                        exportedConsole != null ? exportedConsole.get() : scriptSessionProvider.get();
                 Table table = exportedTable.get();
                 scriptSession.setVariable(request.getVariableName(), table);
                 if (DynamicNode.notDynamicOrIsRefreshing(table)) {
@@ -370,9 +337,9 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
     private void getCompletionItems(GetCompletionItemsRequest request,
             SessionState.ExportObject<ScriptSession> exportedConsole, CompletionParser parser,
             StreamObserver<AutoCompleteResponse> responseObserver) {
-        try {
+        final ScriptSession scriptSession = exportedConsole.get();
+        try (final SafeCloseable ignored = scriptSession.getExecutionContext().open()) {
             final VersionedTextDocumentIdentifier doc = request.getTextDocument();
-            ScriptSession scriptSession = exportedConsole.get();
             final VariableProvider vars = scriptSession.getVariableProvider();
             final CompletionLookups h = CompletionLookups.preload(scriptSession);
             // The only stateful part of a completer is the CompletionLookups, which are already once-per-session-cached

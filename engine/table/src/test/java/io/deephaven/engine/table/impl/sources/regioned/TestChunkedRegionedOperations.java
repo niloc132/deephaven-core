@@ -1,28 +1,27 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.base.FileUtils;
 import io.deephaven.datastructures.util.CollectionUtil;
-import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.table.*;
 import io.deephaven.stringset.ArrayStringSet;
-import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.table.lang.QueryLibrary;
 import io.deephaven.stringset.StringSet;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
+import io.deephaven.test.junit4.EngineCleanup;
 import io.deephaven.time.DateTime;
 import io.deephaven.time.DateTimeUtils;
-import io.deephaven.engine.table.impl.TableWithDefaults;
 import io.deephaven.parquet.table.ParquetTools;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.util.BooleanUtils;
 import io.deephaven.engine.util.file.TrackedFileHandleFactory;
 import io.deephaven.engine.table.impl.QueryTable;
-import io.deephaven.engine.table.TableMap;
 import io.deephaven.parquet.table.layout.DeephavenNestedPartitionLayout;
 import io.deephaven.parquet.table.ParquetInstructions;
 import io.deephaven.engine.table.impl.select.ReinterpretedColumn;
 import io.deephaven.engine.table.impl.AbstractColumnSource;
-import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.chunk.*;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.rowset.RowSequence;
@@ -33,6 +32,7 @@ import junit.framework.TestCase;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.*;
@@ -41,6 +41,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
 import org.junit.experimental.categories.Category;
 
 import static io.deephaven.engine.table.impl.TstUtils.assertTableEquals;
@@ -55,10 +57,12 @@ import static org.junit.Assert.assertTrue;
 @Category(OutOfBandTest.class)
 public class TestChunkedRegionedOperations {
 
+    @Rule
+    public final EngineCleanup framework = new EngineCleanup();
+
     private static final long TABLE_SIZE = 100_000;
     private static final long STRIPE_SIZE = TABLE_SIZE / 10;
 
-    private QueryScope originalScope;
     private File dataDirectory;
 
     private Table expected;
@@ -127,24 +131,19 @@ public class TestChunkedRegionedOperations {
 
     @Before
     public void setUp() throws Exception {
-        originalScope = QueryScope.getScope();
-        final QueryScope queryScope = new QueryScope.StandaloneImpl();
-        Arrays.stream(originalScope.getParams(originalScope.getParamNames()))
-                .forEach(p -> queryScope.putParam(p.getName(), p.getValue()));
+        final QueryScope queryScope = ExecutionContext.getContext().getQueryScope();
         queryScope.putParam("nowNanos", DateTimeUtils.currentTime().getNanos());
         queryScope.putParam("letters",
                 IntStream.range('A', 'A' + 64).mapToObj(c -> new String(new char[] {(char) c})).toArray(String[]::new));
         queryScope.putParam("emptySymbolSet", new ArrayStringSet());
         queryScope.putParam("stripeSize", STRIPE_SIZE);
-        QueryScope.setScope(queryScope);
 
-        QueryLibrary.resetLibrary();
-        QueryLibrary.importClass(BigInteger.class);
-        QueryLibrary.importClass(StringSet.class);
-        QueryLibrary.importClass(ArrayStringSet.class);
-        QueryLibrary.importClass(SimpleSerializable.class);
-        QueryLibrary.importClass(SimpleExternalizable.class);
-        QueryLibrary.importStatic(BooleanUtils.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(BigInteger.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(StringSet.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(ArrayStringSet.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(SimpleSerializable.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(SimpleExternalizable.class);
+        ExecutionContext.getContext().getQueryLibrary().importStatic(BooleanUtils.class);
 
         final TableDefinition definition = TableDefinition.of(
                 ColumnDefinition.ofLong("II"),
@@ -221,35 +220,40 @@ public class TestChunkedRegionedOperations {
         dataDirectory = Files.createTempDirectory(Paths.get(""), "TestChunkedRegionedOperations-").toFile();
         dataDirectory.deleteOnExit();
 
-        final TableDefinition partitionedDataDefinition = new TableDefinition(inputData.getDefinition());
-
-        final TableDefinition partitionedMissingDataDefinition =
-                new TableDefinition(inputData.view("PC", "II").getDefinition());
-
+        final TableDefinition partitionedDataDefinition = inputData.getDefinition();
+        final TableDefinition partitionedMissingDataDefinition = inputData.view("PC", "II").getDefinition();
         final String tableName = "TestTable";
 
-        final TableMap partitionedInputData = inputData.partitionBy("PC");
+        final PartitionedTable partitionedInputData = inputData.partitionBy("PC");
+        final File[] partitionedInputDestinations;
+        try (final Stream<String> partitionNames = partitionedInputData.table()
+                .<String>objectColumnIterator("PC").stream()) {
+            partitionedInputDestinations = partitionNames.map(pcv -> new File(dataDirectory,
+                    "IP" + File.separator + "P" + pcv + File.separator + tableName + File.separator
+                            + PARQUET_FILE_NAME))
+                    .toArray(File[]::new);
+        }
         ParquetTools.writeParquetTables(
-                partitionedInputData.values().toArray(TableWithDefaults.ZERO_LENGTH_TABLE_ARRAY),
+                partitionedInputData.constituents(),
                 partitionedDataDefinition.getWritable(),
                 parquetInstructions,
-                Arrays.stream(partitionedInputData.getKeySet())
-                        .map(pcv -> new File(dataDirectory,
-                                "IP" + File.separator + "P" + pcv + File.separator + tableName + File.separator
-                                        + PARQUET_FILE_NAME))
-                        .toArray(File[]::new),
+                partitionedInputDestinations,
                 CollectionUtil.ZERO_LENGTH_STRING_ARRAY);
 
-        final TableMap partitionedInputMissingData = inputMissingData.view("PC", "II").partitionBy("PC");
+        final PartitionedTable partitionedInputMissingData = inputMissingData.view("PC", "II").partitionBy("PC");
+        final File[] partitionedInputMissingDestinations;
+        try (final Stream<String> partitionNames = partitionedInputMissingData.table()
+                .<String>objectColumnIterator("PC").stream()) {
+            partitionedInputMissingDestinations = partitionNames.map(pcv -> new File(dataDirectory,
+                    "IP" + File.separator + "P" + pcv + File.separator + tableName + File.separator
+                            + PARQUET_FILE_NAME))
+                    .toArray(File[]::new);
+        }
         ParquetTools.writeParquetTables(
-                partitionedInputMissingData.values().toArray(TableWithDefaults.ZERO_LENGTH_TABLE_ARRAY),
+                partitionedInputMissingData.constituents(),
                 partitionedMissingDataDefinition.getWritable(),
                 parquetInstructions,
-                Arrays.stream(partitionedInputMissingData.getKeySet())
-                        .map(pcv -> new File(dataDirectory,
-                                "IP" + File.separator + "P" + pcv + File.separator + tableName + File.separator
-                                        + PARQUET_FILE_NAME))
-                        .toArray(File[]::new),
+                partitionedInputMissingDestinations,
                 CollectionUtil.ZERO_LENGTH_STRING_ARRAY);
 
         expected = TableTools
@@ -278,9 +282,6 @@ public class TestChunkedRegionedOperations {
         if (actual != null) {
             actual.releaseCachedResources();
         }
-
-        QueryScope.setScope(originalScope);
-        QueryLibrary.resetLibrary();
 
         if (dataDirectory.exists()) {
             TrackedFileHandleFactory.getInstance().closeAll();
@@ -317,10 +318,10 @@ public class TestChunkedRegionedOperations {
 
             // noinspection unchecked
             final WritableChunk<Values>[] expectedChunks = Arrays.stream(chunkTypes)
-                    .map(ct -> ct.makeWritableChunk(chunkCapacity)).toArray(WritableChunk[]::new);
+                    .map(ct -> closeables.add(ct.makeWritableChunk(chunkCapacity))).toArray(WritableChunk[]::new);
             // noinspection unchecked
             final WritableChunk<Values>[] actualChunks = Arrays.stream(chunkTypes)
-                    .map(ct -> ct.makeWritableChunk(chunkCapacity)).toArray(WritableChunk[]::new);
+                    .map(ct -> closeables.add(ct.makeWritableChunk(chunkCapacity))).toArray(WritableChunk[]::new);
 
             final ColumnSource[] expectedSources =
                     expected.getColumnSources().toArray(ColumnSource.ZERO_LENGTH_COLUMN_SOURCE_ARRAY);

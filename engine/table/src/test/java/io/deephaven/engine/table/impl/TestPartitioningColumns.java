@@ -1,9 +1,13 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.test.junit4.EngineCleanup;
 import io.deephaven.time.DateTime;
 import io.deephaven.time.DateTimeUtils;
 import io.deephaven.engine.table.impl.locations.ColumnLocation;
@@ -18,6 +22,7 @@ import io.deephaven.engine.table.impl.sources.regioned.*;
 import io.deephaven.engine.rowset.RowSetFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.LinkedHashMap;
@@ -30,6 +35,9 @@ import static io.deephaven.engine.util.TableTools.*;
  * Unit tests for {@link PartitionAwareSourceTable} with many partition types.
  */
 public class TestPartitioningColumns {
+
+    @Rule
+    public final EngineCleanup base = new EngineCleanup();
 
     @Test
     public void testEverything() {
@@ -61,7 +69,7 @@ public class TestPartitioningColumns {
             recordingLocationKeyFinder.accept(new SimpleTableLocationKey(partitions));
         });
 
-        final TableDefinition resultDefinition = new TableDefinition(input.getDefinition().getColumnStream()
+        final TableDefinition resultDefinition = TableDefinition.of(input.getDefinition().getColumnStream()
                 .map(ColumnDefinition::withPartitioning).collect(Collectors.toList()));
         final Table result = new PartitionAwareSourceTable(resultDefinition, "TestPartitioningColumns",
                 RegionedTableComponentFactoryImpl.INSTANCE,

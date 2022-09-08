@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.impl.AbstractColumnSource;
@@ -15,17 +14,7 @@ public class RowIdSource extends AbstractColumnSource<Long> implements Immutable
     }
 
     @Override
-    public long getLong(long index) {
-        return index;
-    }
-
-    @Override
-    public long getPrevLong(long index) {
-        return index;
-    }
-
-    @Override
-    public boolean isImmutable() {
-        return true;
+    public long getLong(long rowKey) {
+        return rowKey;
     }
 }

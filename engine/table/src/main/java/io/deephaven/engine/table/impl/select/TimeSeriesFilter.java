@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 
 /*
  * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
@@ -5,6 +8,7 @@
 
 package io.deephaven.engine.table.impl.select;
 
+import io.deephaven.base.verify.Assert;
 import io.deephaven.base.verify.Require;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.rowset.RowSet;
@@ -27,7 +31,6 @@ public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements
     protected final String columnName;
     protected final long nanos;
     private RecomputeListener listener;
-    transient private boolean initialized = false;
 
     @SuppressWarnings("UnusedDeclaration")
     public TimeSeriesFilter(String columnName, String period) {
@@ -51,14 +54,7 @@ public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements
     }
 
     @Override
-    public void init(TableDefinition tableDefinition) {
-        if (initialized) {
-            return;
-        }
-
-        UpdateGraphProcessor.DEFAULT.addSource(this);
-        initialized = true;
-    }
+    public void init(TableDefinition tableDefinition) {}
 
     @Override
     public WritableRowSet filter(RowSet selection, RowSet fullSet, Table table, boolean usePrev) {
@@ -98,8 +94,10 @@ public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements
 
     @Override
     public void setRecomputeListener(RecomputeListener listener) {
+        Assert.eqNull(this.listener, "this.listener");
         this.listener = listener;
         listener.setIsRefreshing(true);
+        UpdateGraphProcessor.DEFAULT.addSource(this);
     }
 
     @Override

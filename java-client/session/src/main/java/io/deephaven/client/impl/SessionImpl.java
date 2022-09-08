@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.client.impl;
 
 import com.google.protobuf.ByteString;
@@ -353,6 +356,10 @@ public final class SessionImpl extends SessionBase {
         final ListFieldsObserver observer = new ListFieldsObserver(listener);
         applicationServiceStub.listFields(request, observer);
         return observer;
+    }
+
+    public ScheduledExecutorService executor() {
+        return executor;
     }
 
     public long batchCount() {

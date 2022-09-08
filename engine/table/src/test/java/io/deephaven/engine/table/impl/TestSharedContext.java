@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import static io.deephaven.engine.table.impl.TstUtils.getTable;
@@ -6,6 +9,8 @@ import io.deephaven.engine.table.ResettableContext;
 import io.deephaven.engine.table.SharedContext;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.test.junit4.EngineCleanup;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Random;
@@ -15,6 +20,9 @@ import static io.deephaven.engine.table.impl.TstUtils.initColumnInfos;
 import static org.junit.Assert.*;
 
 public class TestSharedContext {
+
+    @Rule
+    public final EngineCleanup base = new EngineCleanup();
 
     private static final class TestSharedContextKey implements SharedContext.Key<TestResettableContext> {
     }

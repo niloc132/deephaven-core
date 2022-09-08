@@ -1,25 +1,25 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.parquet.table;
 
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.base.FileUtils;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.ColumnDefinition;
-import io.deephaven.stringset.HashStringSet;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.parquet.table.layout.ParquetKeyValuePartitionedLayout;
-import io.deephaven.engine.table.lang.QueryLibrary;
-import io.deephaven.stringset.StringSet;
-import io.deephaven.engine.util.TestTableTools;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.table.impl.InMemoryTable;
-import io.deephaven.engine.table.impl.TstUtils;
 import io.deephaven.engine.table.impl.locations.TableDataException;
+import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.util.TableTools;
+import io.deephaven.engine.util.TestTableTools;
+import io.deephaven.parquet.table.layout.ParquetKeyValuePartitionedLayout;
+import io.deephaven.stringset.HashStringSet;
+import io.deephaven.stringset.StringSet;
+import io.deephaven.test.junit4.EngineCleanup;
+import io.deephaven.vector.*;
 import junit.framework.TestCase;
 import org.junit.*;
 
@@ -32,13 +32,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
+import static io.deephaven.engine.table.impl.TstUtils.assertTableEquals;
 import static io.deephaven.engine.util.TableTools.*;
 
 /**
  * Tests for {@link ParquetTools}.
  */
 public class TestParquetTools {
+
+    @Rule
+    public final EngineCleanup framework = new EngineCleanup();
+
     private final static String testRoot =
             Configuration.getInstance().getWorkspacePath() + File.separator + "TestParquetTools";
     private final static File testRootFile = new File(testRoot);
@@ -80,23 +87,19 @@ public class TestParquetTools {
 
     @After
     public void tearDown() {
-        try {
-            if (testRootFile.exists()) {
-                int tries = 0;
-                boolean success = false;
-                do {
-                    try {
-                        FileUtils.deleteRecursively(testRootFile);
-                        success = true;
-                    } catch (Exception e) {
-                        System.gc();
-                        tries++;
-                    }
-                } while (!success && tries < 10);
-                TestCase.assertTrue(success);
-            }
-        } finally {
-            UpdateGraphProcessor.DEFAULT.resetForUnitTests(true);
+        if (testRootFile.exists()) {
+            int tries = 0;
+            boolean success = false;
+            do {
+                try {
+                    FileUtils.deleteRecursively(testRootFile);
+                    success = true;
+                } catch (Exception e) {
+                    System.gc();
+                    tries++;
+                }
+            } while (!success && tries < 10);
+            TestCase.assertTrue(success);
         }
     }
 
@@ -134,9 +137,9 @@ public class TestParquetTools {
         TestTableTools.tableRangesAreEqual(table1, result, 0, 0, table1.size());
         result.close();
 
-        QueryLibrary.importClass(TestEnum.class);
-        QueryLibrary.importClass(HashStringSet.class);
-        QueryLibrary.importStatic(this.getClass());
+        ExecutionContext.getContext().getQueryLibrary().importClass(TestEnum.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(HashStringSet.class);
+        ExecutionContext.getContext().getQueryLibrary().importStatic(this.getClass());
         Table test = TableTools.emptyTable(10).select("enumC=TestEnum.values()[i]", "enumSet=newSet(" +
                 "toS(enumC_[(i + 9) % 10])," +
                 "toS(enumC_[i])," +
@@ -145,7 +148,7 @@ public class TestParquetTools {
         ParquetTools.writeTable(test, path);
         Table test2 = ParquetTools.readTable(path);
         Assert.assertEquals(10, test2.size());
-        Assert.assertEquals(2, test2.getColumns().length);
+        Assert.assertEquals(2, test2.numColumns());
         Assert.assertEquals(Arrays.asList(toString((Enum[]) test.getColumn("enumC").get(0, 10))),
                 Arrays.asList(toString((Enum[]) test2.getColumn("enumC").get(0, 10))));
         StringSet[] objects = (StringSet[]) test.getColumn("enumSet").get(0, 10);
@@ -162,7 +165,7 @@ public class TestParquetTools {
         ParquetTools.writeTable(test, path);
         test2 = ParquetTools.readTable(path);
         Assert.assertEquals(10, test2.size());
-        Assert.assertEquals(2, test2.getColumns().length);
+        Assert.assertEquals(2, test2.numColumns());
         Assert.assertEquals(Arrays.asList(test.getColumn("enumC").get(0, 10)),
                 Arrays.asList(test2.getColumn("enumC").get(0, 10)));
         Assert.assertEquals(Arrays.asList(test.getColumn("enumSet").get(0, 10)),
@@ -194,13 +197,13 @@ public class TestParquetTools {
         final Table resultDefault = ParquetTools.readTable(pathFile);
         TableTools.show(table1);
         TableTools.show(resultDefault);
-        TstUtils.assertTableEquals(table1.view("X=StringKeys", "Y=GroupedInts"), resultDefault);
+        assertTableEquals(table1.view("X=StringKeys", "Y=GroupedInts"), resultDefault);
         resultDefault.close();
 
         final Table resultRenamed = ParquetTools.readTable(pathFile, instructions);
         TableTools.show(table1);
         TableTools.show(resultRenamed);
-        TstUtils.assertTableEquals(table1, resultRenamed);
+        assertTableEquals(table1, resultRenamed);
         resultRenamed.close();
     }
 
@@ -247,7 +250,7 @@ public class TestParquetTools {
         ParquetTools.writeTables(new Table[] {TableTools.emptyTable(10_000L)}, nullTable.getDefinition(),
                 new File[] {dest});
         final Table result = ParquetTools.readTable(dest);
-        TstUtils.assertTableEquals(nullTable, result);
+        assertTableEquals(nullTable, result);
         result.close();
     }
 
@@ -347,11 +350,11 @@ public class TestParquetTools {
 
         final List<ColumnDefinition<?>> allColumns = new ArrayList<>();
         allColumns.add(
-                ColumnDefinition.fromGenericType("Date", String.class, ColumnDefinition.COLUMNTYPE_PARTITIONING, null));
+                ColumnDefinition.fromGenericType("Date", String.class, null, ColumnDefinition.ColumnType.Partitioning));
         allColumns.add(
-                ColumnDefinition.fromGenericType("Num", int.class, ColumnDefinition.COLUMNTYPE_PARTITIONING, null));
-        allColumns.addAll(table1.getDefinition().getColumnList());
-        final TableDefinition partitionedDefinition = new TableDefinition(allColumns);
+                ColumnDefinition.fromGenericType("Num", int.class, null, ColumnDefinition.ColumnType.Partitioning));
+        allColumns.addAll(table1.getDefinition().getColumns());
+        final TableDefinition partitionedDefinition = TableDefinition.of(allColumns);
 
         final Table result = ParquetTools.readPartitionedTableInferSchema(
                 new ParquetKeyValuePartitionedLayout(testRootFile, 2), ParquetInstructions.EMPTY);
@@ -360,6 +363,55 @@ public class TestParquetTools {
                 table1.updateView("Date=`2021-07-20`", "Num=100"),
                 table1.updateView("Date=`2021-07-20`", "Num=200"),
                 table1.updateView("Date=`2021-07-21`", "Num=300")).moveColumnsUp("Date", "Num");
-        TstUtils.assertTableEquals(expected, result);
+        assertTableEquals(expected, result);
+    }
+
+    @Test
+    public void testBigArrays() {
+        ExecutionContext.getContext().getQueryLibrary().importClass(LongVectorDirect.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(LongVector.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(LongStream.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(IntVectorDirect.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(IntVector.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(IntStream.class);
+        ExecutionContext.getContext().getQueryLibrary().importClass(TestParquetTools.class);
+
+        final Table stuff = emptyTable(10)
+                .update("Biggie = (int)(500_000/(k+1))",
+                        "Doobles = (LongVector)new LongVectorDirect(LongStream.range(0, Biggie).toArray())",
+                        "Woobles = TestParquetTools.generateDoubles(Biggie)",
+                        "Goobles = (IntVector)new IntVectorDirect(IntStream.range(0, 2*Biggie).toArray())",
+                        "Toobles = TestParquetTools.generateDoubles(2*Biggie)",
+                        "Noobles = TestParquetTools.makeSillyStringArray(Biggie)");
+
+        final File f2w = new File(testRoot, "bigArray.parquet");
+        ParquetTools.writeTable(stuff, f2w);
+
+        final Table readBack = ParquetTools.readTable(f2w);
+        assertTableEquals(stuff, readBack);
+    }
+
+    public static DoubleVector generateDoubles(int howMany) {
+        final double[] yarr = new double[howMany];
+        for (int ii = 0; ii < howMany; ii++) {
+            yarr[ii] = ii;
+        }
+        return new DoubleVectorDirect(yarr);
+    }
+
+    public static FloatVector generateFloats(int howMany) {
+        final float[] yarr = new float[howMany];
+        for (int ii = 0; ii < howMany; ii++) {
+            yarr[ii] = ii;
+        }
+        return new FloatVectorDirect(yarr);
+    }
+
+    public static ObjectVector<String> makeSillyStringArray(int howMany) {
+        final String[] fireTruck = new String[howMany];
+        for (int ii = 0; ii < howMany; ii++) {
+            fireTruck[ii] = String.format("%04d", ii);
+        }
+        return new ObjectVectorDirect<>(fireTruck);
     }
 }

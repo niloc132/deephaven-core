@@ -1,26 +1,29 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
 package io.deephaven.engine.table.impl.by;
 
-import io.deephaven.base.verify.Assert;
 import io.deephaven.base.verify.Require;
 import io.deephaven.chunk.Chunk;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.rowset.RowSequence;
-import io.deephaven.engine.table.ChunkSource;
 import io.deephaven.engine.table.ColumnSource;
-import io.deephaven.engine.table.Context;
-import io.deephaven.engine.table.SharedContext;
 import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
 import io.deephaven.engine.table.impl.sources.IntegerArraySource;
+import io.deephaven.engine.table.impl.util.TypedHasherUtil.BuildOrProbeContext.BuildContext;
+import io.deephaven.engine.table.impl.util.TypedHasherUtil.BuildOrProbeContext.ProbeContext;
 
-import static io.deephaven.util.SafeCloseable.closeArray;
+import static io.deephaven.engine.table.impl.util.TypedHasherUtil.*;
 
 public abstract class OperatorAggregationStateManagerTypedBase
         implements OperatorAggregationStateManager {
     public static final int CHUNK_SIZE = ChunkedOperatorAggregationHelper.CHUNK_SIZE;
     private static final long MAX_TABLE_SIZE = HashTableColumnSource.MINIMUM_OVERFLOW_HASH_SLOT;
+
+    @Override
+    public final int maxTableSize() {
+        return Math.toIntExact(MAX_TABLE_SIZE);
+    }
 
     // the number of slots in our table
     private int tableSize;
@@ -120,52 +123,6 @@ public abstract class OperatorAggregationStateManagerTypedBase
             Chunk<Values>[] sourceKeyChunks);
 
     protected abstract void probe(HashHandler handler, RowSequence rowSequence, Chunk<Values>[] sourceKeyChunks);
-
-    public static class BuildContext extends BuildOrProbeContext {
-        private BuildContext(ColumnSource<?>[] buildSources, int chunkSize) {
-            super(buildSources, chunkSize);
-        }
-    }
-    public static class ProbeContext extends BuildOrProbeContext {
-        private ProbeContext(ColumnSource<?>[] buildSources, int chunkSize) {
-            super(buildSources, chunkSize);
-        }
-    }
-
-    private static class BuildOrProbeContext implements Context {
-        final int chunkSize;
-        final SharedContext sharedContext;
-        final ChunkSource.GetContext[] getContexts;
-
-        private BuildOrProbeContext(ColumnSource<?>[] buildSources, int chunkSize) {
-            Assert.gtZero(chunkSize, "chunkSize");
-            this.chunkSize = chunkSize;
-            if (buildSources.length > 1) {
-                sharedContext = SharedContext.makeSharedContext();
-            } else {
-                sharedContext = null;
-            }
-            getContexts = makeGetContexts(buildSources, sharedContext, chunkSize);
-        }
-
-        void resetSharedContexts() {
-            if (sharedContext != null) {
-                sharedContext.reset();
-            }
-        }
-
-        void closeSharedContexts() {
-            if (sharedContext != null) {
-                sharedContext.close();
-            }
-        }
-
-        @Override
-        public void close() {
-            closeArray(getContexts);
-            closeSharedContexts();
-        }
-    }
 
     BuildContext makeBuildContext(ColumnSource<?>[] buildSources, long maxSize) {
         return new BuildContext(buildSources, (int) Math.min(CHUNK_SIZE, maxSize));
@@ -268,20 +225,6 @@ public abstract class OperatorAggregationStateManagerTypedBase
         freeOverflowLocations.set(freeOverflowCount++, location);
     }
 
-    private void getKeyChunks(ColumnSource<?>[] sources, ColumnSource.GetContext[] contexts,
-            Chunk<? extends Values>[] chunks, RowSequence rowSequence) {
-        for (int ii = 0; ii < chunks.length; ++ii) {
-            chunks[ii] = sources[ii].getChunk(contexts[ii], rowSequence);
-        }
-    }
-
-    private void getPrevKeyChunks(ColumnSource<?>[] sources, ColumnSource.GetContext[] contexts,
-            Chunk<? extends Values>[] chunks, RowSequence rowSequence) {
-        for (int ii = 0; ii < chunks.length; ++ii) {
-            chunks[ii] = sources[ii].getPrevChunk(contexts[ii], rowSequence);
-        }
-    }
-
     protected int hashToTableLocation(int pivotPoint, int hash) {
         int location = hash & (tableSize - 1);
         if (location >= pivotPoint) {
@@ -292,13 +235,4 @@ public abstract class OperatorAggregationStateManagerTypedBase
 
     @Override
     abstract public int findPositionForKey(Object key);
-
-    private static ColumnSource.GetContext[] makeGetContexts(ColumnSource<?>[] sources, final SharedContext sharedState,
-            int chunkSize) {
-        final ColumnSource.GetContext[] contexts = new ColumnSource.GetContext[sources.length];
-        for (int ii = 0; ii < sources.length; ++ii) {
-            contexts[ii] = sources[ii].makeGetContext(chunkSize, sharedState);
-        }
-        return contexts;
-    }
 }

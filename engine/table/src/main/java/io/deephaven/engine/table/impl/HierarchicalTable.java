@@ -1,5 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
+import io.deephaven.api.ColumnName;
 import io.deephaven.api.JoinMatch;
 import io.deephaven.api.Selectable;
 import io.deephaven.api.SortColumn;
@@ -8,6 +12,7 @@ import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.api.filter.Filter;
 import io.deephaven.engine.rowset.TrackingRowSet;
 import io.deephaven.engine.table.MatchPair;
+import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.select.SelectColumnFactory;
@@ -156,11 +161,6 @@ public class HierarchicalTable extends QueryTable {
     }
 
     @Override
-    public Table countBy(String countColumnName, Selectable... groupByColumns) {
-        return throwUnsupported("countBy()");
-    }
-
-    @Override
     public Table ungroup(boolean nullFill, String... columnsToUngroup) {
         return throwUnsupported("ungroup()");
     }
@@ -176,13 +176,13 @@ public class HierarchicalTable extends QueryTable {
     }
 
     @Override
-    public Table aggAllBy(AggSpec spec, Selectable... groupByColumns) {
+    public Table aggAllBy(AggSpec spec, ColumnName... groupByColumns) {
         return throwUnsupported("aggAllBy(" + spec + ")");
     }
 
     @Override
-    public Table aggBy(Collection<? extends Aggregation> aggregations,
-            Collection<? extends Selectable> groupByColumns) {
+    public Table aggBy(Collection<? extends Aggregation> aggregations, boolean preserveEmpty, Table initialGroups,
+            Collection<? extends ColumnName> groupByColumns) {
         return throwUnsupported("aggBy()");
     }
 
@@ -242,13 +242,19 @@ public class HierarchicalTable extends QueryTable {
     }
 
     @Override
-    public LocalTableMap partitionBy(boolean dropKeys, String... keyColumnNames) {
+    public PartitionedTable partitionBy(boolean dropKeys, String... keyColumnNames) {
         return throwUnsupported("partitionBy()");
     }
 
     @Override
+    public PartitionedTable partitionedAggBy(Collection<? extends Aggregation> aggregations, boolean preserveEmpty,
+            Table initialGroups, String... keyColumnNames) {
+        return throwUnsupported("partitionedAggBy()");
+    }
+
+    @Override
     public Table rollup(Collection<? extends Aggregation> aggregations, boolean includeConstituents,
-            Selectable... columns) {
+            ColumnName... groupByColumns) {
         return throwUnsupported("rollup()");
     }
 
@@ -283,7 +289,7 @@ public class HierarchicalTable extends QueryTable {
     }
 
     @Override
-    public QueryTable getSubTable(TrackingRowSet rowSet) {
+    public QueryTable getSubTable(@NotNull TrackingRowSet rowSet) {
         return throwUnsupported("getSubTable()");
     }
 
@@ -307,7 +313,7 @@ public class HierarchicalTable extends QueryTable {
         // Create a copy of the root partitionBy table as a HierarchicalTable, and wire it up for listeners.
         final SwapListener swapListener =
                 rootTable.createSwapListenerIfRefreshing(SwapListener::new);
-        rootTable.initializeWithSnapshot("-hierarchicalTable", swapListener, (usePrev, beforeClockValue) -> {
+        initializeWithSnapshot("-hierarchicalTable", swapListener, (usePrev, beforeClockValue) -> {
             final HierarchicalTable table = new HierarchicalTable(rootTable, info);
             rootTable.copyAttributes(table, a -> true);
 

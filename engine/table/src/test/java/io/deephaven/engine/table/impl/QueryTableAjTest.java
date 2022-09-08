@@ -1,16 +1,21 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
 import io.deephaven.datastructures.util.CollectionUtil;
-import io.deephaven.engine.table.TableMap;
+import io.deephaven.engine.table.MatchPair;
+import io.deephaven.engine.table.PartitionedTable;
+import io.deephaven.engine.table.iterators.ObjectColumnIterator;
 import io.deephaven.time.DateTimeUtils;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.io.logger.StreamLoggerImpl;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.impl.select.AjMatchPairFactory;
+import io.deephaven.api.expression.AsOfJoinMatchFactory;
 import io.deephaven.engine.table.impl.select.MatchPairFactory;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.time.DateTime;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.liveness.LivenessScopeStack;
@@ -25,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,6 +40,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import static io.deephaven.api.TableOperationsDefaults.splitToCollection;
 import static io.deephaven.engine.util.TableTools.*;
 import static io.deephaven.engine.table.impl.QueryTableTestBase.intColumn;
 import static io.deephaven.engine.table.impl.TstUtils.*;
@@ -507,14 +514,9 @@ public class QueryTableAjTest {
         } else {
             resultBucket = leftTable.aj(rightTable, "Bucket," + stampMatch, "RightSentinel");
         }
-        final TableMap bucketResults = resultBucket.partitionBy("Bucket");
-        final TableMap leftBucket = leftTable.partitionBy("Bucket");
-        final TableMap rightBucket = rightTable.partitionBy("Bucket");
-
-        for (Object key : bucketResults.getKeySet()) {
-            System.out.println("Bucket:" + key);
-            checkAjResult(leftBucket.get(key), rightBucket.get(key), bucketResults.get(key), reverse, noexact);
-        }
+        checkAjResults(resultBucket.partitionBy("Bucket"),
+                leftTable.partitionBy("Bucket"), rightTable.partitionBy("Bucket"),
+                reverse, noexact);
     }
 
     @Test
@@ -542,14 +544,8 @@ public class QueryTableAjTest {
         final Table result = AsOfJoinHelper.asOfJoin(QueryTableJoinTest.SMALL_LEFT_CONTROL, leftTable,
                 (QueryTable) rightTable.reverse(), MatchPairFactory.getExpressions("Bucket", "LeftStamp=RightStamp"),
                 MatchPairFactory.getExpressions("RightStamp", "RightSentinel"), SortingOrder.Descending, true);
-
-        final TableMap bucketResults = result.partitionBy("Bucket");
-        final TableMap leftBucket = leftTable.partitionBy("Bucket");
-        final TableMap rightBucket = rightTable.partitionBy("Bucket");
-
-        for (Object key : bucketResults.getKeySet()) {
-            checkAjResult(leftBucket.get(key), rightBucket.get(key), bucketResults.get(key), true, true);
-        }
+        checkAjResults(result.partitionBy("Bucket"), leftTable.partitionBy("Bucket"), rightTable.partitionBy("Bucket"),
+                true, true);
     }
 
     @Test
@@ -773,7 +769,22 @@ public class QueryTableAjTest {
 
                                                 @Override
                                                 double getMaximumLoadFactor() {
-                                                    return 20.0;
+                                                    if (AsOfJoinHelper.USE_TYPED_STATE_MANAGER) {
+                                                        // allow this test to function for OA
+                                                        return 0.75;
+                                                    } else {
+                                                        return 20.0;
+                                                    }
+                                                }
+
+                                                @Override
+                                                int initialBuildSize() {
+                                                    if (AsOfJoinHelper.USE_TYPED_STATE_MANAGER) {
+                                                        // allow this test to function for OA
+                                                        return 1 << 3;
+                                                    } else {
+                                                        return super.initialBuildSize();
+                                                    }
                                                 }
 
                                                 @Override
@@ -928,7 +939,8 @@ public class QueryTableAjTest {
                                         SortingOrder.Ascending, false)),
                                 // < aj
                                 EvalNugget.from(() -> AsOfJoinHelper.asOfJoin(control, leftTable, rightSorted,
-                                        AjMatchPairFactory.getExpressions(false, "LeftStamp<RightStamp").first,
+                                        MatchPair.fromMatches(List.of(
+                                                AsOfJoinMatchFactory.getAjExpressions("LeftStamp<RightStamp").matches)),
                                         MatchPairFactory.getExpressions("RightStamp", "RightSentinel"),
                                         SortingOrder.Ascending, true))),
                         !withReverse ? Stream.empty()
@@ -940,7 +952,8 @@ public class QueryTableAjTest {
                                                 SortingOrder.Descending, false)),
                                         // > raj
                                         EvalNugget.from(() -> AsOfJoinHelper.asOfJoin(control, leftTable, rightReversed,
-                                                AjMatchPairFactory.getExpressions(true, "LeftStamp>RightStamp").first,
+                                                MatchPair.fromMatches(List.of(AsOfJoinMatchFactory
+                                                        .getRajExpressions("LeftStamp>RightStamp").matches)),
                                                 MatchPairFactory.getExpressions("RightStamp", "RightSentinel"),
                                                 SortingOrder.Descending, true)))),
                 !withBuckets ? Stream.empty()
@@ -956,8 +969,8 @@ public class QueryTableAjTest {
                                         SortingOrder.Ascending, false)),
                                 // < aj, with a bucket
                                 EvalNugget.from(() -> AsOfJoinHelper.asOfJoin(control, leftTable, rightSorted,
-                                        AjMatchPairFactory.getExpressions(false, "Bucket",
-                                                "LeftStamp<RightStamp").first,
+                                        MatchPair.fromMatches(List.of(AsOfJoinMatchFactory.getAjExpressions("Bucket",
+                                                "LeftStamp<RightStamp").matches)),
                                         MatchPairFactory.getExpressions("RightStamp", "RightSentinel"),
                                         SortingOrder.Ascending, true)))),
                 !withBuckets || !withReverse ? Stream.empty()
@@ -969,7 +982,8 @@ public class QueryTableAjTest {
                                         SortingOrder.Descending, false)),
                                 // > raj, with a bucket
                                 EvalNugget.from(() -> AsOfJoinHelper.asOfJoin(control, leftTable, rightReversed,
-                                        AjMatchPairFactory.getExpressions(true, "Bucket", "LeftStamp>RightStamp").first,
+                                        MatchPair.fromMatches(List.of(AsOfJoinMatchFactory.getRajExpressions("Bucket",
+                                                "LeftStamp>RightStamp").matches)),
                                         MatchPairFactory.getExpressions("RightStamp", "RightSentinel"),
                                         SortingOrder.Descending, true))))
                 .toArray(EvalNuggetInterface[]::new);
@@ -1010,10 +1024,13 @@ public class QueryTableAjTest {
             TableTools.showWithRowSet(staticResult);
         }
 
+        MatchPair[] matches = MatchPair.fromMatches(List.of(reverse
+                ? AsOfJoinMatchFactory.getRajExpressions(splitToCollection(columnsToMatch)).matches
+                : AsOfJoinMatchFactory.getAjExpressions(splitToCollection(columnsToMatch)).matches));
+
         try (final SafeCloseable ignored = LivenessScopeStack.open()) {
             final Table refreshingResult = AsOfJoinHelper.asOfJoin(control, leftTable,
-                    reverse ? ((QueryTable) rightTable.reverse()) : rightTable,
-                    AjMatchPairFactory.getExpressions(reverse, columnsToMatch.split(",")).first,
+                    reverse ? ((QueryTable) rightTable.reverse()) : rightTable, matches,
                     MatchPairFactory.getExpressions("RightStamp", "RightSentinel"),
                     reverse ? SortingOrder.Descending : SortingOrder.Ascending, disallowMatch);
 
@@ -1179,6 +1196,22 @@ public class QueryTableAjTest {
                 TableTools.showWithRowSet(rightTable, 100);
             }
             joinIncrement.step(leftSize, rightSize, leftTable, rightTable, leftColumnInfo, rightColumnInfo, en, random);
+        }
+    }
+
+    private void checkAjResults(
+            PartitionedTable bucketResults, PartitionedTable leftBucket, PartitionedTable rightBucket,
+            boolean reverse, boolean noexact) {
+        final Table correlated = bucketResults.table()
+                .naturalJoin(leftBucket.table(), "Bucket", "Left=" + leftBucket.constituentColumnName())
+                .naturalJoin(rightBucket.table(), "Bucket", "Right=" + rightBucket.constituentColumnName());
+        try (final ObjectColumnIterator<Table> results =
+                correlated.objectColumnIterator(bucketResults.constituentColumnName());
+                final ObjectColumnIterator<Table> lefts = correlated.objectColumnIterator("Left");
+                final ObjectColumnIterator<Table> rights = correlated.objectColumnIterator("Right")) {
+            while (results.hasNext()) {
+                checkAjResult(lefts.next(), rights.next(), results.next(), reverse, noexact);
+            }
         }
     }
 

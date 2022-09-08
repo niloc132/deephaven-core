@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.rowset.RowSet;
@@ -68,7 +71,10 @@ public class CharRangeFilter extends AbstractRangeFilter {
 
     @Override
     public CharRangeFilter copy() {
-        return new CharRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        final CharRangeFilter copy = new CharRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        copy.chunkFilter = chunkFilter;
+        copy.longFilter = longFilter;
+        return copy;
     }
 
     @Override

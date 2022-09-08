@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.rowset.WritableRowSet;
@@ -70,7 +73,10 @@ public class FloatRangeFilter extends AbstractRangeFilter {
 
     @Override
     public FloatRangeFilter copy() {
-        return new FloatRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        final FloatRangeFilter copy = new FloatRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        copy.chunkFilter = chunkFilter;
+        copy.longFilter = longFilter;
+        return copy;
     }
 
     @Override

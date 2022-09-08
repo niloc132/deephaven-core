@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.datastructures.util.SmartKey;
@@ -42,13 +45,13 @@ public final class SmartKeySource extends AbstractColumnSource<SmartKey>
     public final void startTrackingPrevValues() {}
 
     @Override
-    public final SmartKey get(final long indexKey) {
-        return createTuple(indexKey);
+    public final SmartKey get(final long rowKey) {
+        return createTuple(rowKey);
     }
 
     @Override
-    public final SmartKey getPrev(final long indexKey) {
-        return createPreviousTuple(indexKey);
+    public final SmartKey getPrev(final long rowKey) {
+        return createPreviousTuple(rowKey);
     }
 
     @Override
@@ -100,11 +103,6 @@ public final class SmartKeySource extends AbstractColumnSource<SmartKey>
     @Override
     public final Object exportElement(@NotNull final SmartKey smartKey, final int elementIndex) {
         return smartKey.get(elementIndex);
-    }
-
-    @Override
-    public final SmartKey exportToExternalKey(@NotNull final SmartKey smartKey) {
-        return smartKey;
     }
 
     @Override

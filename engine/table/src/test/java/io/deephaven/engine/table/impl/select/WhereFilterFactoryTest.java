@@ -1,12 +1,11 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.table.impl.RefreshingTableTestCase;
 import io.deephaven.time.DateTime;
 import io.deephaven.time.DateTimeUtils;
@@ -22,6 +21,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 public class WhereFilterFactoryTest extends RefreshingTableTestCase {
 
@@ -35,8 +35,6 @@ public class WhereFilterFactoryTest extends RefreshingTableTestCase {
     }
 
     public void testInComplex() {
-        QueryScope.setScope(new QueryScope.StandaloneImpl());
-
         assertEquals(MatchFilter.class, WhereFilterFactory.getExpression("Opra in opra1, opra2, opra3").getClass());
         QueryScope.addParam("pmExpiry", "World");
         assertEquals(MatchFilter.class, WhereFilterFactory.getExpression("amExpiry = pmExpiry").getClass());
@@ -46,8 +44,8 @@ public class WhereFilterFactoryTest extends RefreshingTableTestCase {
 
         WhereFilter filter = WhereFilterFactory.getExpression("Maturity in amExpiry,pmExpiry , \"AGAIN\"  ");
         assertEquals(MatchFilter.class, filter.getClass());
-        TableDefinition tableDef = new TableDefinition(Collections.singletonList((Class) String.class),
-                Collections.singletonList("Maturity"));
+        TableDefinition tableDef = TableDefinition.from(Collections.singletonList("Maturity"),
+                Collections.singletonList((Class) String.class));
 
         filter.init(tableDef);
         Object[] values = ((MatchFilter) filter).getValues();
@@ -58,8 +56,7 @@ public class WhereFilterFactoryTest extends RefreshingTableTestCase {
 
         filter = WhereFilterFactory.getExpression("Maturity in amExpiry,1 , \"AGAIN\"  ");
         assertEquals(MatchFilter.class, filter.getClass());
-        tableDef = new TableDefinition(Collections.singletonList((Class) String.class),
-                Collections.singletonList("Maturity"));
+        tableDef = TableDefinition.from(List.of("Maturity"), List.of(String.class));
 
         try {
             filter.init(tableDef);
@@ -70,7 +67,6 @@ public class WhereFilterFactoryTest extends RefreshingTableTestCase {
     }
 
     public void testCharMatch() {
-        QueryScope.setScope(new QueryScope.StandaloneImpl());
         QueryScope.addParam("theChar", 'C');
 
         final Table tt = TableTools.newTable(TableTools.charCol("AChar", 'A', 'B', 'C', '\0', '\''));

@@ -1,16 +1,19 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.RowSetBuilderSequential;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.ShiftObliviousListener;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.lang.QueryLibrary;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
@@ -224,7 +227,7 @@ public class QueryTableSelectUpdateTest {
             return;
         }
 
-        QueryLibrary.importStatic(QueryTableSelectUpdateTest.class);
+        ExecutionContext.getContext().getQueryLibrary().importStatic(QueryTableSelectUpdateTest.class);
 
         QueryTable table = TstUtils.testRefreshingTable(i(2, 4, 6).toTracking(), c("A", 1, 2, 3));
         table = (QueryTable) table
@@ -847,13 +850,13 @@ public class QueryTableSelectUpdateTest {
         String a = new String(new char[32000]).replace("\0", "A");
         String b = new String(new char[32000]).replace("\0", "B");
         Table x = TableTools.emptyTable(1).update("C=`" + a + "` + `" + b + "`");
-        TestCase.assertEquals(1, x.getColumns().length);
+        TestCase.assertEquals(1, x.numColumns());
 
         a = new String(new char[40000]).replace("\0", "A");
         b = new String(new char[40000]).replace("\0", "B");
         x = TableTools.emptyTable(1)
                 .update("C=String.join(\"" + a + "\", Integer.toString(new Random().nextInt()), \"" + b + "\")");
-        TestCase.assertEquals(1, x.getColumns().length);
+        TestCase.assertEquals(1, x.numColumns());
     }
 
     @Test
@@ -1008,5 +1011,13 @@ public class QueryTableSelectUpdateTest {
         final Table input = emptyTable(100000).updateView("A=ii", "B=ii % 1000", "C=ii % 2 == 0");
         final Table evens = input.where("C");
         assertTableEquals(evens, evens.flatten().select());
+    }
+
+    @Test
+    public void testStaticSelectFlattenDateTimeCol() {
+        final Table input = emptyTable(10).view("A=ii", "B = DateTime.now()").where("A % 2 == 0");
+        final Table output = input.select("B");
+        Assert.assertEquals(5, output.size());
+        Assert.assertTrue(output.isFlat());
     }
 }

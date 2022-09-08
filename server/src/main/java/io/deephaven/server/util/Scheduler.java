@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.server.util;
 
 import io.deephaven.time.DateTime;
@@ -43,6 +46,13 @@ public interface Scheduler extends TimeProvider {
      * @param command the task to run
      */
     void runSerially(@NotNull Runnable command);
+
+    /**
+     * @return whether this scheduler is being run for tests.
+     */
+    default boolean inTestMode() {
+        return false;
+    }
 
     class DelegatingImpl implements Scheduler {
 

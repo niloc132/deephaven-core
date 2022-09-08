@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.kafka.ingest;
 
 import io.deephaven.chunk.ChunkType;
@@ -21,6 +24,6 @@ public interface FieldCopier {
                    int sourceOffset, int destOffset, int length);
 
     interface Factory {
-        FieldCopier make(String fieldName, ChunkType chunkType, Class<?> dataType);
+        FieldCopier make(String fieldName, ChunkType chunkType, Class<?> dataType, Class<?> componentType);
     }
 }

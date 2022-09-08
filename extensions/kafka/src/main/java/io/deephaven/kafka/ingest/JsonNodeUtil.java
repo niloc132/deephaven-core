@@ -1,5 +1,9 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.kafka.ingest;
 
+import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,7 +25,6 @@ public class JsonNodeUtil {
             .configure(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS, true);
 
     public static JsonNode makeJsonNode(final String json) {
-        final JsonNode node;
         try {
             return objectMapper.readTree(json);
         } catch (JsonProcessingException ex) {
@@ -33,22 +36,34 @@ public class JsonNodeUtil {
             final JsonNode node, @NotNull final String key,
             final boolean allowMissingKeys, final boolean allowNullValues) {
         final JsonNode tmpNode = node == null ? null : node.get(key);
-        if (!allowMissingKeys && tmpNode == null) {
-            throw new IllegalArgumentException(
-                    "Key " + key + " not found in the record, and allowMissingKeys is false.");
-        }
-        if (tmpNode != null && !allowNullValues && tmpNode.isNull()) {
-            throw new IllegalArgumentException(
-                    "Value for Key " + key + " is null in the record, and allowNullValues is false.");
-        }
+        checkNode(key, tmpNode, allowMissingKeys, allowNullValues);
         return tmpNode;
     }
 
+    private static JsonNode checkAllowMissingOrNull(
+            final JsonNode node, @NotNull final JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = node == null ? null : node.at(ptr);
+        checkNode(ptr, tmpNode, allowMissingKeys, allowNullValues);
+        return tmpNode;
+    }
+
+    private static void checkNode(Object key, JsonNode node, boolean allowMissingKeys, boolean allowNullValues) {
+        if (!allowMissingKeys && (node == null || node.isMissingNode())) {
+            throw new IllegalArgumentException(
+                    String.format("Key '%s' not found in the record, and allowMissingKeys is false.", key));
+        }
+        if (!allowNullValues && isNullOrMissingField(node)) {
+            throw new IllegalArgumentException(String
+                    .format("Value for '%s' is null or missing in the record, and allowNullValues is false.", key));
+        }
+    }
+
     /**
-     * @return true if node is null object or is a "Json" null
+     * @return true if node is null object or is a "Json" null or missing
      */
-    private static boolean isNullField(final JsonNode node) {
-        return node == null || node.isNull();
+    private static boolean isNullOrMissingField(final JsonNode node) {
+        return node == null || node.isNull() || node.isMissingNode();
     }
 
     /**
@@ -66,12 +81,25 @@ public class JsonNodeUtil {
 
     /**
      * Returns a Deephaven int (primitive int with reserved values for null) from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Deephaven int (primitive int with reserved values for null)
+     */
+    public static int getInt(@NotNull final JsonNode node, @NotNull JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getInt(tmpNode);
+    }
+
+    /**
+     * Returns a Deephaven int (primitive int with reserved values for null) from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Deephaven int (primitive int with reserved values for null)
      */
     public static int getInt(final JsonNode node) {
-        return isNullField(node) ? QueryConstants.NULL_INT : node.asInt();
+        return isNullOrMissingField(node) ? QueryConstants.NULL_INT : node.asInt();
     }
 
     /**
@@ -96,7 +124,7 @@ public class JsonNodeUtil {
      */
     @Nullable
     public static Integer getBoxedInt(final JsonNode node) {
-        return isNullField(node) ? null : node.asInt();
+        return isNullOrMissingField(node) ? null : node.asInt();
     }
 
     /**
@@ -114,12 +142,25 @@ public class JsonNodeUtil {
 
     /**
      * Returns a Deephaven short (primitive short with reserved values for Null) from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Deephaven short (primitive short with reserved values for Null)
+     */
+    public static short getShort(@NotNull final JsonNode node, @NotNull JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getShort(tmpNode);
+    }
+
+    /**
+     * Returns a Deephaven short (primitive short with reserved values for Null) from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Deephaven short (primitive short with reserved values for Null)
      */
     public static short getShort(final JsonNode node) {
-        return isNullField(node) ? QueryConstants.NULL_SHORT : (short) node.asInt();
+        return isNullOrMissingField(node) ? QueryConstants.NULL_SHORT : (short) node.asInt();
     }
 
     /**
@@ -138,7 +179,7 @@ public class JsonNodeUtil {
 
     @Nullable
     public static Short getBoxedShort(final JsonNode node) {
-        return isNullField(node) ? null : (short) node.asInt();
+        return isNullOrMissingField(node) ? null : (short) node.asInt();
     }
 
     /**
@@ -155,13 +196,26 @@ public class JsonNodeUtil {
     }
 
     /**
+     * Returns a Deephaven long (primitive long with reserved values for Null) from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Deephaven long (primitive long with reserved values for Null)
+     */
+    public static long getLong(@NotNull final JsonNode node, @NotNull JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getLong(tmpNode);
+    }
+
+    /**
      * Returns a Deephaven long (primitive long with reserved values for null) from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Deephaven long (primitive long with reserved values for null)
      */
     public static long getLong(final JsonNode node) {
-        return isNullField(node) ? QueryConstants.NULL_LONG : node.asLong();
+        return isNullOrMissingField(node) ? QueryConstants.NULL_LONG : node.asLong();
     }
 
     /**
@@ -186,7 +240,7 @@ public class JsonNodeUtil {
      */
     @Nullable
     public static Long getBoxedLong(final JsonNode node) {
-        return isNullField(node) ? null : node.asLong();
+        return isNullOrMissingField(node) ? null : node.asLong();
     }
 
     /**
@@ -204,12 +258,25 @@ public class JsonNodeUtil {
 
     /**
      * Returns a Deephaven double (primitive double with reserved values for null) from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Deephaven double (primitive double with reserved values for null)
+     */
+    public static double getDouble(@NotNull final JsonNode node, @NotNull JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getDouble(tmpNode);
+    }
+
+    /**
+     * Returns a Deephaven double (primitive double with reserved values for null) from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Deephaven double (primitive double with reserved values for null)
      */
     public static double getDouble(final JsonNode node) {
-        return isNullField(node) ? QueryConstants.NULL_DOUBLE : node.asDouble();
+        return isNullOrMissingField(node) ? QueryConstants.NULL_DOUBLE : node.asDouble();
     }
 
     /**
@@ -234,7 +301,7 @@ public class JsonNodeUtil {
      */
     @Nullable
     public static Double getBoxedDouble(final JsonNode node) {
-        return isNullField(node) ? null : node.asDouble();
+        return isNullOrMissingField(node) ? null : node.asDouble();
     }
 
     /**
@@ -252,12 +319,25 @@ public class JsonNodeUtil {
 
     /**
      * Returns a Deephaven float (primitive float with reserved values for Null) from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Deephaven float (primitive float with reserved values for Null)
+     */
+    public static float getFloat(@NotNull final JsonNode node, @NotNull JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getFloat(tmpNode);
+    }
+
+    /**
+     * Returns a Deephaven float (primitive float with reserved values for Null) from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Deephaven float (primitive float with reserved values for Null)
      */
     public static float getFloat(final JsonNode node) {
-        return isNullField(node) ? QueryConstants.NULL_FLOAT : (float) node.asDouble();
+        return isNullOrMissingField(node) ? QueryConstants.NULL_FLOAT : (float) node.asDouble();
     }
 
     /**
@@ -282,7 +362,7 @@ public class JsonNodeUtil {
      */
     @Nullable
     public static Float getBoxedFloat(final JsonNode node) {
-        return isNullField(node) ? null : (float) node.asDouble();
+        return isNullOrMissingField(node) ? null : (float) node.asDouble();
     }
 
     /**
@@ -300,12 +380,25 @@ public class JsonNodeUtil {
 
     /**
      * Returns a Deephaven byte (primitive byte with a reserved value for Null) from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Deephaven byte (primitive byte with a reserved value for Null)
+     */
+    public static byte getByte(@NotNull final JsonNode node, @NotNull JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getByte(tmpNode);
+    }
+
+    /**
+     * Returns a Deephaven byte (primitive byte with a reserved value for Null) from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Deephaven byte (primitive byte with a reserved value for Null)
      */
     public static byte getByte(final JsonNode node) {
-        if (isNullField(node)) {
+        if (isNullOrMissingField(node)) {
             return QueryConstants.NULL_BYTE;
         }
         final byte[] bytes = node.asText().getBytes();
@@ -337,7 +430,7 @@ public class JsonNodeUtil {
      */
     @Nullable
     public static Byte getBoxedByte(final JsonNode node) {
-        if (isNullField(node)) {
+        if (isNullOrMissingField(node)) {
             return null;
         }
         final byte[] bytes = node.asText().getBytes();
@@ -362,12 +455,25 @@ public class JsonNodeUtil {
 
     /**
      * Returns a Deephaven char (primitive char with a reserved value for Null) from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Deephaven char (primitive char with a reserved value for Null)
+     */
+    public static char getChar(@NotNull final JsonNode node, @NotNull final JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getChar(tmpNode);
+    }
+
+    /**
+     * Returns a Deephaven char (primitive char with a reserved value for Null) from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Deephaven char (primitive char with a reserved value for Null)
      */
     public static char getChar(final JsonNode node) {
-        if (isNullField(node)) {
+        if (isNullOrMissingField(node)) {
             return QueryConstants.NULL_CHAR;
         }
         final String s = node.asText();
@@ -393,7 +499,7 @@ public class JsonNodeUtil {
 
     @Nullable
     public static Character getBoxedChar(final JsonNode tmpNode) {
-        if (isNullField(tmpNode)) {
+        if (isNullOrMissingField(tmpNode)) {
             return null;
         }
         final String s = tmpNode.asText();
@@ -419,13 +525,30 @@ public class JsonNodeUtil {
 
     /**
      * Returns a String from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A String
+     */
+    @Nullable
+    public static String getString(@NotNull final JsonNode node, @NotNull final JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getString(tmpNode);
+    }
+
+    /**
+     * Returns a String from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A String
      */
     @Nullable
     public static String getString(final JsonNode node) {
-        return isNullField(node) ? null : node.asText();
+        if (isNullOrMissingField(node)) {
+            return null;
+        }
+        return node.isValueNode() ? node.asText() : node.toString();
     }
 
     /**
@@ -443,13 +566,26 @@ public class JsonNodeUtil {
 
     /**
      * Returns a Boolean from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A Boolean
+     */
+    public static Boolean getBoolean(@NotNull final JsonNode node, @NotNull final JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getBoolean(tmpNode);
+    }
+
+    /**
+     * Returns a Boolean from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A Boolean
      */
     @Nullable
     public static Boolean getBoolean(final JsonNode node) {
-        return isNullField(node) ? null : node.asBoolean();
+        return isNullOrMissingField(node) ? null : node.asBoolean();
     }
 
     /**
@@ -467,13 +603,26 @@ public class JsonNodeUtil {
 
     /**
      * Returns a BigInteger from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A BigInteger
+     */
+    public static BigInteger getBigInteger(@NotNull final JsonNode node, @NotNull final JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getBigInteger(tmpNode);
+    }
+
+    /**
+     * Returns a BigInteger from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A BigInteger
      */
     @Nullable
     public static BigInteger getBigInteger(final JsonNode node) {
-        return isNullField(node) ? null : node.bigIntegerValue();
+        return isNullOrMissingField(node) ? null : node.bigIntegerValue();
     }
 
     /**
@@ -492,13 +641,27 @@ public class JsonNodeUtil {
 
     /**
      * Returns a BigDecimal from a {@link JsonNode}.
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A BigDecimal
+     */
+    @Nullable
+    public static BigDecimal getBigDecimal(@NotNull final JsonNode node, @NotNull final JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getBigDecimal(tmpNode);
+    }
+
+    /**
+     * Returns a BigDecimal from a {@link JsonNode}.
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A BigDecimal
      */
     @Nullable
     public static BigDecimal getBigDecimal(final JsonNode node) {
-        return isNullField(node) ? null : node.decimalValue();
+        return isNullOrMissingField(node) ? null : node.decimalValue();
     }
 
     /**
@@ -523,7 +686,7 @@ public class JsonNodeUtil {
      */
     @Nullable
     public static Object getValue(final JsonNode node) {
-        return isNullField(node) ? null : node;
+        return isNullOrMissingField(node) ? null : node;
     }
 
     /**
@@ -546,13 +709,29 @@ public class JsonNodeUtil {
      * Returns a {@link DateTime} from a {@link JsonNode}. Will try to infer precision of a long value to be parsed
      * using {@link DateTimeUtils} autoEpochToTime. If the value in the JSON record is not numeric, this method will
      * attempt to parse it as a Deephaven DateTime string (yyyy-MM-ddThh:mm:ss[.nnnnnnnnn] TZ).
+     *
+     * @param node The {@link JsonNode} from which to retrieve the value.
+     * @param ptr A JsonPointer to the node for the value to retrieve.
+     * @return A {@link DateTime}
+     */
+    @Nullable
+    public static DateTime getDateTime(@NotNull final JsonNode node, @NotNull final JsonPointer ptr,
+            final boolean allowMissingKeys, final boolean allowNullValues) {
+        final JsonNode tmpNode = checkAllowMissingOrNull(node, ptr, allowMissingKeys, allowNullValues);
+        return getDateTime(tmpNode);
+    }
+
+    /**
+     * Returns a {@link DateTime} from a {@link JsonNode}. Will try to infer precision of a long value to be parsed
+     * using {@link DateTimeUtils} autoEpochToTime. If the value in the JSON record is not numeric, this method will
+     * attempt to parse it as a Deephaven DateTime string (yyyy-MM-ddThh:mm:ss[.nnnnnnnnn] TZ).
      * 
      * @param node The {@link JsonNode} from which to retrieve the value.
      * @return A {@link DateTime}
      */
     @Nullable
     public static DateTime getDateTime(final JsonNode node) {
-        if (isNullField(node)) {
+        if (isNullOrMissingField(node)) {
             return null;
         }
         // Try to guess formatting from common formats

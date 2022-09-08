@@ -1,16 +1,16 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
-import io.deephaven.compilertools.CompilerTools;
+import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.exceptions.NotSortableException;
 import io.deephaven.engine.table.DataColumn;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.time.DateTime;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.test.types.OutOfBandTest;
@@ -25,17 +25,19 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import io.deephaven.util.SafeCloseable;
 import org.jetbrains.annotations.NotNull;
 import org.junit.experimental.categories.Category;
 
 @Category(OutOfBandTest.class)
 public class TestSort extends BaseArrayTestCase {
 
-    private static final boolean ENABLE_COMPILER_TOOLS_LOGGING = Configuration.getInstance()
-            .getBooleanForClassWithDefault(TestSort.class, "CompilerTools.logEnabled", false);
+    private static final boolean ENABLE_QUERY_COMPILER_LOGGING = Configuration.getInstance()
+            .getBooleanForClassWithDefault(TestSort.class, "QueryCompiler.logEnabled", false);
 
     private boolean lastMemoize = false;
-    private boolean oldCompilerToolsLogEnabled;
+    private boolean oldQueryCompilerLogEnabled;
+    private SafeCloseable executionContext;
 
     @Override
     protected void setUp() throws Exception {
@@ -43,15 +45,17 @@ public class TestSort extends BaseArrayTestCase {
         UpdateGraphProcessor.DEFAULT.enableUnitTestMode();
         UpdateGraphProcessor.DEFAULT.resetForUnitTests(false);
         lastMemoize = QueryTable.setMemoizeResults(false);
-        oldCompilerToolsLogEnabled = CompilerTools.setLogEnabled(ENABLE_COMPILER_TOOLS_LOGGING);
+        oldQueryCompilerLogEnabled = QueryCompiler.setLogEnabled(ENABLE_QUERY_COMPILER_LOGGING);
+        executionContext = ExecutionContext.createForUnitTests().open();
     }
 
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
-        CompilerTools.setLogEnabled(oldCompilerToolsLogEnabled);
+        QueryCompiler.setLogEnabled(oldQueryCompilerLogEnabled);
         QueryTable.setMemoizeResults(lastMemoize);
         UpdateGraphProcessor.DEFAULT.resetForUnitTests(true);
+        executionContext.close();
     }
 
     @FunctionalInterface

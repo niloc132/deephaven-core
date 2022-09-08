@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharChunkColumnSource and regenerate
@@ -47,14 +50,14 @@ public class IntChunkColumnSource extends AbstractColumnSource<Integer> implemen
     // endregion constructor
 
     @Override
-    public int getInt(final long index) {
-        if (index < 0 || index >= totalSize) {
+    public int getInt(final long rowKey) {
+        if (rowKey < 0 || rowKey >= totalSize) {
             return QueryConstants.NULL_INT;
         }
 
-        final int chunkIndex = getChunkIndex(index);
+        final int chunkIndex = getChunkIndex(rowKey);
         final long offset = firstOffsetForData.getQuick(chunkIndex);
-        return data.get(chunkIndex).get((int) (index - offset));
+        return data.get(chunkIndex).get((int) (rowKey - offset));
     }
 
     private final static class ChunkGetContext<ATTR extends Any> extends DefaultGetContext<ATTR> {

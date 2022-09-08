@@ -1,69 +1,156 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.server.arrow;
 
-import com.google.flatbuffers.FlatBufferBuilder;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.ByteStringAccess;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.rpc.Code;
-import io.deephaven.UncheckedDeephavenException;
-import io.deephaven.engine.rowset.RowSet;
-import io.deephaven.engine.table.impl.BaseTable;
-import io.deephaven.engine.table.impl.remote.ConstructSnapshot;
-import io.deephaven.engine.table.impl.util.BarrageMessage;
+import io.deephaven.auth.AuthenticationException;
+import io.deephaven.auth.AuthenticationRequestHandler;
+import io.deephaven.auth.BasicAuthMarshaller;
 import io.deephaven.extensions.barrage.BarrageSnapshotOptions;
-import io.deephaven.extensions.barrage.BarrageSubscriptionOptions;
-import io.deephaven.extensions.barrage.util.BarrageUtil;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.proto.backplane.grpc.ExportNotification;
-import io.deephaven.proto.flight.util.MessageHelper;
-import io.deephaven.server.barrage.BarrageStreamGenerator;
+import io.deephaven.proto.backplane.grpc.WrappedAuthenticationRequest;
 import io.deephaven.server.session.SessionService;
 import io.deephaven.server.session.SessionState;
 import io.deephaven.server.session.TicketRouter;
+import io.deephaven.auth.AuthContext;
 import io.grpc.stub.StreamObserver;
 import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.impl.FlightServiceGrpc;
+import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
-
-import static io.deephaven.server.arrow.ArrowFlightUtil.ZERO_MOD_COLUMNS;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Singleton
 public class FlightServiceGrpcImpl extends FlightServiceGrpc.FlightServiceImplBase {
-    static final BarrageSubscriptionOptions DEFAULT_SUB_DESER_OPTIONS =
-            BarrageSubscriptionOptions.builder().build();
     static final BarrageSnapshotOptions DEFAULT_SNAPSHOT_DESER_OPTIONS =
             BarrageSnapshotOptions.builder().build();
 
     private static final Logger log = LoggerFactory.getLogger(FlightServiceGrpcImpl.class);
 
+    private final ScheduledExecutorService executorService;
     private final SessionService sessionService;
     private final TicketRouter ticketRouter;
     private final ArrowFlightUtil.DoExchangeMarshaller.Factory doExchangeFactory;
 
+    private final BasicAuthMarshaller basicAuthMarshaller;
+    private final Map<String, AuthenticationRequestHandler> authRequestHandlers;
+
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     @Inject
-    public FlightServiceGrpcImpl(final SessionService sessionService,
+    public FlightServiceGrpcImpl(
+            @Nullable final ScheduledExecutorService executorService,
+            final SessionService sessionService,
             final TicketRouter ticketRouter,
-            final ArrowFlightUtil.DoExchangeMarshaller.Factory doExchangeFactory) {
-        this.ticketRouter = ticketRouter;
+            final ArrowFlightUtil.DoExchangeMarshaller.Factory doExchangeFactory,
+            final Optional<BasicAuthMarshaller> basicAuthMarshaller,
+            Map<String, AuthenticationRequestHandler> authRequestHandlers) {
+        this.executorService = executorService;
         this.sessionService = sessionService;
+        this.ticketRouter = ticketRouter;
         this.doExchangeFactory = doExchangeFactory;
+        this.basicAuthMarshaller = basicAuthMarshaller.orElse(null);
+        this.authRequestHandlers = authRequestHandlers;
     }
 
     @Override
     public StreamObserver<Flight.HandshakeRequest> handshake(
             StreamObserver<Flight.HandshakeResponse> responseObserver) {
-        return GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            throw GrpcUtil.statusRuntimeException(Code.UNIMPLEMENTED, "See deephaven-core#997; support flight auth.");
-        });
+        return GrpcUtil.rpcWrapper(log, responseObserver, () -> new HandshakeObserver(responseObserver));
+    }
+
+    private final class HandshakeObserver implements StreamObserver<Flight.HandshakeRequest> {
+
+        private boolean isComplete = false;
+        private final StreamObserver<Flight.HandshakeResponse> responseObserver;
+
+        private HandshakeObserver(StreamObserver<Flight.HandshakeResponse> responseObserver) {
+            this.responseObserver = responseObserver;
+        }
+
+        @Override
+        public void onNext(final Flight.HandshakeRequest value) {
+            // handle the scenario where authentication headers initialized a session
+            SessionState session = sessionService.getOptionalSession();
+            if (session != null) {
+                respondWithAuthTokenBin(session);
+                return;
+            }
+
+            final AuthenticationRequestHandler.HandshakeResponseListener handshakeResponseListener =
+                    (protocol, response) -> {
+                        GrpcUtil.safelyExecute(() -> {
+                            responseObserver.onNext(Flight.HandshakeResponse.newBuilder()
+                                    .setProtocolVersion(protocol)
+                                    .setPayload(ByteStringAccess.wrap(response))
+                                    .build());
+                        });
+                    };
+
+            final ByteString payload = value.getPayload();
+            final long protocolVersion = value.getProtocolVersion();
+            Optional<AuthContext> auth = Optional.empty();
+            try {
+                if (basicAuthMarshaller != null) {
+                    auth = basicAuthMarshaller.login(protocolVersion, payload.asReadOnlyByteBuffer(),
+                            handshakeResponseListener);
+                }
+                if (auth.isEmpty()) {
+                    final WrappedAuthenticationRequest req = WrappedAuthenticationRequest.parseFrom(payload);
+                    final AuthenticationRequestHandler handler = authRequestHandlers.get(req.getType());
+                    if (handler != null) {
+                        auth = handler.login(protocolVersion, req.getPayload().asReadOnlyByteBuffer(),
+                                handshakeResponseListener);
+                    }
+                }
+            } catch (final AuthenticationException | InvalidProtocolBufferException err) {
+                log.error().append("Authentication failed: ").append(err).endl();
+                auth = Optional.empty();
+            }
+
+            if (auth.isEmpty()) {
+                responseObserver.onError(GrpcUtil.statusRuntimeException(Code.UNAUTHENTICATED,
+                        "authentication details invalid"));
+                return;
+            }
+
+            session = sessionService.newSession(auth.get());
+            respondWithAuthTokenBin(session);
+        }
+
+        /** send the bearer token as an AuthTokenBin, as headers might have already been sent */
+        private void respondWithAuthTokenBin(SessionState session) {
+            isComplete = true;
+            responseObserver.onNext(Flight.HandshakeResponse.newBuilder()
+                    .setPayload(session.getExpiration().getTokenAsByteString())
+                    .build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void onError(final Throwable t) {
+            // ignore
+        }
+
+        @Override
+        public void onCompleted() {
+            if (isComplete) {
+                return;
+            }
+            responseObserver.onError(
+                    GrpcUtil.statusRuntimeException(Code.UNAUTHENTICATED, "no authentication details provided"));
+        }
     }
 
     @Override
@@ -149,49 +236,9 @@ public class FlightServiceGrpcImpl extends FlightServiceGrpc.FlightServiceImplBa
     }
 
     public void doGetCustom(final Flight.Ticket request, final StreamObserver<InputStream> responseObserver) {
-        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            final SessionState session = sessionService.getCurrentSession();
-            final SessionState.ExportObject<BaseTable> export =
-                    ticketRouter.resolve(session, request, "request");
-
-            session.nonExport()
-                    .require(export)
-                    .onError(responseObserver)
-                    .submit(() -> {
-                        final BaseTable table = export.get();
-
-                        // create an adapter for the response observer
-                        final StreamObserver<BarrageStreamGenerator.View> listener =
-                                ArrowModule.provideListenerAdapter().adapt(responseObserver);
-
-                        // Send Schema wrapped in Message
-                        final FlatBufferBuilder builder = new FlatBufferBuilder();
-                        final int schemaOffset = BarrageUtil.makeSchemaPayload(builder, table.getDefinition(),
-                                table.getAttributes());
-                        builder.finish(MessageHelper.wrapInMessage(builder, schemaOffset,
-                                org.apache.arrow.flatbuf.MessageHeader.Schema));
-                        final ByteBuffer serializedMessage = builder.dataBuffer();
-
-                        // leverage the stream generator SchemaView constructor
-                        final BarrageStreamGenerator.SchemaView schemaView =
-                                new BarrageStreamGenerator.SchemaView(serializedMessage);
-
-                        // push the schema to the listener
-                        listener.onNext(schemaView);
-
-                        // get ourselves some data!
-                        final BarrageMessage msg = ConstructSnapshot.constructBackplaneSnapshot(this, table);
-                        msg.modColumnData = ZERO_MOD_COLUMNS; // actually no mod column data for DoGet
-
-                        // translate the viewport to keyspace and make the call
-                        try (final BarrageStreamGenerator bsg = new BarrageStreamGenerator(msg);) {
-                            listener.onNext(
-                                    bsg.getSnapshotView(DEFAULT_SNAPSHOT_DESER_OPTIONS));
-                        }
-
-                        listener.onCompleted();
-                    });
-        });
+        GrpcUtil.rpcWrapper(log, responseObserver,
+                () -> ArrowFlightUtil.DoGetCustom(executorService, sessionService.getCurrentSession(),
+                        ticketRouter, request, responseObserver));
     }
 
     /**
@@ -202,8 +249,8 @@ public class FlightServiceGrpcImpl extends FlightServiceGrpc.FlightServiceImplBa
      */
     public StreamObserver<InputStream> doPutCustom(final StreamObserver<Flight.PutResult> responseObserver) {
         return GrpcUtil.rpcWrapper(log, responseObserver,
-                () -> new ArrowFlightUtil.DoPutObserver(sessionService.getCurrentSession(), ticketRouter,
-                        responseObserver));
+                () -> new ArrowFlightUtil.DoPutObserver(executorService, sessionService.getCurrentSession(),
+                        ticketRouter, responseObserver));
     }
 
     /**

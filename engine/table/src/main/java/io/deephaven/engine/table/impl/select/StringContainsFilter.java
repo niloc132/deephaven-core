@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.util.string.StringUtils;
@@ -104,6 +103,9 @@ public class StringContainsFilter extends PatternFilter {
 
     @Override
     public StringContainsFilter copy() {
-        return new StringContainsFilter(getCaseSensitivity(), getMatchType(), columnName, values);
+        final StringContainsFilter copy =
+                new StringContainsFilter(getCaseSensitivity(), getMatchType(), columnName, values);
+        copy.pattern = pattern;
+        return copy;
     }
 }

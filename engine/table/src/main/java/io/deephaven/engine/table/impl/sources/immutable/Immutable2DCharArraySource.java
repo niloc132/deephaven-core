@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.sources.immutable;
 
 import io.deephaven.chunk.*;
@@ -7,7 +10,7 @@ import io.deephaven.engine.rowset.RowSequenceFactory;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.engine.table.WritableColumnSource;
-import io.deephaven.engine.table.WritableSourceWithEnsurePrevious;
+import io.deephaven.engine.table.WritableSourceWithPrepareForParallelPopulation;
 import io.deephaven.engine.table.impl.DefaultGetContext;
 import io.deephaven.engine.table.impl.ImmutableColumnSourceGetDefaults;
 import io.deephaven.engine.table.impl.sources.*;
@@ -30,7 +33,7 @@ import static io.deephaven.util.QueryConstants.NULL_CHAR;
  *
  * If your size is smaller than the maximum array size, prefer {@link ImmutableCharArraySource}.
  */
-public class Immutable2DCharArraySource extends AbstractDeferredGroupingColumnSource<Character> implements ImmutableColumnSourceGetDefaults.ForChar, WritableColumnSource<Character>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithEnsurePrevious {
+public class Immutable2DCharArraySource extends AbstractDeferredGroupingColumnSource<Character> implements ImmutableColumnSourceGetDefaults.ForChar, WritableColumnSource<Character>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithPrepareForParallelPopulation {
     private static final int DEFAULT_SEGMENT_SHIFT = 30;
     private final long segmentShift;
     private final int segmentMask;
@@ -71,12 +74,12 @@ public class Immutable2DCharArraySource extends AbstractDeferredGroupingColumnSo
     // endregion allocateArray
 
     @Override
-    public final char getChar(long index) {
-        if (index < 0 || index >= size) {
+    public final char getChar(long rowKey) {
+        if (rowKey < 0 || rowKey >= size) {
             return NULL_CHAR;
         }
 
-        return getUnsafe(index);
+        return getUnsafe(rowKey);
     }
 
     private int keyToSegment(long index) {
@@ -89,6 +92,11 @@ public class Immutable2DCharArraySource extends AbstractDeferredGroupingColumnSo
 
     public final char getUnsafe(long key) {
         return data[keyToSegment(key)][keyToOffset(key)];
+    }
+
+    @Override
+    public final void setNull(long key) {
+        data[keyToSegment(key)][keyToOffset(key)] = NULL_CHAR;
     }
 
     @Override
@@ -260,7 +268,7 @@ public class Immutable2DCharArraySource extends AbstractDeferredGroupingColumnSo
     }
 
     @Override
-    public void ensurePrevious(RowSet rowSet) {
+    public void prepareForParallelPopulation(RowSet rowSet) {
         // nothing to do
     }
 

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.impl.AbstractColumnSource;
@@ -23,14 +26,14 @@ public class DoubleNullToZeroColumnSource extends AbstractColumnSource<Double> i
     }
 
     @Override
-    public double getDouble(long index) {
-        final double value = column.getDouble(index);
+    public double getDouble(long rowKey) {
+        final double value = column.getDouble(rowKey);
         return nullToZero(value);
     }
 
     @Override
-    public double getPrevDouble(long index) {
-        final double value = column.getPrevDouble(index);
+    public double getPrevDouble(long rowKey) {
+        final double value = column.getPrevDouble(rowKey);
         return nullToZero(value);
     }
 

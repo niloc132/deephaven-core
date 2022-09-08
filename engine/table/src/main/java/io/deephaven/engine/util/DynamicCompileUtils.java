@@ -1,10 +1,10 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.util;
 
-import io.deephaven.compilertools.CompilerTools;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.context.QueryCompiler;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -52,8 +52,8 @@ public class DynamicCompileUtils {
         classBody.append("  }\n");
         classBody.append("}\n");
 
-        final Class partitionClass =
-                CompilerTools.compile("Function", classBody.toString(), CompilerTools.FORMULA_PREFIX);
+        final Class<?> partitionClass = ExecutionContext.getContext().getQueryCompiler()
+                .compile("Function", classBody.toString(), QueryCompiler.FORMULA_PREFIX);
 
         try {
             // noinspection unchecked
@@ -71,8 +71,8 @@ public class DynamicCompileUtils {
         classBody.append("  public Class get() { return ").append(object).append(".class; }\n");
         classBody.append("}\n");
 
-        final Class partitionClass =
-                CompilerTools.compile("Function", classBody.toString(), CompilerTools.FORMULA_PREFIX);
+        final Class<?> partitionClass = ExecutionContext.getContext().getQueryCompiler()
+                .compile("Function", classBody.toString(), QueryCompiler.FORMULA_PREFIX);
 
         try {
             // noinspection unchecked

@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Require;
@@ -143,13 +142,13 @@ public class FunctionalColumn<S, D> implements SelectColumn {
     public ColumnSource<D> getDataView() {
         return new ViewColumnSource<>(destDataType, componentType, new Formula(null) {
             @Override
-            public Object getPrev(long key) {
-                return function.apply(key, sourceColumnSource.getPrev(key));
+            public Object getPrev(long rowKey) {
+                return function.apply(rowKey, sourceColumnSource.getPrev(rowKey));
             }
 
             @Override
-            public Object get(long key) {
-                return function.apply(key, sourceColumnSource.get(key));
+            public Object get(long rowKey) {
+                return function.apply(rowKey, sourceColumnSource.get(rowKey));
             }
 
             @Override

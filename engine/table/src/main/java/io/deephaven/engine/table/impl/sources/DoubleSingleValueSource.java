@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharacterSingleValueSource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.chunk.attributes.Values;
@@ -21,6 +20,7 @@ import io.deephaven.chunk.LongChunk;
 import io.deephaven.engine.rowset.RowSequence;
 import org.jetbrains.annotations.NotNull;
 
+import static io.deephaven.util.QueryConstants.NULL_DOUBLE;
 import static io.deephaven.util.type.TypeUtils.unbox;
 
 /**
@@ -39,8 +39,8 @@ public class DoubleSingleValueSource extends SingleValueColumnSource<Double> imp
     // region Constructor
     public DoubleSingleValueSource() {
         super(double.class);
-        current = QueryConstants.NULL_DOUBLE;
-        prev = QueryConstants.NULL_DOUBLE;
+        current = NULL_DOUBLE;
+        prev = NULL_DOUBLE;
     }
     // endregion Constructor
 
@@ -76,12 +76,19 @@ public class DoubleSingleValueSource extends SingleValueColumnSource<Double> imp
     }
 
     @Override
-    public final double getDouble(long index) {
+    public final void setNull(long key) {
+        // region null set
+        set(NULL_DOUBLE);
+        // endregion null set
+    }
+
+    @Override
+    public final double getDouble(long rowKey) {
         return current;
     }
 
     @Override
-    public final double getPrevDouble(long index) {
+    public final double getPrevDouble(long rowKey) {
         if (!isTrackingPrevValues || changeTime < LogicalClock.DEFAULT.currentStep()) {
             return current;
         }

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.client.examples;
 
 import com.google.flatbuffers.FlatBufferBuilder;
@@ -40,9 +43,10 @@ class DoExchange extends FlightExampleBase {
             // inner metadata for the snapshot request
             final FlatBufferBuilder metadata = new FlatBufferBuilder();
 
+            // you can use 0 for batch size and max message size to use server-side defaults
             int optOffset =
                     BarrageSnapshotOptions.createBarrageSnapshotOptions(metadata, ColumnConversionMode.Stringify,
-                            false, 1000);
+                            false, 0, 0);
 
             final int ticOffset =
                     BarrageSnapshotRequest.createTicketVector(metadata,

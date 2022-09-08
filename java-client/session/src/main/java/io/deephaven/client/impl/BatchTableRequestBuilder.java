@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.client.impl;
 
 import com.google.protobuf.ByteStringAccess;
@@ -60,6 +63,7 @@ import io.deephaven.proto.backplane.grpc.TableReference;
 import io.deephaven.proto.backplane.grpc.Ticket;
 import io.deephaven.proto.backplane.grpc.TimeTableRequest;
 import io.deephaven.proto.backplane.grpc.UnstructuredFilterTableRequest;
+import io.deephaven.proto.backplane.grpc.UpdateByRequest;
 import io.deephaven.proto.util.ExportTicketHelper;
 import io.deephaven.qst.table.AggregateAllByTable;
 import io.deephaven.qst.table.AggregationTable;
@@ -73,6 +77,7 @@ import io.deephaven.qst.table.InMemoryAppendOnlyInputTable;
 import io.deephaven.qst.table.InMemoryKeyBackedInputTable;
 import io.deephaven.qst.table.InputTable;
 import io.deephaven.qst.table.JoinTable;
+import io.deephaven.qst.table.LazyUpdateTable;
 import io.deephaven.qst.table.MergeTable;
 import io.deephaven.qst.table.NaturalJoinTable;
 import io.deephaven.qst.table.NewTable;
@@ -91,6 +96,7 @@ import io.deephaven.qst.table.TicketTable;
 import io.deephaven.qst.table.TimeProvider.Visitor;
 import io.deephaven.qst.table.TimeProviderSystem;
 import io.deephaven.qst.table.TimeTable;
+import io.deephaven.qst.table.UpdateByTable;
 import io.deephaven.qst.table.UpdateTable;
 import io.deephaven.qst.table.UpdateViewTable;
 import io.deephaven.qst.table.ViewTable;
@@ -379,6 +385,11 @@ class BatchTableRequestBuilder {
         }
 
         @Override
+        public void visit(LazyUpdateTable v) {
+            out = op(Builder::setLazyUpdate, selectOrUpdate(v, v.columns()));
+        }
+
+        @Override
         public void visit(SelectTable v) {
             out = op(Builder::setSelect, selectOrUpdate(v, v.columns()));
         }
@@ -390,6 +401,10 @@ class BatchTableRequestBuilder {
 
         @Override
         public void visit(AggregationTable aggregationTable) {
+            if (aggregationTable.preserveEmpty() || aggregationTable.initialGroups().isPresent()) {
+                throw new UnsupportedOperationException(
+                        "TODO(deephaven-core#991): TableService aggregation coverage, https://github.com/deephaven/deephaven-core/issues/991");
+            }
             out = op(Builder::setComboAggregate, aggBy(aggregationTable));
         }
 
@@ -442,6 +457,15 @@ class BatchTableRequestBuilder {
             out = op(Builder::setComboAggregate, countBy(countByTable));
         }
 
+        @Override
+        public void visit(UpdateByTable updateByTable) {
+            final UpdateByRequest.Builder request = UpdateByBuilder
+                    .adapt(updateByTable)
+                    .setResultId(ticket)
+                    .setSourceId(ref(updateByTable.parent()));
+            out = op(Builder::setUpdateBy, request);
+        }
+
         private SelectOrUpdateRequest selectOrUpdate(SingleParentTable x,
                 Collection<Selectable> columns) {
             SelectOrUpdateRequest.Builder builder =
@@ -481,7 +505,7 @@ class BatchTableRequestBuilder {
             SelectDistinctRequest.Builder builder = SelectDistinctRequest.newBuilder()
                     .setResultId(ticket)
                     .setSourceId(ref(selectDistinctTable.parent()));
-            for (Selectable column : selectDistinctTable.groupByColumns()) {
+            for (Selectable column : selectDistinctTable.columns()) {
                 builder.addColumnNames(Strings.of(column));
             }
             return builder.build();
@@ -526,6 +550,12 @@ class BatchTableRequestBuilder {
 
         @Override
         public void visit(LastRowKey lastRowKey) {
+            throw new UnsupportedOperationException(
+                    "TODO(deephaven-core#991): TableService aggregation coverage, https://github.com/deephaven/deephaven-core/issues/991");
+        }
+
+        @Override
+        public void visit(Partition partition) {
             throw new UnsupportedOperationException(
                     "TODO(deephaven-core#991): TableService aggregation coverage, https://github.com/deephaven/deephaven-core/issues/991");
         }

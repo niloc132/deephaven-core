@@ -1,3 +1,5 @@
+import nl.javadude.gradle.plugins.license.License
+
 plugins {
   id 'com.bmuschko.docker-remote-api'
   id 'java-library'
@@ -5,6 +7,7 @@ plugins {
 }
 
 evaluationDependsOn Docker.registryProject('protoc-base')
+evaluationDependsOn Docker.registryProject('go')
 
 description = 'The Deephaven proto-backplane-grpc'
 
@@ -14,23 +17,23 @@ configurations {
   }
 
   // automatically pick up the standard junit version
-  testCompile.extendsFrom junit
-}
+  testImplementation.extendsFrom junit
 
-// TODO(deephaven-core#1685): Create strategy around updating and maintaining protoc version
-def protobufVersion = '3.17.3'
-def boringSslVersion = '2.0.34.Final'
+  js {}
+  python {}
+  go {}
+}
 
 dependencies {
   // This should be implementation, if listed at all, at least once we have own own version management
-  api "com.google.protobuf:protobuf-java:${protobufVersion}"
+  Classpaths.inheritProtobuf(project, 'api')
 
   Classpaths.inheritGrpcPlatform(project, 'api')
   api 'io.grpc:grpc-protobuf'
   api 'io.grpc:grpc-api'
   api 'io.grpc:grpc-stub'
 
-  runtimeOnly "io.netty:netty-tcnative-boringssl-static:${boringSslVersion}"
+  Classpaths.inheritBoringSsl(project)
 
   // This is excessive, and brings in every grpc jar, making it compile-only limits what it pulls in to
   // downstream classpaths
@@ -41,9 +44,16 @@ dependencies {
 
   // technically we should have a runtime dependency on barrage-core, but instead we are regenerating
   // the same output that it contains, and we have declared the correct dependencies as necessary
-  //  compile 'io.deephaven.barrage:barrage-core:0.4.0'
-  download 'io.deephaven.barrage:barrage-core:0.4.0'
+  //  compile 'io.deephaven.barrage:barrage-core:0.5.0'
+  download 'io.deephaven.barrage:barrage-core:0.5.0'
   Classpaths.inheritArrow(project, 'flight-core', 'download')
+}
+
+license {
+  include '**/*.proto'
+}
+tasks.withType(License) {
+  source 'src/main/proto'
 }
 
 TaskProvider<Task> generateProtobuf = Docker.registerDockerTask(project, 'generateProtobuf') {
@@ -61,13 +71,28 @@ TaskProvider<Task> generateProtobuf = Docker.registerDockerTask(project, 'genera
   }
 
   // protoc-base is only provided via linux/amd64
-  parentContainers = [ Docker.registryTask(project, 'protoc-base') ]
+  parentContainers = [ Docker.registryTask(project, 'protoc-base'), Docker.registryTask(project, 'go') ]
   platform = 'linux/amd64'
 
   containerOutPath = '/generated'
   imageName = 'deephaven/proto-backplane-grpc:local-build'
   copyOut {
     into('build/generated/source/proto/main')
+  }
+}
+
+// Provide js, go, python output as distinct artifacts - the java output will be consumed in this project by
+// declaring it as a new sourceset, see below. This could definitely be more precisely stated, but given that
+// all are generated in the same docker image creation step, we don't need to get too clever here.
+artifacts {
+  js(layout.buildDirectory.dir('generated/source/proto/main/js')) {
+    builtBy generateProtobuf
+  }
+  python(layout.buildDirectory.dir('generated/source/proto/main/python')) {
+    builtBy generateProtobuf
+  }
+  go(layout.buildDirectory.dir('generated/source/proto/main/go')) {
+    builtBy generateProtobuf
   }
 }
 

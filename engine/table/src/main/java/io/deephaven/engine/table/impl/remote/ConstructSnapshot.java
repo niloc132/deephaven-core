@@ -1,13 +1,13 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.remote;
 
 import io.deephaven.base.formatters.FormatBitSet;
 import io.deephaven.base.log.LogOutput;
 import io.deephaven.base.log.LogOutputAppendable;
 import io.deephaven.base.verify.Assert;
+import io.deephaven.chunk.util.pools.ChunkPoolConstants;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.datastructures.util.CollectionUtil;
 import io.deephaven.engine.rowset.*;
@@ -78,6 +78,8 @@ public class ConstructSnapshot {
      */
     private static final int MAX_CONCURRENT_ATTEMPT_DURATION_MILLIS = Configuration.getInstance()
             .getIntegerWithDefault("ConstructSnapshot.maxConcurrentAttemptDurationMillis", 5000);
+
+    public static final int SNAPSHOT_CHUNK_SIZE = ChunkPoolConstants.LARGEST_POOLED_CHUNK_CAPACITY;
 
     /**
      * Holder for thread-local state.
@@ -448,7 +450,7 @@ public class ConstructSnapshot {
             @Nullable final BitSet columnsToSerialize,
             @Nullable final RowSet keysToSnapshot) {
         return constructInitialSnapshot(logIdentityObject, table, columnsToSerialize, keysToSnapshot,
-                makeSnapshotControl(false, table));
+                makeSnapshotControl(false, table.isRefreshing(), table));
     }
 
     static InitialSnapshot constructInitialSnapshot(final Object logIdentityObject,
@@ -482,7 +484,7 @@ public class ConstructSnapshot {
             @Nullable final BitSet columnsToSerialize,
             @Nullable final RowSet positionsToSnapshot) {
         return constructInitialSnapshotInPositionSpace(logIdentityObject, table, columnsToSerialize,
-                positionsToSnapshot, makeSnapshotControl(false, table));
+                positionsToSnapshot, makeSnapshotControl(false, table.isRefreshing(), table));
     }
 
     static InitialSnapshot constructInitialSnapshotInPositionSpace(final Object logIdentityObject,
@@ -537,10 +539,11 @@ public class ConstructSnapshot {
     public static BarrageMessage constructBackplaneSnapshotInPositionSpace(final Object logIdentityObject,
             final BaseTable table,
             @Nullable final BitSet columnsToSerialize,
-            @Nullable final RowSet positionsToSnapshot,
-            @Nullable final RowSet reversePositionsToSnapshot) {
+            @Nullable final RowSequence positionsToSnapshot,
+            @Nullable final RowSequence reversePositionsToSnapshot) {
         return constructBackplaneSnapshotInPositionSpace(logIdentityObject, table, columnsToSerialize,
-                positionsToSnapshot, reversePositionsToSnapshot, makeSnapshotControl(false, table));
+                positionsToSnapshot, reversePositionsToSnapshot,
+                makeSnapshotControl(false, table.isRefreshing(), table));
     }
 
     /**
@@ -550,15 +553,16 @@ public class ConstructSnapshot {
      * @param logIdentityObject An object used to prepend to log rows.
      * @param table the table to snapshot.
      * @param columnsToSerialize A {@link BitSet} of columns to include, null for all
-     * @param positionsToSnapshot A RowSet of positions within the table to include, null for all
+     * @param positionsToSnapshot A RowSequence of positions within the table to include, null for all
+     * @param reversePositionsToSnapshot A RowSequence of reverse positions within the table to include, null for all
      * @param control A {@link SnapshotControl} to define the parameters and consistency for this snapshot
      * @return a snapshot of the entire base table.
      */
     public static BarrageMessage constructBackplaneSnapshotInPositionSpace(final Object logIdentityObject,
             @NotNull final BaseTable table,
             @Nullable final BitSet columnsToSerialize,
-            @Nullable final RowSet positionsToSnapshot,
-            @Nullable final RowSet reversePositionsToSnapshot,
+            @Nullable final RowSequence positionsToSnapshot,
+            @Nullable final RowSequence reversePositionsToSnapshot,
             @NotNull final SnapshotControl control) {
 
         final BarrageMessage snapshot = new BarrageMessage();
@@ -748,9 +752,9 @@ public class ConstructSnapshot {
      * Make a {@link SnapshotControl} from individual function objects.
      *
      * @param usePreviousValues The {@link UsePreviousValues} to use
-     * 
+     *
      * @param snapshotConsistent The {@link SnapshotConsistent} to use
-     * 
+     *
      * @param snapshotCompletedConsistently The {@link SnapshotCompletedConsistently} to use, or null to use * {@code
      * snapshotConsistent}
      */
@@ -820,31 +824,37 @@ public class ConstructSnapshot {
      * Make a default {@link SnapshotControl} for a single source.
      *
      * @param notificationAware Whether the result should be concerned with not missing notifications
+     * @param refreshing Whether the data source (usually a {@link Table} table) is refreshing (vs static)
      * @param source The source
      * @return An appropriate {@link SnapshotControl}
      */
-    public static SnapshotControl makeSnapshotControl(final boolean notificationAware,
+    public static SnapshotControl makeSnapshotControl(final boolean notificationAware, final boolean refreshing,
             @NotNull final NotificationStepSource source) {
-        return notificationAware
-                ? new NotificationAwareSingleSourceSnapshotControl(source)
-                : new NotificationObliviousSingleSourceSnapshotControl(source);
+        return refreshing
+                ? notificationAware
+                        ? new NotificationAwareSingleSourceSnapshotControl(source)
+                        : new NotificationObliviousSingleSourceSnapshotControl(source)
+                : StaticSnapshotControl.INSTANCE;
     }
 
     /**
      * Make a default {@link SnapshotControl} for one or more sources.
      *
      * @param notificationAware Whether the result should be concerned with not missing notifications
+     * @param refreshing Whether any of the data sources (usually {@link Table tables}) are refreshing (vs static)
      * @param sources The sources
      * @return An appropriate {@link SnapshotControl}
      */
-    public static SnapshotControl makeSnapshotControl(final boolean notificationAware,
+    public static SnapshotControl makeSnapshotControl(final boolean notificationAware, final boolean refreshing,
             @NotNull final NotificationStepSource... sources) {
         if (sources.length == 1) {
-            return makeSnapshotControl(notificationAware, sources[0]);
+            return makeSnapshotControl(notificationAware, refreshing, sources[0]);
         }
-        return notificationAware
-                ? new NotificationAwareMultipleSourceSnapshotControl(sources)
-                : new NotificationObliviousMultipleSourceSnapshotControl(sources);
+        return refreshing
+                ? notificationAware
+                        ? new NotificationAwareMultipleSourceSnapshotControl(sources)
+                        : new NotificationObliviousMultipleSourceSnapshotControl(sources)
+                : StaticSnapshotControl.INSTANCE;
     }
 
     /**
@@ -1309,8 +1319,6 @@ public class ConstructSnapshot {
             snapshot.rowsIncluded = snapshot.rowsAdded.copy();
         }
 
-        LongSizedDataStructure.intSize("construct snapshot", snapshot.rowsIncluded.size());
-
         final Map<String, ? extends ColumnSource> sourceMap = table.getColumnSourceMap();
         final String[] columnSources = sourceMap.keySet().toArray(CollectionUtil.ZERO_LENGTH_STRING_ARRAY);
 
@@ -1333,16 +1341,19 @@ public class ConstructSnapshot {
                 final RowSet rows = columnIsEmpty ? RowSetFactory.empty() : snapshot.rowsIncluded;
                 // Note: cannot use shared context across several calls of differing lengths and no sharing necessary
                 // when empty
-                acd.data = getSnapshotDataAsChunk(columnSource, columnIsEmpty ? null : sharedContext, rows, usePrev);
-                acd.type = columnSource.getType();
-                acd.componentType = columnSource.getComponentType();
+                final ColumnSource<?> sourceToUse = ReinterpretUtils.maybeConvertToPrimitive(columnSource);
+                acd.data = getSnapshotDataAsChunkList(sourceToUse, columnIsEmpty ? null : sharedContext, rows, usePrev);
+                acd.type = sourceToUse.getType();
+                acd.componentType = sourceToUse.getComponentType();
+                acd.chunkType = sourceToUse.getChunkType();
 
                 final BarrageMessage.ModColumnData mcd = new BarrageMessage.ModColumnData();
                 snapshot.modColumnData[ii] = mcd;
                 mcd.rowsModified = RowSetFactory.empty();
-                mcd.data = getSnapshotDataAsChunk(columnSource, null, RowSetFactory.empty(), usePrev);
+                mcd.data = getSnapshotDataAsChunkList(sourceToUse, null, RowSetFactory.empty(), usePrev);
                 mcd.type = acd.type;
                 mcd.componentType = acd.componentType;
+                mcd.chunkType = sourceToUse.getChunkType();
             }
         }
 
@@ -1423,6 +1434,56 @@ public class ConstructSnapshot {
         }
     }
 
+    private static <T> ArrayList<Chunk<Values>> getSnapshotDataAsChunkList(final ColumnSource<T> columnSource,
+            final SharedContext sharedContext, final RowSet rowSet, final boolean usePrev) {
+        long offset = 0;
+        final long size = rowSet.size();
+        final ArrayList<Chunk<Values>> result = new ArrayList<>();
+
+        if (size == 0) {
+            return result;
+        }
+
+        final int maxChunkSize = (int) Math.min(size, SNAPSHOT_CHUNK_SIZE);
+
+        try (final ColumnSource.FillContext context = columnSource.makeFillContext(maxChunkSize, sharedContext);
+                final RowSequence.Iterator it = rowSet.getRowSequenceIterator()) {
+            int chunkSize = maxChunkSize;
+            while (it.hasMore()) {
+                final RowSequence reducedRowSet = it.getNextRowSequenceWithLength(chunkSize);
+                final ChunkType chunkType = columnSource.getChunkType();
+
+                // create a new chunk
+                WritableChunk<Values> currentChunk = chunkType.makeWritableChunk(chunkSize);
+
+                if (usePrev) {
+                    columnSource.fillPrevChunk(context, currentChunk, reducedRowSet);
+                } else {
+                    columnSource.fillChunk(context, currentChunk, reducedRowSet);
+                }
+
+                // add the chunk to the current list
+                result.add(currentChunk);
+
+                // increment the offset for the next chunk (using the actual values written)
+                offset += currentChunk.size();
+
+                // recompute the size of the next chunk
+                if (size - offset > maxChunkSize) {
+                    chunkSize = maxChunkSize;
+                } else {
+                    chunkSize = (int) (size - offset);
+                }
+
+                if (sharedContext != null) {
+                    // a shared context is good for only one chunk of rows
+                    sharedContext.reset();
+                }
+            }
+        }
+        return result;
+    }
+
     /**
      * Estimate the size of a complete table snapshot in bytes.
      *
@@ -1430,8 +1491,8 @@ public class ConstructSnapshot {
      * @return the estimated snapshot size in bytes.
      */
     public static long estimateSnapshotSize(Table table) {
-        final BitSet columns = new BitSet(table.getColumns().length);
-        columns.set(0, table.getColumns().length);
+        final BitSet columns = new BitSet(table.numColumns());
+        columns.set(0, table.numColumns());
         return estimateSnapshotSize(table.getDefinition(), columns, table.size());
     }
 
@@ -1448,15 +1509,16 @@ public class ConstructSnapshot {
         long sizePerRow = 0;
         long totalSize = 0;
 
-        final ColumnDefinition[] columnDefinitions = tableDefinition.getColumns();
-        for (int ii = 0; ii < columnDefinitions.length; ++ii) {
+        final int numColumns = tableDefinition.numColumns();
+        final List<ColumnDefinition<?>> columnDefinitions = tableDefinition.getColumns();
+        for (int ii = 0; ii < numColumns; ++ii) {
             if (!columns.get(ii)) {
                 continue;
             }
 
             totalSize += 44; // for an array
 
-            final ColumnDefinition definition = columnDefinitions[ii];
+            final ColumnDefinition<?> definition = columnDefinitions.get(ii);
             if (definition.getDataType() == byte.class || definition.getDataType() == char.class
                     || definition.getDataType() == Boolean.class) {
                 sizePerRow += 1;

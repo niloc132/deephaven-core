@@ -1,9 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.server.table.ops;
 
 import com.google.common.collect.Lists;
 import com.google.rpc.Code;
 import io.deephaven.base.verify.Assert;
-import io.deephaven.engine.exceptions.ExpressionException;
+import io.deephaven.api.expression.ExpressionException;
 import io.deephaven.engine.table.MatchPair;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.select.MatchPairFactory;

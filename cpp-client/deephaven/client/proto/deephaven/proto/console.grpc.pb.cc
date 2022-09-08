@@ -36,7 +36,6 @@ static const char* ConsoleService_method_names[] = {
   "/io.deephaven.proto.backplane.script.grpc.ConsoleService/AutoCompleteStream",
   "/io.deephaven.proto.backplane.script.grpc.ConsoleService/OpenAutoCompleteStream",
   "/io.deephaven.proto.backplane.script.grpc.ConsoleService/NextAutoCompleteStream",
-  "/io.deephaven.proto.backplane.script.grpc.ConsoleService/FetchFigure",
 };
 
 std::unique_ptr< ConsoleService::Stub> ConsoleService::NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options) {
@@ -55,18 +54,17 @@ ConsoleService::Stub::Stub(const std::shared_ptr< ::grpc::ChannelInterface>& cha
   , rpcmethod_AutoCompleteStream_(ConsoleService_method_names[6], options.suffix_for_stats(),::grpc::internal::RpcMethod::BIDI_STREAMING, channel)
   , rpcmethod_OpenAutoCompleteStream_(ConsoleService_method_names[7], options.suffix_for_stats(),::grpc::internal::RpcMethod::SERVER_STREAMING, channel)
   , rpcmethod_NextAutoCompleteStream_(ConsoleService_method_names[8], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
-  , rpcmethod_FetchFigure_(ConsoleService_method_names[9], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
   {}
 
 ::grpc::Status ConsoleService::Stub::GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest& request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response) {
   return ::grpc::internal::BlockingUnaryCall< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_GetConsoleTypes_, context, request, response);
 }
 
-void ConsoleService::Stub::experimental_async::GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, std::function<void(::grpc::Status)> f) {
+void ConsoleService::Stub::async::GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, std::function<void(::grpc::Status)> f) {
   ::grpc::internal::CallbackUnaryCall< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_GetConsoleTypes_, context, request, response, std::move(f));
 }
 
-void ConsoleService::Stub::experimental_async::GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) {
+void ConsoleService::Stub::async::GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, ::grpc::ClientUnaryReactor* reactor) {
   ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_GetConsoleTypes_, context, request, response, reactor);
 }
 
@@ -85,11 +83,11 @@ void ConsoleService::Stub::experimental_async::GetConsoleTypes(::grpc::ClientCon
   return ::grpc::internal::BlockingUnaryCall< ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_StartConsole_, context, request, response);
 }
 
-void ConsoleService::Stub::experimental_async::StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, std::function<void(::grpc::Status)> f) {
+void ConsoleService::Stub::async::StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, std::function<void(::grpc::Status)> f) {
   ::grpc::internal::CallbackUnaryCall< ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_StartConsole_, context, request, response, std::move(f));
 }
 
-void ConsoleService::Stub::experimental_async::StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) {
+void ConsoleService::Stub::async::StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, ::grpc::ClientUnaryReactor* reactor) {
   ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_StartConsole_, context, request, response, reactor);
 }
 
@@ -108,7 +106,7 @@ void ConsoleService::Stub::experimental_async::StartConsole(::grpc::ClientContex
   return ::grpc::internal::ClientReaderFactory< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>::Create(channel_.get(), rpcmethod_SubscribeToLogs_, context, request);
 }
 
-void ConsoleService::Stub::experimental_async::SubscribeToLogs(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* reactor) {
+void ConsoleService::Stub::async::SubscribeToLogs(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* reactor) {
   ::grpc::internal::ClientCallbackReaderFactory< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>::Create(stub_->channel_.get(), stub_->rpcmethod_SubscribeToLogs_, context, request, reactor);
 }
 
@@ -124,11 +122,11 @@ void ConsoleService::Stub::experimental_async::SubscribeToLogs(::grpc::ClientCon
   return ::grpc::internal::BlockingUnaryCall< ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_ExecuteCommand_, context, request, response);
 }
 
-void ConsoleService::Stub::experimental_async::ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, std::function<void(::grpc::Status)> f) {
+void ConsoleService::Stub::async::ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, std::function<void(::grpc::Status)> f) {
   ::grpc::internal::CallbackUnaryCall< ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_ExecuteCommand_, context, request, response, std::move(f));
 }
 
-void ConsoleService::Stub::experimental_async::ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) {
+void ConsoleService::Stub::async::ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, ::grpc::ClientUnaryReactor* reactor) {
   ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_ExecuteCommand_, context, request, response, reactor);
 }
 
@@ -147,11 +145,11 @@ void ConsoleService::Stub::experimental_async::ExecuteCommand(::grpc::ClientCont
   return ::grpc::internal::BlockingUnaryCall< ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_CancelCommand_, context, request, response);
 }
 
-void ConsoleService::Stub::experimental_async::CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, std::function<void(::grpc::Status)> f) {
+void ConsoleService::Stub::async::CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, std::function<void(::grpc::Status)> f) {
   ::grpc::internal::CallbackUnaryCall< ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_CancelCommand_, context, request, response, std::move(f));
 }
 
-void ConsoleService::Stub::experimental_async::CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) {
+void ConsoleService::Stub::async::CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, ::grpc::ClientUnaryReactor* reactor) {
   ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_CancelCommand_, context, request, response, reactor);
 }
 
@@ -170,11 +168,11 @@ void ConsoleService::Stub::experimental_async::CancelCommand(::grpc::ClientConte
   return ::grpc::internal::BlockingUnaryCall< ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_BindTableToVariable_, context, request, response);
 }
 
-void ConsoleService::Stub::experimental_async::BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, std::function<void(::grpc::Status)> f) {
+void ConsoleService::Stub::async::BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, std::function<void(::grpc::Status)> f) {
   ::grpc::internal::CallbackUnaryCall< ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_BindTableToVariable_, context, request, response, std::move(f));
 }
 
-void ConsoleService::Stub::experimental_async::BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) {
+void ConsoleService::Stub::async::BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, ::grpc::ClientUnaryReactor* reactor) {
   ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_BindTableToVariable_, context, request, response, reactor);
 }
 
@@ -193,7 +191,7 @@ void ConsoleService::Stub::experimental_async::BindTableToVariable(::grpc::Clien
   return ::grpc::internal::ClientReaderWriterFactory< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>::Create(channel_.get(), rpcmethod_AutoCompleteStream_, context);
 }
 
-void ConsoleService::Stub::experimental_async::AutoCompleteStream(::grpc::ClientContext* context, ::grpc::experimental::ClientBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) {
+void ConsoleService::Stub::async::AutoCompleteStream(::grpc::ClientContext* context, ::grpc::ClientBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) {
   ::grpc::internal::ClientCallbackReaderWriterFactory< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>::Create(stub_->channel_.get(), stub_->rpcmethod_AutoCompleteStream_, context, reactor);
 }
 
@@ -209,7 +207,7 @@ void ConsoleService::Stub::experimental_async::AutoCompleteStream(::grpc::Client
   return ::grpc::internal::ClientReaderFactory< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>::Create(channel_.get(), rpcmethod_OpenAutoCompleteStream_, context, request);
 }
 
-void ConsoleService::Stub::experimental_async::OpenAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) {
+void ConsoleService::Stub::async::OpenAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) {
   ::grpc::internal::ClientCallbackReaderFactory< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>::Create(stub_->channel_.get(), stub_->rpcmethod_OpenAutoCompleteStream_, context, request, reactor);
 }
 
@@ -225,11 +223,11 @@ void ConsoleService::Stub::experimental_async::OpenAutoCompleteStream(::grpc::Cl
   return ::grpc::internal::BlockingUnaryCall< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_NextAutoCompleteStream_, context, request, response);
 }
 
-void ConsoleService::Stub::experimental_async::NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, std::function<void(::grpc::Status)> f) {
+void ConsoleService::Stub::async::NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, std::function<void(::grpc::Status)> f) {
   ::grpc::internal::CallbackUnaryCall< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_NextAutoCompleteStream_, context, request, response, std::move(f));
 }
 
-void ConsoleService::Stub::experimental_async::NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) {
+void ConsoleService::Stub::async::NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, ::grpc::ClientUnaryReactor* reactor) {
   ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_NextAutoCompleteStream_, context, request, response, reactor);
 }
 
@@ -240,29 +238,6 @@ void ConsoleService::Stub::experimental_async::NextAutoCompleteStream(::grpc::Cl
 ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* ConsoleService::Stub::AsyncNextAutoCompleteStreamRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) {
   auto* result =
     this->PrepareAsyncNextAutoCompleteStreamRaw(context, request, cq);
-  result->StartCall();
-  return result;
-}
-
-::grpc::Status ConsoleService::Stub::FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response) {
-  return ::grpc::internal::BlockingUnaryCall< ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_FetchFigure_, context, request, response);
-}
-
-void ConsoleService::Stub::experimental_async::FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, std::function<void(::grpc::Status)> f) {
-  ::grpc::internal::CallbackUnaryCall< ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_FetchFigure_, context, request, response, std::move(f));
-}
-
-void ConsoleService::Stub::experimental_async::FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) {
-  ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_FetchFigure_, context, request, response, reactor);
-}
-
-::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* ConsoleService::Stub::PrepareAsyncFetchFigureRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) {
-  return ::grpc::internal::ClientAsyncResponseReaderHelper::Create< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse, ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), cq, rpcmethod_FetchFigure_, context, request);
-}
-
-::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* ConsoleService::Stub::AsyncFetchFigureRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) {
-  auto* result =
-    this->PrepareAsyncFetchFigureRaw(context, request, cq);
   result->StartCall();
   return result;
 }
@@ -358,16 +333,6 @@ ConsoleService::Service::Service() {
              ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* resp) {
                return service->NextAutoCompleteStream(ctx, req, resp);
              }, this)));
-  AddMethod(new ::grpc::internal::RpcServiceMethod(
-      ConsoleService_method_names[9],
-      ::grpc::internal::RpcMethod::NORMAL_RPC,
-      new ::grpc::internal::RpcMethodHandler< ConsoleService::Service, ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(
-          [](ConsoleService::Service* service,
-             ::grpc::ServerContext* ctx,
-             const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* req,
-             ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* resp) {
-               return service->FetchFigure(ctx, req, resp);
-             }, this)));
 }
 
 ConsoleService::Service::~Service() {
@@ -429,13 +394,6 @@ ConsoleService::Service::~Service() {
 }
 
 ::grpc::Status ConsoleService::Service::NextAutoCompleteStream(::grpc::ServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response) {
-  (void) context;
-  (void) request;
-  (void) response;
-  return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
-}
-
-::grpc::Status ConsoleService::Service::FetchFigure(::grpc::ServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response) {
   (void) context;
   (void) request;
   (void) response;

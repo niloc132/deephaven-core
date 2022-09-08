@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharStreamSortedFirstOrLastChunkedOperator and regenerate
@@ -55,8 +58,8 @@ public class DoubleStreamSortedFirstOrLastChunkedOperator extends CopyingPermute
     }
 
     @Override
-    public void resetForStep(@NotNull final TableUpdate upstream) {
-        super.resetForStep(upstream);
+    public void resetForStep(@NotNull final TableUpdate upstream, final int startingDestinationsCount) {
+        super.resetForStep(upstream, startingDestinationsCount);
         if (isCombo) {
             changedDestinationsBuilder = RowSetFactory.builderRandom();
         }

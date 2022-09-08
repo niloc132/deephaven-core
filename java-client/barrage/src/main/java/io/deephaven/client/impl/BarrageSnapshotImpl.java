@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.client.impl;
 
 import com.google.flatbuffers.FlatBufferBuilder;
@@ -22,6 +21,7 @@ import io.deephaven.extensions.barrage.table.BarrageTable;
 import io.deephaven.extensions.barrage.util.*;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
+import io.deephaven.tablelogger.Row;
 import io.grpc.CallOptions;
 import io.grpc.ClientCall;
 import io.grpc.Context;
@@ -37,6 +37,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.Condition;
 
 public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements BarrageSnapshot {
@@ -51,9 +52,9 @@ public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements
 
     private volatile BitSet expectedColumns;
 
-    private volatile Condition sealedCondition;
-    private volatile boolean sealed = false;
-    private volatile Throwable exceptionWhileSealing = null;
+    private volatile Condition completedCondition;
+    private volatile boolean completed = false;
+    private volatile Throwable exceptionWhileCompleting = null;
 
     private volatile boolean connected = true;
 
@@ -63,24 +64,28 @@ public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements
      * Represents a BarrageSnapshot.
      *
      * @param session the Deephaven session that this export belongs to
+     * @param executorService an executor service used to flush metrics when enabled
      * @param tableHandle the tableHandle to snapshot (ownership is transferred to the snapshot)
      * @param options the transport level options for this snapshot
      */
     public BarrageSnapshotImpl(
-            final BarrageSession session, final TableHandle tableHandle, final BarrageSnapshotOptions options) {
+            final BarrageSession session, @Nullable final ScheduledExecutorService executorService,
+            final TableHandle tableHandle, final BarrageSnapshotOptions options) {
         super(false);
 
         this.logName = tableHandle.exportId().toString();
         this.options = options;
         this.tableHandle = tableHandle;
 
-        final TableDefinition tableDefinition = BarrageUtil.convertArrowSchema(tableHandle.response()).tableDef;
-        resultTable = BarrageTable.make(tableDefinition, false);
+        final BarrageUtil.ConvertedArrowSchema schema = BarrageUtil.convertArrowSchema(tableHandle.response());
+        final TableDefinition tableDefinition = schema.tableDef;
+        resultTable = BarrageTable.make(executorService, tableDefinition, schema.attributes, -1);
         resultTable.addParentReference(this);
 
         final MethodDescriptor<FlightData, BarrageMessage> snapshotDescriptor =
                 getClientDoExchangeDescriptor(options, resultTable.getWireChunkTypes(), resultTable.getWireTypes(),
-                        resultTable.getWireComponentTypes(), new BarrageStreamReader());
+                        resultTable.getWireComponentTypes(),
+                        new BarrageStreamReader(resultTable.getDeserializationTmConsumer()));
 
         // We need to ensure that the DoExchange RPC does not get attached to the server RPC when this is being called
         // from a Deephaven server RPC thread. If we need to generalize this in the future, we may wrap this logic in a
@@ -101,6 +106,8 @@ public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements
     }
 
     private class DoExchangeObserver implements ClientResponseObserver<FlightData, BarrageMessage> {
+        private long rowsReceived = 0L;
+
         @Override
         public void beforeStart(final ClientCallStreamObserver<FlightData> requestStream) {
             requestStream.disableAutoInboundFlowControl();
@@ -117,9 +124,18 @@ public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements
                     return;
                 }
 
-                // override server-supplied data and regenerate local rowsets
-                barrageMessage.rowsAdded = RowSetFactory.flat(barrageMessage.length);
+                final long resultSize = barrageMessage.rowsIncluded.size();
+
+                // override server-supplied data and regenerate flattened rowsets
+                barrageMessage.rowsAdded.close();
+                barrageMessage.rowsIncluded.close();
+                barrageMessage.rowsAdded = RowSetFactory.fromRange(rowsReceived, rowsReceived + resultSize - 1);
                 barrageMessage.rowsIncluded = barrageMessage.rowsAdded.copy();
+                try (final RowSet ignored = barrageMessage.snapshotRowSet) {
+                    barrageMessage.snapshotRowSet = null;
+                }
+
+                rowsReceived += resultSize;
 
                 listener.handleBarrageMessage(barrageMessage);
             }
@@ -172,7 +188,7 @@ public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements
         prevUsed = true;
 
         if (UpdateGraphProcessor.DEFAULT.exclusiveLock().isHeldByCurrentThread()) {
-            sealedCondition = UpdateGraphProcessor.DEFAULT.exclusiveLock().newCondition();
+            completedCondition = UpdateGraphProcessor.DEFAULT.exclusiveLock().newCondition();
         }
 
         if (!connected) {
@@ -182,29 +198,31 @@ public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements
         // store this for streamreader parser
         expectedColumns = columns;
 
+        // update the viewport size for initial snapshot completion
+        resultTable.setInitialSnapshotViewportRowCount(viewport == null ? -1 : viewport.size());
+
         // Send the snapshot request:
         observer.onNext(FlightData.newBuilder()
                 .setAppMetadata(ByteStringAccess.wrap(makeRequestInternal(viewport, columns, reverseViewport, options)))
                 .build());
 
-        observer.onCompleted();
-
-        while (!sealed && exceptionWhileSealing == null) {
+        while (!completed && exceptionWhileCompleting == null) {
             // handle the condition where this function may have the exclusive lock
-            if (sealedCondition != null) {
-                sealedCondition.await();
+            if (completedCondition != null) {
+                completedCondition.await();
             } else {
                 wait(); // barragesnapshotimpl lock
             }
         }
 
-        if (exceptionWhileSealing == null) {
+        observer.onCompleted();
+
+        if (exceptionWhileCompleting == null) {
             return resultTable;
         } else {
-            throw new UncheckedDeephavenException("Error while handling snapshot:", exceptionWhileSealing);
+            throw new UncheckedDeephavenException("Error while handling snapshot:", exceptionWhileCompleting);
         }
     }
-
 
     @Override
     protected void destroy() {
@@ -218,18 +236,18 @@ public class BarrageSnapshotImpl extends ReferenceCountedLivenessNode implements
         }
 
         resultTable.sealTable(() -> {
-            sealed = true;
-            if (sealedCondition != null) {
-                UpdateGraphProcessor.DEFAULT.requestSignal(sealedCondition);
+            completed = true;
+            if (completedCondition != null) {
+                UpdateGraphProcessor.DEFAULT.requestSignal(completedCondition);
             } else {
                 synchronized (BarrageSnapshotImpl.this) {
                     BarrageSnapshotImpl.this.notifyAll();
                 }
             }
         }, () -> {
-            exceptionWhileSealing = new Exception();
-            if (sealedCondition != null) {
-                UpdateGraphProcessor.DEFAULT.requestSignal(sealedCondition);
+            exceptionWhileCompleting = new Exception();
+            if (completedCondition != null) {
+                UpdateGraphProcessor.DEFAULT.requestSignal(completedCondition);
             } else {
                 synchronized (BarrageSnapshotImpl.this) {
                     BarrageSnapshotImpl.this.notifyAll();

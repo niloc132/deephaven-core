@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.rowset.impl.singlerange;
 
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeyRanges;
@@ -24,7 +27,7 @@ public class SingleRangeRowSequence extends RowSequenceAsChunkImpl implements Si
         return rangeEnd;
     }
 
-    SingleRangeRowSequence(final long rangeStart, final long rangeEnd) {
+    public SingleRangeRowSequence(final long rangeStart, final long rangeEnd) {
         this.rangeStart = rangeStart;
         this.rangeEnd = rangeEnd;
     }

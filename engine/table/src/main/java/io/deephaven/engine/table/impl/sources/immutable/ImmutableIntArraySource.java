@@ -1,10 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit ImmutableCharArraySource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
- */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
  */
 package io.deephaven.engine.table.impl.sources.immutable;
 
@@ -14,7 +14,7 @@ import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.engine.table.WritableColumnSource;
-import io.deephaven.engine.table.WritableSourceWithEnsurePrevious;
+import io.deephaven.engine.table.WritableSourceWithPrepareForParallelPopulation;
 import io.deephaven.engine.table.impl.DefaultGetContext;
 import io.deephaven.engine.table.impl.ImmutableColumnSourceGetDefaults;
 import io.deephaven.engine.table.impl.sources.*;
@@ -37,7 +37,7 @@ import static io.deephaven.util.QueryConstants.NULL_INT;
  *
  * If your size is greater than the maximum capacity of an array, prefer {@link Immutable2DIntArraySource}.
  */
-public class ImmutableIntArraySource extends AbstractDeferredGroupingColumnSource<Integer> implements ImmutableColumnSourceGetDefaults.ForInt, WritableColumnSource<Integer>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithEnsurePrevious {
+public class ImmutableIntArraySource extends AbstractDeferredGroupingColumnSource<Integer> implements ImmutableColumnSourceGetDefaults.ForInt, WritableColumnSource<Integer>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithPrepareForParallelPopulation {
     private int[] data;
 
     // region constructor
@@ -64,16 +64,27 @@ public class ImmutableIntArraySource extends AbstractDeferredGroupingColumnSourc
     // endregion allocateArray
 
     @Override
-    public final int getInt(long index) {
-        if (index < 0 || index >= data.length) {
+    public final int getInt(long rowKey) {
+        if (rowKey < 0 || rowKey >= data.length) {
             return NULL_INT;
         }
 
-        return getUnsafe(index);
+        return getUnsafe(rowKey);
     }
 
     public final int getUnsafe(long index) {
         return data[(int)index];
+    }
+
+    public final int getAndSetUnsafe(long index, int newValue) {
+        int oldValue = data[(int)index];
+        data[(int)index] = newValue;
+        return oldValue;
+    }
+
+    @Override
+    public final void setNull(long key) {
+        data[(int)key] = NULL_INT;
     }
 
     @Override
@@ -222,7 +233,7 @@ public class ImmutableIntArraySource extends AbstractDeferredGroupingColumnSourc
     }
 
     @Override
-    public void ensurePrevious(RowSet rowSet) {
+    public void prepareForParallelPopulation(RowSet rowSet) {
         // we don't track previous values, so we don't care to do any work
     }
 

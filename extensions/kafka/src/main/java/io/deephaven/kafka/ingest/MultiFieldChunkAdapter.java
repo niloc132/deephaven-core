@@ -1,17 +1,18 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.kafka.ingest;
 
 import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.chunk.ChunkType;
 import io.deephaven.chunk.ObjectChunk;
 import io.deephaven.chunk.WritableChunk;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.IntFunction;
 
@@ -30,7 +31,7 @@ public class MultiFieldChunkAdapter implements KeyOrValueProcessor {
         this.allowNulls = allowNulls;
 
         final String[] columnNames = definition.getColumnNamesArray();
-        final Class<?>[] columnTypes = definition.getColumnTypesArray();
+        final List<ColumnDefinition<?>> columns = definition.getColumns();
 
         final TObjectIntMap<String> deephavenColumnNameToIndex = new TObjectIntHashMap<>(columnNames.length, 0.5f, -1);
         for (int ii = 0; ii < columnNames.length; ++ii) {
@@ -42,14 +43,16 @@ public class MultiFieldChunkAdapter implements KeyOrValueProcessor {
 
         int col = 0;
         for (Map.Entry<String, String> fieldToColumn : fieldNamesToColumnNames.entrySet()) {
-            final int deephavenColumnIndex = deephavenColumnNameToIndex.get(fieldToColumn.getValue());
+            final String columnName = fieldToColumn.getValue();
+            final int deephavenColumnIndex = deephavenColumnNameToIndex.get(columnName);
             if (deephavenColumnIndex == deephavenColumnNameToIndex.getNoEntryValue()) {
                 throw new IllegalArgumentException("Column not found in Deephaven table: " + deephavenColumnIndex);
             }
 
             chunkOffsets[col] = deephavenColumnIndex;
+            final ColumnDefinition<?> colDef = columns.get(deephavenColumnIndex);
             fieldCopiers[col++] = fieldCopierFactory.make(fieldToColumn.getKey(),
-                    chunkTypeForIndex.apply(deephavenColumnIndex), columnTypes[deephavenColumnIndex]);
+                    chunkTypeForIndex.apply(deephavenColumnIndex), colDef.getDataType(), colDef.getComponentType());
         }
     }
 

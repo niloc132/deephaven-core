@@ -1,12 +1,17 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.base.FileUtils;
 import io.deephaven.engine.table.Table;
+import io.deephaven.test.junit4.EngineCleanup;
 import io.deephaven.vector.ObjectVector;
 import io.deephaven.parquet.table.ParquetTools;
 import io.deephaven.engine.util.TableTools;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.File;
@@ -17,6 +22,9 @@ import java.nio.file.Paths;
 import static org.junit.Assert.*;
 
 public class TestObjectVectorUngroup {
+
+    @Rule
+    public final EngineCleanup base = new EngineCleanup();
 
     private static File dataDirectory;
 

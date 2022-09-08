@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.rowset.impl.sortedranges;
 
 import gnu.trove.iterator.TLongIterator;
@@ -1076,15 +1079,42 @@ public class SortedRangesTest {
     @Test
     public void testSearchIteratorBinarySearchCases() {
         SortedRanges sar = new SortedRangesLong(2);
+
+        // search for last when single value is final entry
         sar.appendRange(4, 10);
         sar.append(25);
         sar.append(32);
-        final RowSet.SearchIterator sit = sar.getSearchIterator();
-        final long v = sar.last();
-        final RowSet.TargetComparator comp =
-                (final long key, final int dir) -> Long.signum(dir * (v - key));
-        final long r = sit.binarySearchValue(comp, 1);
-        assertEquals(v, r);
+        try (final RowSet.SearchIterator sit = sar.getSearchIterator()) {
+            final long v = sar.last();
+            final RowSet.TargetComparator comp =
+                    (final long key, final int dir) -> Long.signum(dir * (v - key));
+            final long r = sit.binarySearchValue(comp, 1);
+            assertEquals(v, r);
+        }
+
+        // search for last when a range is the final entry
+        sar.clear();
+        sar.appendRange(4, 10);
+        sar.appendRange(25, 32);
+        try (final RowSet.SearchIterator sit = sar.getSearchIterator()) {
+            final long v = sar.last();
+            final RowSet.TargetComparator comp =
+                    (final long key, final int dir) -> Long.signum(dir * (v - key));
+            final long r = sit.binarySearchValue(comp, 1);
+            assertEquals(v, r);
+        }
+
+        // search for value in the final range when a range is the final entry
+        sar.clear();
+        sar.appendRange(4, 10);
+        sar.appendRange(25, 32);
+        try (final RowSet.SearchIterator sit = sar.getSearchIterator()) {
+            final long v = sar.last() - 1;
+            final RowSet.TargetComparator comp =
+                    (final long key, final int dir) -> Long.signum(dir * (v - key));
+            final long r = sit.binarySearchValue(comp, 1);
+            assertEquals(v, r);
+        }
     }
 
     @Test
@@ -1651,7 +1681,7 @@ public class SortedRangesTest {
         final boolean r = sar.invertOnNew(ixrit, b, maxPosition);
         final String m = "maxPosition==" + maxPosition;
         assertTrue(m, r);
-        final RowSet rix = new TrackingWritableRowSetImpl(b.getTreeIndexImpl());
+        final RowSet rix = new TrackingWritableRowSetImpl(b.getOrderedLongSet());
         final RowSet.Iterator rit = rix.iterator();
         while (ixit.hasNext()) {
             final long ixv = ixit.nextLong();

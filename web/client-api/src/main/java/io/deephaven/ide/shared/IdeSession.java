@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.ide.shared;
 
 import com.google.gwt.user.client.Timer;
@@ -12,7 +15,6 @@ import io.deephaven.web.client.api.*;
 import io.deephaven.web.client.api.barrage.stream.BiDiStream;
 import io.deephaven.web.client.api.console.JsCommandResult;
 import io.deephaven.web.client.api.console.JsVariableChanges;
-import io.deephaven.web.client.api.console.JsVariableDefinition;
 import io.deephaven.web.client.api.widget.plot.JsFigure;
 import io.deephaven.web.client.fu.CancellablePromise;
 import io.deephaven.web.client.fu.JsLog;
@@ -31,7 +33,6 @@ import jsinterop.base.JsPropertyMap;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static io.deephaven.web.client.api.QueryConnectable.EVENT_TABLE_OPENED;
@@ -81,19 +82,16 @@ public class IdeSession extends HasEventHandling {
         this.closer = closer;
 
         BiDiStream.Factory<AutoCompleteRequest, AutoCompleteResponse> factory = connection.streamFactory();
-        streamFactory = () -> {
-            return factory.create(
-                    connection.consoleServiceClient()::autoCompleteStream,
-                    (firstPayload, headers) -> connection.consoleServiceClient().openAutoCompleteStream(firstPayload,
-                            headers),
-                    (nextPayload, headers, c) -> connection.consoleServiceClient().nextAutoCompleteStream(nextPayload,
-                            headers, c::apply));
-        };
+        streamFactory = () -> factory.create(
+                connection.consoleServiceClient()::autoCompleteStream,
+                (first, headers) -> connection.consoleServiceClient().openAutoCompleteStream(first, headers),
+                (next, headers, c) -> connection.consoleServiceClient().nextAutoCompleteStream(next, headers, c::apply),
+                new AutoCompleteRequest());
     }
 
     // TODO (deephaven-core#188): improve usage of subscriptions (w.r.t. this optional param)
     public Promise<JsTable> getTable(String name, @JsOptional Boolean applyPreviewColumns) {
-        return getVariableDefinition(name, JsVariableChanges.TABLE).then(varDef -> {
+        return connection.getVariableDefinition(name, JsVariableChanges.TABLE).then(varDef -> {
             final Promise<JsTable> table = connection.getTable(varDef, applyPreviewColumns);
             final CustomEventInit event = CustomEventInit.create();
             event.setDetail(table);
@@ -103,33 +101,11 @@ public class IdeSession extends HasEventHandling {
     }
 
     public Promise<JsFigure> getFigure(String name) {
-        return getVariableDefinition(name, JsVariableChanges.FIGURE).then(connection::getFigure);
+        return connection.getVariableDefinition(name, JsVariableChanges.FIGURE).then(connection::getFigure);
     }
 
-    public Promise<Object> getObject(JsPropertyMap<Object> definitionObject) {
-        if (definitionObject instanceof JsVariableDefinition) {
-            return connection.getObject((JsVariableDefinition) definitionObject);
-        }
-
-        if (!definitionObject.has("type")) {
-            throw new IllegalArgumentException("no type field; could not getObject");
-        }
-        String type = definitionObject.getAsAny("type").asString();
-
-        boolean hasName = definitionObject.has("name");
-        boolean hasId = definitionObject.has("id");
-        if (hasName && hasId) {
-            throw new IllegalArgumentException("has both name and id field; could not getObject");
-        } else if (hasName) {
-            String name = definitionObject.getAsAny("name").asString();
-            return getVariableDefinition(name, type)
-                    .then(connection::getObject);
-        } else if (hasId) {
-            String id = definitionObject.getAsAny("id").asString();
-            return connection.getObject(new JsVariableDefinition(type, null, id, null));
-        } else {
-            throw new IllegalArgumentException("no name/id field; could not construct getObject");
-        }
+    public Promise<?> getObject(JsPropertyMap<Object> definitionObject) {
+        return connection.getJsObject(definitionObject);
     }
 
     public Promise<JsTable> newTable(String[] columnNames, String[] types, String[][] data, String userTimeZone) {
@@ -164,46 +140,6 @@ public class IdeSession extends HasEventHandling {
 
     public JsRunnable subscribeToFieldUpdates(JsConsumer<JsVariableChanges> callback) {
         return connection.subscribeToFieldUpdates(callback);
-    }
-
-    private Promise<JsVariableDefinition> getVariableDefinition(String name, String type) {
-        LazyPromise<JsVariableDefinition> promise = new LazyPromise<>();
-
-        final class Listener implements Consumer<JsVariableChanges> {
-            final JsRunnable subscription;
-
-            Listener() {
-                subscription = subscribeToFieldUpdates(this::accept);
-            }
-
-            @Override
-            public void accept(JsVariableChanges changes) {
-                JsVariableDefinition foundField = changes.getCreated()
-                        .find((field, p1, p2) -> field.getTitle().equals(name) && field.getType().equals(type));
-
-                if (foundField == null) {
-                    foundField = changes.getUpdated().find((field, p1, p2) -> field.getTitle().equals(name)
-                            && field.getType().equals(type));
-                }
-
-                if (foundField != null) {
-                    subscription.run();
-                    promise.succeed(foundField);
-                }
-            }
-        }
-
-        Listener listener = new Listener();
-
-        return promise
-                .timeout(10_000)
-                .asPromise()
-                .then(Promise::resolve, fail -> {
-                    listener.subscription.run();
-                    // noinspection unchecked, rawtypes
-                    return (Promise<JsVariableDefinition>) (Promise) Promise
-                            .reject(fail);
-                });
     }
 
     public void close() {

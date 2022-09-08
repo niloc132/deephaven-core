@@ -3,15 +3,13 @@
 // source: deephaven/proto/application.proto
 // Original file comments:
 //
-// Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
-//
+// Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
 #ifndef GRPC_deephaven_2fproto_2fapplication_2eproto__INCLUDED
 #define GRPC_deephaven_2fproto_2fapplication_2eproto__INCLUDED
 
 #include "deephaven/proto/application.pb.h"
 
 #include <functional>
-#include <grpc/impl/codegen/port_platform.h>
 #include <grpcpp/impl/codegen/async_generic_service.h>
 #include <grpcpp/impl/codegen/async_stream.h>
 #include <grpcpp/impl/codegen/async_unary_call.h>
@@ -53,18 +51,18 @@ class ApplicationService final {
     //   on the worker. None of these fields will be RemovedFields.
     // - Subsequent messages modify the existing state. Fields are identified by
     //   their ticket and may be replaced or removed.
-    std::unique_ptr< ::grpc::ClientReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> listFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) {
-      return std::unique_ptr< ::grpc::ClientReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(listFieldsRaw(context, request));
+    std::unique_ptr< ::grpc::ClientReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> ListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) {
+      return std::unique_ptr< ::grpc::ClientReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(ListFieldsRaw(context, request));
     }
-    std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> AsynclistFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) {
-      return std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(AsynclistFieldsRaw(context, request, cq, tag));
+    std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> AsyncListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) {
+      return std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(AsyncListFieldsRaw(context, request, cq, tag));
     }
-    std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> PrepareAsynclistFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) {
-      return std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(PrepareAsynclistFieldsRaw(context, request, cq));
+    std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> PrepareAsyncListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(PrepareAsyncListFieldsRaw(context, request, cq));
     }
-    class experimental_async_interface {
+    class async_interface {
      public:
-      virtual ~experimental_async_interface() {}
+      virtual ~async_interface() {}
       //
       // Request the list of the fields exposed via the worker.
       //
@@ -72,59 +70,47 @@ class ApplicationService final {
       //   on the worker. None of these fields will be RemovedFields.
       // - Subsequent messages modify the existing state. Fields are identified by
       //   their ticket and may be replaced or removed.
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      virtual void listFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* reactor) = 0;
-      #else
-      virtual void listFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* reactor) = 0;
-      #endif
+      virtual void ListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* reactor) = 0;
     };
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    typedef class experimental_async_interface async_interface;
-    #endif
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    async_interface* async() { return experimental_async(); }
-    #endif
-    virtual class experimental_async_interface* experimental_async() { return nullptr; }
-  private:
-    virtual ::grpc::ClientReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* listFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) = 0;
-    virtual ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* AsynclistFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) = 0;
-    virtual ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* PrepareAsynclistFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) = 0;
+    typedef class async_interface experimental_async_interface;
+    virtual class async_interface* async() { return nullptr; }
+    class async_interface* experimental_async() { return async(); }
+   private:
+    virtual ::grpc::ClientReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* ListFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) = 0;
+    virtual ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* AsyncListFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) = 0;
+    virtual ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* PrepareAsyncListFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) = 0;
   };
   class Stub final : public StubInterface {
    public:
     Stub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options = ::grpc::StubOptions());
-    std::unique_ptr< ::grpc::ClientReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> listFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) {
-      return std::unique_ptr< ::grpc::ClientReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(listFieldsRaw(context, request));
+    std::unique_ptr< ::grpc::ClientReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> ListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) {
+      return std::unique_ptr< ::grpc::ClientReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(ListFieldsRaw(context, request));
     }
-    std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> AsynclistFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) {
-      return std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(AsynclistFieldsRaw(context, request, cq, tag));
+    std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> AsyncListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) {
+      return std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(AsyncListFieldsRaw(context, request, cq, tag));
     }
-    std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> PrepareAsynclistFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) {
-      return std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(PrepareAsynclistFieldsRaw(context, request, cq));
+    std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>> PrepareAsyncListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>>(PrepareAsyncListFieldsRaw(context, request, cq));
     }
-    class experimental_async final :
-      public StubInterface::experimental_async_interface {
+    class async final :
+      public StubInterface::async_interface {
      public:
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      void listFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* reactor) override;
-      #else
-      void listFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* reactor) override;
-      #endif
+      void ListFields(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* reactor) override;
      private:
       friend class Stub;
-      explicit experimental_async(Stub* stub): stub_(stub) { }
+      explicit async(Stub* stub): stub_(stub) { }
       Stub* stub() { return stub_; }
       Stub* stub_;
     };
-    class experimental_async_interface* experimental_async() override { return &async_stub_; }
+    class async* async() override { return &async_stub_; }
 
    private:
     std::shared_ptr< ::grpc::ChannelInterface> channel_;
-    class experimental_async async_stub_{this};
-    ::grpc::ClientReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* listFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) override;
-    ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* AsynclistFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) override;
-    ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* PrepareAsynclistFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) override;
-    const ::grpc::internal::RpcMethod rpcmethod_listFields_;
+    class async async_stub_{this};
+    ::grpc::ClientReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* ListFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request) override;
+    ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* AsyncListFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq, void* tag) override;
+    ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* PrepareAsyncListFieldsRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest& request, ::grpc::CompletionQueue* cq) override;
+    const ::grpc::internal::RpcMethod rpcmethod_ListFields_;
   };
   static std::unique_ptr<Stub> NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options = ::grpc::StubOptions());
 
@@ -139,177 +125,142 @@ class ApplicationService final {
     //   on the worker. None of these fields will be RemovedFields.
     // - Subsequent messages modify the existing state. Fields are identified by
     //   their ticket and may be replaced or removed.
-    virtual ::grpc::Status listFields(::grpc::ServerContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* writer);
+    virtual ::grpc::Status ListFields(::grpc::ServerContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* writer);
   };
   template <class BaseClass>
-  class WithAsyncMethod_listFields : public BaseClass {
+  class WithAsyncMethod_ListFields : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    WithAsyncMethod_listFields() {
+    WithAsyncMethod_ListFields() {
       ::grpc::Service::MarkMethodAsync(0);
     }
-    ~WithAsyncMethod_listFields() override {
+    ~WithAsyncMethod_ListFields() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
-    ::grpc::Status listFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
+    ::grpc::Status ListFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    void RequestlistFields(::grpc::ServerContext* context, ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ServerAsyncWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* writer, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
+    void RequestListFields(::grpc::ServerContext* context, ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request, ::grpc::ServerAsyncWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* writer, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
       ::grpc::Service::RequestAsyncServerStreaming(0, context, request, writer, new_call_cq, notification_cq, tag);
     }
   };
-  typedef WithAsyncMethod_listFields<Service > AsyncService;
+  typedef WithAsyncMethod_ListFields<Service > AsyncService;
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_listFields : public BaseClass {
+  class WithCallbackMethod_ListFields : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_listFields() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(0,
+    WithCallbackMethod_ListFields() {
+      ::grpc::Service::MarkMethodCallback(0,
           new ::grpc::internal::CallbackServerStreamingHandler< ::io::deephaven::proto::backplane::grpc::ListFieldsRequest, ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request) { return this->listFields(context, request); }));
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* request) { return this->ListFields(context, request); }));
     }
-    ~ExperimentalWithCallbackMethod_listFields() override {
+    ~WithCallbackMethod_ListFields() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
-    ::grpc::Status listFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
+    ::grpc::Status ListFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    virtual ::grpc::ServerWriteReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* listFields(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/)
-    #else
-    virtual ::grpc::experimental::ServerWriteReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* listFields(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/)
-    #endif
-      { return nullptr; }
+    virtual ::grpc::ServerWriteReactor< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* ListFields(
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/)  { return nullptr; }
   };
-  #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-  typedef ExperimentalWithCallbackMethod_listFields<Service > CallbackService;
-  #endif
-
-  typedef ExperimentalWithCallbackMethod_listFields<Service > ExperimentalCallbackService;
+  typedef WithCallbackMethod_ListFields<Service > CallbackService;
+  typedef CallbackService ExperimentalCallbackService;
   template <class BaseClass>
-  class WithGenericMethod_listFields : public BaseClass {
+  class WithGenericMethod_ListFields : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    WithGenericMethod_listFields() {
+    WithGenericMethod_ListFields() {
       ::grpc::Service::MarkMethodGeneric(0);
     }
-    ~WithGenericMethod_listFields() override {
+    ~WithGenericMethod_ListFields() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
-    ::grpc::Status listFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
+    ::grpc::Status ListFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
   };
   template <class BaseClass>
-  class WithRawMethod_listFields : public BaseClass {
+  class WithRawMethod_ListFields : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    WithRawMethod_listFields() {
+    WithRawMethod_ListFields() {
       ::grpc::Service::MarkMethodRaw(0);
     }
-    ~WithRawMethod_listFields() override {
+    ~WithRawMethod_ListFields() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
-    ::grpc::Status listFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
+    ::grpc::Status ListFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    void RequestlistFields(::grpc::ServerContext* context, ::grpc::ByteBuffer* request, ::grpc::ServerAsyncWriter< ::grpc::ByteBuffer>* writer, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
+    void RequestListFields(::grpc::ServerContext* context, ::grpc::ByteBuffer* request, ::grpc::ServerAsyncWriter< ::grpc::ByteBuffer>* writer, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
       ::grpc::Service::RequestAsyncServerStreaming(0, context, request, writer, new_call_cq, notification_cq, tag);
     }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_listFields : public BaseClass {
+  class WithRawCallbackMethod_ListFields : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_listFields() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(0,
+    WithRawCallbackMethod_ListFields() {
+      ::grpc::Service::MarkMethodRawCallback(0,
           new ::grpc::internal::CallbackServerStreamingHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const::grpc::ByteBuffer* request) { return this->listFields(context, request); }));
+                   ::grpc::CallbackServerContext* context, const::grpc::ByteBuffer* request) { return this->ListFields(context, request); }));
     }
-    ~ExperimentalWithRawCallbackMethod_listFields() override {
+    ~WithRawCallbackMethod_ListFields() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
-    ::grpc::Status listFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
+    ::grpc::Status ListFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    virtual ::grpc::ServerWriteReactor< ::grpc::ByteBuffer>* listFields(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)
-    #else
-    virtual ::grpc::experimental::ServerWriteReactor< ::grpc::ByteBuffer>* listFields(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)
-    #endif
-      { return nullptr; }
+    virtual ::grpc::ServerWriteReactor< ::grpc::ByteBuffer>* ListFields(
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)  { return nullptr; }
   };
   typedef Service StreamedUnaryService;
   template <class BaseClass>
-  class WithSplitStreamingMethod_listFields : public BaseClass {
+  class WithSplitStreamingMethod_ListFields : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    WithSplitStreamingMethod_listFields() {
+    WithSplitStreamingMethod_ListFields() {
       ::grpc::Service::MarkMethodStreamed(0,
         new ::grpc::internal::SplitServerStreamingHandler<
           ::io::deephaven::proto::backplane::grpc::ListFieldsRequest, ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>(
             [this](::grpc::ServerContext* context,
                    ::grpc::ServerSplitStreamer<
                      ::io::deephaven::proto::backplane::grpc::ListFieldsRequest, ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* streamer) {
-                       return this->StreamedlistFields(context,
+                       return this->StreamedListFields(context,
                          streamer);
                   }));
     }
-    ~WithSplitStreamingMethod_listFields() override {
+    ~WithSplitStreamingMethod_ListFields() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable regular version of this method
-    ::grpc::Status listFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
+    ::grpc::Status ListFields(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::grpc::ListFieldsRequest* /*request*/, ::grpc::ServerWriter< ::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* /*writer*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
     // replace default version of method with split streamed
-    virtual ::grpc::Status StreamedlistFields(::grpc::ServerContext* context, ::grpc::ServerSplitStreamer< ::io::deephaven::proto::backplane::grpc::ListFieldsRequest,::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* server_split_streamer) = 0;
+    virtual ::grpc::Status StreamedListFields(::grpc::ServerContext* context, ::grpc::ServerSplitStreamer< ::io::deephaven::proto::backplane::grpc::ListFieldsRequest,::io::deephaven::proto::backplane::grpc::FieldsChangeUpdate>* server_split_streamer) = 0;
   };
-  typedef WithSplitStreamingMethod_listFields<Service > SplitStreamedService;
-  typedef WithSplitStreamingMethod_listFields<Service > StreamedService;
+  typedef WithSplitStreamingMethod_ListFields<Service > SplitStreamedService;
+  typedef WithSplitStreamingMethod_ListFields<Service > StreamedService;
 };
 
 }  // namespace grpc

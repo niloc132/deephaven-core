@@ -1,14 +1,15 @@
 package io.deephaven.lang.completion
 
-import io.deephaven.engine.table.ColumnDefinition
+import io.deephaven.engine.context.ExecutionContext
+import io.deephaven.engine.table.Table
 import io.deephaven.engine.table.TableDefinition
 import io.deephaven.engine.util.VariableProvider
 import io.deephaven.internal.log.LoggerFactory
 import io.deephaven.io.logger.Logger
+import io.deephaven.lang.parse.CompletionParser
 import io.deephaven.proto.backplane.script.grpc.ChangeDocumentRequest.TextDocumentContentChangeEvent
 import io.deephaven.proto.backplane.script.grpc.CompletionItem
-import io.deephaven.engine.table.Table
-import io.deephaven.lang.parse.CompletionParser
+import io.deephaven.util.SafeCloseable
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -33,6 +34,16 @@ class ChunkerCompletionHandlerTest extends Specification implements ChunkerCompl
         return result.build()
     }
 
+    private SafeCloseable executionContext;
+
+    void setup() {
+        executionContext = ExecutionContext.createForUnitTests().open();
+    }
+
+    void cleanup() {
+        executionContext.close();
+    }
+
     @Override
     Specification getSpec() {
         return this
@@ -53,7 +64,7 @@ class ChunkerCompletionHandlerTest extends Specification implements ChunkerCompl
             _ * getVariableType(_) >> null
             _ * getVariable(_, _) >> null
             _ * getVariableNames() >> []
-            _ * getTableDefinition('emptyTable') >> new TableDefinition(new ColumnDefinition[0])
+            _ * getTableDefinition('emptyTable') >> TableDefinition.of()
             0 * _
         }
 

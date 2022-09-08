@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharacterSingleValueSource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.chunk.attributes.Values;
@@ -65,12 +64,19 @@ public class ObjectSingleValueSource<T> extends SingleValueColumnSource<T> imple
     }
 
     @Override
-    public final T get(long index) {
+    public final void setNull(long key) {
+        // region null set
+        set(null);
+        // endregion null set
+    }
+
+    @Override
+    public final T get(long rowKey) {
         return current;
     }
 
     @Override
-    public final T getPrev(long index) {
+    public final T getPrev(long rowKey) {
         if (!isTrackingPrevValues || changeTime < LogicalClock.DEFAULT.currentStep()) {
             return current;
         }

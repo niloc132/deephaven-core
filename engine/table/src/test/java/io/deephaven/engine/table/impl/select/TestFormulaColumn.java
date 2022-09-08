@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Assert;
@@ -11,8 +10,8 @@ import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.lang.QueryLanguageFunctionUtils;
 import io.deephaven.engine.table.impl.lang.QueryLanguageParser.QueryLanguageParseException;
-import io.deephaven.engine.table.lang.QueryLibrary;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryLibrary;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.time.DateTime;
 import io.deephaven.engine.table.impl.util.codegen.TypeAnalyzer;
 import io.deephaven.test.junit4.EngineCleanup;
@@ -52,10 +51,6 @@ public class TestFormulaColumn {
     private final boolean useKernelFormulas;
     private boolean kernelFormulasSavedValue;
 
-    static {
-        setUpQueryScope();
-    }
-
     public TestFormulaColumn(boolean useKernelFormulas) {
         this.useKernelFormulas = useKernelFormulas;
         testDataTable = getTestDataTable();
@@ -70,12 +65,12 @@ public class TestFormulaColumn {
         kernelFormulasSavedValue = DhFormulaColumn.useKernelFormulasProperty;
         DhFormulaColumn.useKernelFormulasProperty = useKernelFormulas;
 
+        setUpQueryScope();
         setUpQueryLibrary();
     }
 
     @After
     public void tearDown() throws Exception {
-        QueryLibrary.resetLibrary();
         DhFormulaColumn.useKernelFormulasProperty = kernelFormulasSavedValue;
     }
 
@@ -194,8 +189,8 @@ public class TestFormulaColumn {
 
     @Test
     public void testNoInput() {
-        final String oldValue = Configuration.getInstance().getProperty("CompilerTools.logEnabledDefault");
-        Configuration.getInstance().setProperty("CompilerTools.logEnabledDefault", "true");
+        final String oldValue = Configuration.getInstance().getProperty("QueryCompiler.logEnabledDefault");
+        Configuration.getInstance().setProperty("QueryCompiler.logEnabledDefault", "true");
         try {
             FormulaColumn formulaColumn = FormulaColumn.createFormulaColumn("Foo", "(String)\"1234\"");
             formulaColumn.initDef(Collections.emptyMap());
@@ -207,7 +202,7 @@ public class TestFormulaColumn {
             final long longResult = longFormulaColumn.getDataView().getLong(0);
             assertEquals(longResult, 1234L);
         } finally {
-            Configuration.getInstance().setProperty("CompilerTools.logEnabledDefault", oldValue);
+            Configuration.getInstance().setProperty("QueryCompiler.logEnabledDefault", oldValue);
         }
     }
 
@@ -236,8 +231,8 @@ public class TestFormulaColumn {
             result = Arrays.asList("varargTest1", "varargTest2", "varargTest3");
             checkPrimitive(row, expression, result);
 
-            expression = "io.deephaven.engine.table.ColumnDefinition.COLUMNTYPE_NORMAL";
-            result = ColumnDefinition.COLUMNTYPE_NORMAL;
+            expression = "io.deephaven.engine.table.ColumnDefinition.ColumnType.Normal";
+            result = ColumnDefinition.ColumnType.Normal;
             checkPrimitive(row, expression, result);
 
             expression = "CountDownLatch.class"; // (testing a package import)

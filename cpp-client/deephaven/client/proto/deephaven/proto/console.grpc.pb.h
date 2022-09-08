@@ -3,15 +3,13 @@
 // source: deephaven/proto/console.proto
 // Original file comments:
 //
-// Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
-//
+// Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
 #ifndef GRPC_deephaven_2fproto_2fconsole_2eproto__INCLUDED
 #define GRPC_deephaven_2fproto_2fconsole_2eproto__INCLUDED
 
 #include "deephaven/proto/console.pb.h"
 
 #include <functional>
-#include <grpc/impl/codegen/port_platform.h>
 #include <grpcpp/impl/codegen/async_generic_service.h>
 #include <grpcpp/impl/codegen/async_stream.h>
 #include <grpcpp/impl/codegen/async_unary_call.h>
@@ -126,92 +124,39 @@ class ConsoleService final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>> PrepareAsyncNextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>>(PrepareAsyncNextAutoCompleteStreamRaw(context, request, cq));
     }
-    virtual ::grpc::Status FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response) = 0;
-    std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>> AsyncFetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) {
-      return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>>(AsyncFetchFigureRaw(context, request, cq));
-    }
-    std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>> PrepareAsyncFetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) {
-      return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>>(PrepareAsyncFetchFigureRaw(context, request, cq));
-    }
-    class experimental_async_interface {
+    class async_interface {
      public:
-      virtual ~experimental_async_interface() {}
+      virtual ~async_interface() {}
       virtual void GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, std::function<void(::grpc::Status)>) = 0;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      #else
-      virtual void GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) = 0;
-      #endif
       virtual void StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, std::function<void(::grpc::Status)>) = 0;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      #else
-      virtual void StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) = 0;
-      #endif
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void SubscribeToLogs(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* reactor) = 0;
-      #else
-      virtual void SubscribeToLogs(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* reactor) = 0;
-      #endif
       virtual void ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, std::function<void(::grpc::Status)>) = 0;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      #else
-      virtual void ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) = 0;
-      #endif
       virtual void CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, std::function<void(::grpc::Status)>) = 0;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      #else
-      virtual void CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) = 0;
-      #endif
       virtual void BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, std::function<void(::grpc::Status)>) = 0;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      #else
-      virtual void BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) = 0;
-      #endif
       //
       // Starts a stream for autocomplete on the current session. More than one console,
       // more than one document can be edited at a time using this, and they can separately
       // be closed as well. A given document should only be edited within one stream at a
       // time.
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void AutoCompleteStream(::grpc::ClientContext* context, ::grpc::ClientBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) = 0;
-      #else
-      virtual void AutoCompleteStream(::grpc::ClientContext* context, ::grpc::experimental::ClientBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) = 0;
-      #endif
       //
       // Half of the browser-based (browser's can't do bidirectional streams without websockets)
       // implementation for AutoCompleteStream.
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void OpenAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) = 0;
-      #else
-      virtual void OpenAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) = 0;
-      #endif
       //
       // Other half of the browser-based implementation for AutoCompleteStream.
       virtual void NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, std::function<void(::grpc::Status)>) = 0;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       virtual void NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      #else
-      virtual void NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) = 0;
-      #endif
-      virtual void FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, std::function<void(::grpc::Status)>) = 0;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      virtual void FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      #else
-      virtual void FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) = 0;
-      #endif
     };
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    typedef class experimental_async_interface async_interface;
-    #endif
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    async_interface* async() { return experimental_async(); }
-    #endif
-    virtual class experimental_async_interface* experimental_async() { return nullptr; }
-  private:
+    typedef class async_interface experimental_async_interface;
+    virtual class async_interface* async() { return nullptr; }
+    class async_interface* experimental_async() { return async(); }
+   private:
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>* AsyncGetConsoleTypesRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest& request, ::grpc::CompletionQueue* cq) = 0;
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>* PrepareAsyncGetConsoleTypesRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest& request, ::grpc::CompletionQueue* cq) = 0;
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse>* AsyncStartConsoleRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest& request, ::grpc::CompletionQueue* cq) = 0;
@@ -233,8 +178,6 @@ class ConsoleService final {
     virtual ::grpc::ClientAsyncReaderInterface< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* PrepareAsyncOpenAutoCompleteStreamRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) = 0;
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* AsyncNextAutoCompleteStreamRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) = 0;
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* PrepareAsyncNextAutoCompleteStreamRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) = 0;
-    virtual ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* AsyncFetchFigureRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) = 0;
-    virtual ::grpc::ClientAsyncResponseReaderInterface< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* PrepareAsyncFetchFigureRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) = 0;
   };
   class Stub final : public StubInterface {
    public:
@@ -308,84 +251,35 @@ class ConsoleService final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>> PrepareAsyncNextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>>(PrepareAsyncNextAutoCompleteStreamRaw(context, request, cq));
     }
-    ::grpc::Status FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response) override;
-    std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>> AsyncFetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) {
-      return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>>(AsyncFetchFigureRaw(context, request, cq));
-    }
-    std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>> PrepareAsyncFetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) {
-      return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>>(PrepareAsyncFetchFigureRaw(context, request, cq));
-    }
-    class experimental_async final :
-      public StubInterface::experimental_async_interface {
+    class async final :
+      public StubInterface::async_interface {
      public:
       void GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, std::function<void(::grpc::Status)>) override;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, ::grpc::ClientUnaryReactor* reactor) override;
-      #else
-      void GetConsoleTypes(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) override;
-      #endif
       void StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, std::function<void(::grpc::Status)>) override;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, ::grpc::ClientUnaryReactor* reactor) override;
-      #else
-      void StartConsole(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) override;
-      #endif
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void SubscribeToLogs(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* reactor) override;
-      #else
-      void SubscribeToLogs(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* reactor) override;
-      #endif
       void ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, std::function<void(::grpc::Status)>) override;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, ::grpc::ClientUnaryReactor* reactor) override;
-      #else
-      void ExecuteCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) override;
-      #endif
       void CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, std::function<void(::grpc::Status)>) override;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, ::grpc::ClientUnaryReactor* reactor) override;
-      #else
-      void CancelCommand(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) override;
-      #endif
       void BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, std::function<void(::grpc::Status)>) override;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, ::grpc::ClientUnaryReactor* reactor) override;
-      #else
-      void BindTableToVariable(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) override;
-      #endif
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void AutoCompleteStream(::grpc::ClientContext* context, ::grpc::ClientBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) override;
-      #else
-      void AutoCompleteStream(::grpc::ClientContext* context, ::grpc::experimental::ClientBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) override;
-      #endif
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void OpenAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::grpc::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) override;
-      #else
-      void OpenAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::grpc::experimental::ClientReadReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* reactor) override;
-      #endif
       void NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, std::function<void(::grpc::Status)>) override;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
       void NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, ::grpc::ClientUnaryReactor* reactor) override;
-      #else
-      void NextAutoCompleteStream(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) override;
-      #endif
-      void FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, std::function<void(::grpc::Status)>) override;
-      #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      void FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, ::grpc::ClientUnaryReactor* reactor) override;
-      #else
-      void FetchFigure(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response, ::grpc::experimental::ClientUnaryReactor* reactor) override;
-      #endif
      private:
       friend class Stub;
-      explicit experimental_async(Stub* stub): stub_(stub) { }
+      explicit async(Stub* stub): stub_(stub) { }
       Stub* stub() { return stub_; }
       Stub* stub_;
     };
-    class experimental_async_interface* experimental_async() override { return &async_stub_; }
+    class async* async() override { return &async_stub_; }
 
    private:
     std::shared_ptr< ::grpc::ChannelInterface> channel_;
-    class experimental_async async_stub_{this};
+    class async async_stub_{this};
     ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>* AsyncGetConsoleTypesRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest& request, ::grpc::CompletionQueue* cq) override;
     ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>* PrepareAsyncGetConsoleTypesRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest& request, ::grpc::CompletionQueue* cq) override;
     ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse>* AsyncStartConsoleRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest& request, ::grpc::CompletionQueue* cq) override;
@@ -407,8 +301,6 @@ class ConsoleService final {
     ::grpc::ClientAsyncReader< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* PrepareAsyncOpenAutoCompleteStreamRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) override;
     ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* AsyncNextAutoCompleteStreamRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) override;
     ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* PrepareAsyncNextAutoCompleteStreamRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest& request, ::grpc::CompletionQueue* cq) override;
-    ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* AsyncFetchFigureRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) override;
-    ::grpc::ClientAsyncResponseReader< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* PrepareAsyncFetchFigureRaw(::grpc::ClientContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest& request, ::grpc::CompletionQueue* cq) override;
     const ::grpc::internal::RpcMethod rpcmethod_GetConsoleTypes_;
     const ::grpc::internal::RpcMethod rpcmethod_StartConsole_;
     const ::grpc::internal::RpcMethod rpcmethod_SubscribeToLogs_;
@@ -418,7 +310,6 @@ class ConsoleService final {
     const ::grpc::internal::RpcMethod rpcmethod_AutoCompleteStream_;
     const ::grpc::internal::RpcMethod rpcmethod_OpenAutoCompleteStream_;
     const ::grpc::internal::RpcMethod rpcmethod_NextAutoCompleteStream_;
-    const ::grpc::internal::RpcMethod rpcmethod_FetchFigure_;
   };
   static std::unique_ptr<Stub> NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options = ::grpc::StubOptions());
 
@@ -445,7 +336,6 @@ class ConsoleService final {
     //
     // Other half of the browser-based implementation for AutoCompleteStream.
     virtual ::grpc::Status NextAutoCompleteStream(::grpc::ServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response);
-    virtual ::grpc::Status FetchFigure(::grpc::ServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response);
   };
   template <class BaseClass>
   class WithAsyncMethod_GetConsoleTypes : public BaseClass {
@@ -627,58 +517,24 @@ class ConsoleService final {
       ::grpc::Service::RequestAsyncUnary(8, context, request, response, new_call_cq, notification_cq, tag);
     }
   };
+  typedef WithAsyncMethod_GetConsoleTypes<WithAsyncMethod_StartConsole<WithAsyncMethod_SubscribeToLogs<WithAsyncMethod_ExecuteCommand<WithAsyncMethod_CancelCommand<WithAsyncMethod_BindTableToVariable<WithAsyncMethod_AutoCompleteStream<WithAsyncMethod_OpenAutoCompleteStream<WithAsyncMethod_NextAutoCompleteStream<Service > > > > > > > > > AsyncService;
   template <class BaseClass>
-  class WithAsyncMethod_FetchFigure : public BaseClass {
+  class WithCallbackMethod_GetConsoleTypes : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    WithAsyncMethod_FetchFigure() {
-      ::grpc::Service::MarkMethodAsync(9);
-    }
-    ~WithAsyncMethod_FetchFigure() override {
-      BaseClassMustBeDerivedFromService(this);
-    }
-    // disable synchronous version of this method
-    ::grpc::Status FetchFigure(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/) override {
-      abort();
-      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
-    }
-    void RequestFetchFigure(::grpc::ServerContext* context, ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::grpc::ServerAsyncResponseWriter< ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* response, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
-      ::grpc::Service::RequestAsyncUnary(9, context, request, response, new_call_cq, notification_cq, tag);
-    }
-  };
-  typedef WithAsyncMethod_GetConsoleTypes<WithAsyncMethod_StartConsole<WithAsyncMethod_SubscribeToLogs<WithAsyncMethod_ExecuteCommand<WithAsyncMethod_CancelCommand<WithAsyncMethod_BindTableToVariable<WithAsyncMethod_AutoCompleteStream<WithAsyncMethod_OpenAutoCompleteStream<WithAsyncMethod_NextAutoCompleteStream<WithAsyncMethod_FetchFigure<Service > > > > > > > > > > AsyncService;
-  template <class BaseClass>
-  class ExperimentalWithCallbackMethod_GetConsoleTypes : public BaseClass {
-   private:
-    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
-   public:
-    ExperimentalWithCallbackMethod_GetConsoleTypes() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(0,
+    WithCallbackMethod_GetConsoleTypes() {
+      ::grpc::Service::MarkMethodCallback(0,
           new ::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response) { return this->GetConsoleTypes(context, request, response); }));}
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* request, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* response) { return this->GetConsoleTypes(context, request, response); }));}
     void SetMessageAllocatorFor_GetConsoleTypes(
-        ::grpc::experimental::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>* allocator) {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
+        ::grpc::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>* allocator) {
       ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(0);
-    #else
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::experimental().GetHandler(0);
-    #endif
       static_cast<::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse>*>(handler)
               ->SetMessageAllocator(allocator);
     }
-    ~ExperimentalWithCallbackMethod_GetConsoleTypes() override {
+    ~WithCallbackMethod_GetConsoleTypes() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -686,46 +542,26 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* GetConsoleTypes(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* GetConsoleTypes(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::GetConsoleTypesResponse* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_StartConsole : public BaseClass {
+  class WithCallbackMethod_StartConsole : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_StartConsole() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(1,
+    WithCallbackMethod_StartConsole() {
+      ::grpc::Service::MarkMethodCallback(1,
           new ::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response) { return this->StartConsole(context, request, response); }));}
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* request, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* response) { return this->StartConsole(context, request, response); }));}
     void SetMessageAllocatorFor_StartConsole(
-        ::grpc::experimental::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse>* allocator) {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
+        ::grpc::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse>* allocator) {
       ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(1);
-    #else
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::experimental().GetHandler(1);
-    #endif
       static_cast<::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse>*>(handler)
               ->SetMessageAllocator(allocator);
     }
-    ~ExperimentalWithCallbackMethod_StartConsole() override {
+    ~WithCallbackMethod_StartConsole() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -733,37 +569,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* StartConsole(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* StartConsole(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::StartConsoleRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::StartConsoleResponse* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_SubscribeToLogs : public BaseClass {
+  class WithCallbackMethod_SubscribeToLogs : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_SubscribeToLogs() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(2,
+    WithCallbackMethod_SubscribeToLogs() {
+      ::grpc::Service::MarkMethodCallback(2,
           new ::grpc::internal::CallbackServerStreamingHandler< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest, ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request) { return this->SubscribeToLogs(context, request); }));
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* request) { return this->SubscribeToLogs(context, request); }));
     }
-    ~ExperimentalWithCallbackMethod_SubscribeToLogs() override {
+    ~WithCallbackMethod_SubscribeToLogs() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -771,46 +591,26 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerWriteReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* SubscribeToLogs(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* /*request*/)
-    #else
-    virtual ::grpc::experimental::ServerWriteReactor< ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionData>* SubscribeToLogs(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* /*request*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::LogSubscriptionRequest* /*request*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_ExecuteCommand : public BaseClass {
+  class WithCallbackMethod_ExecuteCommand : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_ExecuteCommand() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(3,
+    WithCallbackMethod_ExecuteCommand() {
+      ::grpc::Service::MarkMethodCallback(3,
           new ::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response) { return this->ExecuteCommand(context, request, response); }));}
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* response) { return this->ExecuteCommand(context, request, response); }));}
     void SetMessageAllocatorFor_ExecuteCommand(
-        ::grpc::experimental::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse>* allocator) {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
+        ::grpc::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse>* allocator) {
       ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(3);
-    #else
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::experimental().GetHandler(3);
-    #endif
       static_cast<::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse>*>(handler)
               ->SetMessageAllocator(allocator);
     }
-    ~ExperimentalWithCallbackMethod_ExecuteCommand() override {
+    ~WithCallbackMethod_ExecuteCommand() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -818,46 +618,26 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* ExecuteCommand(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* ExecuteCommand(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::ExecuteCommandResponse* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_CancelCommand : public BaseClass {
+  class WithCallbackMethod_CancelCommand : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_CancelCommand() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(4,
+    WithCallbackMethod_CancelCommand() {
+      ::grpc::Service::MarkMethodCallback(4,
           new ::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response) { return this->CancelCommand(context, request, response); }));}
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* request, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* response) { return this->CancelCommand(context, request, response); }));}
     void SetMessageAllocatorFor_CancelCommand(
-        ::grpc::experimental::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse>* allocator) {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
+        ::grpc::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse>* allocator) {
       ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(4);
-    #else
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::experimental().GetHandler(4);
-    #endif
       static_cast<::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse>*>(handler)
               ->SetMessageAllocator(allocator);
     }
-    ~ExperimentalWithCallbackMethod_CancelCommand() override {
+    ~WithCallbackMethod_CancelCommand() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -865,46 +645,26 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* CancelCommand(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* CancelCommand(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::CancelCommandRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::CancelCommandResponse* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_BindTableToVariable : public BaseClass {
+  class WithCallbackMethod_BindTableToVariable : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_BindTableToVariable() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(5,
+    WithCallbackMethod_BindTableToVariable() {
+      ::grpc::Service::MarkMethodCallback(5,
           new ::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response) { return this->BindTableToVariable(context, request, response); }));}
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* request, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* response) { return this->BindTableToVariable(context, request, response); }));}
     void SetMessageAllocatorFor_BindTableToVariable(
-        ::grpc::experimental::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse>* allocator) {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
+        ::grpc::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse>* allocator) {
       ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(5);
-    #else
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::experimental().GetHandler(5);
-    #endif
       static_cast<::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse>*>(handler)
               ->SetMessageAllocator(allocator);
     }
-    ~ExperimentalWithCallbackMethod_BindTableToVariable() override {
+    ~WithCallbackMethod_BindTableToVariable() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -912,37 +672,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* BindTableToVariable(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* BindTableToVariable(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::BindTableToVariableResponse* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_AutoCompleteStream : public BaseClass {
+  class WithCallbackMethod_AutoCompleteStream : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_AutoCompleteStream() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(6,
+    WithCallbackMethod_AutoCompleteStream() {
+      ::grpc::Service::MarkMethodCallback(6,
           new ::grpc::internal::CallbackBidiHandler< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context) { return this->AutoCompleteStream(context); }));
+                   ::grpc::CallbackServerContext* context) { return this->AutoCompleteStream(context); }));
     }
-    ~ExperimentalWithCallbackMethod_AutoCompleteStream() override {
+    ~WithCallbackMethod_AutoCompleteStream() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -950,37 +694,22 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* AutoCompleteStream(
       ::grpc::CallbackServerContext* /*context*/)
-    #else
-    virtual ::grpc::experimental::ServerBidiReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* AutoCompleteStream(
-      ::grpc::experimental::CallbackServerContext* /*context*/)
-    #endif
       { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_OpenAutoCompleteStream : public BaseClass {
+  class WithCallbackMethod_OpenAutoCompleteStream : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_OpenAutoCompleteStream() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(7,
+    WithCallbackMethod_OpenAutoCompleteStream() {
+      ::grpc::Service::MarkMethodCallback(7,
           new ::grpc::internal::CallbackServerStreamingHandler< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request) { return this->OpenAutoCompleteStream(context, request); }));
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request) { return this->OpenAutoCompleteStream(context, request); }));
     }
-    ~ExperimentalWithCallbackMethod_OpenAutoCompleteStream() override {
+    ~WithCallbackMethod_OpenAutoCompleteStream() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -988,46 +717,26 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerWriteReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* OpenAutoCompleteStream(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* /*request*/)
-    #else
-    virtual ::grpc::experimental::ServerWriteReactor< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* OpenAutoCompleteStream(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* /*request*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* /*request*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithCallbackMethod_NextAutoCompleteStream : public BaseClass {
+  class WithCallbackMethod_NextAutoCompleteStream : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithCallbackMethod_NextAutoCompleteStream() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(8,
+    WithCallbackMethod_NextAutoCompleteStream() {
+      ::grpc::Service::MarkMethodCallback(8,
           new ::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response) { return this->NextAutoCompleteStream(context, request, response); }));}
+                   ::grpc::CallbackServerContext* context, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* request, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* response) { return this->NextAutoCompleteStream(context, request, response); }));}
     void SetMessageAllocatorFor_NextAutoCompleteStream(
-        ::grpc::experimental::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* allocator) {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
+        ::grpc::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* allocator) {
       ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(8);
-    #else
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::experimental().GetHandler(8);
-    #endif
       static_cast<::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>*>(handler)
               ->SetMessageAllocator(allocator);
     }
-    ~ExperimentalWithCallbackMethod_NextAutoCompleteStream() override {
+    ~WithCallbackMethod_NextAutoCompleteStream() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1035,67 +744,11 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* NextAutoCompleteStream(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* NextAutoCompleteStream(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* /*response*/)  { return nullptr; }
   };
-  template <class BaseClass>
-  class ExperimentalWithCallbackMethod_FetchFigure : public BaseClass {
-   private:
-    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
-   public:
-    ExperimentalWithCallbackMethod_FetchFigure() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodCallback(9,
-          new ::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>(
-            [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* request, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* response) { return this->FetchFigure(context, request, response); }));}
-    void SetMessageAllocatorFor_FetchFigure(
-        ::grpc::experimental::MessageAllocator< ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* allocator) {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(9);
-    #else
-      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::experimental().GetHandler(9);
-    #endif
-      static_cast<::grpc::internal::CallbackUnaryHandler< ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>*>(handler)
-              ->SetMessageAllocator(allocator);
-    }
-    ~ExperimentalWithCallbackMethod_FetchFigure() override {
-      BaseClassMustBeDerivedFromService(this);
-    }
-    // disable synchronous version of this method
-    ::grpc::Status FetchFigure(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/) override {
-      abort();
-      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
-    }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    virtual ::grpc::ServerUnaryReactor* FetchFigure(
-      ::grpc::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* FetchFigure(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/)
-    #endif
-      { return nullptr; }
-  };
-  #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-  typedef ExperimentalWithCallbackMethod_GetConsoleTypes<ExperimentalWithCallbackMethod_StartConsole<ExperimentalWithCallbackMethod_SubscribeToLogs<ExperimentalWithCallbackMethod_ExecuteCommand<ExperimentalWithCallbackMethod_CancelCommand<ExperimentalWithCallbackMethod_BindTableToVariable<ExperimentalWithCallbackMethod_AutoCompleteStream<ExperimentalWithCallbackMethod_OpenAutoCompleteStream<ExperimentalWithCallbackMethod_NextAutoCompleteStream<ExperimentalWithCallbackMethod_FetchFigure<Service > > > > > > > > > > CallbackService;
-  #endif
-
-  typedef ExperimentalWithCallbackMethod_GetConsoleTypes<ExperimentalWithCallbackMethod_StartConsole<ExperimentalWithCallbackMethod_SubscribeToLogs<ExperimentalWithCallbackMethod_ExecuteCommand<ExperimentalWithCallbackMethod_CancelCommand<ExperimentalWithCallbackMethod_BindTableToVariable<ExperimentalWithCallbackMethod_AutoCompleteStream<ExperimentalWithCallbackMethod_OpenAutoCompleteStream<ExperimentalWithCallbackMethod_NextAutoCompleteStream<ExperimentalWithCallbackMethod_FetchFigure<Service > > > > > > > > > > ExperimentalCallbackService;
+  typedef WithCallbackMethod_GetConsoleTypes<WithCallbackMethod_StartConsole<WithCallbackMethod_SubscribeToLogs<WithCallbackMethod_ExecuteCommand<WithCallbackMethod_CancelCommand<WithCallbackMethod_BindTableToVariable<WithCallbackMethod_AutoCompleteStream<WithCallbackMethod_OpenAutoCompleteStream<WithCallbackMethod_NextAutoCompleteStream<Service > > > > > > > > > CallbackService;
+  typedef CallbackService ExperimentalCallbackService;
   template <class BaseClass>
   class WithGenericMethod_GetConsoleTypes : public BaseClass {
    private:
@@ -1245,23 +898,6 @@ class ConsoleService final {
     }
     // disable synchronous version of this method
     ::grpc::Status NextAutoCompleteStream(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse* /*response*/) override {
-      abort();
-      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
-    }
-  };
-  template <class BaseClass>
-  class WithGenericMethod_FetchFigure : public BaseClass {
-   private:
-    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
-   public:
-    WithGenericMethod_FetchFigure() {
-      ::grpc::Service::MarkMethodGeneric(9);
-    }
-    ~WithGenericMethod_FetchFigure() override {
-      BaseClassMustBeDerivedFromService(this);
-    }
-    // disable synchronous version of this method
-    ::grpc::Status FetchFigure(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
@@ -1447,47 +1083,17 @@ class ConsoleService final {
     }
   };
   template <class BaseClass>
-  class WithRawMethod_FetchFigure : public BaseClass {
+  class WithRawCallbackMethod_GetConsoleTypes : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    WithRawMethod_FetchFigure() {
-      ::grpc::Service::MarkMethodRaw(9);
-    }
-    ~WithRawMethod_FetchFigure() override {
-      BaseClassMustBeDerivedFromService(this);
-    }
-    // disable synchronous version of this method
-    ::grpc::Status FetchFigure(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/) override {
-      abort();
-      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
-    }
-    void RequestFetchFigure(::grpc::ServerContext* context, ::grpc::ByteBuffer* request, ::grpc::ServerAsyncResponseWriter< ::grpc::ByteBuffer>* response, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
-      ::grpc::Service::RequestAsyncUnary(9, context, request, response, new_call_cq, notification_cq, tag);
-    }
-  };
-  template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_GetConsoleTypes : public BaseClass {
-   private:
-    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
-   public:
-    ExperimentalWithRawCallbackMethod_GetConsoleTypes() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(0,
+    WithRawCallbackMethod_GetConsoleTypes() {
+      ::grpc::Service::MarkMethodRawCallback(0,
           new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->GetConsoleTypes(context, request, response); }));
+                   ::grpc::CallbackServerContext* context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->GetConsoleTypes(context, request, response); }));
     }
-    ~ExperimentalWithRawCallbackMethod_GetConsoleTypes() override {
+    ~WithRawCallbackMethod_GetConsoleTypes() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1495,37 +1101,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* GetConsoleTypes(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* GetConsoleTypes(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_StartConsole : public BaseClass {
+  class WithRawCallbackMethod_StartConsole : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_StartConsole() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(1,
+    WithRawCallbackMethod_StartConsole() {
+      ::grpc::Service::MarkMethodRawCallback(1,
           new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->StartConsole(context, request, response); }));
+                   ::grpc::CallbackServerContext* context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->StartConsole(context, request, response); }));
     }
-    ~ExperimentalWithRawCallbackMethod_StartConsole() override {
+    ~WithRawCallbackMethod_StartConsole() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1533,37 +1123,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* StartConsole(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* StartConsole(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_SubscribeToLogs : public BaseClass {
+  class WithRawCallbackMethod_SubscribeToLogs : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_SubscribeToLogs() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(2,
+    WithRawCallbackMethod_SubscribeToLogs() {
+      ::grpc::Service::MarkMethodRawCallback(2,
           new ::grpc::internal::CallbackServerStreamingHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const::grpc::ByteBuffer* request) { return this->SubscribeToLogs(context, request); }));
+                   ::grpc::CallbackServerContext* context, const::grpc::ByteBuffer* request) { return this->SubscribeToLogs(context, request); }));
     }
-    ~ExperimentalWithRawCallbackMethod_SubscribeToLogs() override {
+    ~WithRawCallbackMethod_SubscribeToLogs() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1571,37 +1145,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerWriteReactor< ::grpc::ByteBuffer>* SubscribeToLogs(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)
-    #else
-    virtual ::grpc::experimental::ServerWriteReactor< ::grpc::ByteBuffer>* SubscribeToLogs(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_ExecuteCommand : public BaseClass {
+  class WithRawCallbackMethod_ExecuteCommand : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_ExecuteCommand() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(3,
+    WithRawCallbackMethod_ExecuteCommand() {
+      ::grpc::Service::MarkMethodRawCallback(3,
           new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->ExecuteCommand(context, request, response); }));
+                   ::grpc::CallbackServerContext* context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->ExecuteCommand(context, request, response); }));
     }
-    ~ExperimentalWithRawCallbackMethod_ExecuteCommand() override {
+    ~WithRawCallbackMethod_ExecuteCommand() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1609,37 +1167,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* ExecuteCommand(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* ExecuteCommand(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_CancelCommand : public BaseClass {
+  class WithRawCallbackMethod_CancelCommand : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_CancelCommand() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(4,
+    WithRawCallbackMethod_CancelCommand() {
+      ::grpc::Service::MarkMethodRawCallback(4,
           new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->CancelCommand(context, request, response); }));
+                   ::grpc::CallbackServerContext* context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->CancelCommand(context, request, response); }));
     }
-    ~ExperimentalWithRawCallbackMethod_CancelCommand() override {
+    ~WithRawCallbackMethod_CancelCommand() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1647,37 +1189,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* CancelCommand(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* CancelCommand(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_BindTableToVariable : public BaseClass {
+  class WithRawCallbackMethod_BindTableToVariable : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_BindTableToVariable() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(5,
+    WithRawCallbackMethod_BindTableToVariable() {
+      ::grpc::Service::MarkMethodRawCallback(5,
           new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->BindTableToVariable(context, request, response); }));
+                   ::grpc::CallbackServerContext* context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->BindTableToVariable(context, request, response); }));
     }
-    ~ExperimentalWithRawCallbackMethod_BindTableToVariable() override {
+    ~WithRawCallbackMethod_BindTableToVariable() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1685,37 +1211,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* BindTableToVariable(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* BindTableToVariable(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_AutoCompleteStream : public BaseClass {
+  class WithRawCallbackMethod_AutoCompleteStream : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_AutoCompleteStream() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(6,
+    WithRawCallbackMethod_AutoCompleteStream() {
+      ::grpc::Service::MarkMethodRawCallback(6,
           new ::grpc::internal::CallbackBidiHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context) { return this->AutoCompleteStream(context); }));
+                   ::grpc::CallbackServerContext* context) { return this->AutoCompleteStream(context); }));
     }
-    ~ExperimentalWithRawCallbackMethod_AutoCompleteStream() override {
+    ~WithRawCallbackMethod_AutoCompleteStream() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1723,37 +1233,22 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerBidiReactor< ::grpc::ByteBuffer, ::grpc::ByteBuffer>* AutoCompleteStream(
       ::grpc::CallbackServerContext* /*context*/)
-    #else
-    virtual ::grpc::experimental::ServerBidiReactor< ::grpc::ByteBuffer, ::grpc::ByteBuffer>* AutoCompleteStream(
-      ::grpc::experimental::CallbackServerContext* /*context*/)
-    #endif
       { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_OpenAutoCompleteStream : public BaseClass {
+  class WithRawCallbackMethod_OpenAutoCompleteStream : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_OpenAutoCompleteStream() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(7,
+    WithRawCallbackMethod_OpenAutoCompleteStream() {
+      ::grpc::Service::MarkMethodRawCallback(7,
           new ::grpc::internal::CallbackServerStreamingHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const::grpc::ByteBuffer* request) { return this->OpenAutoCompleteStream(context, request); }));
+                   ::grpc::CallbackServerContext* context, const::grpc::ByteBuffer* request) { return this->OpenAutoCompleteStream(context, request); }));
     }
-    ~ExperimentalWithRawCallbackMethod_OpenAutoCompleteStream() override {
+    ~WithRawCallbackMethod_OpenAutoCompleteStream() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1761,37 +1256,21 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerWriteReactor< ::grpc::ByteBuffer>* OpenAutoCompleteStream(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)
-    #else
-    virtual ::grpc::experimental::ServerWriteReactor< ::grpc::ByteBuffer>* OpenAutoCompleteStream(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/)  { return nullptr; }
   };
   template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_NextAutoCompleteStream : public BaseClass {
+  class WithRawCallbackMethod_NextAutoCompleteStream : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
    public:
-    ExperimentalWithRawCallbackMethod_NextAutoCompleteStream() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(8,
+    WithRawCallbackMethod_NextAutoCompleteStream() {
+      ::grpc::Service::MarkMethodRawCallback(8,
           new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
             [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->NextAutoCompleteStream(context, request, response); }));
+                   ::grpc::CallbackServerContext* context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->NextAutoCompleteStream(context, request, response); }));
     }
-    ~ExperimentalWithRawCallbackMethod_NextAutoCompleteStream() override {
+    ~WithRawCallbackMethod_NextAutoCompleteStream() override {
       BaseClassMustBeDerivedFromService(this);
     }
     // disable synchronous version of this method
@@ -1799,52 +1278,8 @@ class ConsoleService final {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
     virtual ::grpc::ServerUnaryReactor* NextAutoCompleteStream(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* NextAutoCompleteStream(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #endif
-      { return nullptr; }
-  };
-  template <class BaseClass>
-  class ExperimentalWithRawCallbackMethod_FetchFigure : public BaseClass {
-   private:
-    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
-   public:
-    ExperimentalWithRawCallbackMethod_FetchFigure() {
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-      ::grpc::Service::
-    #else
-      ::grpc::Service::experimental().
-    #endif
-        MarkMethodRawCallback(9,
-          new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
-            [this](
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-                   ::grpc::CallbackServerContext*
-    #else
-                   ::grpc::experimental::CallbackServerContext*
-    #endif
-                     context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->FetchFigure(context, request, response); }));
-    }
-    ~ExperimentalWithRawCallbackMethod_FetchFigure() override {
-      BaseClassMustBeDerivedFromService(this);
-    }
-    // disable synchronous version of this method
-    ::grpc::Status FetchFigure(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/) override {
-      abort();
-      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
-    }
-    #ifdef GRPC_CALLBACK_API_NONEXPERIMENTAL
-    virtual ::grpc::ServerUnaryReactor* FetchFigure(
-      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #else
-    virtual ::grpc::experimental::ServerUnaryReactor* FetchFigure(
-      ::grpc::experimental::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)
-    #endif
-      { return nullptr; }
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
   class WithStreamedUnaryMethod_GetConsoleTypes : public BaseClass {
@@ -2008,34 +1443,7 @@ class ConsoleService final {
     // replace default version of method with streamed unary
     virtual ::grpc::Status StreamedNextAutoCompleteStream(::grpc::ServerContext* context, ::grpc::ServerUnaryStreamer< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::BrowserNextResponse>* server_unary_streamer) = 0;
   };
-  template <class BaseClass>
-  class WithStreamedUnaryMethod_FetchFigure : public BaseClass {
-   private:
-    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
-   public:
-    WithStreamedUnaryMethod_FetchFigure() {
-      ::grpc::Service::MarkMethodStreamed(9,
-        new ::grpc::internal::StreamedUnaryHandler<
-          ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>(
-            [this](::grpc::ServerContext* context,
-                   ::grpc::ServerUnaryStreamer<
-                     ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* streamer) {
-                       return this->StreamedFetchFigure(context,
-                         streamer);
-                  }));
-    }
-    ~WithStreamedUnaryMethod_FetchFigure() override {
-      BaseClassMustBeDerivedFromService(this);
-    }
-    // disable regular version of this method
-    ::grpc::Status FetchFigure(::grpc::ServerContext* /*context*/, const ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest* /*request*/, ::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse* /*response*/) override {
-      abort();
-      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
-    }
-    // replace default version of method with streamed unary
-    virtual ::grpc::Status StreamedFetchFigure(::grpc::ServerContext* context, ::grpc::ServerUnaryStreamer< ::io::deephaven::proto::backplane::script::grpc::FetchFigureRequest,::io::deephaven::proto::backplane::script::grpc::FetchFigureResponse>* server_unary_streamer) = 0;
-  };
-  typedef WithStreamedUnaryMethod_GetConsoleTypes<WithStreamedUnaryMethod_StartConsole<WithStreamedUnaryMethod_ExecuteCommand<WithStreamedUnaryMethod_CancelCommand<WithStreamedUnaryMethod_BindTableToVariable<WithStreamedUnaryMethod_NextAutoCompleteStream<WithStreamedUnaryMethod_FetchFigure<Service > > > > > > > StreamedUnaryService;
+  typedef WithStreamedUnaryMethod_GetConsoleTypes<WithStreamedUnaryMethod_StartConsole<WithStreamedUnaryMethod_ExecuteCommand<WithStreamedUnaryMethod_CancelCommand<WithStreamedUnaryMethod_BindTableToVariable<WithStreamedUnaryMethod_NextAutoCompleteStream<Service > > > > > > StreamedUnaryService;
   template <class BaseClass>
   class WithSplitStreamingMethod_SubscribeToLogs : public BaseClass {
    private:
@@ -2091,7 +1499,7 @@ class ConsoleService final {
     virtual ::grpc::Status StreamedOpenAutoCompleteStream(::grpc::ServerContext* context, ::grpc::ServerSplitStreamer< ::io::deephaven::proto::backplane::script::grpc::AutoCompleteRequest,::io::deephaven::proto::backplane::script::grpc::AutoCompleteResponse>* server_split_streamer) = 0;
   };
   typedef WithSplitStreamingMethod_SubscribeToLogs<WithSplitStreamingMethod_OpenAutoCompleteStream<Service > > SplitStreamedService;
-  typedef WithStreamedUnaryMethod_GetConsoleTypes<WithStreamedUnaryMethod_StartConsole<WithSplitStreamingMethod_SubscribeToLogs<WithStreamedUnaryMethod_ExecuteCommand<WithStreamedUnaryMethod_CancelCommand<WithStreamedUnaryMethod_BindTableToVariable<WithSplitStreamingMethod_OpenAutoCompleteStream<WithStreamedUnaryMethod_NextAutoCompleteStream<WithStreamedUnaryMethod_FetchFigure<Service > > > > > > > > > StreamedService;
+  typedef WithStreamedUnaryMethod_GetConsoleTypes<WithStreamedUnaryMethod_StartConsole<WithSplitStreamingMethod_SubscribeToLogs<WithStreamedUnaryMethod_ExecuteCommand<WithStreamedUnaryMethod_CancelCommand<WithStreamedUnaryMethod_BindTableToVariable<WithSplitStreamingMethod_OpenAutoCompleteStream<WithStreamedUnaryMethod_NextAutoCompleteStream<Service > > > > > > > > StreamedService;
 };
 
 }  // namespace grpc

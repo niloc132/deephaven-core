@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.base;
 
 import java.util.Arrays;
@@ -177,11 +176,5 @@ public class StringUtils {
         buf.append(s);
 
         return buf.toString();
-    }
-
-    public static Collection<String> splitToCollection(String string) {
-        return string.trim().isEmpty() ? Collections.emptyList()
-                : Arrays.stream(string.split(",")).map(String::trim).filter(s -> !s.isEmpty())
-                        .collect(Collectors.toList());
     }
 }

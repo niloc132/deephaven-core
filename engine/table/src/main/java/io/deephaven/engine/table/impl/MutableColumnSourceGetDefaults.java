@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.table.ColumnSource;
@@ -19,42 +22,42 @@ public final class MutableColumnSourceGetDefaults {
             extends ColumnSourceGetDefaults.ForObject<DATA_TYPE>, MutableColumnSource<DATA_TYPE> {
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -65,42 +68,42 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForBoolean extends ColumnSourceGetDefaults.ForBoolean, MutableColumnSource<Boolean> {
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
-            return getPrev(index);
+        default Boolean getPrevBoolean(final long rowKey) {
+            return getPrev(rowKey);
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -111,42 +114,42 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForByte extends ColumnSourceGetDefaults.ForByte, MutableColumnSource<Byte> {
 
         @Override
-        default Byte getPrev(final long index) {
-            return box(getPrevByte(index));
+        default Byte getPrev(final long rowKey) {
+            return box(getPrevByte(rowKey));
         }
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -157,42 +160,42 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForChar extends ColumnSourceGetDefaults.ForChar, MutableColumnSource<Character> {
 
         @Override
-        default Character getPrev(final long index) {
-            return box(getPrevChar(index));
+        default Character getPrev(final long rowKey) {
+            return box(getPrevChar(rowKey));
         }
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -203,42 +206,42 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForDouble extends ColumnSourceGetDefaults.ForDouble, MutableColumnSource<Double> {
 
         @Override
-        default Double getPrev(final long index) {
-            return box(getPrevDouble(index));
+        default Double getPrev(final long rowKey) {
+            return box(getPrevDouble(rowKey));
         }
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -249,42 +252,42 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForFloat extends ColumnSourceGetDefaults.ForFloat, MutableColumnSource<Float> {
 
         @Override
-        default Float getPrev(final long index) {
-            return box(getPrevFloat(index));
+        default Float getPrev(final long rowKey) {
+            return box(getPrevFloat(rowKey));
         }
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -295,42 +298,42 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForInt extends ColumnSourceGetDefaults.ForInt, MutableColumnSource<Integer> {
 
         @Override
-        default Integer getPrev(final long index) {
-            return box(getPrevInt(index));
+        default Integer getPrev(final long rowKey) {
+            return box(getPrevInt(rowKey));
         }
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -341,37 +344,37 @@ public final class MutableColumnSourceGetDefaults {
     public interface LongBacked<DATA_TYPE>
             extends ColumnSourceGetDefaults.LongBacked<DATA_TYPE>, MutableColumnSource<DATA_TYPE> {
 
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default short getPrevShort(final long index) {
+        default short getPrevShort(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }
@@ -382,8 +385,8 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForLong extends ColumnSourceGetDefaults.ForLong, LongBacked<Long> {
 
         @Override
-        default Long getPrev(final long index) {
-            return box(getPrevLong(index));
+        default Long getPrev(final long rowKey) {
+            return box(getPrevLong(rowKey));
         }
     }
 
@@ -393,8 +396,8 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForLongAsDateTime extends ColumnSourceGetDefaults.ForLongAsDateTime, LongBacked<DateTime> {
 
         @Override
-        default DateTime getPrev(final long index) {
-            return nanosToTime(getPrevLong(index));
+        default DateTime getPrev(final long rowKey) {
+            return nanosToTime(getPrevLong(rowKey));
         }
     }
 
@@ -404,42 +407,42 @@ public final class MutableColumnSourceGetDefaults {
     public interface ForShort extends ColumnSourceGetDefaults.ForShort, MutableColumnSource<Short> {
 
         @Override
-        default Short getPrev(final long index) {
-            return box(getPrevShort(index));
+        default Short getPrev(final long rowKey) {
+            return box(getPrevShort(rowKey));
         }
 
         @Override
-        default Boolean getPrevBoolean(final long index) {
+        default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default byte getPrevByte(final long index) {
+        default byte getPrevByte(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default char getPrevChar(final long index) {
+        default char getPrevChar(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default double getPrevDouble(final long index) {
+        default double getPrevDouble(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default float getPrevFloat(final long index) {
+        default float getPrevFloat(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default int getPrevInt(final long index) {
+        default int getPrevInt(final long rowKey) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        default long getPrevLong(final long index) {
+        default long getPrevLong(final long rowKey) {
             throw new UnsupportedOperationException();
         }
     }

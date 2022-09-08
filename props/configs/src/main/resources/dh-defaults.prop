@@ -1,8 +1,8 @@
-CompilerTools.logEnabledDefault=false
+QueryCompiler.logEnabledDefault=false
 UpdatePerformanceTracker.reportingMode=LISTENER_ONLY
 UpdatePerformanceTracker.reportIntervalMillis=60000
 measurement.per_thread_cpu=false
-allocation.stats.enabled=true
+allocation.stats.enabled=false
 statsdriver.enabled=true
 UpdateGraphProcessor.checkTableOperations=true
 
@@ -50,3 +50,4 @@ server.timezone=America/New_York
 default.processEnvironmentFactory=io.deephaven.util.process.DefaultProcessEnvironment$Factory
 
 OperationInitializationThreadPool.threads=1
+

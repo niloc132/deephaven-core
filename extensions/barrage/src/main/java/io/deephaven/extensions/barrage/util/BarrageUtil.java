@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.extensions.barrage.util;
 
 import com.google.flatbuffers.FlatBufferBuilder;
@@ -15,6 +14,8 @@ import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.MatchPair;
 import io.deephaven.extensions.barrage.chunk.vector.VectorExpansionKernel;
+import io.deephaven.internal.log.LoggerFactory;
+import io.deephaven.io.logger.Logger;
 import io.deephaven.proto.flight.util.MessageHelper;
 import io.deephaven.proto.flight.util.SchemaHelper;
 import io.deephaven.time.DateTime;
@@ -26,7 +27,6 @@ import io.deephaven.engine.table.impl.RollupInfo;
 import io.deephaven.chunk.ChunkType;
 import io.deephaven.proto.backplane.grpc.ExportedTableCreationResponse;
 import io.deephaven.util.type.TypeUtils;
-import io.deephaven.vector.ObjectVector;
 import io.deephaven.vector.Vector;
 import org.apache.arrow.flatbuf.KeyValue;
 import org.apache.arrow.util.Collections2;
@@ -58,8 +58,9 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 
 public class BarrageUtil {
-
     public static final long FLATBUFFER_MAGIC = 0x6E687064;
+
+    private static final Logger log = LoggerFactory.getLogger(BarrageUtil.class);
 
     // year is 4 bytes, month is 1 byte, day is 1 byte
     public static final ArrowType.FixedSizeBinary LOCAL_DATE_TYPE = new ArrowType.FixedSizeBinary(6);
@@ -74,6 +75,12 @@ public class BarrageUtil {
             new ArrowType.Timestamp(TimeUnit.NANOSECOND, "UTC");
 
     private static final int ATTR_STRING_LEN_CUTOFF = 1024;
+
+    private static final String ATTR_DH_PREFIX = "deephaven:";
+    private static final String ATTR_ATTR_TAG = "attribute";
+    private static final String ATTR_ATTR_TYPE_TAG = "attribute_type";
+    private static final String ATTR_TYPE_TAG = "type";
+    private static final String ATTR_COMPONENT_TYPE_TAG = "componentType";
 
     /**
      * These are the types that get special encoding but are otherwise not primitives. TODO (core#58): add custom
@@ -132,7 +139,8 @@ public class BarrageUtil {
                     val instanceof Long || val instanceof Float || val instanceof Double ||
                     val instanceof Character || val instanceof Boolean ||
                     (val instanceof String && ((String) val).length() < ATTR_STRING_LEN_CUTOFF)) {
-                putMetadata(schemaMetadata, "attribute." + key, val.toString());
+                putMetadata(schemaMetadata, ATTR_ATTR_TAG + "." + key, val.toString());
+                putMetadata(schemaMetadata, ATTR_ATTR_TYPE_TAG + "." + key, val.getClass().getCanonicalName());
             } else {
                 unsentAttributes.add(key);
             }
@@ -143,7 +151,8 @@ public class BarrageUtil {
             unsentAttributes.remove(Table.HIERARCHICAL_SOURCE_INFO_ATTRIBUTE);
             final HierarchicalTableInfo hierarchicalTableInfo =
                     (HierarchicalTableInfo) attributes.remove(Table.HIERARCHICAL_SOURCE_INFO_ATTRIBUTE);
-            final String hierarchicalSourceKeyPrefix = "attribute." + Table.HIERARCHICAL_SOURCE_INFO_ATTRIBUTE + ".";
+            final String hierarchicalSourceKeyPrefix =
+                    ATTR_ATTR_TAG + "." + Table.HIERARCHICAL_SOURCE_INFO_ATTRIBUTE + ".";
             putMetadata(schemaMetadata, hierarchicalSourceKeyPrefix + "hierarchicalColumnName",
                     hierarchicalTableInfo.getHierarchicalColumnName());
             if (hierarchicalTableInfo instanceof RollupInfo) {
@@ -162,7 +171,7 @@ public class BarrageUtil {
 
         // note which attributes have a value we couldn't send
         for (String unsentAttribute : unsentAttributes) {
-            putMetadata(schemaMetadata, "unsent.attribute." + unsentAttribute, "");
+            putMetadata(schemaMetadata, "unsent." + ATTR_ATTR_TAG + "." + unsentAttribute, "");
         }
 
         final Map<String, Field> fields = new LinkedHashMap<>();
@@ -189,7 +198,7 @@ public class BarrageUtil {
     }
 
     private static void putMetadata(final Map<String, String> metadata, final String key, final String value) {
-        metadata.put("deephaven:" + key, value);
+        metadata.put(ATTR_DH_PREFIX + key, value);
     }
 
     private static boolean maybeConvertForTimeUnit(final TimeUnit unit, final ConvertedArrowSchema result,
@@ -213,7 +222,7 @@ public class BarrageUtil {
 
     private static Class<?> getDefaultType(
             final String name, final ArrowType arrowType, final ConvertedArrowSchema result, final int i) {
-        final String exMsg = "Schema did not include `deephaven:type` metadata for field ";
+        final String exMsg = "Schema did not include `" + ATTR_DH_PREFIX + ATTR_TYPE_TAG + "` metadata for field ";
         switch (arrowType.getTypeID()) {
             case Int:
                 final ArrowType.Int intType = (ArrowType.Int) arrowType;
@@ -290,6 +299,7 @@ public class BarrageUtil {
         // a multiplicative factor to apply when reading; useful for eg converting arrow timestamp time units
         // to the expected nanos value for DateTime.
         public int[] conversionFactors;
+        public Map<String, Object> attributes;
 
         public ConvertedArrowSchema(final int nCols) {
             this.nCols = nCols;
@@ -320,6 +330,12 @@ public class BarrageUtil {
                         final KeyValue keyValue = field.customMetadata(j);
                         visitor.accept(keyValue.key(), keyValue.value());
                     }
+                },
+                visitor -> {
+                    for (int j = 0; j < schema.customMetadataLength(); j++) {
+                        final KeyValue keyValue = schema.customMetadata(j);
+                        visitor.accept(keyValue.key(), keyValue.value());
+                    }
                 });
     }
 
@@ -330,14 +346,16 @@ public class BarrageUtil {
                 i -> schema.getFields().get(i).getType(),
                 i -> visitor -> {
                     schema.getFields().get(i).getMetadata().forEach(visitor);
-                });
+                },
+                visitor -> schema.getCustomMetadata().forEach(visitor));
     }
 
     private static ConvertedArrowSchema convertArrowSchema(
             final int numColumns,
             final IntFunction<String> getName,
             final IntFunction<ArrowType> getArrowType,
-            final IntFunction<Consumer<BiConsumer<String, String>>> visitMetadata) {
+            final IntFunction<Consumer<BiConsumer<String, String>>> columnMetadataVisitor,
+            final Consumer<BiConsumer<String, String>> tableMetadataVisitor) {
         final ConvertedArrowSchema result = new ConvertedArrowSchema(numColumns);
         final ColumnDefinition<?>[] columns = new ColumnDefinition[numColumns];
 
@@ -347,14 +365,14 @@ public class BarrageUtil {
             final MutableObject<Class<?>> type = new MutableObject<>();
             final MutableObject<Class<?>> componentType = new MutableObject<>();
 
-            visitMetadata.apply(i).accept((key, value) -> {
-                if (key.equals("deephaven:type")) {
+            columnMetadataVisitor.apply(i).accept((key, value) -> {
+                if (key.equals(ATTR_DH_PREFIX + ATTR_TYPE_TAG)) {
                     try {
                         type.setValue(ClassUtil.lookupClass(value));
                     } catch (final ClassNotFoundException e) {
                         throw new UncheckedDeephavenException("Could not load class from schema", e);
                     }
-                } else if (key.equals("deephaven:componentType")) {
+                } else if (key.equals(ATTR_DH_PREFIX + ATTR_COMPONENT_TYPE_TAG)) {
                     try {
                         componentType.setValue(ClassUtil.lookupClass(value));
                     } catch (final ClassNotFoundException e) {
@@ -370,7 +388,70 @@ public class BarrageUtil {
             columns[i] = ColumnDefinition.fromGenericType(name, type.getValue(), componentType.getValue());
         }
 
-        result.tableDef = new TableDefinition(columns);
+        result.tableDef = TableDefinition.of(columns);
+
+        result.attributes = new HashMap<>();
+
+        final HashMap<String, String> attributeTypeMap = new HashMap<>();
+        tableMetadataVisitor.accept((key, value) -> {
+            final String isAttributePrefix = ATTR_DH_PREFIX + ATTR_ATTR_TAG + ".";
+            final String isAttributeTypePrefix = ATTR_DH_PREFIX + ATTR_ATTR_TYPE_TAG + ".";
+            if (key.startsWith(isAttributePrefix)) {
+                result.attributes.put(key.substring(isAttributePrefix.length()), value);
+            } else if (key.startsWith(isAttributeTypePrefix)) {
+                attributeTypeMap.put(key.substring(isAttributeTypePrefix.length()), value);
+            }
+        });
+
+        attributeTypeMap.forEach((attrKey, attrType) -> {
+            if (!result.attributes.containsKey(attrKey)) {
+                // ignore if we receive a type for an unsent key (server code won't do this)
+                log.warn().append("Schema included ").append(ATTR_ATTR_TYPE_TAG).append(" tag but not a corresponding ")
+                        .append(ATTR_ATTR_TAG).append(" tag for key ").append(attrKey).append(".").endl();
+                return;
+            }
+
+            Object currValue = result.attributes.get(attrKey);
+            if (!(currValue instanceof String)) {
+                // we just inserted this as a string in the block above
+                throw new IllegalStateException();
+            }
+
+            final String stringValue = (String) currValue;
+            switch (attrType) {
+                case "java.lang.Byte":
+                    result.attributes.put(attrKey, Byte.valueOf(stringValue));
+                    break;
+                case "java.lang.Short":
+                    result.attributes.put(attrKey, Short.valueOf(stringValue));
+                    break;
+                case "java.lang.Integer":
+                    result.attributes.put(attrKey, Integer.valueOf(stringValue));
+                    break;
+                case "java.lang.Long":
+                    result.attributes.put(attrKey, Long.valueOf(stringValue));
+                    break;
+                case "java.lang.Float":
+                    result.attributes.put(attrKey, Float.valueOf(stringValue));
+                    break;
+                case "java.lang.Double":
+                    result.attributes.put(attrKey, Double.valueOf(stringValue));
+                    break;
+                case "java.lang.Character":
+                    result.attributes.put(attrKey, stringValue.isEmpty() ? (char) 0 : stringValue.charAt(0));
+                    break;
+                case "java.lang.Boolean":
+                    result.attributes.put(attrKey, Boolean.valueOf(stringValue));
+                    break;
+                case "java.lang.String":
+                    // leave as is
+                    break;
+                default:
+                    log.warn().append("Schema included unsupported ").append(ATTR_ATTR_TYPE_TAG).append(" tag of '")
+                            .append(attrType).append("' for key ").append(attrKey).append(".").endl();
+            }
+        });
+
         return result;
     }
 
@@ -393,19 +474,19 @@ public class BarrageUtil {
         final Map<String, String> metadata = new HashMap<>(extraMetadata);
 
         if (isTypeNativelySupported(type)) {
-            putMetadata(metadata, "type", type.getCanonicalName());
+            putMetadata(metadata, ATTR_TYPE_TAG, type.getCanonicalName());
 
             if (componentType != null) {
                 if (isTypeNativelySupported(componentType)) {
-                    putMetadata(metadata, "componentType", componentType.getCanonicalName());
+                    putMetadata(metadata, ATTR_COMPONENT_TYPE_TAG, componentType.getCanonicalName());
                 } else {
                     // otherwise, it will be converted to a string
-                    putMetadata(metadata, "componentType", String.class.getCanonicalName());
+                    putMetadata(metadata, ATTR_COMPONENT_TYPE_TAG, String.class.getCanonicalName());
                 }
             }
         } else {
             // otherwise, it will be converted to a string
-            putMetadata(metadata, "type", String.class.getCanonicalName());
+            putMetadata(metadata, ATTR_TYPE_TAG, String.class.getCanonicalName());
         }
 
         // only one of these will be true, if any are true the column will not be visible

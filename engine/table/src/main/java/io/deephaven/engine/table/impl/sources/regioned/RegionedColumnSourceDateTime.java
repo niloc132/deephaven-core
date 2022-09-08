@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.chunk.attributes.Values;
@@ -36,8 +39,8 @@ final class RegionedColumnSourceDateTime
     }
 
     @Override
-    public DateTime get(long elementIndex) {
-        return elementIndex == RowSequence.NULL_ROW_KEY ? null
-                : DateTimeUtils.nanosToTime(lookupRegion(elementIndex).getReferencedRegion().getLong(elementIndex));
+    public DateTime get(long rowKey) {
+        return rowKey == RowSequence.NULL_ROW_KEY ? null
+                : DateTimeUtils.nanosToTime(lookupRegion(rowKey).getReferencedRegion().getLong(rowKey));
     }
 }

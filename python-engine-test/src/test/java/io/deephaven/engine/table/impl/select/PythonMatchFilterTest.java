@@ -1,13 +1,12 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import static org.junit.Assert.assertEquals;
 
 import io.deephaven.configuration.Configuration;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.io.log.LogLevel;
 import io.deephaven.io.logger.StreamLoggerImpl;
 import io.deephaven.util.process.ProcessEnvironment;
@@ -15,7 +14,8 @@ import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.util.WorkerPythonEnvironment;
 import io.deephaven.jpy.PythonTest;
 
-import java.util.Collections;
+import java.util.List;
+
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -43,8 +43,7 @@ public class PythonMatchFilterTest extends PythonTest {
         WhereFilter filter = WhereFilterFactory.getExpression("ival in iii");
         assertEquals(MatchFilter.class, filter.getClass());
 
-        TableDefinition tableDef =
-                new TableDefinition(Collections.singletonList(int.class), Collections.singletonList("ival"));
+        TableDefinition tableDef = TableDefinition.from(List.of("ival"), List.of(int.class));
         filter.init(tableDef);
         Object[] values = ((MatchFilter) filter).getValues();
         // System.out.println(Arrays.toString(values));
@@ -62,8 +61,7 @@ public class PythonMatchFilterTest extends PythonTest {
         WhereFilter filter = WhereFilterFactory.getExpression("sval in ss");
         assertEquals(MatchFilter.class, filter.getClass());
 
-        TableDefinition tableDef =
-                new TableDefinition(Collections.singletonList(String.class), Collections.singletonList("sval"));
+        TableDefinition tableDef = TableDefinition.from(List.of("sval"), List.of(String.class));
         filter.init(tableDef);
         Object[] values = ((MatchFilter) filter).getValues();
         // System.out.println(Arrays.toString(values));

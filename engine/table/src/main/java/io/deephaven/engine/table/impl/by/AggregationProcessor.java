@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.api.ColumnName;
@@ -11,6 +14,7 @@ import io.deephaven.api.agg.Count;
 import io.deephaven.api.agg.FirstRowKey;
 import io.deephaven.api.agg.LastRowKey;
 import io.deephaven.api.agg.Pair;
+import io.deephaven.api.agg.Partition;
 import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.api.agg.spec.AggSpecAbsSum;
 import io.deephaven.api.agg.spec.AggSpecApproximatePercentile;
@@ -43,13 +47,12 @@ import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.MatchPair;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.impl.EmptyTableMap;
+import io.deephaven.engine.table.impl.BaseTable;
 import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.ReverseLookup;
 import io.deephaven.engine.table.impl.RollupInfo;
 import io.deephaven.engine.table.impl.TupleSourceFactory;
 import io.deephaven.engine.table.impl.by.rollup.NullColumns;
-import io.deephaven.engine.table.impl.by.rollup.Partition;
 import io.deephaven.engine.table.impl.by.rollup.RollupAggregation;
 import io.deephaven.engine.table.impl.by.rollup.RollupAggregationPairs;
 import io.deephaven.engine.table.impl.by.ssmcountdistinct.count.ByteChunkedCountDistinctOperator;
@@ -200,13 +203,14 @@ public class AggregationProcessor implements AggregationContextFactory {
     public static AggregationContextFactory forRollupBase(
             @NotNull final Collection<? extends Aggregation> aggregations,
             final boolean includeConstituents) {
-        // @formatter:off
-        final Collection<? extends Aggregation> baseAggregations =
-                Stream.concat(
-                    aggregations.stream(),
-                    Stream.of(includeConstituents ? Partition.of(true) : NullColumns.of(ROLLUP_COLUMN, Object.class))
-                ).collect(Collectors.toList());
-        // @formatter:on
+        if (aggregations.stream().anyMatch(agg -> agg instanceof Partition)) {
+            rollupUnsupported("Partition");
+        }
+        final Collection<Aggregation> baseAggregations = new ArrayList<>(aggregations.size() + 1);
+        baseAggregations.addAll(aggregations);
+        baseAggregations.add(includeConstituents
+                ? Partition.of(ROLLUP_COLUMN)
+                : NullColumns.of(ROLLUP_COLUMN, Object.class));
         return new AggregationProcessor(baseAggregations, Type.ROLLUP_BASE);
     }
 
@@ -222,10 +226,13 @@ public class AggregationProcessor implements AggregationContextFactory {
     public static AggregationContextFactory forRollupReaggregated(
             @NotNull final Collection<? extends Aggregation> aggregations,
             @NotNull final Map<String, Class<?>> nullColumns) {
+        if (aggregations.stream().anyMatch(agg -> agg instanceof Partition)) {
+            rollupUnsupported("Partition");
+        }
         final Collection<Aggregation> reaggregations = new ArrayList<>(aggregations.size() + 2);
         reaggregations.add(NullColumns.from(nullColumns));
         reaggregations.addAll(aggregations);
-        reaggregations.add(Partition.of(false));
+        reaggregations.add(Partition.of(ROLLUP_COLUMN));
         return new AggregationProcessor(reaggregations, Type.ROLLUP_REAGGREGATED);
     }
 
@@ -266,17 +273,19 @@ public class AggregationProcessor implements AggregationContextFactory {
     // -----------------------------------------------------------------------------------------------------------------
 
     @Override
-    public AggregationContext makeAggregationContext(@NotNull final Table table,
+    public AggregationContext makeAggregationContext(
+            @NotNull final Table table,
+            final boolean requireStateChangeRecorder,
             @NotNull final String... groupByColumnNames) {
         switch (type) {
             case NORMAL:
-                return new NormalConverter(table, groupByColumnNames).build();
+                return new NormalConverter(table, requireStateChangeRecorder, groupByColumnNames).build();
             case ROLLUP_BASE:
-                return new RollupBaseConverter(table, groupByColumnNames).build();
+                return new RollupBaseConverter(table, requireStateChangeRecorder, groupByColumnNames).build();
             case ROLLUP_REAGGREGATED:
-                return new RollupReaggregatedConverter(table, groupByColumnNames).build();
+                return new RollupReaggregatedConverter(table, requireStateChangeRecorder, groupByColumnNames).build();
             case SELECT_DISTINCT:
-                return makeEmptyAggregationContext();
+                return makeEmptyAggregationContext(requireStateChangeRecorder);
             default:
                 throw new UnsupportedOperationException("Unsupported type " + type);
         }
@@ -293,6 +302,7 @@ public class AggregationProcessor implements AggregationContextFactory {
     private abstract class Converter implements Aggregation.Visitor, AggSpec.Visitor {
 
         final QueryTable table;
+        private final boolean requireStateChangeRecorder;
         final String[] groupByColumnNames;
 
         final boolean isAddOnly;
@@ -306,9 +316,14 @@ public class AggregationProcessor implements AggregationContextFactory {
         List<Pair> resultPairs = List.of();
         int freezeByCountIndex = -1;
         int trackedFirstOrLastIndex = -1;
+        boolean partitionFound;
 
-        private Converter(@NotNull final Table table, @NotNull final String... groupByColumnNames) {
+        private Converter(
+                @NotNull final Table table,
+                final boolean requireStateChangeRecorder,
+                @NotNull final String... groupByColumnNames) {
             this.table = (QueryTable) table.coalesce();
+            this.requireStateChangeRecorder = requireStateChangeRecorder;
             this.groupByColumnNames = groupByColumnNames;
             isAddOnly = this.table.isAddOnly();
             isStream = this.table.isStream();
@@ -327,6 +342,9 @@ public class AggregationProcessor implements AggregationContextFactory {
 
         @NotNull
         final AggregationContext makeAggregationContext() {
+            if (requireStateChangeRecorder && operators.stream().noneMatch(op -> op instanceof StateChangeRecorder)) {
+                addNoInputOperator(new CountAggregationOperator(null));
+            }
             // noinspection unchecked
             return new AggregationContext(
                     operators.toArray(IterativeChunkedAggregationOperator[]::new),
@@ -342,6 +360,14 @@ public class AggregationProcessor implements AggregationContextFactory {
             throw new UnsupportedOperationException(String.format(
                     "Stream tables do not support Agg%s; use StreamTableTools.streamToAppendOnlyTable to accumulate full history",
                     operationName));
+        }
+
+        final void multiplePartitionsUnsupported() {
+            if (!partitionFound) {
+                partitionFound = true;
+                return;
+            }
+            throw new UnsupportedOperationException("Only one AggPartition is permitted per aggregation");
         }
 
         // -------------------------------------------------------------------------------------------------------------
@@ -626,8 +652,11 @@ public class AggregationProcessor implements AggregationContextFactory {
      */
     private final class NormalConverter extends Converter {
 
-        private NormalConverter(@NotNull final Table table, @NotNull final String... groupByColumnNames) {
-            super(table, groupByColumnNames);
+        private NormalConverter(
+                @NotNull final Table table,
+                final boolean requireStateChangeRecorder,
+                @NotNull final String... groupByColumnNames) {
+            super(table, requireStateChangeRecorder, groupByColumnNames);
         }
 
         // -------------------------------------------------------------------------------------------------------------
@@ -647,6 +676,18 @@ public class AggregationProcessor implements AggregationContextFactory {
         @Override
         public void visit(@NotNull final LastRowKey lastRowKey) {
             addFirstOrLastOperators(false, lastRowKey.column().name());
+        }
+
+        @Override
+        public void visit(@NotNull final Partition partition) {
+            multiplePartitionsUnsupported();
+            streamUnsupported("Partition");
+            addNoInputOperator(new PartitionByChunkedOperator(
+                    table,
+                    partition.includeGroupByColumns() ? table : (QueryTable) table.dropColumns(groupByColumnNames),
+                    partition.column().name(),
+                    (pt, st) -> pt.copyAttributes(st, BaseTable.CopyAttributeOperation.PartitionBy),
+                    groupByColumnNames));
         }
 
         // -------------------------------------------------------------------------------------------------------------
@@ -866,11 +907,13 @@ public class AggregationProcessor implements AggregationContextFactory {
     private final class RollupBaseConverter extends Converter
             implements RollupAggregation.Visitor, UnsupportedRollupAggregations {
 
-        private boolean partitionFound;
         private int nextColumnIdentifier = 0;
 
-        private RollupBaseConverter(@NotNull final Table table, @NotNull final String... groupByColumnNames) {
-            super(table, groupByColumnNames);
+        private RollupBaseConverter(
+                @NotNull final Table table,
+                final boolean requireStateChangeRecorder,
+                @NotNull final String... groupByColumnNames) {
+            super(table, requireStateChangeRecorder, groupByColumnNames);
         }
 
         @Override
@@ -898,21 +941,19 @@ public class AggregationProcessor implements AggregationContextFactory {
 
         @Override
         public void visit(@NotNull final Partition partition) {
-            if (!partition.includeConstituents()) {
-                throw new IllegalArgumentException(
-                        "Partition isn't used for rollup base levels unless constituents are included");
-            }
+            multiplePartitionsUnsupported();
             streamUnsupported("Partition for rollup with constituents included");
+            if (!partition.includeGroupByColumns()) {
+                throw new UnsupportedOperationException("Rollups never drop group-by columns when partitioning");
+            }
 
             final QueryTable adjustedTable = maybeCopyRlAttribute(table, table.updateView(ROLLUP_COLUMN + " = null"));
             final PartitionByChunkedOperator partitionOperator = new PartitionByChunkedOperator(table,
-                    adjustedTable, LEAF_WITHCONSTITUENTS_INSTANCE, Collections.emptyList(), groupByColumnNames);
+                    adjustedTable, partition.column().name(), LEAF_WITHCONSTITUENTS_INSTANCE, groupByColumnNames);
 
             addNoInputOperator(partitionOperator);
             transformers.add(makeRollupKeysTransformer(groupByColumnNames));
             transformers.add(new RollupTableMapAndReverseLookupAttributeSetter(partitionOperator, false, true));
-
-            partitionFound = true;
         }
 
         // -------------------------------------------------------------------------------------------------------------
@@ -1009,8 +1050,11 @@ public class AggregationProcessor implements AggregationContextFactory {
 
         private int nextColumnIdentifier = 0;
 
-        private RollupReaggregatedConverter(@NotNull final Table table, @NotNull final String... groupByColumnNames) {
-            super(table, groupByColumnNames);
+        private RollupReaggregatedConverter(
+                @NotNull final Table table,
+                final boolean requireStateChangeRecorder,
+                @NotNull final String... groupByColumnNames) {
+            super(table, requireStateChangeRecorder, groupByColumnNames);
         }
 
         // -------------------------------------------------------------------------------------------------------------
@@ -1029,8 +1073,9 @@ public class AggregationProcessor implements AggregationContextFactory {
 
         @Override
         public void visit(@NotNull final Partition partition) {
-            if (partition.includeConstituents()) {
-                throw new IllegalArgumentException("Cannot include constituents for reaggregated rollup levels");
+            multiplePartitionsUnsupported();
+            if (!partition.includeGroupByColumns()) {
+                throw new UnsupportedOperationException("Rollups never drop group-by columns when partitioning");
             }
 
             final List<String> columnsToDrop = table.getDefinition().getColumnStream().map(ColumnDefinition::getName)
@@ -1038,8 +1083,8 @@ public class AggregationProcessor implements AggregationContextFactory {
             final QueryTable adjustedTable = columnsToDrop.isEmpty()
                     ? table
                     : maybeCopyRlAttribute(table, table.dropColumns(columnsToDrop));
-            final PartitionByChunkedOperator partitionOperator = new PartitionByChunkedOperator(table,
-                    adjustedTable, DEFAULT_INSTANCE, Collections.emptyList(), groupByColumnNames);
+            final PartitionByChunkedOperator partitionOperator = new PartitionByChunkedOperator(
+                    table, adjustedTable, partition.column().name(), DEFAULT_INSTANCE, groupByColumnNames);
 
             addNoInputOperator(partitionOperator);
             transformers.add(makeRollupKeysTransformer(groupByColumnNames));
@@ -1301,7 +1346,14 @@ public class AggregationProcessor implements AggregationContextFactory {
     // Basic Helpers
     // -----------------------------------------------------------------------------------------------------------------
 
-    private static AggregationContext makeEmptyAggregationContext() {
+    private static AggregationContext makeEmptyAggregationContext(final boolean requireStateChangeRecorder) {
+        if (requireStateChangeRecorder) {
+            // noinspection unchecked
+            return new AggregationContext(
+                    new IterativeChunkedAggregationOperator[] {new CountAggregationOperator(null)},
+                    new String[][] {ZERO_LENGTH_STRING_ARRAY},
+                    new ChunkSource.WithPrev[] {null});
+        }
         // noinspection unchecked
         return new AggregationContext(
                 ZERO_LENGTH_ITERATIVE_CHUNKED_AGGREGATION_OPERATOR_ARRAY,
@@ -1883,7 +1935,10 @@ public class AggregationProcessor implements AggregationContextFactory {
 
         @Override
         public QueryTable transformResult(@NotNull final QueryTable table) {
-            table.setAttribute(HIERARCHICAL_CHILDREN_TABLE_MAP_ATTRIBUTE, partitionOperator.getTableMap());
+            table.setAttribute(HIERARCHICAL_CHILDREN_TABLE_MAP_ATTRIBUTE,
+                    // TODO (https://github.com/deephaven/deephaven-core/issues/65):
+                    // Make rollups work with partitioned tables instead of table maps. PartitionedTable here?
+                    partitionOperator.getResultColumns().values().iterator().next());
             if (reaggregated || includeConstituents) {
                 table.setAttribute(REVERSE_LOOKUP_ATTRIBUTE, reverseLookup);
             } else {
@@ -1939,7 +1994,10 @@ public class AggregationProcessor implements AggregationContextFactory {
 
     private static void setRollupLeafAttributes(@NotNull final QueryTable table) {
         table.setAttribute(Table.ROLLUP_LEAF_ATTRIBUTE, RollupInfo.LeafType.Normal);
-        table.setAttribute(HIERARCHICAL_CHILDREN_TABLE_MAP_ATTRIBUTE, EmptyTableMap.INSTANCE);
+        table.setAttribute(HIERARCHICAL_CHILDREN_TABLE_MAP_ATTRIBUTE,
+                // TODO (https://github.com/deephaven/deephaven-core/issues/65):
+                // Make rollups work with partitioned tables instead of table maps. Empty PartitionedTable here?
+                "placeholder");
         table.setAttribute(REVERSE_LOOKUP_ATTRIBUTE, ReverseLookup.NULL);
     }
 }

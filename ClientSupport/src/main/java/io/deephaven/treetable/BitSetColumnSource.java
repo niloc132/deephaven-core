@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.treetable;
 
 import io.deephaven.engine.table.ColumnSource;
@@ -21,8 +24,8 @@ public class BitSetColumnSource extends AbstractColumnSource<Boolean>
     }
 
     @Override
-    public Boolean get(long index) {
-        return theSet.get((int) index);
+    public Boolean get(long rowKey) {
+        return theSet.get((int) rowKey);
     }
 
     @Override

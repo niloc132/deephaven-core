@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table;
 
 import io.deephaven.chunk.Chunk;
@@ -115,7 +118,7 @@ public interface ChunkSource<ATTR extends Any> extends FillContextMaker, GetCont
          */
         default boolean supportsUnboundedFill() {
             return false;
-        };
+        }
     }
 
     /**

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit UngroupedBoxedCharObjectVectorColumnSource and regenerate
@@ -25,14 +28,14 @@ public class UngroupedBoxedShortObjectVectorColumnSource extends UngroupedObject
     }
 
     @Override
-    public short getShort(long index) {
-        final Short result = get(index);
+    public short getShort(long rowKey) {
+        final Short result = get(rowKey);
         return result == null ? NULL_SHORT : result;
     }
 
     @Override
-    public short getPrevShort(long index) {
-        final Short result = getPrev(index);
+    public short getPrevShort(long rowKey) {
+        final Short result = getPrev(rowKey);
         return result == null ? NULL_SHORT : result;
     }
 }

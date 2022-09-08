@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharSsmBackedSource and regenerate
@@ -38,7 +41,7 @@ public class ObjectSsmBackedSource extends AbstractColumnSource<ObjectVector>
         ObjectSegmentedSortedMultiset ssm = underlying.getUnsafe(key);
         if(ssm == null) {
             //region CreateNew
-            underlying.set(key, ssm = new ObjectSegmentedSortedMultiset(DistinctOperatorFactory.NODE_SIZE, Object.class));
+            underlying.set(key, ssm = new ObjectSegmentedSortedMultiset(SsmDistinctContext.NODE_SIZE, Object.class));
             //endregion CreateNew
         }
         ssm.setTrackDeltas(trackingPrevious);
@@ -72,13 +75,13 @@ public class ObjectSsmBackedSource extends AbstractColumnSource<ObjectVector>
     }
 
     @Override
-    public ObjectVector get(long index) {
-        return underlying.get(index);
+    public ObjectVector get(long rowKey) {
+        return underlying.get(rowKey);
     }
 
     @Override
-    public ObjectVector getPrev(long index) {
-        final ObjectSegmentedSortedMultiset maybePrev = underlying.getPrev(index);
+    public ObjectVector getPrev(long rowKey) {
+        final ObjectSegmentedSortedMultiset maybePrev = underlying.getPrev(rowKey);
         return maybePrev == null ? null : maybePrev.getPrevValues();
     }
 

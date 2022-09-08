@@ -11,7 +11,6 @@ String[] mods = [
         'Numerics',
         'TableLogger',
         'Plot',
-        'CompilerTools',
         'Generators',
         'Integrations',
         'ModelFarm',
@@ -20,7 +19,9 @@ String[] mods = [
         'python-engine-test',
         'server',
         'table-api',
-        'qst'
+        'qst',
+        'go',
+        'authentication',
 ]
 
         // new web projects; these modules are intended to form a complete, modular web application,
@@ -35,27 +36,11 @@ String[] webMods = [
         'open-api-lang-parser', // a javacc generated general-purpose language parser.
         'open-api-lang-tools', // language processing tools that we want to be accessible to many modules
         'open-api-shared-fu', // general purpose tools and dtos for both client and server
-        'open-api-shared-ide', // ide-related dto and configuration objects for both client and server
-]
-
-Map<String, String> pyMods = [
-        'deephaven-jpy' : 'py/jpy',
-        'deephaven-jpy-config': 'py/jpy-config',
-        'deephaven-jpy-ext': 'py/jpy-ext',
-        'jpy-integration': 'py/jpy-integration',
-        'sphinx': 'sphinx',
-        'pyclient': 'pyclient',
 ]
 
 // Include our modules
 include webMods
 include mods
-
-pyMods.each {
-    name, dir ->
-        include(name)
-        project(":$name").projectDir = file(dir)
-}
 
 include 'bom'
 
@@ -69,6 +54,7 @@ include 'combined-javadoc'
 
 include 'grpc-java:grpc-servlet-jakarta'
 include 'grpc-java:grpc-servlet-websocket-jakarta'
+include 'grpc-java:grpc-mtls'
 
 include 'DHProcess'
 include 'proto:proto-backplane-grpc'
@@ -114,14 +100,26 @@ project(':log-example-stream').projectDir = file('log-factory/examples/example-s
 include(':log-example-file')
 project(':log-example-file').projectDir = file('log-factory/examples/example-file')
 
+include(':ssl-config')
+project(':ssl-config').projectDir = file('ssl/config')
+
+include(':ssl-kickstart')
+project(':ssl-kickstart').projectDir = file('ssl/kickstart')
+
 include(':server-test')
 project(':server-test').projectDir = file('server/test')
 
 include(':server-netty')
 project(':server-netty').projectDir = file('server/netty')
 
+include(':server-netty-app')
+project(':server-netty-app').projectDir = file('server/netty-app')
+
 include(':server-jetty')
 project(':server-jetty').projectDir = file('server/jetty')
+
+include(':server-jetty-app')
+project(':server-jetty-app').projectDir = file('server/jetty-app')
 
 include(':Base')
 
@@ -143,6 +141,10 @@ include(':Container')
 
 include(':ParquetHadoop')
 
+include(':codegen')
+
+include(':cpp-client')
+
 include(':replication-util')
 project(':replication-util').projectDir = file('replication/util')
 
@@ -154,6 +156,9 @@ project(':replication-reflective').projectDir = file('replication/reflective')
 
 include(':engine-chunk')
 project(':engine-chunk').projectDir = file('engine/chunk')
+
+include(':engine-context')
+project(':engine-context').projectDir = file('engine/context')
 
 include(':engine-vector')
 project(':engine-vector').projectDir = file('engine/vector')
@@ -200,6 +205,9 @@ project(':extensions-kafka').projectDir = file('extensions/kafka')
 include(':extensions-parquet-base')
 project(':extensions-parquet-base').projectDir = file('extensions/parquet/base')
 
+include(':extensions-parquet-compression')
+project(':extensions-parquet-compression').projectDir = file('extensions/parquet/compression')
+
 include(':extensions-parquet-table')
 project(':extensions-parquet-table').projectDir = file('extensions/parquet/table')
 
@@ -208,6 +216,9 @@ project(':extensions-barrage').projectDir = file('extensions/barrage')
 
 include(':extensions-classgraph')
 project(':extensions-classgraph').projectDir = file('extensions/classgraph')
+
+include(':extensions-jdbc')
+project(':extensions-jdbc').projectDir = file('extensions/jdbc')
 
 include(':extensions-suanshu')
 project(':extensions-suanshu').projectDir = file('extensions/suanshu')
@@ -219,6 +230,12 @@ project(':plugin-dagger').projectDir = file('plugin/dagger')
 
 include(':plugin-figure')
 project(':plugin-figure').projectDir = file('plugin/figure')
+
+include(':plugin-partitionedtable')
+project(':plugin-partitionedtable').projectDir = file('plugin/partitionedtable')
+
+include(':plugin-gc-app')
+project(':plugin-gc-app').projectDir = file('plugin/gc-app')
 
 include(':envoy')
 
@@ -264,11 +281,29 @@ include(':application-mode')
 include(':util-immutables')
 project(':util-immutables').projectDir = file('Util/util-immutables')
 
-include(':deephaven-wheel')
-project(':deephaven-wheel').projectDir = file('py/deephaven-wheel')
+include(':deephaven-jpy-config')
+project(':deephaven-jpy-config').projectDir = file('py/jpy-config')
 
-include(':deephaven2-wheel')
-project(':deephaven2-wheel').projectDir = file('py/deephaven2-wheel')
+include(':deephaven-jpy-ext')
+project(':deephaven-jpy-ext').projectDir = file('py/jpy-ext')
+
+include(':jpy-integration')
+project(':jpy-integration').projectDir = file('py/jpy-integration')
+
+include(':py-client')
+project(':py-client').projectDir = file('py/client')
+
+include(':py-server')
+project(':py-server').projectDir = file('py/server')
+
+include(':py-embedded-server')
+project(':py-embedded-server').projectDir = file('py/embedded-server')
+
+include(':py-embedded-server-java-runtime')
+project(':py-embedded-server-java-runtime').projectDir = file('py/embedded-server/java-runtime')
+
+include(':sphinx')
+project(':sphinx').buildFileName = 'sphinx.gradle'
 
 include(':docker-runtime-base')
 project(':docker-runtime-base').projectDir = file('docker/runtime-base')
@@ -284,6 +319,14 @@ project(':docker-web-plugin-packager').projectDir = file('docker/web-plugin-pack
 
 include(':docker-server-slim')
 project(':docker-server-slim').projectDir = file('docker/server-slim')
+
+include(':hotspot')
+project(':hotspot').projectDir = file('hotspot')
+
+include(':hotspot-impl')
+project(':hotspot-impl').projectDir = file('hotspot-impl')
+
+include ':authentication'
 
 file("${rootDir}/docker/registry").list().each { name ->
     if (file("${rootDir}/docker/registry/${name}/build.gradle").exists()) {
@@ -319,16 +362,6 @@ Closure configureWebModule = {
 
 webMods.collect({ project(":$it")}).each configureWebModule
 
-Closure configurePyModule = {
-    ProjectDescriptor p, String path ->
-        File f = new File("$p.projectDir", "${p.name}.gradle")
-        if (f.exists()) {
-            p.buildFileName = "${p.name}.gradle".toString()
-        }
-}
-
-pyMods.forEach {String k, String v -> configurePyModule(project(":$k"), v) }
-
 buildCache {
     local {
         removeUnusedEntriesAfterDays = 4
@@ -345,3 +378,4 @@ if (isCiServer) {
         }
     }
 }
+

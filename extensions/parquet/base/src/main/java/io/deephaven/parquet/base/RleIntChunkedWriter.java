@@ -1,10 +1,15 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.parquet.base;
 
 import io.deephaven.parquet.base.util.Helpers;
+import io.deephaven.util.QueryConstants;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,11 +19,10 @@ import java.nio.IntBuffer;
 
 import static org.apache.parquet.bytes.BytesInput.concat;
 
-
 /**
  * Plain encoding except for booleans
  */
-public class RleIntChunkedWriter extends AbstractBulkValuesWriter<IntBuffer, Integer> {
+public class RleIntChunkedWriter extends AbstractBulkValuesWriter<IntBuffer> {
     private static final Logger LOG = LoggerFactory.getLogger(org.apache.parquet.column.values.plain.PlainValuesWriter.class);
 
     private final RunLengthBitPackingHybridEncoder encoder;
@@ -91,42 +95,37 @@ public class RleIntChunkedWriter extends AbstractBulkValuesWriter<IntBuffer, Int
     }
 
     @Override
-    public void writeBulk(IntBuffer bulkValues, int rowCount) {
+    public void writeBulk(@NotNull IntBuffer bulkValues, int rowCount) {
 
         for (int i = 0; i < rowCount; i++) {
             writeInteger(bulkValues.get());
         }
     }
 
+    @NotNull
     @Override
-    public WriteResult writeBulkFilterNulls(IntBuffer bulkValues, Integer nullValue, RunLengthBitPackingHybridEncoder dlEncoder, int rowCount) throws IOException {
-        int nullInt = nullValue;
-        int nullCount = 0;
+    public WriteResult writeBulkFilterNulls(@NotNull IntBuffer bulkValues, @NotNull RunLengthBitPackingHybridEncoder dlEncoder, int rowCount) throws IOException {
         while (bulkValues.hasRemaining()) {
             int next = bulkValues.get();
-            if (next != nullInt) {
+            if (next != QueryConstants.NULL_INT) {
                 writeInteger(next);
-                dlEncoder.writeInt(1);
+                dlEncoder.writeInt(DL_ITEM_PRESENT);
             } else {
-                nullCount++;
-                dlEncoder.writeInt(0);
+                dlEncoder.writeInt(DL_ITEM_NULL);
             }
         }
         return new WriteResult(rowCount);
     }
 
     @Override
-    public WriteResult writeBulkFilterNulls(IntBuffer bulkValues, Integer nullValue, int rowCount) {
-        int nullInt = nullValue;
-        int nullCount = 0;
+    public @NotNull WriteResult writeBulkFilterNulls(@NotNull IntBuffer bulkValues, int rowCount) {
         IntBuffer nullOffsets = IntBuffer.allocate(4);
         int i = 0;
         while (bulkValues.hasRemaining()) {
             int next = bulkValues.get();
-            if (next != nullInt) {
+            if (next != QueryConstants.NULL_INT) {
                 writeInteger(next);
             } else {
-                nullCount++;
                 nullOffsets = Helpers.ensureCapacity(nullOffsets);
                 nullOffsets.put(i);
             }

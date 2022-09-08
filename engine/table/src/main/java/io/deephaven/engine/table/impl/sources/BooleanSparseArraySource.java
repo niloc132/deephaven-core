@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharacterSparseArraySource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.impl.AbstractColumnSource;
@@ -97,6 +96,26 @@ public class BooleanSparseArraySource extends SparseArrayColumnSource<Boolean> i
         // Nothing to do here. Sparse array sources allocate on-demand and always null-fill.
     }
 
+    // region setNull
+    @Override
+    public void setNull(long key) {
+        final byte [] blocks2 = blocks.getInnermostBlockByKeyOrNull(key);
+        if (blocks2 == null) {
+            return;
+        }
+        final int indexWithinBlock = (int) (key & INDEX_MASK);
+        if (blocks2[indexWithinBlock] == NULL_BOOLEAN_AS_BYTE) {
+            return;
+        }
+
+        final byte [] prevBlocksInner = shouldRecordPrevious(key);
+        if (prevBlocksInner != null) {
+            prevBlocksInner[indexWithinBlock] = blocks2[indexWithinBlock];
+        }
+        blocks2[indexWithinBlock] = NULL_BOOLEAN_AS_BYTE;
+    }
+    // endregion setNull
+
     @Override
     public final void set(long key, byte value) {
         final int block0 = (int) (key >> BLOCK0_SHIFT) & BLOCK0_MASK;
@@ -134,36 +153,36 @@ public class BooleanSparseArraySource extends SparseArrayColumnSource<Boolean> i
     }
 
     @Override
-    public Boolean get(long index) {
-        return BooleanUtils.byteAsBoolean(getByte(index));
+    public Boolean get(long rowKey) {
+        return BooleanUtils.byteAsBoolean(getByte(rowKey));
     }
 
     @Override
-    public Boolean getPrev(long index) {
-        return BooleanUtils.byteAsBoolean(getPrevByte(index));
+    public Boolean getPrev(long rowKey) {
+        return BooleanUtils.byteAsBoolean(getPrevByte(rowKey));
     }
     // endregion boxed methods
 
     // region primitive get
     @Override
-    public final byte getByte(long index) {
-        if (index < 0) {
+    public final byte getByte(long rowKey) {
+        if (rowKey < 0) {
             return NULL_BOOLEAN_AS_BYTE;
         }
-        return getByteFromBlock(blocks, index);
+        return getByteFromBlock(blocks, rowKey);
     }
 
 
     @Override
-    public final byte getPrevByte(long index) {
-        if (index < 0) {
+    public final byte getPrevByte(long rowKey) {
+        if (rowKey < 0) {
             return NULL_BOOLEAN_AS_BYTE;
         }
-        if (shouldUsePrevious(index)) {
-            return getByteFromBlock(prevBlocks, index);
+        if (shouldUsePrevious(rowKey)) {
+            return getByteFromBlock(prevBlocks, rowKey);
         }
 
-        return getByteFromBlock(blocks, index);
+        return getByteFromBlock(blocks, rowKey);
     }
 
     private byte getByteFromBlock(ByteOneOrN.Block0 blocks, long key) {
@@ -394,7 +413,7 @@ public class BooleanSparseArraySource extends SparseArrayColumnSource<Boolean> i
     }
 
     @Override
-    public void ensurePrevious(RowSet changedRows) {
+    public void prepareForParallelPopulation(RowSet changedRows) {
         final long currentStep = LogicalClock.DEFAULT.currentStep();
         if (ensurePreviousClockCycle == currentStep) {
             throw new IllegalStateException("May not call ensurePrevious twice on one clock cycle!");
@@ -405,15 +424,13 @@ public class BooleanSparseArraySource extends SparseArrayColumnSource<Boolean> i
             return;
         }
 
-        if (prevFlusher == null) {
-            return;
+        if (prevFlusher != null) {
+            prevFlusher.maybeActivate();
         }
-        prevFlusher.maybeActivate();
 
-        try (final RowSet.Iterator it = changedRows.iterator()) {
-            long key = it.nextLong();
-            while (true) {
-                final long firstKey = key;
+        try (final RowSequence.Iterator it = changedRows.getRowSequenceIterator()) {
+            do {
+                final long firstKey = it.peekNextKey();
                 final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
 
                 final int block0 = (int) (firstKey >> BLOCK0_SHIFT) & BLOCK0_MASK;
@@ -421,23 +438,24 @@ public class BooleanSparseArraySource extends SparseArrayColumnSource<Boolean> i
                 final int block2 = (int) (firstKey >> BLOCK2_SHIFT) & BLOCK2_MASK;
                 final byte[] block = ensureBlock(block0, block1, block2);
 
+                if (prevFlusher == null) {
+                    it.advance(maxKeyInCurrentBlock + 1);
+                    continue;
+                }
+
                 final byte[] prevBlock = ensurePrevBlock(firstKey, block0, block1, block2);
                 final long[] inUse = prevInUse.get(block0).get(block1).get(block2);
                 assert inUse != null;
 
-                do {
+                it.getNextRowSequenceThrough(maxKeyInCurrentBlock).forAllRowKeys(key -> {
                     final int indexWithinBlock = (int) (key & INDEX_MASK);
                     final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
                     final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
 
                     prevBlock[indexWithinBlock] = block[indexWithinBlock];
                     inUse[indexWithinInUse] |= maskWithinInUse;
-                } while (it.hasNext() && (key = it.nextLong()) <= maxKeyInCurrentBlock);
-                if (key <= maxKeyInCurrentBlock) {
-                    // we did not advance the iterator so should break
-                    break;
-                }
-            }
+                });
+            } while (it.hasMore());
         }
     }
 
@@ -825,7 +843,7 @@ public class BooleanSparseArraySource extends SparseArrayColumnSource<Boolean> i
         return (ColumnSource<ALTERNATE_DATA_TYPE>) new BooleanSparseArraySource.ReinterpretedAsByte(this);
     }
 
-    private static class ReinterpretedAsByte extends AbstractColumnSource<Byte> implements MutableColumnSourceGetDefaults.ForByte, FillUnordered, WritableColumnSource<Byte> {
+    public static class ReinterpretedAsByte extends AbstractColumnSource<Byte> implements MutableColumnSourceGetDefaults.ForByte, FillUnordered, WritableColumnSource<Byte> {
         private final BooleanSparseArraySource wrapped;
 
         private ReinterpretedAsByte(BooleanSparseArraySource wrapped) {
@@ -833,14 +851,28 @@ public class BooleanSparseArraySource extends SparseArrayColumnSource<Boolean> i
             this.wrapped = wrapped;
         }
 
-        @Override
-        public byte getByte(long rowSet) {
-            return wrapped.getByte(rowSet);
+        public void shift(final RowSet keysToShift, final long shiftDelta) {
+            this.wrapped.shift(keysToShift, shiftDelta);
         }
 
         @Override
-        public byte getPrevByte(long rowSet) {
-            return wrapped.getPrevByte(rowSet);
+        public void startTrackingPrevValues() {
+            wrapped.startTrackingPrevValues();
+        }
+
+        @Override
+        public byte getByte(long rowKey) {
+            return wrapped.getByte(rowKey);
+        }
+
+        @Override
+        public byte getPrevByte(long rowKey) {
+            return wrapped.getPrevByte(rowKey);
+        }
+
+        @Override
+        public void setNull(long key) {
+            wrapped.setNull(key);
         }
 
         @Override

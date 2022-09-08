@@ -1,15 +1,23 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.barrage;
 
 import elemental2.core.*;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.FieldNode;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.Message;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.MessageHeader;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.RecordBatch;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Buffer;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Field;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.KeyValue;
+import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.schema_generated.org.apache.arrow.flatbuf.Schema;
 import io.deephaven.javascript.proto.dhinternal.flatbuffers.Builder;
-import io.deephaven.javascript.proto.dhinternal.flatbuffers.Long;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageMessageType;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageMessageWrapper;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageModColumnMetadata;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageUpdateMetadata;
+import io.deephaven.web.client.api.barrage.def.ColumnDefinition;
 import io.deephaven.web.shared.data.*;
 import io.deephaven.web.shared.data.columns.*;
 import jsinterop.base.Js;
@@ -22,8 +30,11 @@ import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.DoubleFunction;
 import java.util.stream.IntStream;
 
 /**
@@ -48,6 +59,67 @@ public class BarrageUtils {
         double offset = BarrageMessageWrapper.createBarrageMessageWrapper(builder, MAGIC, BarrageMessageType.None, 0);
         builder.finish(offset);
         return builder.asUint8Array();
+    }
+
+    public static ColumnDefinition[] readColumnDefinitions(Schema schema) {
+        ColumnDefinition[] cols = new ColumnDefinition[(int) schema.fieldsLength()];
+        for (int i = 0; i < schema.fieldsLength(); i++) {
+            cols[i] = new ColumnDefinition();
+            Field f = schema.fields(i);
+            Map<String, String> fieldMetadata =
+                    keyValuePairs("deephaven:", f.customMetadataLength(), f::customMetadata);
+            cols[i].setName(f.name().asString());
+            cols[i].setColumnIndex(i);
+            cols[i].setType(fieldMetadata.get("type"));
+            cols[i].setStyleColumn("true".equals(fieldMetadata.get("isStyle")));
+            cols[i].setFormatColumn("true".equals(fieldMetadata.get("isDateFormat"))
+                    || "true".equals(fieldMetadata.get("isNumberFormat")));
+            cols[i].setForRow("true".equals(fieldMetadata.get("isRowStyle")));
+
+            String formatColumnName = fieldMetadata.get("dateFormatColumn");
+            if (formatColumnName == null) {
+                formatColumnName = fieldMetadata.get("numberFormatColumn");
+            }
+            cols[i].setFormatColumnName(formatColumnName);
+
+            cols[i].setStyleColumnName(fieldMetadata.get("styleColumn"));
+
+            if (fieldMetadata.containsKey("inputtable.isKey")) {
+                cols[i].setInputTableKeyColumn(Boolean.parseBoolean(fieldMetadata.get("inputtable.isKey")));
+            }
+
+            cols[i].setDescription(fieldMetadata.get("description"));
+        }
+        return cols;
+    }
+
+    public static Schema readSchemaMessage(Uint8Array flightSchemaMessage) {
+        // we conform to flight's schema representation of:
+        // - IPC_CONTINUATION_TOKEN (4-byte int of -1)
+        // - message size (4-byte int)
+        // - a Message wrapping the schema
+        io.deephaven.javascript.proto.dhinternal.flatbuffers.ByteBuffer bb =
+                new io.deephaven.javascript.proto.dhinternal.flatbuffers.ByteBuffer(flightSchemaMessage);
+        bb.setPosition(bb.position() + 8);
+        Message headerMessage = Message.getRootAsMessage(bb);
+
+        assert headerMessage.headerType() == MessageHeader.Schema;
+        return headerMessage.header(new Schema());
+    }
+
+    public static Map<String, String> keyValuePairs(String filterPrefix, double count,
+            DoubleFunction<KeyValue> accessor) {
+        Map<String, String> map = new HashMap<>();
+        for (int i = 0; i < count; i++) {
+            KeyValue pair = accessor.apply(i);
+            String key = pair.key().asString();
+            if (key.startsWith(filterPrefix)) {
+                key = key.substring(filterPrefix.length());
+                String oldValue = map.put(key, pair.value().asString());
+                assert oldValue == null : key + " had " + oldValue + ", replaced with " + pair.value();
+            }
+        }
+        return map;
     }
 
     /**
@@ -137,9 +209,11 @@ public class BarrageUtils {
         } else {
             added = new CompressedRangeSetReader()
                     .read(typedArrayToLittleEndianByteBuffer(barrageUpdate.addedRowsArray()));
-            if (isViewport) {
+
+            Int8Array addedRowsIncluded = barrageUpdate.addedRowsIncludedArray();
+            if (isViewport && addedRowsIncluded != null) {
                 includedAdditions = new CompressedRangeSetReader()
-                        .read(typedArrayToLittleEndianByteBuffer(barrageUpdate.addedRowsIncludedArray()));
+                        .read(typedArrayToLittleEndianByteBuffer(addedRowsIncluded));
             } else {
                 // if this isn't a viewport, then a second index isn't sent, because all rows are included
                 includedAdditions = added;
@@ -169,7 +243,8 @@ public class BarrageUtils {
         private final DeltaUpdates deltaUpdates = new DeltaUpdates();
         private final BarrageUpdateMetadata barrageUpdate;
         private final String[] columnTypes;
-        private int recordBatchesSeen = 0;
+        private long numAddRowsRemaining = 0;
+        private long numModRowsRemaining = 0;
 
         public DeltaUpdatesBuilder(BarrageUpdateMetadata barrageUpdate, boolean isViewport, String[] columnTypes) {
             this.barrageUpdate = barrageUpdate;
@@ -184,30 +259,39 @@ public class BarrageUtils {
                     new ShiftedRangeReader().read(typedArrayToLittleEndianByteBuffer(barrageUpdate.shiftDataArray())));
 
             RangeSet includedAdditions;
-            if (isViewport) {
+
+            Int8Array addedRowsIncluded = barrageUpdate.addedRowsIncludedArray();
+            if (isViewport && addedRowsIncluded != null) {
                 includedAdditions = new CompressedRangeSetReader()
-                        .read(typedArrayToLittleEndianByteBuffer(barrageUpdate.addedRowsIncludedArray()));
+                        .read(typedArrayToLittleEndianByteBuffer(addedRowsIncluded));
             } else {
                 // if this isn't a viewport, then a second index isn't sent, because all rows are included
                 includedAdditions = deltaUpdates.getAdded();
             }
+            numAddRowsRemaining = includedAdditions.size();
             deltaUpdates.setIncludedAdditions(includedAdditions);
             deltaUpdates.setSerializedAdditions(new DeltaUpdates.ColumnAdditions[0]);
             deltaUpdates.setSerializedModifications(new DeltaUpdates.ColumnModifications[0]);
+
+            for (int columnIndex = 0; columnIndex < columnTypes.length; ++columnIndex) {
+                BarrageModColumnMetadata columnMetadata = barrageUpdate.modColumnNodes(columnIndex);
+                RangeSet modifiedRows = new CompressedRangeSetReader()
+                        .read(typedArrayToLittleEndianByteBuffer(columnMetadata.modifiedRowsArray()));
+                numModRowsRemaining = Math.max(numModRowsRemaining, modifiedRows.size());
+            }
         }
 
         /**
          * Appends a new record batch and payload. Returns true if this was the final record batch that was expected.
          */
         public boolean appendRecordBatch(RecordBatch recordBatch, ByteBuffer body) {
-            assert recordBatchesSeen < barrageUpdate.numAddBatches() + barrageUpdate.numModBatches();
-            if (barrageUpdate.numAddBatches() > recordBatchesSeen) {
+            if (numAddRowsRemaining > 0) {
                 handleAddBatch(recordBatch, body);
-            } else {
+            } else if (numModRowsRemaining > 0) {
                 handleModBatch(recordBatch, body);
             }
-            recordBatchesSeen++;
-            return recordBatchesSeen == barrageUpdate.numAddBatches() + barrageUpdate.numModBatches();
+            // return true when complete
+            return numAddRowsRemaining == 0 && numModRowsRemaining == 0;
         }
 
         private void handleAddBatch(RecordBatch recordBatch, ByteBuffer body) {
@@ -225,6 +309,7 @@ public class BarrageUtils {
                 addedColumnData[columnIndex] = new DeltaUpdates.ColumnAdditions(columnIndex, columnData);
             }
             deltaUpdates.setSerializedAdditions(addedColumnData);
+            numAddRowsRemaining -= (long) recordBatch.length().toFloat64();
         }
 
         private void handleModBatch(RecordBatch recordBatch, ByteBuffer body) {
@@ -248,6 +333,7 @@ public class BarrageUtils {
                         new DeltaUpdates.ColumnModifications(columnIndex, modifiedRows, columnData);
             }
             deltaUpdates.setSerializedModifications(modifiedColumnData);
+            numModRowsRemaining -= (long) recordBatch.length().toFloat64();
         }
 
         public DeltaUpdates build() {

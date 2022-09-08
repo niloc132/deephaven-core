@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.exceptions.CancellationException;
@@ -71,8 +70,7 @@ public class DisjunctiveFilter extends ComposedFilter {
 
     @Override
     public DisjunctiveFilter copy() {
-        return new DisjunctiveFilter(
-                Arrays.stream(getComponentFilters()).map(WhereFilter::copy).toArray(WhereFilter[]::new));
+        return new DisjunctiveFilter(WhereFilter.copyFrom(getComponentFilters()));
     }
 
     @Override

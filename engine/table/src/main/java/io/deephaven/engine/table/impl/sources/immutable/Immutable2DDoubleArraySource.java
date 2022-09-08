@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit Immutable2DCharArraySource and regenerate
@@ -12,7 +15,7 @@ import io.deephaven.engine.rowset.RowSequenceFactory;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.engine.table.WritableColumnSource;
-import io.deephaven.engine.table.WritableSourceWithEnsurePrevious;
+import io.deephaven.engine.table.WritableSourceWithPrepareForParallelPopulation;
 import io.deephaven.engine.table.impl.DefaultGetContext;
 import io.deephaven.engine.table.impl.ImmutableColumnSourceGetDefaults;
 import io.deephaven.engine.table.impl.sources.*;
@@ -35,7 +38,7 @@ import static io.deephaven.util.QueryConstants.NULL_DOUBLE;
  *
  * If your size is smaller than the maximum array size, prefer {@link ImmutableDoubleArraySource}.
  */
-public class Immutable2DDoubleArraySource extends AbstractDeferredGroupingColumnSource<Double> implements ImmutableColumnSourceGetDefaults.ForDouble, WritableColumnSource<Double>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithEnsurePrevious {
+public class Immutable2DDoubleArraySource extends AbstractDeferredGroupingColumnSource<Double> implements ImmutableColumnSourceGetDefaults.ForDouble, WritableColumnSource<Double>, FillUnordered, InMemoryColumnSource, ChunkedBackingStoreExposedWritableSource, WritableSourceWithPrepareForParallelPopulation {
     private static final int DEFAULT_SEGMENT_SHIFT = 30;
     private final long segmentShift;
     private final int segmentMask;
@@ -76,12 +79,12 @@ public class Immutable2DDoubleArraySource extends AbstractDeferredGroupingColumn
     // endregion allocateArray
 
     @Override
-    public final double getDouble(long index) {
-        if (index < 0 || index >= size) {
+    public final double getDouble(long rowKey) {
+        if (rowKey < 0 || rowKey >= size) {
             return NULL_DOUBLE;
         }
 
-        return getUnsafe(index);
+        return getUnsafe(rowKey);
     }
 
     private int keyToSegment(long index) {
@@ -94,6 +97,11 @@ public class Immutable2DDoubleArraySource extends AbstractDeferredGroupingColumn
 
     public final double getUnsafe(long key) {
         return data[keyToSegment(key)][keyToOffset(key)];
+    }
+
+    @Override
+    public final void setNull(long key) {
+        data[keyToSegment(key)][keyToOffset(key)] = NULL_DOUBLE;
     }
 
     @Override
@@ -265,7 +273,7 @@ public class Immutable2DDoubleArraySource extends AbstractDeferredGroupingColumn
     }
 
     @Override
-    public void ensurePrevious(RowSet rowSet) {
+    public void prepareForParallelPopulation(RowSet rowSet) {
         // nothing to do
     }
 

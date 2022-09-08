@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Assert;
@@ -50,7 +53,11 @@ public class DateTimeRangeFilter extends LongRangeFilter {
 
     @Override
     public DateTimeRangeFilter copy() {
-        return new DateTimeRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        final DateTimeRangeFilter copy =
+                new DateTimeRangeFilter(columnName, lower, upper, lowerInclusive, upperInclusive);
+        copy.chunkFilter = chunkFilter;
+        copy.longFilter = longFilter;
+        return copy;
     }
 
     @Override

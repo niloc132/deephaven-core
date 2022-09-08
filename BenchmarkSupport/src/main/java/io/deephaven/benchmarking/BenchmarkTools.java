@@ -1,11 +1,14 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.benchmarking;
 
 import io.deephaven.base.StringUtils;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.table.lang.QueryScope;
 import io.deephaven.time.DateTime;
 import io.deephaven.util.annotations.ScriptApi;
 import io.deephaven.benchmarking.generator.*;
@@ -268,7 +271,7 @@ public class BenchmarkTools {
         final List<ColumnDefinition<?>> columns = new ArrayList<>(COMMON_RESULT_COLUMNS);
         columns.addAll(columnsToAdd);
 
-        return new TableDefinition(columns);
+        return TableDefinition.of(columns);
     }
 
     public static String getStrippedBenchmarkName(BenchmarkParams params) {
@@ -297,7 +300,7 @@ public class BenchmarkTools {
             throw new IllegalStateException("Sparsity must be in the range of 1 through 100");
         }
         Random random = new Random(seed);
-        QueryScope.getScope().putParam("__random__", random);
+        ExecutionContext.getContext().getQueryScope().putParam("__random__", random);
         return table.where("__random__.nextInt(100) < " + sparsity).head(size);
     }
 

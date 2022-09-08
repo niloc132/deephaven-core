@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.base.verify.Assert;
@@ -19,7 +22,9 @@ import java.util.Map;
 /**
  * Base class with shared boilerplate for {@link StreamFirstChunkedOperator} and {@link StreamLastChunkedOperator}.
  */
-public abstract class BaseStreamFirstOrLastChunkedOperator implements IterativeChunkedAggregationOperator {
+public abstract class BaseStreamFirstOrLastChunkedOperator
+        extends NoopStateChangeRecorder // We can never empty or reincarnate states since we ignore removes
+        implements IterativeChunkedAggregationOperator {
 
     protected static final int COPY_CHUNK_SIZE = ArrayBackedColumnSource.BLOCK_SIZE;
 
@@ -31,7 +36,7 @@ public abstract class BaseStreamFirstOrLastChunkedOperator implements IterativeC
     /**
      * Result columns, parallel to {@link #inputColumns} and {@link #outputColumns}.
      */
-    protected final Map<String, ArrayBackedColumnSource<?>> resultColumns;
+    private final Map<String, ArrayBackedColumnSource<?>> resultColumns;
     /**
      * <p>
      * Input columns, parallel to {@link #outputColumns} and {@link #resultColumns}.
@@ -49,7 +54,7 @@ public abstract class BaseStreamFirstOrLastChunkedOperator implements IterativeC
     /**
      * Cached pointer to the most-recently allocated {@link #redirections}.
      */
-    protected SoftReference<LongArraySource> cachedRedirections;
+    private SoftReference<LongArraySource> cachedRedirections;
     /**
      * Map from destination slot to first key. Only used during a step to keep track of the appropriate rows to copy
      * into the output columns.
@@ -90,9 +95,10 @@ public abstract class BaseStreamFirstOrLastChunkedOperator implements IterativeC
 
     @Override
     @OverridingMethodsMustInvokeSuper
-    public void resetForStep(@NotNull final TableUpdate upstream) {
+    public void resetForStep(@NotNull final TableUpdate upstream, final int startingDestinationsCount) {
         if ((redirections = cachedRedirections.get()) == null) {
             cachedRedirections = new SoftReference<>(redirections = new LongArraySource());
+            ensureCapacity(startingDestinationsCount);
         }
     }
 

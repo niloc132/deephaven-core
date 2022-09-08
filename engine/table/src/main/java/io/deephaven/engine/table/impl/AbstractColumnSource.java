@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.string.cache.CharSequenceUtils;
@@ -27,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public abstract class AbstractColumnSource<T> implements
@@ -43,6 +43,7 @@ public abstract class AbstractColumnSource<T> implements
     protected final Class<?> componentType;
 
     protected volatile Map<T, RowSet> groupToRange;
+    protected volatile List<ColumnSource> rowSetIndexerKey;
 
     protected AbstractColumnSource(@NotNull final Class<T> type) {
         this(type, Object.class);
@@ -101,6 +102,19 @@ public abstract class AbstractColumnSource<T> implements
     @Override
     public ColumnSource<T> getPrevSource() {
         return new PrevColumnSource<>(this);
+    }
+
+    @Override
+    public List<ColumnSource> getColumnSources() {
+        List<ColumnSource> localRowSetIndexerKey;
+        if ((localRowSetIndexerKey = rowSetIndexerKey) == null) {
+            synchronized (this) {
+                if ((localRowSetIndexerKey = rowSetIndexerKey) == null) {
+                    rowSetIndexerKey = localRowSetIndexerKey = Collections.singletonList(this);
+                }
+            }
+        }
+        return localRowSetIndexerKey;
     }
 
     @Override

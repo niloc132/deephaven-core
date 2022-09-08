@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit UngroupedCharVectorColumnSource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.ColumnSource;
@@ -32,12 +31,12 @@ public class UngroupedIntVectorColumnSource extends UngroupedColumnSource<Intege
     }
 
     @Override
-    public Integer get(long index) {
-        if (index < 0) {
+    public Integer get(long rowKey) {
+        if (rowKey < 0) {
             return null;
         }
-        long segment = index>>base;
-        int offset = (int) (index & ((1<<base) - 1));
+        long segment = rowKey >>base;
+        int offset = (int) (rowKey & ((1<<base) - 1));
         final Integer result;
         if (isUngroupable) {
             result = (Integer)((UngroupableColumnSource)innerSource).getUngrouped(segment, offset);
@@ -52,13 +51,13 @@ public class UngroupedIntVectorColumnSource extends UngroupedColumnSource<Intege
 
 
     @Override
-    public int getInt(long index) {
-        if (index < 0) {
+    public int getInt(long rowKey) {
+        if (rowKey < 0) {
             return NULL_INT;
         }
 
-        long segment = index>>base;
-        int offset = (int) (index & ((1<<base) - 1));
+        long segment = rowKey >>base;
+        int offset = (int) (rowKey & ((1<<base) - 1));
         if (isUngroupable) {
             return ((UngroupableColumnSource)innerSource).getUngroupedInt(segment, offset);
         }
@@ -69,13 +68,13 @@ public class UngroupedIntVectorColumnSource extends UngroupedColumnSource<Intege
 
 
     @Override
-    public Integer getPrev(long index) {
-        if (index < 0) {
+    public Integer getPrev(long rowKey) {
+        if (rowKey < 0) {
             return null;
         }
 
-        long segment = index>> getPrevBase();
-        int offset = (int) (index & ((1<< getPrevBase()) - 1));
+        long segment = rowKey >> getPrevBase();
+        int offset = (int) (rowKey & ((1<< getPrevBase()) - 1));
         final Integer result;
         if (isUngroupable) {
             result = (Integer)((UngroupableColumnSource)innerSource).getUngroupedPrev(segment, offset);
@@ -91,13 +90,13 @@ public class UngroupedIntVectorColumnSource extends UngroupedColumnSource<Intege
     }
 
     @Override
-    public int getPrevInt(long index) {
-        if (index < 0) {
+    public int getPrevInt(long rowKey) {
+        if (rowKey < 0) {
             return NULL_INT;
         }
 
-        long segment = index>> getPrevBase();
-        int offset = (int) (index & ((1<< getPrevBase()) - 1));
+        long segment = rowKey >> getPrevBase();
+        int offset = (int) (rowKey & ((1<< getPrevBase()) - 1));
 
         if (isUngroupable) {
             return ((UngroupableColumnSource)innerSource).getUngroupedPrevInt(segment, offset);

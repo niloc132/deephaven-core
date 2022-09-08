@@ -1,8 +1,10 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.select;
 
 import groovy.lang.Closure;
-import groovy.lang.GroovyObject;
-import io.deephaven.compilertools.CompilerTools;
+import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.util.type.TypeUtils;
 
 import java.lang.reflect.Modifier;
@@ -46,7 +48,7 @@ public class QueryScopeParamTypeUtil {
         }
 
         final String name = cls.getName();
-        if (!name.startsWith(CompilerTools.DYNAMIC_GROOVY_CLASS_PREFIX)) {
+        if (!name.startsWith(QueryCompiler.DYNAMIC_GROOVY_CLASS_PREFIX)) {
             return;
         }
 
@@ -97,8 +99,6 @@ public class QueryScopeParamTypeUtil {
             type = ((Enum<?>) value).getDeclaringClass();
         } else if (value instanceof Closure) {
             type = Closure.class;
-        } else if (value instanceof GroovyObject) {
-            type = GroovyObject.class;
         } else {
             type = value.getClass();
         }

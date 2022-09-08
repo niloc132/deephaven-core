@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.preview;
 
 import io.deephaven.configuration.Configuration;
@@ -77,32 +80,36 @@ public class ColumnPreviewManager {
 
         Table result = table;
         final List<SelectColumn> selectColumns = new ArrayList<>();
-        final Map<String, ? extends ColumnSource> columns = table.getColumnSourceMap();
+        final Map<String, ? extends ColumnSource<?>> columns = table.getColumnSourceMap();
         final Map<String, String> originalTypes = new HashMap<>();
         for (String name : columns.keySet()) {
             final ColumnSource<?> columnSource = columns.get(name);
             final Class<?> type = columnSource.getType();
+            String typeName = type.getCanonicalName();
+            if (typeName == null) {
+                typeName = type.getName();
+            }
             if (shouldPreview(type)) {
-                final PreviewColumnFactory factory = previewMap.get(type);
+                final PreviewColumnFactory<?, ?> factory = previewMap.get(type);
                 selectColumns.add(factory.makeColumn(name));
-                originalTypes.put(name, type.getName());
+                originalTypes.put(name, typeName);
             } else if (Vector.class.isAssignableFrom(type)) {
                 // Always wrap Vectors
                 selectColumns.add(vectorPreviewFactory.makeColumn(name));
-                originalTypes.put(name, type.getName());
+                originalTypes.put(name, typeName);
             } else if (PyListWrapper.class.isAssignableFrom(type)) {
                 // Always wrap PyListWrapper
                 selectColumns.add(pyListWrapperPreviewFactory.makeColumn(name));
-                originalTypes.put(name, type.getName());
+                originalTypes.put(name, typeName);
             } else if (type.isArray()) {
                 // Always wrap arrays
                 selectColumns.add(arrayPreviewFactory.makeColumn(name));
-                originalTypes.put(name, type.getName());
+                originalTypes.put(name, typeName);
             } else if (!isColumnTypeDisplayable(type)
                     || !io.deephaven.util.type.TypeUtils.isPrimitiveOrSerializable(type)) {
                 // Always wrap non-displayable and non-serializable types
                 selectColumns.add(nonDisplayableFactory.makeColumn(name));
-                originalTypes.put(name, type.getName());
+                originalTypes.put(name, typeName);
             }
         }
 

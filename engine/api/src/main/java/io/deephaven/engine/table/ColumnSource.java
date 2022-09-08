@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table;
 
 import io.deephaven.base.verify.Require;
@@ -112,11 +111,6 @@ public interface ColumnSource<T>
             @NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) throws IllegalArgumentException;
 
     @Override
-    default List<ColumnSource> getColumnSources() {
-        return Collections.singletonList(this);
-    }
-
-    @Override
     default T createTuple(final long rowKey) {
         return get(rowKey);
     }
@@ -142,11 +136,6 @@ public interface ColumnSource<T>
     @Override
     default Object exportElement(T tuple, int elementIndex) {
         Require.eqZero(elementIndex, "elementIndex");
-        return tuple;
-    }
-
-    @Override
-    default Object exportToExternalKey(T tuple) {
         return tuple;
     }
 

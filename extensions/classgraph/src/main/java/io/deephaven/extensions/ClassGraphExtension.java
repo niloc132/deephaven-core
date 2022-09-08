@@ -1,8 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.extensions;
 
 import com.google.auto.service.AutoService;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.lang.QueryLibraryImports;
+import io.deephaven.engine.context.QueryLibraryImports;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.util.GroovyDeephavenSession.InitScript;
 import io.deephaven.util.QueryConstants;

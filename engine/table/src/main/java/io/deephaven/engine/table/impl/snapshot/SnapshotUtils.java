@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.snapshot;
 
 import io.deephaven.chunk.attributes.Values;
@@ -167,16 +170,16 @@ public class SnapshotUtils {
         }
 
         @Override
-        public Vector<?> get(long index) {
-            Vector<?> vector = super.get(index);
+        public Vector<?> get(long rowKey) {
+            Vector<?> vector = super.get(rowKey);
             if (vector == null)
                 return null;
             return vector.getDirect();
         }
 
         @Override
-        public Vector<?> getPrev(long index) {
-            Vector<?> vector = super.getPrev(index);
+        public Vector<?> getPrev(long rowKey) {
+            Vector<?> vector = super.getPrev(rowKey);
             if (vector == null)
                 return null;
             return vector.getDirect();

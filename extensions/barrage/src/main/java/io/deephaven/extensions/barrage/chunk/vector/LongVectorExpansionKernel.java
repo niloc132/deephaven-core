@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharVectorExpansionKernel and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.extensions.barrage.chunk.vector;
 
 import io.deephaven.chunk.LongChunk;
@@ -24,8 +23,9 @@ import io.deephaven.vector.LongVector;
 import io.deephaven.vector.LongVectorDirect;
 import io.deephaven.vector.Vector;
 
+import static io.deephaven.vector.LongVectorDirect.ZERO_LEN_VECTOR;
+
 public class LongVectorExpansionKernel implements VectorExpansionKernel {
-    private final static LongVector ZERO_LEN_VECTOR = new LongVectorDirect();
     public final static LongVectorExpansionKernel INSTANCE = new LongVectorExpansionKernel();
 
     @Override
@@ -59,27 +59,38 @@ public class LongVectorExpansionKernel implements VectorExpansionKernel {
 
     @Override
     public <A extends Any> WritableObjectChunk<Vector<?>, A> contract(
-            final Chunk<A> source, final IntChunk<ChunkPositions> perElementLengthDest) {
+            final Chunk<A> source, final IntChunk<ChunkPositions> perElementLengthDest,
+            final WritableChunk<A> outChunk, final int outOffset, final int totalRows) {
         if (perElementLengthDest.size() == 0) {
-            return WritableObjectChunk.makeWritableChunk(0);
+            if (outChunk != null) {
+                return outChunk.asWritableObjectChunk();
+            }
+            return WritableObjectChunk.makeWritableChunk(totalRows);
         }
 
+        final int itemsInBatch = perElementLengthDest.size() - 1;
         final LongChunk<A> typedSource = source.asLongChunk();
-        final WritableObjectChunk<Vector<?>, A> result =
-                WritableObjectChunk.makeWritableChunk(perElementLengthDest.size() - 1);
+        final WritableObjectChunk<Vector<?>, A> result;
+        if (outChunk != null) {
+            result = outChunk.asWritableObjectChunk();
+        } else {
+            final int numRows = Math.max(itemsInBatch, totalRows);
+            result = WritableObjectChunk.makeWritableChunk(numRows);
+            result.setSize(numRows);
+        }
 
         int lenRead = 0;
-        for (int i = 0; i < result.size(); ++i) {
+        for (int i = 0; i < itemsInBatch; ++i) {
             final int ROW_LEN = perElementLengthDest.get(i + 1) - perElementLengthDest.get(i);
             if (ROW_LEN == 0) {
-                result.set(i, ZERO_LEN_VECTOR);
+                result.set(outOffset + i, ZERO_LEN_VECTOR);
             } else {
                 final long[] row = new long[ROW_LEN];
                 for (int j = 0; j < ROW_LEN; ++j) {
                     row[j] = typedSource.get(lenRead + j);
                 }
                 lenRead += ROW_LEN;
-                result.set(i, new LongVectorDirect(row));
+                result.set(outOffset + i, new LongVectorDirect(row));
             }
         }
 

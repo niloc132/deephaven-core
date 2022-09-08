@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.table.ColumnSource;
@@ -23,13 +22,13 @@ public class UnboxedDateTimeColumnSource extends AbstractColumnSource<Long>
     }
 
     @Override
-    public long getLong(long index) {
-        return alternateColumnSource.getLong(index);
+    public long getLong(long rowKey) {
+        return alternateColumnSource.getLong(rowKey);
     }
 
     @Override
-    public long getPrevLong(long index) {
-        return alternateColumnSource.getPrevLong(index);
+    public long getPrevLong(long rowKey) {
+        return alternateColumnSource.getPrevLong(rowKey);
     }
 
     @Override

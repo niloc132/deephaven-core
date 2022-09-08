@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.engine.table.Table;
@@ -12,6 +15,11 @@ import org.jetbrains.annotations.NotNull;
 @VisibleForTesting
 public class AggregationControl {
 
+    private static final int CHUNK_SIZE = ChunkedOperatorAggregationHelper.CHUNK_SIZE;
+    private static final int MINIMUM_INITIAL_HASH_SIZE = CHUNK_SIZE;
+    private static final double DEFAULT_MAX_LOAD_FACTOR = 0.75;
+    private static final double DEFAULT_TARGET_LOAD_FACTOR = 0.70;
+
     public static final AggregationControl DEFAULT = new AggregationControl();
     public static final AggregationControl DEFAULT_FOR_OPERATOR = new AggregationControl() {
         @Override
@@ -22,15 +30,15 @@ public class AggregationControl {
 
     public int initialHashTableSize(@NotNull final Table inputTable) {
         // TODO: This approach relies on rehash. Maybe we should consider sampling instead.
-        return IncrementalChunkedOperatorAggregationStateManager.MINIMUM_INITIAL_HASH_SIZE;
+        return MINIMUM_INITIAL_HASH_SIZE;
     }
 
     public double getTargetLoadFactor() {
-        return IncrementalChunkedOperatorAggregationStateManager.DEFAULT_TARGET_LOAD_FACTOR;
+        return DEFAULT_TARGET_LOAD_FACTOR;
     }
 
     public double getMaximumLoadFactor() {
-        return IncrementalChunkedOperatorAggregationStateManager.DEFAULT_MAX_LOAD_FACTOR;
+        return DEFAULT_MAX_LOAD_FACTOR;
     }
 
     public boolean considerGrouping(@NotNull final Table inputTable, @NotNull final ColumnSource<?>[] sources) {

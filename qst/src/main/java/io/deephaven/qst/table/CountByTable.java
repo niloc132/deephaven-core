@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.qst.table;
 
 import io.deephaven.annotations.NodeStyle;
@@ -6,7 +9,7 @@ import org.immutables.value.Value.Immutable;
 
 @Immutable
 @NodeStyle
-public abstract class CountByTable extends ByTableBase {
+public abstract class CountByTable extends ByTableBase implements SingleParentTable {
 
     public static Builder builder() {
         return ImmutableCountByTable.builder();

@@ -1,20 +1,19 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
-import io.deephaven.compilertools.CompilerTools;
-import io.deephaven.configuration.Configuration;
 import io.deephaven.chunk.util.pools.ChunkPoolReleaseTracking;
-import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
-import io.deephaven.engine.table.lang.QueryScope;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
-import io.deephaven.engine.util.systemicmarking.SystemicObjectTracker;
+import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.QueryCompiler;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
+import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
 import io.deephaven.engine.table.impl.util.AsyncClientErrorNotifier;
+import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.engine.util.systemicmarking.SystemicObjectTracker;
 import io.deephaven.util.ExceptionDetails;
 import io.deephaven.util.SafeCloseable;
 import junit.framework.TestCase;
@@ -31,16 +30,16 @@ import java.util.function.Supplier;
 abstract public class RefreshingTableTestCase extends BaseArrayTestCase implements UpdateErrorReporter {
     public static boolean printTableUpdates = Configuration.getInstance()
             .getBooleanForClassWithDefault(RefreshingTableTestCase.class, "printTableUpdates", false);
-    private static final boolean ENABLE_COMPILER_TOOLS_LOGGING = Configuration.getInstance()
-            .getBooleanForClassWithDefault(RefreshingTableTestCase.class, "CompilerTools.logEnabled", false);
+    private static final boolean ENABLE_QUERY_COMPILER_LOGGING = Configuration.getInstance()
+            .getBooleanForClassWithDefault(RefreshingTableTestCase.class, "QueryCompile.logEnabled", false);
 
     private boolean oldMemoize;
     private UpdateErrorReporter oldReporter;
     private boolean expectError = false;
     private SafeCloseable livenessScopeCloseable;
-    private QueryScope originalQueryScope;
     private boolean oldLogEnabled;
     private boolean oldCheckLtm;
+    private SafeCloseable executionContext;
 
     List<Throwable> errors;
 
@@ -59,9 +58,11 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
         oldReporter = AsyncClientErrorNotifier.setReporter(this);
         errors = null;
         livenessScopeCloseable = LivenessScopeStack.open(new LivenessScope(true), true);
-        originalQueryScope = QueryScope.getScope();
 
-        oldLogEnabled = CompilerTools.setLogEnabled(ENABLE_COMPILER_TOOLS_LOGGING);
+        // initialize the unit test's execution context
+        executionContext = ExecutionContext.createForUnitTests().open();
+
+        oldLogEnabled = QueryCompiler.setLogEnabled(ENABLE_QUERY_COMPILER_LOGGING);
         oldCheckLtm = UpdateGraphProcessor.DEFAULT.setCheckTableOperations(false);
         UpdatePerformanceTracker.getInstance().enableUnitTestMode();
         ChunkPoolReleaseTracking.enableStrict();
@@ -71,9 +72,11 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
     protected void tearDown() throws Exception {
         ChunkPoolReleaseTracking.checkAndDisable();
         UpdateGraphProcessor.DEFAULT.setCheckTableOperations(oldCheckLtm);
-        CompilerTools.setLogEnabled(oldLogEnabled);
+        QueryCompiler.setLogEnabled(oldLogEnabled);
 
-        QueryScope.setScope(originalQueryScope);
+        // reset the execution context
+        executionContext.close();
+
         livenessScopeCloseable.close();
         AsyncClientErrorNotifier.setReporter(oldReporter);
         QueryTable.setMemoizeResults(oldMemoize);
@@ -131,7 +134,7 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
         }, errorsAcceptable);
     }
 
-    protected static void simulateShiftAwareStep(int targetUpdateSize, Random random, QueryTable table,
+    public static void simulateShiftAwareStep(int targetUpdateSize, Random random, QueryTable table,
             TstUtils.ColumnInfo[] columnInfo, EvalNuggetInterface[] en) {
         simulateShiftAwareStep("", targetUpdateSize, random, table, columnInfo, en);
     }

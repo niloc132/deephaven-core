@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.datastructures.util.CollectionUtil;
@@ -304,8 +303,9 @@ public interface IterativeChunkedAggregationOperator {
      * Reset any per-step internal state. Note that the arguments to this method should not be mutated in any way.
      *
      * @param upstream The upstream ShiftAwareListener.Update
+     * @param startingDestinationsCount The number of used destinations at the beginning of this step
      */
-    default void resetForStep(@NotNull final TableUpdate upstream) {}
+    default void resetForStep(@NotNull TableUpdate upstream, int startingDestinationsCount) {}
 
     /**
      * Perform any internal state keeping needed for destinations that were added (went from 0 keys to &gt; 0), removed

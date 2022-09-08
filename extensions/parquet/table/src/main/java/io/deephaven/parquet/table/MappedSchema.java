@@ -1,10 +1,12 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.parquet.table;
 
+import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.table.ColumnDefinition;
-import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.ColumnSource;
-import io.deephaven.engine.rowset.TrackingRowSet;
-
+import io.deephaven.engine.table.TableDefinition;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
@@ -22,10 +24,10 @@ class MappedSchema {
     static MappedSchema create(
             final Map<String, Map<ParquetTableWriter.CacheTags, Object>> computedCache,
             final TableDefinition definition,
-            final TrackingRowSet rowSet,
+            final RowSet rowSet,
             final Map<String, ? extends ColumnSource<?>> columnSourceMap,
             final ParquetInstructions instructions,
-            final ColumnDefinition... extraColumns) {
+            final ColumnDefinition<?>... extraColumns) {
         final MessageTypeBuilder builder = Types.buildMessage();
         for (final ColumnDefinition<?> columnDefinition : definition.getColumns()) {
             TypeInfos.TypeInfo typeInfo =
@@ -33,11 +35,13 @@ class MappedSchema {
             Type schemaType = typeInfo.createSchemaType(columnDefinition, instructions);
             builder.addField(schemaType);
         }
+
         for (final ColumnDefinition<?> extraColumn : extraColumns) {
             builder.addField(getTypeInfo(computedCache, extraColumn, rowSet, columnSourceMap, instructions)
                     .createSchemaType(extraColumn, instructions));
         }
-        MessageType schema = builder.named("root");
+
+        final MessageType schema = builder.named("root");
         return new MappedSchema(definition, schema);
     }
 

@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.impl.DefaultGetContext;
@@ -570,10 +569,9 @@ public abstract class ArrayBackedColumnSource<T>
 
     @Override
     public Chunk<Values> getChunk(@NotNull final GetContext context, @NotNull final RowSequence rowSequence) {
-        final LongChunk<OrderedRowKeyRanges> ranges = rowSequence.asRowKeyRangesChunk();
-        if (ranges.size() == 2) {
-            final long first = ranges.get(0);
-            final long last = ranges.get(1);
+        if (rowSequence.isContiguous() && !rowSequence.isEmpty()) {
+            final long first = rowSequence.firstRowKey();
+            final long last = rowSequence.lastRowKey();
 
             if (getBlockNo(first) == getBlockNo(last)) {
                 // Optimization if the caller requests a single range which happens to fall within a single block

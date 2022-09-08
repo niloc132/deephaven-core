@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.vector;
 
 import io.deephaven.util.datastructures.LongSizedDataStructure;
@@ -22,6 +21,8 @@ public class CharVectorDirect implements CharVector {
     public CharVectorDirect(char... data){
         this.data = data;
     }
+
+    public static final CharVector ZERO_LEN_VECTOR = new CharVectorDirect();
 
     @Override
     public char get(long i) {

@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Assert;
@@ -18,9 +21,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Tools for manipulating tables.
+ * Tools for manipulating stream tables.
+ *
+ * @see Table#STREAM_TABLE_ATTRIBUTE
  */
 public class StreamTableTools {
+
     /**
      * Convert a Stream Table to an in-memory append only table.
      *
@@ -47,7 +53,8 @@ public class StreamTableTools {
             ConstructSnapshot.callDataSnapshotFunction("streamToAppendOnlyTable", swapListener.makeSnapshotControl(),
                     (boolean usePrev, long beforeClockValue) -> {
                         final Map<String, ArrayBackedColumnSource<?>> columns = new LinkedHashMap<>();
-                        final Map<String, ? extends ColumnSource<?>> columnSourceMap = streamTable.getColumnSourceMap();
+                        final Map<String, ? extends ColumnSource<?>> columnSourceMap =
+                                baseStreamTable.getColumnSourceMap();
                         final int columnCount = columnSourceMap.size();
                         final ColumnSource<?>[] sourceColumns = new ColumnSource[columnCount];
                         final WritableColumnSource<?>[] destColumns = new WritableColumnSource[columnCount];
@@ -89,7 +96,7 @@ public class StreamTableTools {
                         resultHolder.setValue(result);
 
                         swapListener.setListenerAndResult(new BaseTable.ListenerImpl("streamToAppendOnly",
-                                streamTable, result) {
+                                baseStreamTable, result) {
                             @Override
                             public void onUpdate(TableUpdate upstream) {
                                 if (upstream.modified().isNonempty() || upstream.shifted().nonempty()) {

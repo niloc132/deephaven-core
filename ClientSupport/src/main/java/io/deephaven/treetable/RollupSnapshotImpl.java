@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.treetable;
 
 import io.deephaven.base.verify.Require;
@@ -20,8 +23,7 @@ import java.util.stream.Collectors;
 
 import static io.deephaven.treetable.TreeTableConstants.RE_TREE_KEY;
 
-class RollupSnapshotImpl<CLIENT_TYPE extends TreeTableClientTableManager.Client<CLIENT_TYPE>>
-        extends AbstractTreeSnapshotImpl<RollupInfo, CLIENT_TYPE> {
+class RollupSnapshotImpl extends AbstractTreeSnapshotImpl<RollupInfo> {
     private boolean rootTableChanged = false;
     private Table sourceTable;
     private final PreparedSort constituentSort;
@@ -49,7 +51,7 @@ class RollupSnapshotImpl<CLIENT_TYPE extends TreeTableClientTableManager.Client<
             BitSet columns,
             @NotNull WhereFilter[] filters,
             @NotNull List<SortDirective> sorts,
-            CLIENT_TYPE client,
+            TreeTableClientTableManager.Client client,
             Set<TreeSnapshotQuery.Operation> includedOps) {
         super(baseTableId, baseTable, tablesByKey, firstRow, lastRow, columns, filters, sorts, client, includedOps);
 
@@ -136,7 +138,7 @@ class RollupSnapshotImpl<CLIENT_TYPE extends TreeTableClientTableManager.Client<
                                 return false;
                             }
 
-                            if (currentColumn.getType() != baseTable.getColumn(colName).getType()) {
+                            if (currentColumn.getType() != baseTable.getDefinition().getColumn(colName).getDataType()) {
                                 return false;
                             }
                         }
@@ -158,11 +160,10 @@ class RollupSnapshotImpl<CLIENT_TYPE extends TreeTableClientTableManager.Client<
         if (filters.length == 0) {
             return table;
         }
-
         final Table source = Require.neqNull(table.getSourceTable(), "Hierarchical source table");
         final RollupInfo info = getInfo();
         return (HierarchicalTable) source.where(filters).rollup(info.aggregations,
-                info.getLeafType() == RollupInfo.LeafType.Constituent, info.getSelectColumns());
+                info.getLeafType() == RollupInfo.LeafType.Constituent, info.getGroupByColumns());
     }
 
     @Override

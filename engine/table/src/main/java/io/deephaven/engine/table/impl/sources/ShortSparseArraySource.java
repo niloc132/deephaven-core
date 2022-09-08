@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharacterSparseArraySource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.impl.DefaultGetContext;
@@ -92,6 +91,26 @@ public class ShortSparseArraySource extends SparseArrayColumnSource<Short> imple
         // Nothing to do here. Sparse array sources allocate on-demand and always null-fill.
     }
 
+    // region setNull
+    @Override
+    public void setNull(long key) {
+        final short [] blocks2 = blocks.getInnermostBlockByKeyOrNull(key);
+        if (blocks2 == null) {
+            return;
+        }
+        final int indexWithinBlock = (int) (key & INDEX_MASK);
+        if (blocks2[indexWithinBlock] == NULL_SHORT) {
+            return;
+        }
+
+        final short [] prevBlocksInner = shouldRecordPrevious(key);
+        if (prevBlocksInner != null) {
+            prevBlocksInner[indexWithinBlock] = blocks2[indexWithinBlock];
+        }
+        blocks2[indexWithinBlock] = NULL_SHORT;
+    }
+    // endregion setNull
+
     @Override
     public final void set(long key, short value) {
         final int block0 = (int) (key >> BLOCK0_SHIFT) & BLOCK0_MASK;
@@ -129,36 +148,36 @@ public class ShortSparseArraySource extends SparseArrayColumnSource<Short> imple
     }
 
     @Override
-    public Short get(long index) {
-        return box(getShort(index));
+    public Short get(long rowKey) {
+        return box(getShort(rowKey));
     }
 
     @Override
-    public Short getPrev(long index) {
-        return box(getPrevShort(index));
+    public Short getPrev(long rowKey) {
+        return box(getPrevShort(rowKey));
     }
     // endregion boxed methods
 
     // region primitive get
     @Override
-    public final short getShort(long index) {
-        if (index < 0) {
+    public final short getShort(long rowKey) {
+        if (rowKey < 0) {
             return NULL_SHORT;
         }
-        return getShortFromBlock(blocks, index);
+        return getShortFromBlock(blocks, rowKey);
     }
 
 
     @Override
-    public final short getPrevShort(long index) {
-        if (index < 0) {
+    public final short getPrevShort(long rowKey) {
+        if (rowKey < 0) {
             return NULL_SHORT;
         }
-        if (shouldUsePrevious(index)) {
-            return getShortFromBlock(prevBlocks, index);
+        if (shouldUsePrevious(rowKey)) {
+            return getShortFromBlock(prevBlocks, rowKey);
         }
 
-        return getShortFromBlock(blocks, index);
+        return getShortFromBlock(blocks, rowKey);
     }
 
     private short getShortFromBlock(ShortOneOrN.Block0 blocks, long key) {
@@ -389,7 +408,7 @@ public class ShortSparseArraySource extends SparseArrayColumnSource<Short> imple
     }
 
     @Override
-    public void ensurePrevious(RowSet changedRows) {
+    public void prepareForParallelPopulation(RowSet changedRows) {
         final long currentStep = LogicalClock.DEFAULT.currentStep();
         if (ensurePreviousClockCycle == currentStep) {
             throw new IllegalStateException("May not call ensurePrevious twice on one clock cycle!");
@@ -400,15 +419,13 @@ public class ShortSparseArraySource extends SparseArrayColumnSource<Short> imple
             return;
         }
 
-        if (prevFlusher == null) {
-            return;
+        if (prevFlusher != null) {
+            prevFlusher.maybeActivate();
         }
-        prevFlusher.maybeActivate();
 
-        try (final RowSet.Iterator it = changedRows.iterator()) {
-            long key = it.nextLong();
-            while (true) {
-                final long firstKey = key;
+        try (final RowSequence.Iterator it = changedRows.getRowSequenceIterator()) {
+            do {
+                final long firstKey = it.peekNextKey();
                 final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
 
                 final int block0 = (int) (firstKey >> BLOCK0_SHIFT) & BLOCK0_MASK;
@@ -416,23 +433,24 @@ public class ShortSparseArraySource extends SparseArrayColumnSource<Short> imple
                 final int block2 = (int) (firstKey >> BLOCK2_SHIFT) & BLOCK2_MASK;
                 final short[] block = ensureBlock(block0, block1, block2);
 
+                if (prevFlusher == null) {
+                    it.advance(maxKeyInCurrentBlock + 1);
+                    continue;
+                }
+
                 final short[] prevBlock = ensurePrevBlock(firstKey, block0, block1, block2);
                 final long[] inUse = prevInUse.get(block0).get(block1).get(block2);
                 assert inUse != null;
 
-                do {
+                it.getNextRowSequenceThrough(maxKeyInCurrentBlock).forAllRowKeys(key -> {
                     final int indexWithinBlock = (int) (key & INDEX_MASK);
                     final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
                     final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
 
                     prevBlock[indexWithinBlock] = block[indexWithinBlock];
                     inUse[indexWithinInUse] |= maskWithinInUse;
-                } while (it.hasNext() && (key = it.nextLong()) <= maxKeyInCurrentBlock);
-                if (key <= maxKeyInCurrentBlock) {
-                    // we did not advance the iterator so should break
-                    break;
-                }
-            }
+                });
+            } while (it.hasMore());
         }
     }
 

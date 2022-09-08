@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.lang;
 
 import io.deephaven.base.Pair;
@@ -27,6 +26,7 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 
+import static io.deephaven.engine.table.ColumnDefinition.*;
 import static io.deephaven.engine.table.impl.lang.QueryLanguageParser.isWideningPrimitiveConversion;
 
 @SuppressWarnings("InstantiatingObjectToGetClassObject")
@@ -118,6 +118,8 @@ public class TestQueryLanguageParser extends BaseArrayTestCase {
         variables.put("ExampleQuantity3", double.class);
         variables.put("ExampleQuantity4", double.class);
         variables.put("ExampleStr", String.class);
+
+        variables.put("genericSub", TestGenericSub.class);
 
         variableParameterizedTypes = new HashMap<>();
         variableParameterizedTypes.put("myArrayList", new Class[] {Long.class});
@@ -1067,13 +1069,13 @@ public class TestQueryLanguageParser extends BaseArrayTestCase {
         resultExpression = "java.util.Arrays.asList(5)";
         check(expression, resultExpression, List.class, new String[] {});
 
-        expression = "io.deephaven.engine.table.ColumnDefinition.COLUMNTYPE_NORMAL";
-        resultExpression = "io.deephaven.engine.table.ColumnDefinition.COLUMNTYPE_NORMAL";
-        check(expression, resultExpression, int.class, new String[] {});
+        expression = "io.deephaven.engine.table.ColumnDefinition.ColumnType.Normal";
+        resultExpression = "io.deephaven.engine.table.ColumnDefinition.ColumnType.Normal";
+        check(expression, resultExpression, ColumnType.class, new String[] {});
 
-        expression = "ColumnDefinition.COLUMNTYPE_NORMAL";
-        resultExpression = "ColumnDefinition.COLUMNTYPE_NORMAL";
-        check(expression, resultExpression, int.class, new String[] {});
+        expression = "ColumnDefinition.ColumnType.Normal";
+        resultExpression = "ColumnDefinition.ColumnType.Normal";
+        check(expression, resultExpression, ColumnType.class, new String[] {});
 
         expression = "Color.BLUE";
         resultExpression = "Color.BLUE";
@@ -2185,6 +2187,60 @@ public class TestQueryLanguageParser extends BaseArrayTestCase {
         // this was getting picked up as invalid, so we're ensuring here that it is not an error.
         expression = "23 >= plus(System.currentTimeMillis(), 12)";
         check(expression, "greaterEquals(23, plus(System.currentTimeMillis(), 12))", boolean.class, new String[0]);
+    }
+
+    public static class TestGenericResult1 {
+    }
+    public static class TestGenericResult2 {
+    }
+    public static class TestGenericResult3 {
+    }
+    public static class TestGenericResult4 {
+    }
+    public static class TestGenericResult5 {
+    }
+    public interface TestGenericInterfaceSuper<T> {
+        default T getFromInterfaceSuper() {
+            return null;
+        }
+    }
+    public interface TestGenericInterfaceForSuper<T> {
+        default T getFromInterfaceForSuper() {
+            return null;
+        }
+    }
+    public interface TestGenericInterfaceSub<T> extends TestGenericInterfaceSuper<TestGenericResult1> {
+        default T getFromInterfaceSub() {
+            return null;
+        }
+    }
+    public interface TestGenericInterfaceSibling<T> {
+        default T getFromInterfaceSibling() {
+            return null;
+        }
+    }
+    public static abstract class TestGenericSuper<T> implements TestGenericInterfaceForSuper<TestGenericResult2> {
+        public T getFromSuper() {
+            return null;
+        }
+    }
+    public static class TestGenericSub extends TestGenericSuper<TestGenericResult3>
+            implements TestGenericInterfaceSub<TestGenericResult4>, TestGenericInterfaceSibling<TestGenericResult5> {
+    }
+
+    public void testGenericReturnTypeResolution() throws Exception {
+        final String[] resultVarsUsed = new String[] {"genericSub"};
+
+        String expression = "genericSub.getFromInterfaceSuper()";
+        check(expression, expression, TestGenericResult1.class, resultVarsUsed);
+        expression = "genericSub.getFromInterfaceForSuper()";
+        check(expression, expression, TestGenericResult2.class, resultVarsUsed);
+        expression = "genericSub.getFromSuper()";
+        check(expression, expression, TestGenericResult3.class, resultVarsUsed);
+        expression = "genericSub.getFromInterfaceSub()";
+        check(expression, expression, TestGenericResult4.class, resultVarsUsed);
+        expression = "genericSub.getFromInterfaceSibling()";
+        check(expression, expression, TestGenericResult5.class, resultVarsUsed);
     }
 
     @SuppressWarnings("SameParameterValue")

@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharacterArraySource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.base.verify.Assert;
@@ -80,11 +79,16 @@ public class ShortArraySource extends ArraySourceHelper<Short, short[]> implemen
     }
 
     @Override
-    public final short getShort(long index) {
-        if (index < 0 || index > maxIndex) {
+    public void setNull(long key) {
+        set(key, NULL_SHORT);
+    }
+
+    @Override
+    public final short getShort(long rowKey) {
+        if (rowKey < 0 || rowKey > maxIndex) {
             return NULL_SHORT;
         }
-        return getUnsafe(index);
+        return getUnsafe(rowKey);
     }
 
     public final short getUnsafe(long index) {
@@ -107,18 +111,18 @@ public class ShortArraySource extends ArraySourceHelper<Short, short[]> implemen
     }
 
     @Override
-    public Short getPrev(long index) {
-        return box(getPrevShort(index));
+    public Short getPrev(long rowKey) {
+        return box(getPrevShort(rowKey));
     }
 
     @Override
-    public final short getPrevShort(long index) {
-        if (index < 0 || index > maxIndex) {
+    public final short getPrevShort(long rowKey) {
+        if (rowKey < 0 || rowKey > maxIndex) {
             return NULL_SHORT;
         }
-        final int blockIndex = (int) (index >> LOG_BLOCK_SIZE);
-        final int indexWithinBlock = (int) (index & INDEX_MASK);
-        if (shouldUsePrevious(index)) {
+        final int blockIndex = (int) (rowKey >> LOG_BLOCK_SIZE);
+        final int indexWithinBlock = (int) (rowKey & INDEX_MASK);
+        if (shouldUsePrevious(rowKey)) {
             return prevBlocks[blockIndex][indexWithinBlock];
         } else {
             return blocks[blockIndex][indexWithinBlock];

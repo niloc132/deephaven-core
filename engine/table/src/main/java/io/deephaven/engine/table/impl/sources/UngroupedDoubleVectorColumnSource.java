@@ -1,12 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit UngroupedCharVectorColumnSource and regenerate
  * ---------------------------------------------------------------------------------------------------------------------
  */
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.engine.table.ColumnSource;
@@ -32,12 +31,12 @@ public class UngroupedDoubleVectorColumnSource extends UngroupedColumnSource<Dou
     }
 
     @Override
-    public Double get(long index) {
-        if (index < 0) {
+    public Double get(long rowKey) {
+        if (rowKey < 0) {
             return null;
         }
-        long segment = index>>base;
-        int offset = (int) (index & ((1<<base) - 1));
+        long segment = rowKey >>base;
+        int offset = (int) (rowKey & ((1<<base) - 1));
         final Double result;
         if (isUngroupable) {
             result = (Double)((UngroupableColumnSource)innerSource).getUngrouped(segment, offset);
@@ -52,13 +51,13 @@ public class UngroupedDoubleVectorColumnSource extends UngroupedColumnSource<Dou
 
 
     @Override
-    public double getDouble(long index) {
-        if (index < 0) {
+    public double getDouble(long rowKey) {
+        if (rowKey < 0) {
             return NULL_DOUBLE;
         }
 
-        long segment = index>>base;
-        int offset = (int) (index & ((1<<base) - 1));
+        long segment = rowKey >>base;
+        int offset = (int) (rowKey & ((1<<base) - 1));
         if (isUngroupable) {
             return ((UngroupableColumnSource)innerSource).getUngroupedDouble(segment, offset);
         }
@@ -69,13 +68,13 @@ public class UngroupedDoubleVectorColumnSource extends UngroupedColumnSource<Dou
 
 
     @Override
-    public Double getPrev(long index) {
-        if (index < 0) {
+    public Double getPrev(long rowKey) {
+        if (rowKey < 0) {
             return null;
         }
 
-        long segment = index>> getPrevBase();
-        int offset = (int) (index & ((1<< getPrevBase()) - 1));
+        long segment = rowKey >> getPrevBase();
+        int offset = (int) (rowKey & ((1<< getPrevBase()) - 1));
         final Double result;
         if (isUngroupable) {
             result = (Double)((UngroupableColumnSource)innerSource).getUngroupedPrev(segment, offset);
@@ -91,13 +90,13 @@ public class UngroupedDoubleVectorColumnSource extends UngroupedColumnSource<Dou
     }
 
     @Override
-    public double getPrevDouble(long index) {
-        if (index < 0) {
+    public double getPrevDouble(long rowKey) {
+        if (rowKey < 0) {
             return NULL_DOUBLE;
         }
 
-        long segment = index>> getPrevBase();
-        int offset = (int) (index & ((1<< getPrevBase()) - 1));
+        long segment = rowKey >> getPrevBase();
+        int offset = (int) (rowKey & ((1<< getPrevBase()) - 1));
 
         if (isUngroupable) {
             return ((UngroupableColumnSource)innerSource).getUngroupedPrevDouble(segment, offset);

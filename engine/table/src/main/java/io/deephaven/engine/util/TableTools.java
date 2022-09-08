@@ -1,20 +1,16 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.util;
 
 import io.deephaven.base.ClassUtil;
 import io.deephaven.base.Pair;
 import io.deephaven.base.verify.Require;
 import io.deephaven.datastructures.util.CollectionUtil;
-import io.deephaven.datastructures.util.SmartKey;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.RowSetFactory;
-import io.deephaven.engine.table.ColumnDefinition;
-import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.time.DateTime;
@@ -22,14 +18,11 @@ import io.deephaven.time.DateTimeUtils;
 import io.deephaven.time.TimeProvider;
 import io.deephaven.time.TimeZone;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
-import io.deephaven.engine.util.caching.C14nUtil;
 import io.deephaven.engine.table.impl.QueryTable;
-import io.deephaven.engine.table.impl.TableWithDefaults;
 import io.deephaven.engine.table.impl.TimeTable;
 import io.deephaven.engine.table.impl.replay.Replayer;
 import io.deephaven.engine.table.impl.replay.ReplayerInterface;
 import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
-import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.impl.sources.ReinterpretUtils;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.chunk.*;
@@ -38,9 +31,11 @@ import io.deephaven.io.logger.Logger;
 import io.deephaven.io.util.NullOutputStream;
 import io.deephaven.util.annotations.ScriptApi;
 import io.deephaven.util.type.ArrayTypeUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -50,6 +45,8 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static io.deephaven.engine.table.impl.TableDefaults.ZERO_LENGTH_TABLE_ARRAY;
 
 /**
  * Tools for working with tables. This includes methods to examine tables, combine them, convert them to and from CSV
@@ -286,16 +283,25 @@ public class TableTools {
     /**
      * Returns the first few rows of a table as a pipe-delimited string.
      *
-     * @param t a Deephaven table object
+     * @param table a Deephaven table object
      * @param size the number of rows to return
      * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
      * @param columns varargs of columns to include in the result
      * @return a String
      */
-    public static String string(Table t, int size, io.deephaven.time.TimeZone timeZone, String... columns) {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        TableTools.show(t, size, timeZone, new PrintStream(os), columns);
-        return os.toString();
+    public static String string(
+            @NotNull final Table table,
+            final int size,
+            final io.deephaven.time.TimeZone timeZone,
+            @NotNull final String... columns) {
+        try (final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                final PrintStream printStream = new PrintStream(bytes, false, StandardCharsets.UTF_8)) {
+            TableTools.show(table, size, timeZone, printStream, columns);
+            printStream.flush();
+            return bytes.toString(StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /**
@@ -501,52 +507,6 @@ public class TableTools {
     }
 
     /**
-     * Returns a SmartKey for the specified row from a set of ColumnSources.
-     *
-     * @param groupByColumnSources a set of ColumnSources from which to retrieve the data
-     * @param row the row number for which to retrieve data
-     * @return a Deephaven SmartKey object
-     */
-    public static Object getKey(ColumnSource<?>[] groupByColumnSources, long row) {
-        Object key;
-        if (groupByColumnSources.length == 0) {
-            return SmartKey.EMPTY;
-        } else if (groupByColumnSources.length == 1) {
-            key = C14nUtil.maybeCanonicalize(groupByColumnSources[0].get(row));
-        } else {
-            Object[] keyData = new Object[groupByColumnSources.length];
-            for (int col = 0; col < groupByColumnSources.length; col++) {
-                keyData[col] = groupByColumnSources[col].get(row);
-            }
-            key = C14nUtil.makeSmartKey(keyData);
-        }
-        return key;
-    }
-
-    /**
-     * Returns a SmartKey for the row previous to the specified row from a set of ColumnSources.
-     *
-     * @param groupByColumnSources a set of ColumnSources from which to retrieve the data
-     * @param row the row number for which to retrieve the previous row's data
-     * @return a Deephaven SmartKey object
-     */
-    public static Object getPrevKey(ColumnSource<?>[] groupByColumnSources, long row) {
-        Object key;
-        if (groupByColumnSources.length == 0) {
-            return SmartKey.EMPTY;
-        } else if (groupByColumnSources.length == 1) {
-            key = C14nUtil.maybeCanonicalize(groupByColumnSources[0].getPrev(row));
-        } else {
-            Object[] keyData = new Object[groupByColumnSources.length];
-            for (int col = 0; col < groupByColumnSources.length; col++) {
-                keyData[col] = groupByColumnSources[col].getPrev(row);
-            }
-            key = C14nUtil.makeSmartKey(keyData);
-        }
-        return key;
-    }
-
-    /**
      * Returns a ColumnHolder that can be used when creating in-memory tables.
      *
      * @param name name of the column
@@ -599,6 +559,19 @@ public class TableTools {
         // NB: IntelliJ says that we do not need to cast data, but javac warns about this statement otherwise
         // noinspection RedundantCast
         return new ColumnHolder(name, DateTime.class, null, false, (Object[]) data);
+    }
+
+    /**
+     * Returns a ColumnHolder of type Boolean that can be used when creating in-memory tables.
+     *
+     * @param name name of the column
+     * @param data a list of values for the column
+     * @return a Deephaven ColumnHolder object
+     */
+    public static ColumnHolder booleanCol(String name, Boolean... data) {
+        // NB: IntelliJ says that we do not need to cast data, but javac warns about this statement otherwise
+        // noinspection RedundantCast
+        return new ColumnHolder(name, Boolean.class, null, false, (Object[]) data);
     }
 
     /**
@@ -740,7 +713,7 @@ public class TableTools {
      */
     public static Table newTable(TableDefinition definition) {
         Map<String, ColumnSource<?>> columns = new LinkedHashMap<>();
-        for (ColumnDefinition<?> columnDefinition : definition.getColumnList()) {
+        for (ColumnDefinition<?> columnDefinition : definition.getColumns()) {
             columns.put(columnDefinition.getName(), ArrayBackedColumnSource.getMemoryColumnSource(0,
                     columnDefinition.getDataType(), columnDefinition.getComponentType()));
         }
@@ -872,9 +845,8 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(long periodNanos, ReplayerInterface replayer) {
-        final TimeTable timeTable = new TimeTable(Replayer.getTimeProvider(replayer), null, periodNanos);
-        UpdateGraphProcessor.DEFAULT.addSource(timeTable);
-        return timeTable;
+        return new TimeTable(UpdateGraphProcessor.DEFAULT, Replayer.getTimeProvider(replayer),
+                null, periodNanos, false);
     }
 
     /**
@@ -885,9 +857,8 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(DateTime startTime, long periodNanos) {
-        final TimeTable timeTable = new TimeTable(Replayer.getTimeProvider(null), startTime, periodNanos);
-        UpdateGraphProcessor.DEFAULT.addSource(timeTable);
-        return timeTable;
+        return new TimeTable(UpdateGraphProcessor.DEFAULT, Replayer.getTimeProvider(null),
+                startTime, periodNanos, false);
     }
 
     /**
@@ -899,9 +870,8 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(DateTime startTime, long periodNanos, ReplayerInterface replayer) {
-        final TimeTable timeTable = new TimeTable(Replayer.getTimeProvider(replayer), startTime, periodNanos);
-        UpdateGraphProcessor.DEFAULT.addSource(timeTable);
-        return timeTable;
+        return new TimeTable(UpdateGraphProcessor.DEFAULT, Replayer.getTimeProvider(replayer),
+                startTime, periodNanos, false);
     }
 
     /**
@@ -936,9 +906,16 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(TimeProvider timeProvider, DateTime startTime, long periodNanos) {
-        final TimeTable timeTable = new TimeTable(timeProvider, startTime, periodNanos);
-        UpdateGraphProcessor.DEFAULT.addSource(timeTable);
-        return timeTable;
+        return new TimeTable(UpdateGraphProcessor.DEFAULT, timeProvider, startTime, periodNanos, false);
+    }
+
+    /**
+     * Creates a new time table builder.
+     *
+     * @return a time table builder
+     */
+    public static TimeTable.Builder timeTableBuilder() {
+        return TimeTable.newBuilder();
     }
 
     // endregion time tables
@@ -964,7 +941,7 @@ public class TableTools {
      * @return a Deephaven table object
      */
     public static Table merge(List<Table> theList) {
-        return merge(theList.toArray(TableWithDefaults.ZERO_LENGTH_TABLE_ARRAY));
+        return merge(theList.toArray(ZERO_LENGTH_TABLE_ARRAY));
     }
 
     /**
@@ -986,7 +963,7 @@ public class TableTools {
      * @return a Deephaven table object
      */
     public static Table merge(Collection<Table> tables) {
-        return merge(tables.toArray(TableWithDefaults.ZERO_LENGTH_TABLE_ARRAY));
+        return merge(tables.toArray(ZERO_LENGTH_TABLE_ARRAY));
     }
 
     /**
@@ -1018,12 +995,12 @@ public class TableTools {
             // return proxyMerge;
             // }
 
-            final List<Table> tableList = TableToolsMergeHelper.getTablesToMerge(Arrays.stream(tables), tables.length);
-            if (tableList == null || tableList.isEmpty()) {
-                throw new IllegalArgumentException("no tables provided to merge");
+            final List<Table> tablesToMerge = TableToolsMergeHelper
+                    .getTablesToMerge(Arrays.stream(tables), tables.length);
+            if (tablesToMerge == null || tablesToMerge.isEmpty()) {
+                throw new IllegalArgumentException("No non-null tables provided to merge");
             }
-
-            return TableToolsMergeHelper.mergeInternal(tableList.get(0).getDefinition(), tableList, null);
+            return PartitionedTableFactory.ofTables(tablesToMerge.toArray(ZERO_LENGTH_TABLE_ARRAY)).merge();
         });
     }
 
@@ -1063,8 +1040,9 @@ public class TableTools {
      */
     @ScriptApi
     public static Table roundDecimalColumns(Table table) {
-        Set<String> columnsToRound = new HashSet<>(table.getColumns().length);
-        for (ColumnDefinition<?> columnDefinition : table.getDefinition().getColumns()) {
+        final List<ColumnDefinition<?>> columnDefinitions = table.getDefinition().getColumns();
+        Set<String> columnsToRound = new HashSet<>(columnDefinitions.size());
+        for (ColumnDefinition<?> columnDefinition : columnDefinitions) {
             Class<?> type = columnDefinition.getDataType();
             if (type.equals(double.class) || type.equals(float.class)) {
                 columnsToRound.add(columnDefinition.getName());
@@ -1086,8 +1064,9 @@ public class TableTools {
         Set<String> columnsNotToRoundSet = new HashSet<>(columnsNotToRound.length * 2);
         Collections.addAll(columnsNotToRoundSet, columnsNotToRound);
 
-        Set<String> columnsToRound = new HashSet<>(table.getColumns().length);
-        for (ColumnDefinition<?> columnDefinition : table.getDefinition().getColumns()) {
+        final List<ColumnDefinition<?>> columnDefinitions = table.getDefinition().getColumns();
+        Set<String> columnsToRound = new HashSet<>(columnDefinitions.size());
+        for (ColumnDefinition<?> columnDefinition : columnDefinitions) {
             Class<?> type = columnDefinition.getDataType();
             String colName = columnDefinition.getName();
             if ((type.equals(double.class) || type.equals(float.class)) && !columnsNotToRoundSet.contains(colName)) {
@@ -1113,7 +1092,7 @@ public class TableTools {
         }
         List<String> updateDescriptions = new LinkedList<>();
         for (String colName : columns) {
-            Class<?> colType = table.getColumn(colName).getType();
+            Class<?> colType = table.getDefinition().getColumn(colName).getDataType();
             if (!(colType.equals(double.class) || colType.equals(float.class)))
                 throw new IllegalArgumentException("Column \"" + colName + "\" is not a decimal column!");
             updateDescriptions.add(colName + "=round(" + colName + ')');
@@ -1151,7 +1130,7 @@ public class TableTools {
 
         // Now add in the Table definition
         final TableDefinition def = source.getDefinition();
-        for (final ColumnDefinition<?> cd : def.getColumnList()) {
+        for (final ColumnDefinition<?> cd : def.getColumns()) {
             osw.writeChars(cd.getName());
             osw.writeChars(cd.getDataType().getName());
         }

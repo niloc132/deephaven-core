@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.client.impl;
 
 import io.deephaven.extensions.barrage.BarrageSnapshotOptions;
@@ -49,7 +48,7 @@ public class BarrageSession extends FlightSession implements BarrageSubscription
 
     @Override
     public BarrageSubscription subscribe(final TableHandle tableHandle, final BarrageSubscriptionOptions options) {
-        return new BarrageSubscriptionImpl(this, tableHandle.newRef(), options);
+        return new BarrageSubscriptionImpl(this, session.executor(), tableHandle.newRef(), options);
     }
 
     @Override
@@ -62,7 +61,7 @@ public class BarrageSession extends FlightSession implements BarrageSubscription
 
     @Override
     public BarrageSnapshot snapshot(final TableHandle tableHandle, final BarrageSnapshotOptions options) {
-        return new BarrageSnapshotImpl(this, tableHandle.newRef(), options);
+        return new BarrageSnapshotImpl(this, session.executor(), tableHandle.newRef(), options);
     }
 
     public Channel channel() {

@@ -1,8 +1,11 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.log.LogOutput;
 import io.deephaven.configuration.Configuration;
-import io.deephaven.engine.table.ShiftObliviousListener;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.TableListener;
 import io.deephaven.engine.updategraph.*;
 import io.deephaven.internal.log.LoggerFactory;
@@ -23,8 +26,8 @@ import org.jetbrains.annotations.NotNull;
  * clock changes, we were not gotNotification, and no notifications were enqueued; then we have a successful snapshot
  * and can return true. We then set the currentListener, so that all future calls are forwarded to the listener.
  *
- * Use either {@link ShiftObliviousSwapListener} or {@link SwapListener} depending on which ShiftObliviousListener
- * interface you are using.
+ * Use either {@link ShiftObliviousSwapListener} or {@link SwapListener} depending on which TableListener interface you
+ * are using.
  */
 public abstract class SwapListenerBase<T extends TableListener> extends LivenessArtifact implements TableListener {
     protected static final boolean DEBUG =
@@ -106,7 +109,7 @@ public abstract class SwapListenerBase<T extends TableListener> extends Liveness
     protected synchronized boolean end(@SuppressWarnings("unused") final long clockCycle) {
         if (isInInitialNotificationWindow()) {
             if (eventualListener == null) {
-                throw new IllegalStateException("ShiftObliviousListener has not been set on end!");
+                throw new IllegalStateException("Listener has not been set on end!");
             }
             if (eventualResult == null) {
                 throw new IllegalStateException("Result has not been set on end!");
@@ -158,7 +161,7 @@ public abstract class SwapListenerBase<T extends TableListener> extends Liveness
 
     /**
      * Set the listener that will eventually become the listener, if we have a successful swap.
-     * 
+     *
      * @param listener The listener that we will eventually forward all updates to
      * @param resultTable The table that will result from this operation
      */
@@ -176,8 +179,7 @@ public abstract class SwapListenerBase<T extends TableListener> extends Liveness
     }
 
     /**
-     * Invoke {@link QueryTable#listenForUpdates(ShiftObliviousListener)} for the appropriate subclass of
-     * {@link SwapListenerBase}.
+     * Invoke {@link QueryTable#listenForUpdates} for the appropriate subclass of {@link SwapListenerBase}.
      */
     public abstract void subscribeForUpdates();
 
@@ -221,11 +223,16 @@ public abstract class SwapListenerBase<T extends TableListener> extends Liveness
                         .append(System.identityHashCode(SwapListenerBase.this))
                         .append(", clock=")
                         .append(LogicalClock.DEFAULT.currentStep()).endl();
-                notification.run();
+                notification.runInContext();
                 log.info().append("SwapListener: Complete notification ")
                         .append(System.identityHashCode(sourceTable))
                         .append(" swap=")
                         .append(System.identityHashCode(SwapListenerBase.this)).endl();
+            }
+
+            @Override
+            public ExecutionContext getExecutionContext() {
+                return null;
             }
         };
     }

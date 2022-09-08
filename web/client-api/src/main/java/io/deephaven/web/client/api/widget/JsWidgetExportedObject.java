@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api.widget;
 
 import elemental2.promise.Promise;
@@ -28,7 +31,7 @@ public class JsWidgetExportedObject {
     }
 
     @JsMethod
-    public Promise<Object> fetch() {
+    public Promise<?> fetch() {
         if (getType().equals(JsVariableChanges.TABLE)) {
             return Callbacks.<ExportedTableCreationResponse, Object>grpcUnaryPromise(c -> {
                 connection.tableServiceClient().getExportedTableCreationResponse(ticket.getTicket(),

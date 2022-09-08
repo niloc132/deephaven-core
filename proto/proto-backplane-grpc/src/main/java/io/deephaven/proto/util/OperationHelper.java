@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.proto.util;
 
 import io.deephaven.proto.backplane.grpc.BatchTableRequest.Operation;
@@ -77,6 +80,8 @@ public class OperationHelper {
                 return op.getCreateInputTable().hasSourceTableId()
                         ? Stream.of(op.getCreateInputTable().getSourceTableId())
                         : Stream.empty();
+            case UPDATE_BY:
+                return Stream.of(op.getUpdateBy().getSourceId());
             case OP_NOT_SET:
                 throw new IllegalStateException("Operation id not set");
             default:

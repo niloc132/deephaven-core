@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.web.client.api;
 
 import elemental2.core.JsArray;
@@ -38,8 +41,8 @@ import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.Lo
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb_service.ConsoleServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.inputtable_pb_service.InputTableServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectRequest;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb_service.ObjectServiceClient;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.partitionedtable_pb_service.PartitionedTableServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.session_pb.HandshakeRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.session_pb.HandshakeResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.session_pb.ReleaseRequest;
@@ -101,6 +104,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -176,6 +180,7 @@ public class WorkerConnection {
     private BrowserFlightServiceClient browserFlightServiceClient;
     private InputTableServiceClient inputTableServiceClient;
     private ObjectServiceClient objectServiceClient;
+    private PartitionedTableServiceClient partitionedTableServiceClient;
 
     private final StateCache cache = new StateCache();
     private final JsWeakMap<HasTableBinding, RequestBatcher> batchers = new JsWeakMap<>();
@@ -186,8 +191,6 @@ public class WorkerConnection {
 
     private final Map<ClientTableState, BiDiStream<FlightData, FlightData>> subscriptionStreams = new HashMap<>();
     private ResponseStreamWrapper<ExportedTableUpdateMessage> exportNotifications;
-
-    private Map<TableMapHandle, TableMap> tableMaps = new HashMap<>();
 
     private JsSet<JsFigure> figures = new JsSet<>();
 
@@ -219,6 +222,8 @@ public class WorkerConnection {
         inputTableServiceClient =
                 new InputTableServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
         objectServiceClient = new ObjectServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
+        partitionedTableServiceClient =
+                new PartitionedTableServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
 
         // builder.setConnectionErrorHandler(msg -> info.failureHandled(String.valueOf(msg)));
 
@@ -307,7 +312,6 @@ public class WorkerConnection {
 
                     reviver.revive(metadata, hasActiveSubs);
 
-                    tableMaps.forEach((handle, tableMap) -> tableMap.refetch());
                     figures.forEach((p0, p1, p2) -> p0.refetch());
 
                     info.connected();
@@ -554,15 +558,7 @@ public class WorkerConnection {
 
     // @Override
     public void onClose(int code, String message) {
-        // notify all active tables, tablemaps, and figures that the connection is closed
-        tableMaps.values().forEach(tableMap -> {
-            try {
-                tableMap.fireEvent(TableMap.EVENT_DISCONNECT);
-                tableMap.suppressEvents();
-            } catch (Exception e) {
-                JsLog.warn("Error in firing TableMap.EVENT_DISCONNECT event", e);
-            }
-        });
+        // notify all active tables and figures that the connection is closed
         figures.forEach((p0, p1, p2) -> {
             try {
                 p0.fireEvent(JsFigure.EVENT_DISCONNECT);
@@ -653,6 +649,46 @@ public class WorkerConnection {
         info.failureHandled(throwable.toString());
     }
 
+    public Promise<JsVariableDefinition> getVariableDefinition(String name, String type) {
+        LazyPromise<JsVariableDefinition> promise = new LazyPromise<>();
+
+        final class Listener implements Consumer<JsVariableChanges> {
+            final JsRunnable subscription;
+
+            Listener() {
+                subscription = subscribeToFieldUpdates(this::accept);
+            }
+
+            @Override
+            public void accept(JsVariableChanges changes) {
+                JsVariableDefinition foundField = changes.getCreated()
+                        .find((field, p1, p2) -> field.getTitle().equals(name) && field.getType().equals(type));
+
+                if (foundField == null) {
+                    foundField = changes.getUpdated().find((field, p1, p2) -> field.getTitle().equals(name)
+                            && field.getType().equals(type));
+                }
+
+                if (foundField != null) {
+                    subscription.run();
+                    promise.succeed(foundField);
+                }
+            }
+        }
+
+        Listener listener = new Listener();
+
+        return promise
+                .timeout(10_000)
+                .asPromise()
+                .then(Promise::resolve, fail -> {
+                    listener.subscription.run();
+                    // noinspection unchecked, rawtypes
+                    return (Promise<JsVariableDefinition>) (Promise) Promise
+                            .reject(fail);
+                });
+    }
+
     public Promise<JsTable> getTable(JsVariableDefinition varDef, @Nullable Boolean applyPreviewColumns) {
         return whenServerReady("get a table").then(serve -> {
             JsLog.debug("innerGetTable", varDef.getTitle(), " started");
@@ -680,31 +716,48 @@ public class WorkerConnection {
         });
     }
 
-    public Promise<JsTable> getPandas(JsVariableDefinition varDef) {
-        return whenServerReady("get a pandas table").then(serve -> {
-            JsLog.debug("innerGetPandasTable", varDef.getTitle(), " started");
-            return newState(info,
-                    (c, cts, metadata) -> {
-                        JsLog.debug("performing fetch for ", varDef.getTitle(), " / ", cts,
-                                " (" + LazyString.of(cts::getHandle), ")");
-                        throw new UnsupportedOperationException("getPandas");
-
-                    }, "fetch pandas table " + varDef.getTitle()).then(cts -> {
-                        JsLog.debug("innerGetPandasTable", varDef.getTitle(), " succeeded ", cts);
-                        JsTable table = new JsTable(this, cts);
-                        return Promise.resolve(table);
-                    });
-        });
+    public Promise<?> getObject(JsVariableDefinition definition) {
+        if (JsVariableChanges.TABLE.equals(definition.getType())) {
+            return getTable(definition, null);
+        } else if (JsVariableChanges.FIGURE.equals(definition.getType())) {
+            return getFigure(definition);
+        } else if (JsVariableChanges.PANDAS.equals(definition.getType())) {
+            return getWidget(definition)
+                    .then(widget -> widget.getExportedObjects()[0].fetch());
+        } else if (JsVariableChanges.PARTITIONEDTABLE.equals(definition.getType())) {
+            return getPartitionedTable(definition);
+        } else {
+            if (JsVariableChanges.TABLEMAP.equals(definition.getType())) {
+                JsLog.warn(
+                        "TableMap is now known as PartitionedTable, fetching as a plain widget. To fetch as a PartitionedTable use that as the type.");
+            }
+            return getWidget(definition);
+        }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public Promise<Object> getObject(JsVariableDefinition definition) {
-        if (definition.getType().equals(JsVariableChanges.TABLE)) {
-            return (Promise) getTable(definition, null);
-        } else if (definition.getType().equals(JsVariableChanges.FIGURE)) {
-            return (Promise) getFigure(definition);
+    public Promise<?> getJsObject(JsPropertyMap<Object> definitionObject) {
+        if (definitionObject instanceof JsVariableDefinition) {
+            return getObject((JsVariableDefinition) definitionObject);
+        }
+
+        if (!definitionObject.has("type")) {
+            throw new IllegalArgumentException("no type field; could not getObject");
+        }
+        String type = definitionObject.getAsAny("type").asString();
+
+        boolean hasName = definitionObject.has("name");
+        boolean hasId = definitionObject.has("id");
+        if (hasName && hasId) {
+            throw new IllegalArgumentException("has both name and id field; could not getObject");
+        } else if (hasName) {
+            String name = definitionObject.getAsAny("name").asString();
+            return getVariableDefinition(name, type)
+                    .then(this::getObject);
+        } else if (hasId) {
+            String id = definitionObject.getAsAny("id").asString();
+            return getObject(new JsVariableDefinition(type, null, id, null));
         } else {
-            return (Promise) getWidget(definition);
+            throw new IllegalArgumentException("no name/id field; could not construct getObject");
         }
     }
 
@@ -793,14 +846,10 @@ public class WorkerConnection {
         }
     }
 
-    public Promise<TableMap> getTableMap(String tableMapName) {
-        return whenServerReady("get a tablemap")
-                .then(server -> Promise.resolve(new TableMap(this, tableMapName))
-                        .then(TableMap::refetch));
-    }
-
-    public void registerTableMap(TableMapHandle handle, TableMap tableMap) {
-        tableMaps.put(handle, tableMap);
+    public Promise<JsPartitionedTable> getPartitionedTable(JsVariableDefinition varDef) {
+        return whenServerReady("get a partitioned table")
+                .then(server -> new JsPartitionedTable(this, new JsWidget(this, c -> fetchObject(varDef, c)))
+                        .refetch());
     }
 
     public Promise<JsTreeTable> getTreeTable(JsVariableDefinition varDef) {
@@ -816,26 +865,23 @@ public class WorkerConnection {
             throw new IllegalArgumentException("Can't load as a figure: " + varDef.getType());
         }
         return whenServerReady("get a figure")
-                .then(server -> new JsFigure(this, c -> {
-                    FetchObjectRequest request = new FetchObjectRequest();
-                    TypedTicket typedTicket = new TypedTicket();
-                    typedTicket.setTicket(TableTicket.createTicket(varDef));
-                    typedTicket.setType(varDef.getType());
-                    request.setSourceId(typedTicket);
-                    objectServiceClient().fetchObject(request, metadata(), c::apply);
-                }).refetch());
+                .then(server -> new JsFigure(this,
+                        c -> fetchObject(varDef, (fail, success, ignore) -> c.apply(fail, success))).refetch());
+    }
+
+    private void fetchObject(JsVariableDefinition varDef, JsWidget.WidgetFetchCallback c) {
+        FetchObjectRequest request = new FetchObjectRequest();
+        TypedTicket typedTicket = new TypedTicket();
+        typedTicket.setTicket(TableTicket.createTicket(varDef));
+        typedTicket.setType(varDef.getType());
+        request.setSourceId(typedTicket);
+        objectServiceClient().fetchObject(request, metadata(),
+                (fail, success) -> c.handleResponse(fail, success, typedTicket.getTicket()));
     }
 
     public Promise<JsWidget> getWidget(JsVariableDefinition varDef) {
         return whenServerReady("get a widget")
-                .then(server -> Callbacks.<FetchObjectResponse, Object>grpcUnaryPromise(c -> {
-                    FetchObjectRequest request = new FetchObjectRequest();
-                    TypedTicket typedTicket = new TypedTicket();
-                    typedTicket.setTicket(TableTicket.createTicket(varDef));
-                    typedTicket.setType(varDef.getType());
-                    request.setSourceId(typedTicket);
-                    objectServiceClient().fetchObject(request, metadata(), c::apply);
-                })).then(response -> Promise.resolve(new JsWidget(this, response)));
+                .then(response -> new JsWidget(this, c -> fetchObject(varDef, c)).refetch());
     }
 
     public void registerFigure(JsFigure figure) {
@@ -873,6 +919,10 @@ public class WorkerConnection {
 
     public ObjectServiceClient objectServiceClient() {
         return objectServiceClient;
+    }
+
+    public PartitionedTableServiceClient partitionedTableServiceClient() {
+        return partitionedTableServiceClient;
     }
 
     public BrowserHeaders metadata() {
@@ -945,9 +995,9 @@ public class WorkerConnection {
             // table's creation, which can race this
             BiDiStream<FlightData, FlightData> stream = this.<FlightData, FlightData>streamFactory().create(
                     headers -> flightServiceClient.doPut(headers),
-                    (firstPayload, headers) -> browserFlightServiceClient.openDoPut(firstPayload, headers),
-                    (nextPayload, headers, callback) -> browserFlightServiceClient.nextDoPut(nextPayload, headers,
-                            callback::apply));
+                    (first, headers) -> browserFlightServiceClient.openDoPut(first, headers),
+                    (next, headers, callback) -> browserFlightServiceClient.nextDoPut(next, headers, callback::apply),
+                    new FlightData());
             stream.send(schemaMessage);
 
             stream.onEnd(status -> {
@@ -1071,31 +1121,6 @@ public class WorkerConnection {
             }
         }
         return null;
-    }
-
-    // @Override
-    public void tableMapStringKeyAdded(TableMapHandle handle, String key) {
-        tableMapKeyAdded(handle, key);
-    }
-
-    // @Override
-    public void tableMapStringArrayKeyAdded(TableMapHandle handle, String[] key) {
-        tableMapKeyAdded(handle, key);
-    }
-
-    private void tableMapKeyAdded(TableMapHandle handle, Object key) {
-        TableMap tableMap = tableMaps.get(handle);
-        if (tableMap != null) {
-            tableMap.notifyKeyAdded(key);
-        }
-    }
-
-    public void releaseTableMap(TableMap tableMap, TableMapHandle tableMapHandle) {
-        // server.releaseTableMap(tableMapHandle);
-        LazyPromise.runLater(() -> {
-            TableMap removed = tableMaps.remove(tableMapHandle);
-            assert removed == tableMap;
-        });
     }
 
     private TableTicket newHandle() {
@@ -1284,7 +1309,7 @@ public class WorkerConnection {
                 // TODO #188 support minUpdateIntervalMs
                 double serializationOptionsOffset = BarrageSubscriptionOptions
                         .createBarrageSubscriptionOptions(subscriptionReq, ColumnConversionMode.Stringify, true, 1000,
-                                0);
+                                0, 0);
                 double tableTicketOffset =
                         BarrageSubscriptionRequest.createTicketVector(subscriptionReq, state.getHandle().getTicket());
                 BarrageSubscriptionRequest.startBarrageSubscriptionRequest(subscriptionReq);
@@ -1300,9 +1325,9 @@ public class WorkerConnection {
 
                 BiDiStream<FlightData, FlightData> stream = this.<FlightData, FlightData>streamFactory().create(
                         headers -> flightServiceClient.doExchange(headers),
-                        (firstPayload, headers) -> browserFlightServiceClient.openDoExchange(firstPayload, headers),
-                        (nextPayload, headers, c) -> browserFlightServiceClient.nextDoExchange(nextPayload, headers,
-                                c::apply));
+                        (first, headers) -> browserFlightServiceClient.openDoExchange(first, headers),
+                        (next, headers, c) -> browserFlightServiceClient.nextDoExchange(next, headers, c::apply),
+                        new FlightData());
 
                 stream.send(request);
                 stream.onData(new JsConsumer<FlightData>() {
@@ -1336,14 +1361,35 @@ public class WorkerConnection {
                     }
 
                     private DeltaUpdatesBuilder nextDeltaUpdates;
+                    private DeltaUpdates deferredDeltaUpdates;
 
                     private void appendAndMaybeFlush(RecordBatch header, ByteBuffer body) {
                         // using existing barrageUpdate, append to the current snapshot/delta
                         assert nextDeltaUpdates != null;
                         boolean shouldFlush = nextDeltaUpdates.appendRecordBatch(header, body);
                         if (shouldFlush) {
-                            incrementalUpdates(state.getHandle(), nextDeltaUpdates.build());
+                            DeltaUpdates updates = nextDeltaUpdates.build();
                             nextDeltaUpdates = null;
+
+                            if (state.getTableDef().getAttributes().isStreamTable()) {
+                                // stream tables remove all rows from the previous step, if there are no adds this step
+                                // then defer removal until new data arrives -- this makes stream tables GUI friendly
+                                if (updates.getAdded().isEmpty()) {
+                                    if (deferredDeltaUpdates != null) {
+                                        final RangeSet removed = deferredDeltaUpdates.getRemoved();
+                                        updates.getRemoved().rangeIterator().forEachRemaining(removed::addRange);
+                                    } else {
+                                        deferredDeltaUpdates = updates;
+                                    }
+                                    return;
+                                } else if (deferredDeltaUpdates != null) {
+                                    assert updates.getRemoved().isEmpty()
+                                            : "Stream table received two consecutive remove rowsets";
+                                    updates.setRemoved(deferredDeltaUpdates.getRemoved());
+                                    deferredDeltaUpdates = null;
+                                }
+                            }
+                            incrementalUpdates(state.getHandle(), updates);
                         }
                     }
 
@@ -1427,7 +1473,7 @@ public class WorkerConnection {
                 LogItem logItem = new LogItem();
                 logItem.setLogLevel(data.getLogLevel());
                 logItem.setMessage(data.getMessage());
-                logItem.setMicros(data.getMicros());
+                logItem.setMicros((double) java.lang.Long.parseLong(data.getMicros()));
 
                 notifyLog(logItem);
             });

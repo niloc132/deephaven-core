@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.vector;
 
 import java.util.Arrays;
@@ -17,6 +16,8 @@ public class ObjectVectorDirect<T> implements ObjectVector<T> {
         this.data = data;
         componentType = (Class<T>) (data == null ? Object.class : data.getClass().getComponentType());
     }
+
+    public static final ObjectVector<?> ZERO_LEN_VECTOR = new ObjectVectorDirect<>();
 
     @Override
     public T get(long i) {

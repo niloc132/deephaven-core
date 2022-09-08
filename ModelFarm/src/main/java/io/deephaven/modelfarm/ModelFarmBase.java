@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.modelfarm;
 
 import io.deephaven.base.verify.Assert;
@@ -207,7 +206,7 @@ public abstract class ModelFarmBase<DATATYPE> implements ModelFarm {
      * @return A function that runs a {@link }
      */
     @SuppressWarnings("WeakerAccess")
-    protected static FunctionalInterfaces.ThrowingBiConsumer<QueryDataRetrievalOperation, NotificationStepSource, RuntimeException> getDoLockedConsumer(
+    protected static FunctionalInterfaces.ThrowingBiConsumer<QueryDataRetrievalOperation, Table, RuntimeException> getDoLockedConsumer(
             final GetDataLockType lockType) {
         switch (lockType) {
             case UGP_LOCK_ALREADY_HELD:
@@ -222,7 +221,8 @@ public abstract class ModelFarmBase<DATATYPE> implements ModelFarm {
                 return (queryDataRetrievalOperation, source) -> {
                     try {
                         ConstructSnapshot.callDataSnapshotFunction("ModelFarmBase.getData(SNAPSHOT)",
-                                ConstructSnapshot.makeSnapshotControl(false, source),
+                                ConstructSnapshot.makeSnapshotControl(false, source.isRefreshing(),
+                                        (NotificationStepSource) source),
                                 (usePrev, beforeClockValue) -> {
                                     queryDataRetrievalOperation.retrieveData(usePrev);
                                     return true; // This indicates that the snapshot ran OK, not that the data is OK.

@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.csv;
 
 import io.deephaven.api.util.NameValidator;
@@ -23,6 +22,7 @@ import io.deephaven.chunk.WritableShortChunk;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.csv.CsvSpecs.Builder;
 import io.deephaven.csv.reading.CsvReader;
+import io.deephaven.csv.reading.CsvReader.ResultColumn;
 import io.deephaven.csv.sinks.Sink;
 import io.deephaven.csv.sinks.SinkFactory;
 import io.deephaven.csv.sinks.Source;
@@ -219,18 +219,12 @@ public class CsvTools {
     @ScriptApi
     public static Table readCsv(InputStream stream, CsvSpecs specs) throws CsvReaderException {
         final CsvReader.Result result = CsvReader.read(specs, stream, makeMySinkFactory());
-        final String[] columnNames = result.columnNames();
-        final Sink<?>[] sinks = result.columns();
-        final Map<String, ColumnSource<?>> columns = new LinkedHashMap<>();
-        long maxSize = 0;
-        for (int ii = 0; ii < columnNames.length; ++ii) {
-            final String columnName = columnNames[ii];
-            final MySinkBase<?, ?> sink = (MySinkBase<?, ?>) sinks[ii];
-            maxSize = Math.max(maxSize, sink.resultSize());
-            columns.put(columnName, sink.result());
+        final Map<String, ColumnSource<?>> columns = new LinkedHashMap<>(result.numCols());
+        for (ResultColumn column : result) {
+            columns.put(column.name(), (ColumnSource<?>) column.data());
         }
         final TableDefinition tableDef = TableDefinition.inferFrom(columns);
-        final TrackingRowSet rowSet = RowSetFactory.flat(maxSize).toTracking();
+        final TrackingRowSet rowSet = RowSetFactory.flat(result.numRows()).toTracking();
         return InMemoryTable.from(tableDef, rowSet, columns);
     }
 
@@ -1016,6 +1010,11 @@ public class CsvTools {
             return result;
         }
 
+        @Override
+        public Object getUnderlying() {
+            return result;
+        }
+
         public long resultSize() {
             return resultSize;
         }
@@ -1054,7 +1053,7 @@ public class CsvTools {
     }
 
     private static final class MyCharSink extends MySinkBase<Character, char[]> {
-        public MyCharSink() {
+        public MyCharSink(int columnIndex) {
             super(new CharacterArraySource(), null, CharChunk::chunkWrap);
         }
 
@@ -1069,7 +1068,7 @@ public class CsvTools {
     }
 
     private static final class MyBooleanAsByteSink extends MySinkBase<Boolean, byte[]> {
-        public MyBooleanAsByteSink() {
+        public MyBooleanAsByteSink(int columnIndex) {
             super(new BooleanArraySource(), byte.class, ByteChunk::chunkWrap);
         }
 
@@ -1084,7 +1083,7 @@ public class CsvTools {
     }
 
     private static final class MyByteSink extends MySourceAndSinkBase<Byte, byte[]> {
-        public MyByteSink() {
+        public MyByteSink(int columnIndex) {
             super(new ByteArraySource(), null, ByteChunk::chunkWrap, WritableByteChunk::writableChunkWrap);
         }
 
@@ -1106,7 +1105,7 @@ public class CsvTools {
     }
 
     private static final class MyShortSink extends MySourceAndSinkBase<Short, short[]> {
-        public MyShortSink() {
+        public MyShortSink(int columnIndex) {
             super(new ShortArraySource(), null, ShortChunk::chunkWrap, WritableShortChunk::writableChunkWrap);
         }
 
@@ -1128,7 +1127,7 @@ public class CsvTools {
     }
 
     private static final class MyIntSink extends MySourceAndSinkBase<Integer, int[]> {
-        public MyIntSink() {
+        public MyIntSink(int columnIndex) {
             super(new IntegerArraySource(), null, IntChunk::chunkWrap, WritableIntChunk::writableChunkWrap);
         }
 
@@ -1150,7 +1149,7 @@ public class CsvTools {
     }
 
     private static final class MyLongSink extends MySourceAndSinkBase<Long, long[]> {
-        public MyLongSink() {
+        public MyLongSink(int columnIndex) {
             super(new LongArraySource(), null, LongChunk::chunkWrap, WritableLongChunk::writableChunkWrap);
         }
 
@@ -1173,7 +1172,7 @@ public class CsvTools {
     }
 
     private static final class MyFloatSink extends MySinkBase<Float, float[]> {
-        public MyFloatSink() {
+        public MyFloatSink(int columnIndex) {
             super(new FloatArraySource(), null, FloatChunk::chunkWrap);
         }
 
@@ -1188,7 +1187,7 @@ public class CsvTools {
     }
 
     private static final class MyDoubleSink extends MySinkBase<Double, double[]> {
-        public MyDoubleSink() {
+        public MyDoubleSink(int columnIndex) {
             super(new DoubleArraySource(), null, DoubleChunk::chunkWrap);
         }
 
@@ -1203,7 +1202,7 @@ public class CsvTools {
     }
 
     private static final class MyStringSink extends MySinkBase<String, String[]> {
-        public MyStringSink() {
+        public MyStringSink(int columnIndex) {
             super(new ObjectArraySource<>(String.class), null, ObjectChunk::chunkWrap);
         }
 
@@ -1218,7 +1217,7 @@ public class CsvTools {
     }
 
     private static final class MyDateTimeAsLongSink extends MySinkBase<DateTime, long[]> {
-        public MyDateTimeAsLongSink() {
+        public MyDateTimeAsLongSink(int columnIndex) {
             super(new DateTimeArraySource(), long.class, LongChunk::chunkWrap);
         }
 

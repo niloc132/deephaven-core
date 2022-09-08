@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.server.console.groovy;
 
 import dagger.Module;
@@ -25,7 +28,7 @@ public class GroovyConsoleSessionModule {
     GroovyDeephavenSession bindGroovySession(ObjectTypeLookup lookup, final ScriptSession.Listener listener,
             final RunScripts runScripts) {
         try {
-            return new GroovyDeephavenSession(lookup, listener, runScripts, true);
+            return new GroovyDeephavenSession(lookup, listener, runScripts);
         } catch (final IOException e) {
             throw new UncheckedIOException(e);
         }

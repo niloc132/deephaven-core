@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.server.util;
 
 import com.google.common.collect.Ordering;
@@ -19,6 +22,11 @@ public class TestControlledScheduler implements Scheduler {
 
     private final TreeMultimap<DateTime, Runnable> workQueue =
             TreeMultimap.create(Ordering.natural(), Ordering.arbitrary());
+
+    @Override
+    public boolean inTestMode() {
+        return true;
+    }
 
     /**
      * Runs the first queued command if there are any.

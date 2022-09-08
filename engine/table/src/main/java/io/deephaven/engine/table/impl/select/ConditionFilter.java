@@ -1,12 +1,12 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.Pair;
 import io.deephaven.chunk.attributes.Any;
-import io.deephaven.compilertools.CompilerTools;
+import io.deephaven.engine.context.QueryCompiler;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.Context;
 import io.deephaven.engine.table.SharedContext;
@@ -16,8 +16,7 @@ import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.lang.QueryLanguageParser;
 import io.deephaven.engine.table.impl.util.codegen.CodeGenerator;
-import io.deephaven.engine.table.lang.QueryLibrary;
-import io.deephaven.engine.table.lang.QueryScopeParam;
+import io.deephaven.engine.context.QueryScopeParam;
 import io.deephaven.time.DateTimeUtils;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceNugget;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
@@ -50,6 +49,7 @@ public class ConditionFilter extends AbstractConditionFilter {
     private List<Pair<String, Class>> usedInputs; // that is columns and special variables
     private String classBody;
     private Filter filter = null;
+    private boolean filterValidForCopy = true;
 
     private ConditionFilter(@NotNull String formula) {
         super(formula, false);
@@ -390,8 +390,9 @@ public class ConditionFilter extends AbstractConditionFilter {
                 addParamClass.accept(QueryScopeParamTypeUtil.getDeclaredClass(param.getValue()));
             }
 
-            filterKernelClass = CompilerTools.compile("GeneratedFilterKernel", this.classBody = classBody.toString(),
-                    CompilerTools.FORMULA_PREFIX, QueryScopeParamTypeUtil.expandParameterClasses(paramClasses));
+            filterKernelClass = ExecutionContext.getContext().getQueryCompiler()
+                    .compile("GeneratedFilterKernel", this.classBody = classBody.toString(),
+                            QueryCompiler.FORMULA_PREFIX, QueryScopeParamTypeUtil.expandParameterClasses(paramClasses));
         } finally {
             nugget.done();
         }
@@ -420,8 +421,11 @@ public class ConditionFilter extends AbstractConditionFilter {
             usedInputs.add(new Pair<>("k", long.class));
         }
         final StringBuilder classBody = new StringBuilder();
-        classBody.append(CodeGenerator.create(QueryLibrary.getImportStrings().toArray()).build()).append(
-                "\n\npublic class $CLASSNAME$ implements ")
+        classBody
+                .append(CodeGenerator
+                        .create(ExecutionContext.getContext().getQueryLibrary().getImportStrings().toArray()).build())
+                .append(
+                        "\n\npublic class $CLASSNAME$ implements ")
                 .append(FilterKernel.class.getCanonicalName()).append("<FilterKernel.Context>{\n");
         classBody.append("\n").append(timeConversionResult.getInstanceVariablesString()).append("\n");
         final Indenter indenter = new Indenter();
@@ -456,18 +460,23 @@ public class ConditionFilter extends AbstractConditionFilter {
         }
 
         classBody.append("\n").append(indenter)
-                .append("public $CLASSNAME$(Table table, RowSet fullSet, QueryScopeParam... params) {\n");
+                .append("public $CLASSNAME$(Table __table, RowSet __fullSet, QueryScopeParam... __params) {\n");
         indenter.increaseLevel();
         for (int i = 0; i < params.length; i++) {
             final QueryScopeParam param = params[i];
             /*
-             * Initializing context parameters this.p1 = (Integer) params[0].getValue(); this.p2 = (Float)
-             * params[1].getValue(); this.p3 = (String) params[2].getValue();
+             * @formatter:off
+             * Initializing context parameters:
+             *
+             * this.p1 = (Integer) __params[0].getValue();
+             * this.p2 = (Float) __params[1].getValue();
+             * this.p3 = (String) __params[2].getValue();
+             * @formatter:on
              */
             final String name = param.getName();
             classBody.append(indenter).append("this.").append(name).append(" = (")
                     .append(QueryScopeParamTypeUtil.getDeclaredTypeName(param.getValue()))
-                    .append(") params[").append(i).append("].getValue();\n");
+                    .append(") __params[").append(i).append("].getValue();\n");
         }
 
         if (!usedColumnArrays.isEmpty()) {
@@ -489,8 +498,8 @@ public class ConditionFilter extends AbstractConditionFilter {
                  * Adding array column fields.
                  */
                 classBody.append(indenter).append(column.getName()).append(COLUMN_SUFFIX).append(" = new ")
-                        .append(arrayType).append("(table.getColumnSource(\"").append(columnName)
-                        .append("\"), fullSet);\n");
+                        .append(arrayType).append("(__table.getColumnSource(\"").append(columnName)
+                        .append("\"), __fullSet);\n");
             }
         }
 
@@ -498,12 +507,12 @@ public class ConditionFilter extends AbstractConditionFilter {
 
         indenter.indent(classBody, "}\n" +
                 "@Override\n" +
-                "public Context getContext(int maxChunkSize) {\n" +
-                "    return new Context(maxChunkSize);\n" +
+                "public Context getContext(int __maxChunkSize) {\n" +
+                "    return new Context(__maxChunkSize);\n" +
                 "}\n" +
                 "\n" +
                 "@Override\n" +
-                "public LongChunk<OrderedRowKeys> filter(Context context, LongChunk<OrderedRowKeys> indices, Chunk... inputChunks) {\n");
+                "public LongChunk<OrderedRowKeys> filter(Context __context, LongChunk<OrderedRowKeys> __indices, Chunk... __inputChunks) {\n");
         indenter.increaseLevel();
         for (int i = 0; i < usedInputs.size(); i++) {
             final Class columnType = usedInputs.get(i).second;
@@ -515,11 +524,11 @@ public class ConditionFilter extends AbstractConditionFilter {
                 chunkType = "ObjectChunk";
             }
             classBody.append(indenter).append("final ").append(chunkType).append(" __columnChunk").append(i)
-                    .append(" = inputChunks[").append(i).append("].as").append(chunkType).append("();\n");
+                    .append(" = __inputChunks[").append(i).append("].as").append(chunkType).append("();\n");
         }
-        indenter.indent(classBody, "final int size = indices.size();\n" +
-                "context.resultChunk.setSize(0);\n" +
-                "for (int __my_i__ = 0; __my_i__ < size; __my_i__++) {\n");
+        indenter.indent(classBody, "final int __size = __indices.size();\n" +
+                "__context.resultChunk.setSize(0);\n" +
+                "for (int __my_i__ = 0; __my_i__ < __size; __my_i__++) {\n");
         indenter.increaseLevel();
         for (int i = 0; i < usedInputs.size(); i++) {
             final Pair<String, Class> usedInput = usedInputs.get(i);
@@ -531,10 +540,10 @@ public class ConditionFilter extends AbstractConditionFilter {
         }
         classBody.append(
                 "            if (").append(result.getConvertedExpression()).append(") {\n" +
-                        "                context.resultChunk.add(indices.get(__my_i__));\n" +
+                        "                __context.resultChunk.add(__indices.get(__my_i__));\n" +
                         "            }\n" +
                         "        }\n" +
-                        "        return context.resultChunk;\n" +
+                        "        return __context.resultChunk;\n" +
                         "    }\n" +
                         "}");
         return classBody;
@@ -543,14 +552,16 @@ public class ConditionFilter extends AbstractConditionFilter {
     @Override
     protected Filter getFilter(Table table, RowSet fullSet)
             throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-        if (filter != null) {
-            return filter;
+        if (filter == null) {
+            final FilterKernel<?> filterKernel = (FilterKernel<?>) filterKernelClass
+                    .getConstructor(Table.class, RowSet.class, QueryScopeParam[].class)
+                    .newInstance(table, fullSet, (Object) params);
+            final String[] columnNames = usedInputs.stream().map(p -> p.first).toArray(String[]::new);
+            filter = new ChunkFilter(filterKernel, columnNames, CHUNK_SIZE);
+            // note this filter is not valid for use in other contexts, as it captures references from the source table
+            filterValidForCopy = false;
         }
-        final FilterKernel filterKernel = (FilterKernel) filterKernelClass
-                .getConstructor(Table.class, RowSet.class, QueryScopeParam[].class)
-                .newInstance(table, fullSet, (Object) params);
-        final String[] columnNames = usedInputs.stream().map(p -> p.first).toArray(String[]::new);
-        return new ChunkFilter(filterKernel, columnNames, CHUNK_SIZE);
+        return filter;
     }
 
     @Override
@@ -560,7 +571,17 @@ public class ConditionFilter extends AbstractConditionFilter {
 
     @Override
     public ConditionFilter copy() {
-        return new ConditionFilter(formula, outerToInnerNames);
+        final ConditionFilter copy = new ConditionFilter(formula, outerToInnerNames);
+        onCopy(copy);
+        if (initialized) {
+            copy.filterKernelClass = filterKernelClass;
+            copy.usedInputs = usedInputs;
+            copy.classBody = classBody;
+            if (filterValidForCopy) {
+                copy.filter = filter;
+            }
+        }
+        return copy;
     }
 
     @Override

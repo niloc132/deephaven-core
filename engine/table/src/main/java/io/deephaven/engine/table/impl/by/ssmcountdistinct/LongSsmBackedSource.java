@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharSsmBackedSource and regenerate
@@ -36,7 +39,7 @@ public class LongSsmBackedSource extends AbstractColumnSource<LongVector>
         LongSegmentedSortedMultiset ssm = underlying.getUnsafe(key);
         if(ssm == null) {
             //region CreateNew
-            underlying.set(key, ssm = new LongSegmentedSortedMultiset(DistinctOperatorFactory.NODE_SIZE));
+            underlying.set(key, ssm = new LongSegmentedSortedMultiset(SsmDistinctContext.NODE_SIZE));
             //endregion CreateNew
         }
         ssm.setTrackDeltas(trackingPrevious);
@@ -70,13 +73,13 @@ public class LongSsmBackedSource extends AbstractColumnSource<LongVector>
     }
 
     @Override
-    public LongVector get(long index) {
-        return underlying.get(index);
+    public LongVector get(long rowKey) {
+        return underlying.get(rowKey);
     }
 
     @Override
-    public LongVector getPrev(long index) {
-        final LongSegmentedSortedMultiset maybePrev = underlying.getPrev(index);
+    public LongVector getPrev(long rowKey) {
+        final LongSegmentedSortedMultiset maybePrev = underlying.getPrev(rowKey);
         return maybePrev == null ? null : maybePrev.getPrevValues();
     }
 

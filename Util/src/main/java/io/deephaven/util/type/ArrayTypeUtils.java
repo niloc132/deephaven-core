@@ -1,7 +1,6 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.util.type;
 
 import io.deephaven.base.verify.Require;
@@ -28,6 +27,8 @@ public class ArrayTypeUtils {
     public static final float[] EMPTY_FLOAT_ARRAY = new float[0];
     public static final double[] EMPTY_DOUBLE_ARRAY = new double[0];
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+    public static final String[] EMPTY_STRING_ARRAY = new String[0];
+    public static final Boolean[] EMPTY_BOOLEANBOXED_ARRAY = new Boolean[0];
 
     public static ArrayAccessor getArrayAccessor(Object array) {
         final Class<?> c = array.getClass();

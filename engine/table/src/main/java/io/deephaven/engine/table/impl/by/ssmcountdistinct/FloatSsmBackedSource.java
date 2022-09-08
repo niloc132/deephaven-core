@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 /*
  * ---------------------------------------------------------------------------------------------------------------------
  * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharSsmBackedSource and regenerate
@@ -36,7 +39,7 @@ public class FloatSsmBackedSource extends AbstractColumnSource<FloatVector>
         FloatSegmentedSortedMultiset ssm = underlying.getUnsafe(key);
         if(ssm == null) {
             //region CreateNew
-            underlying.set(key, ssm = new FloatSegmentedSortedMultiset(DistinctOperatorFactory.NODE_SIZE));
+            underlying.set(key, ssm = new FloatSegmentedSortedMultiset(SsmDistinctContext.NODE_SIZE));
             //endregion CreateNew
         }
         ssm.setTrackDeltas(trackingPrevious);
@@ -70,13 +73,13 @@ public class FloatSsmBackedSource extends AbstractColumnSource<FloatVector>
     }
 
     @Override
-    public FloatVector get(long index) {
-        return underlying.get(index);
+    public FloatVector get(long rowKey) {
+        return underlying.get(rowKey);
     }
 
     @Override
-    public FloatVector getPrev(long index) {
-        final FloatSegmentedSortedMultiset maybePrev = underlying.getPrev(index);
+    public FloatVector getPrev(long rowKey) {
+        final FloatSegmentedSortedMultiset maybePrev = underlying.getPrev(rowKey);
         return maybePrev == null ? null : maybePrev.getPrevValues();
     }
 

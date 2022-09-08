@@ -1,9 +1,9 @@
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
  */
-
 package io.deephaven.plot.util;
 
+import io.deephaven.api.ColumnName;
 import io.deephaven.api.Selectable;
 import io.deephaven.api.agg.Aggregation;
 import io.deephaven.base.verify.Require;
@@ -13,12 +13,12 @@ import io.deephaven.plot.datasets.category.CategoryDataSeries;
 import io.deephaven.plot.datasets.data.*;
 import io.deephaven.plot.datasets.interval.IntervalXYDataSeriesArray;
 import io.deephaven.plot.errors.PlotInfo;
-import io.deephaven.plot.util.tables.TableBackedTableMapHandle;
+import io.deephaven.plot.util.tables.TableBackedPartitionedTableHandle;
 import io.deephaven.plot.util.tables.TableHandle;
 import io.deephaven.engine.table.DataColumn;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.table.lang.QueryScope;
+import io.deephaven.engine.context.QueryScope;
 import io.deephaven.time.DateTime;
 import io.deephaven.gui.color.ColorPaletteArray;
 import io.deephaven.util.QueryConstants;
@@ -40,7 +40,7 @@ import java.util.stream.IntStream;
 import static io.deephaven.api.agg.Aggregation.AggCount;
 import static io.deephaven.api.agg.Aggregation.AggLast;
 import static io.deephaven.util.QueryConstants.*;
-import static io.deephaven.function.IntegerNumericPrimitives.abs;
+import static io.deephaven.function.Numeric.abs;
 
 /**
  * Utilities class for plotting.
@@ -690,15 +690,15 @@ public class PlotUtils {
         return new TableHandle(t, cols);
     }
 
-    public static TableBackedTableMapHandle createCategoryTableMapHandle(Table t,
+    public static TableBackedPartitionedTableHandle createCategoryPartitionedTableHandle(Table t,
             final String catColumn,
             final String[] otherColumns,
             final String[] byColumns,
             final PlotInfo plotInfo) {
-        return createCategoryTableMapHandle(t, new String[] {catColumn}, otherColumns, byColumns, plotInfo);
+        return createCategoryPartitionedTableHandle(t, new String[] {catColumn}, otherColumns, byColumns, plotInfo);
     }
 
-    public static TableBackedTableMapHandle createCategoryTableMapHandle(Table t,
+    public static TableBackedPartitionedTableHandle createCategoryPartitionedTableHandle(Table t,
             final String[] catColumns,
             final String[] otherColumns,
             final String[] byColumns,
@@ -714,7 +714,7 @@ public class PlotUtils {
         Collections.addAll(columns, lastByColumns);
         columns.add(CategoryDataSeries.CAT_SERIES_ORDER_COLUMN);
 
-        return new TableBackedTableMapHandle(t, columns, byColumns, plotInfo);
+        return new TableBackedPartitionedTableHandle(t, columns, byColumns, plotInfo);
     }
 
     public static Table createCategoryTable(final Table t, final String[] catColumns) {
@@ -723,7 +723,7 @@ public class PlotUtils {
         lastColumns.removeAll(Arrays.asList(catColumns));
         final Table result = t.aggBy(
                 createCategoryAggs(AggLast(lastColumns.toArray(CollectionUtil.ZERO_LENGTH_STRING_ARRAY))),
-                Selectable.from(catColumns));
+                ColumnName.from(catColumns));
 
         // We must explicitly copy attributes because we are doing a modified manual first/lastBy which will not
         // automatically do the copy.
@@ -732,7 +732,7 @@ public class PlotUtils {
     }
 
     public static Table createCategoryHistogramTable(final Table t, final String... byColumns) {
-        return t.aggBy(createCategoryAggs(AggCount(IntervalXYDataSeriesArray.COUNT)), Selectable.from(byColumns));
+        return t.aggBy(createCategoryAggs(AggCount(IntervalXYDataSeriesArray.COUNT)), ColumnName.from(byColumns));
 
     }
 
