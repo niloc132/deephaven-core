@@ -191,3 +191,13 @@ io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.RunChartDow
 
 io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.GetCompletionItemsRequest.requestId
 io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.GetCompletionItemsResponse.requestId
+
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileKindMap.getFILE
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileKindMap.setFILE.FILE
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileKindMap.getDIRECTORY
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileKindMap.setDIRECTORY.DIRECTORY
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileKindMap.getUNKNOWN
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileKindMap.setUNKNOWN.UNKNOWN
+
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileInfo.getKind
+io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.FileInfo.setKind.value
