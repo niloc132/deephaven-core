@@ -26,23 +26,29 @@ message ListItemsRequest {
   string path = 1;// the path to the directory to list. empty to list top level
   optional string filter_glob = 2;// A pattern to filter for, with "*" as a wildcard
 }
+
 enum FileKind {
-  UNKNOWN = 0;
+  UNKNOWN = 0;// Should not be used, exists only to indicate that this was unset
   DIRECTORY = 1;
   FILE = 2;
 }
+
 message FileInfo {
   string path = 1;
   FileKind kind = 2;
+  sint64 size = 3 [jstype=JS_STRING];
 }
+
 message ListItemsResponse {
   repeated FileInfo items = 1;
 }
 
-message ByteRange {
-  sint64 start = 1;
-  sint64 end = 2;
-}
+//message ByteRange {
+//  sint64 start = 1 [jstype=JS_STRING];
+//  sint64 end = 2 [jstype=JS_STRING];
+//}
+
+
 message FetchFileRequest {
   string path = 1;
 //  ByteRange range = 2;//helpful? do we need this to save too, or have a truncate/append?
