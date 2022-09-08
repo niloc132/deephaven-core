@@ -61,13 +61,13 @@ public class FileInfo {
 
     public static native FileInfo.ToObjectReturnType toObject(boolean includeInstance, FileInfo msg);
 
-    public native double getKind();
+    public native int getKind();
 
     public native String getPath();
 
     public native Uint8Array serializeBinary();
 
-    public native void setKind(double value);
+    public native void setKind(int value);
 
     public native void setPath(String value);
 

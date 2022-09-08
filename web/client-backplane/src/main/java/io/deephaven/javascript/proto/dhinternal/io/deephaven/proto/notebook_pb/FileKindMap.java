@@ -18,20 +18,20 @@ public interface FileKindMap {
     }
 
     @JsProperty(name = "DIRECTORY")
-    double getDIRECTORY();
+    int getDIRECTORY();
 
     @JsProperty(name = "FILE")
-    double getFILE();
+    int getFILE();
 
     @JsProperty(name = "UNKNOWN")
-    double getUNKNOWN();
+    int getUNKNOWN();
 
     @JsProperty(name = "DIRECTORY")
-    void setDIRECTORY(double DIRECTORY);
+    void setDIRECTORY(int DIRECTORY);
 
     @JsProperty(name = "FILE")
-    void setFILE(double FILE);
+    void setFILE(int FILE);
 
     @JsProperty(name = "UNKNOWN")
-    void setUNKNOWN(double UNKNOWN);
+    void setUNKNOWN(int UNKNOWN);
 }
