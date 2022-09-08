@@ -21,16 +21,16 @@ public class MoveItemRequest {
         }
 
         @JsProperty
-        String getNewpath();
+        String getNewPath();
 
         @JsProperty
-        String getOldpath();
+        String getOldPath();
 
         @JsProperty
-        void setNewpath(String newpath);
+        void setNewPath(String newPath);
 
         @JsProperty
-        void setOldpath(String oldpath);
+        void setOldPath(String oldPath);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -41,16 +41,16 @@ public class MoveItemRequest {
         }
 
         @JsProperty
-        String getNewpath();
+        String getNewPath();
 
         @JsProperty
-        String getOldpath();
+        String getOldPath();
 
         @JsProperty
-        void setNewpath(String newpath);
+        void setNewPath(String newPath);
 
         @JsProperty
-        void setOldpath(String oldpath);
+        void setOldPath(String oldPath);
     }
 
     public static native MoveItemRequest deserializeBinary(Uint8Array bytes);
@@ -63,15 +63,15 @@ public class MoveItemRequest {
     public static native MoveItemRequest.ToObjectReturnType toObject(
             boolean includeInstance, MoveItemRequest msg);
 
-    public native String getNewpath();
+    public native String getNewPath();
 
-    public native String getOldpath();
+    public native String getOldPath();
 
     public native Uint8Array serializeBinary();
 
-    public native void setNewpath(String value);
+    public native void setNewPath(String value);
 
-    public native void setOldpath(String value);
+    public native void setOldPath(String value);
 
     public native MoveItemRequest.ToObjectReturnType0 toObject();
 

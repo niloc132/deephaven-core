@@ -27,10 +27,16 @@ public class FileInfo {
         String getPath();
 
         @JsProperty
+        String getSize();
+
+        @JsProperty
         void setKind(double kind);
 
         @JsProperty
         void setPath(String path);
+
+        @JsProperty
+        void setSize(String size);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -47,10 +53,16 @@ public class FileInfo {
         String getPath();
 
         @JsProperty
+        String getSize();
+
+        @JsProperty
         void setKind(double kind);
 
         @JsProperty
         void setPath(String path);
+
+        @JsProperty
+        void setSize(String size);
     }
 
     public static native FileInfo deserializeBinary(Uint8Array bytes);
@@ -65,11 +77,15 @@ public class FileInfo {
 
     public native String getPath();
 
+    public native String getSize();
+
     public native Uint8Array serializeBinary();
 
     public native void setKind(int value);
 
     public native void setPath(String value);
+
+    public native void setSize(String value);
 
     public native FileInfo.ToObjectReturnType0 toObject();
 

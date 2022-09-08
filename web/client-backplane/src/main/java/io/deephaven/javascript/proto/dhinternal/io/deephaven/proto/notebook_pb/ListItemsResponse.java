@@ -30,10 +30,16 @@ public class ListItemsResponse {
             String getPath();
 
             @JsProperty
+            String getSize();
+
+            @JsProperty
             void setKind(double kind);
 
             @JsProperty
             void setPath(String path);
+
+            @JsProperty
+            void setSize(String size);
         }
 
         @JsOverlay
@@ -71,10 +77,16 @@ public class ListItemsResponse {
             String getPath();
 
             @JsProperty
+            String getSize();
+
+            @JsProperty
             void setKind(double kind);
 
             @JsProperty
             void setPath(String path);
+
+            @JsProperty
+            void setSize(String size);
         }
 
         @JsOverlay
