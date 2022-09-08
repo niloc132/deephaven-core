@@ -61,8 +61,8 @@ message SaveFileResponse {
 }
 
 message MoveItemRequest {
-  string oldPath = 1;
-  string newPath = 2;
+  string old_path = 1;
+  string new_path = 2;
 }
 
 message MoveItemResponse {
