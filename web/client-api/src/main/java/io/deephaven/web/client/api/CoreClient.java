@@ -3,6 +3,7 @@ package io.deephaven.web.client.api;
 import elemental2.promise.Promise;
 import io.deephaven.web.client.api.console.JsVariableChanges;
 import io.deephaven.web.client.api.console.JsVariableDefinition;
+import io.deephaven.web.client.api.storage.StorageService;
 import io.deephaven.web.shared.fu.JsConsumer;
 import io.deephaven.web.shared.fu.JsRunnable;
 import jsinterop.annotations.JsType;
@@ -80,4 +81,8 @@ public class CoreClient extends QueryConnectable<CoreClient> {
     // public Promise<Object> getObject(Object definitionObject) {
     //
     // }
+
+    public StorageService getStorageService() {
+        return new StorageService(workerConnection);
+    }
 }
