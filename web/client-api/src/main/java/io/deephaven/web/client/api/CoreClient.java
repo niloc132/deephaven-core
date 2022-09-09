@@ -25,17 +25,13 @@ public class CoreClient extends QueryConnectable<CoreClient> {
             LOGIN_TYPE_PSK = "psk",
             LOGIN_TYPE_OIDC = "oidc";
 
-    private final WorkerConnection workerConnection;
-
     private final JsLazy<Promise<String[][]>> serverAuthConfigValues;
     private final JsLazy<Promise<String[][]>> serverConfigValues;
     private final String serverUrl;
 
     public CoreClient(String serverUrl) {
-        super(null);
+        super(AuthTokenPromiseSupplier.oneShot(null));
         this.serverUrl = serverUrl;
-
-        workerConnection = new WorkerConnection(this, null);
 
         serverAuthConfigValues = JsLazy.of(() -> Promise.resolve((String[][]) null));
         serverConfigValues = JsLazy.of(() -> Promise.resolve((String[][]) null));
@@ -43,7 +39,12 @@ public class CoreClient extends QueryConnectable<CoreClient> {
 
     @Override
     public Promise<CoreClient> running() {
-        return null;
+        // This assumes that once the connection has been initialized and left a usable state, it cannot be used again
+        if (!connection.isAvailable() || connection.get().isUsable()) {
+            return Promise.resolve(this);
+        } else {
+            return (Promise) Promise.reject("Cannot connect, session is dead.");
+        }
     }
 
     @Override
@@ -83,6 +84,6 @@ public class CoreClient extends QueryConnectable<CoreClient> {
     // }
 
     public StorageService getStorageService() {
-        return new StorageService(workerConnection);
+        return new StorageService(connection.get());
     }
 }

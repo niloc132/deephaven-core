@@ -72,8 +72,8 @@ public class StorageService {
     @JsMethod
     public Promise<Void> moveItem(String oldPath, String newPath) {
         MoveItemRequest req = new MoveItemRequest();
-        req.setOldpath(oldPath);
-        req.setNewpath(newPath);
+        req.setOldPath(oldPath);
+        req.setNewPath(newPath);
         return Callbacks.<MoveItemResponse, Object>grpcUnaryPromise(c -> client().moveItem(req, metadata(), c::apply))
                 .then(response -> Promise.resolve((Void)null));
     }
