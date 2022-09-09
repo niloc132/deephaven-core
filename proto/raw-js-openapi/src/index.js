@@ -6,6 +6,8 @@ require("deephaven/proto/application_pb");
 require("deephaven/proto/inputtable_pb");
 require("deephaven/proto/object_pb");
 require("deephaven/proto/partitionedtable_pb");
+require("deephaven/proto/config_pb");
+require("deephaven/proto/notebook_pb");
 require("Flight_pb")
 require("BrowserFlight_pb")
 var sessionService = require("deephaven/proto/session_pb_service");
@@ -15,6 +17,8 @@ var applicationService = require("deephaven/proto/application_pb_service");
 var inputTableService = require("deephaven/proto/inputtable_pb_service");
 var objectService = require("deephaven/proto/object_pb_service");
 var partitionedTableService = require("deephaven/proto/partitionedtable_pb_service");
+var configService = require("deephaven/proto/config_pb_service");
+var notebookService = require("deephaven/proto/notebook_pb_service");
 var browserFlightService = require("BrowserFlight_pb_service");
 var flightService = require("Flight_pb_service");
 
@@ -45,6 +49,10 @@ var io = { deephaven: {
             object_pb_service: objectService,
             partitionedtable_pb: proto.io.deephaven.proto.backplane.grpc,
             partitionedtable_pb_service: partitionedTableService,
+            config_pb: proto.io.deephaven.proto.backplane.grpc,
+            config_pb_service: configService,
+            notebook_pb: proto.io.deephaven.proto.backplane.grpc,
+            notebook_pb_service: notebookService,
         },
         barrage: {
             "flatbuf": {

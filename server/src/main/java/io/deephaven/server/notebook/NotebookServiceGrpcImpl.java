@@ -6,21 +6,21 @@ import io.deephaven.configuration.Configuration;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
-import io.deephaven.proto.backplane.script.grpc.CreateDirectoryRequest;
-import io.deephaven.proto.backplane.script.grpc.CreateDirectoryResponse;
-import io.deephaven.proto.backplane.script.grpc.DeleteItemRequest;
-import io.deephaven.proto.backplane.script.grpc.DeleteItemResponse;
-import io.deephaven.proto.backplane.script.grpc.FetchFileRequest;
-import io.deephaven.proto.backplane.script.grpc.FetchFileResponse;
-import io.deephaven.proto.backplane.script.grpc.FileInfo;
-import io.deephaven.proto.backplane.script.grpc.FileKind;
-import io.deephaven.proto.backplane.script.grpc.ListItemsRequest;
-import io.deephaven.proto.backplane.script.grpc.ListItemsResponse;
-import io.deephaven.proto.backplane.script.grpc.MoveItemRequest;
-import io.deephaven.proto.backplane.script.grpc.MoveItemResponse;
-import io.deephaven.proto.backplane.script.grpc.NotebookServiceGrpc;
-import io.deephaven.proto.backplane.script.grpc.SaveFileRequest;
-import io.deephaven.proto.backplane.script.grpc.SaveFileResponse;
+import io.deephaven.proto.backplane.grpc.CreateDirectoryRequest;
+import io.deephaven.proto.backplane.grpc.CreateDirectoryResponse;
+import io.deephaven.proto.backplane.grpc.DeleteItemRequest;
+import io.deephaven.proto.backplane.grpc.DeleteItemResponse;
+import io.deephaven.proto.backplane.grpc.FetchFileRequest;
+import io.deephaven.proto.backplane.grpc.FetchFileResponse;
+import io.deephaven.proto.backplane.grpc.FileInfo;
+import io.deephaven.proto.backplane.grpc.FileKind;
+import io.deephaven.proto.backplane.grpc.ListItemsRequest;
+import io.deephaven.proto.backplane.grpc.ListItemsResponse;
+import io.deephaven.proto.backplane.grpc.MoveItemRequest;
+import io.deephaven.proto.backplane.grpc.MoveItemResponse;
+import io.deephaven.proto.backplane.grpc.NotebookServiceGrpc;
+import io.deephaven.proto.backplane.grpc.SaveFileRequest;
+import io.deephaven.proto.backplane.grpc.SaveFileResponse;
 import io.grpc.stub.StreamObserver;
 
 import javax.inject.Inject;
@@ -58,10 +58,13 @@ public class NotebookServiceGrpcImpl extends NotebookServiceGrpc.NotebookService
         GrpcUtil.rpcWrapper(log, responseObserver, () -> {
             ListItemsResponse.Builder builder = ListItemsResponse.newBuilder();
             try (Stream<Path> list = Files.list(resolveOrThrow(request.getPath()))) {
-                list.forEach(p -> builder.addItems(FileInfo.newBuilder()
-                                .setPath(p.getFileName().toString())
-                                .setKind(Files.isDirectory(p) ? FileKind.DIRECTORY : FileKind.FILE)
-                                .build()));
+                for (Path p : (Iterable<Path>) list::iterator) {
+                    builder.addItems(FileInfo.newBuilder()
+                            .setPath(p.getFileName().toString())
+                            .setSize(Files.isDirectory(p) ? 0 : Files.size(p))
+                            .setKind(Files.isDirectory(p) ? FileKind.DIRECTORY : FileKind.FILE)
+                            .build());
+                }
             }
             responseObserver.onNext(builder.build());
             responseObserver.onCompleted();
