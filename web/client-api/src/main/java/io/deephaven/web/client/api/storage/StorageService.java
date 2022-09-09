@@ -1,6 +1,7 @@
 package io.deephaven.web.client.api.storage;
 
 import elemental2.core.JsArray;
+import elemental2.core.Uint8Array;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.browserheaders.BrowserHeaders;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.notebook_pb.CreateDirectoryRequest;
@@ -63,10 +64,13 @@ public class StorageService {
 
     @JsMethod
     public Promise<Void> saveFile(String path, FileContents contents) {
-        SaveFileRequest req = new SaveFileRequest();
-        req.setPath(path);
-        return Callbacks.<SaveFileResponse, Object>grpcUnaryPromise(c -> client().saveFile(req, metadata(), c::apply))
-                .then(response -> Promise.resolve((Void)null));
+        return contents.arrayBuffer().then(ab -> {
+            SaveFileRequest req = new SaveFileRequest();
+            req.setContents(new Uint8Array(ab));
+            req.setPath(path);
+            return Callbacks.<SaveFileResponse, Object>grpcUnaryPromise(c -> client().saveFile(req, metadata(), c::apply))
+                    .then(response -> Promise.resolve((Void)null));
+        });
     }
 
     @JsMethod

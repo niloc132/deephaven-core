@@ -95,6 +95,8 @@ public class NotebookServiceGrpcImpl extends NotebookServiceGrpc.NotebookService
                 Files.write(path, request.getContents().toByteArray(), option);
             } catch (FileAlreadyExistsException alreadyExistsException) {
                 throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION, "File already exists");
+            } catch (NoSuchFileException noSuchFileException) {
+                throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION, "Directory does not exist");
             }
             responseObserver.onNext(SaveFileResponse.getDefaultInstance());
             responseObserver.onCompleted();
