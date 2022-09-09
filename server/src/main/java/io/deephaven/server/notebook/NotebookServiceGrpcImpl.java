@@ -79,7 +79,12 @@ public class NotebookServiceGrpcImpl extends NotebookServiceGrpc.NotebookService
     @Override
     public void fetchFile(FetchFileRequest request, StreamObserver<FetchFileResponse> responseObserver) {
         GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            byte[] bytes = Files.readAllBytes(resolveOrThrow(request.getPath()));
+            final byte[] bytes;
+            try {
+                bytes = Files.readAllBytes(resolveOrThrow(request.getPath()));
+            } catch (NoSuchFileException noSuchFileException) {
+                throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION, "File does not exist");
+            }
             FetchFileResponse.Builder contents = FetchFileResponse.newBuilder().setContents(ByteString.copyFrom(bytes));
             responseObserver.onNext(contents.build());
             responseObserver.onCompleted();
