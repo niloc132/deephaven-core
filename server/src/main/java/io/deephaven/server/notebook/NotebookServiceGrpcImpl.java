@@ -24,6 +24,8 @@ import io.deephaven.proto.backplane.grpc.SaveFileResponse;
 import io.grpc.stub.StreamObserver;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -39,15 +41,19 @@ public class NotebookServiceGrpcImpl extends NotebookServiceGrpc.NotebookService
     private static final String NOTEBOOK_PATH = Configuration.getInstance().getStringWithDefault("notebook.path", "<workspace>/notebooks")
             .replace("<workspace>", Configuration.getInstance().getWorkspacePath());
 
+    private final Path root = Paths.get(NOTEBOOK_PATH).normalize();
+
     @Inject
     public NotebookServiceGrpcImpl() {
+        try {
+            Files.createDirectories(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to initialize notebooks", e);
+        }
     }
 
     private Optional<Path> resolve(String relativePath) {
-        Path root = Paths.get(NOTEBOOK_PATH).normalize();
-        System.out.println(root);
         Path resolved = root.resolve(relativePath).normalize();
-        System.out.println(resolved);
         if (resolved.startsWith(root)) {
             return Optional.of(resolved);
         }
