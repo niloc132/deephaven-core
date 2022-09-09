@@ -36,22 +36,25 @@ import java.util.stream.Stream;
 public class NotebookServiceGrpcImpl extends NotebookServiceGrpc.NotebookServiceImplBase {
     private static final Logger log = LoggerFactory.getLogger(NotebookServiceGrpcImpl.class);
 
-    private static final String NOTEBOOK_PATH = Configuration.getInstance().getStringWithDefault("notebook.path", "<devroot>/notebooks");
+    private static final String NOTEBOOK_PATH = Configuration.getInstance().getStringWithDefault("notebook.path", "<workspace>/notebooks")
+            .replace("<workspace>", Configuration.getInstance().getWorkspacePath());
 
     @Inject
     public NotebookServiceGrpcImpl() {
     }
 
     private Optional<Path> resolve(String relativePath) {
-        Path root = Paths.get(NOTEBOOK_PATH);
+        Path root = Paths.get(NOTEBOOK_PATH).normalize();
+        System.out.println(root);
         Path resolved = root.resolve(relativePath).normalize();
+        System.out.println(resolved);
         if (resolved.startsWith(root)) {
             return Optional.of(resolved);
         }
         return Optional.empty();
     }
     private Path resolveOrThrow(String relativePath) {
-        return resolve(relativePath).orElseThrow(() -> GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Invalid path"));
+        return resolve(relativePath).orElseThrow(() -> GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Invalid path: " + relativePath));
     }
     @Override
     public void listItems(ListItemsRequest request, StreamObserver<ListItemsResponse> responseObserver) {
@@ -65,6 +68,8 @@ public class NotebookServiceGrpcImpl extends NotebookServiceGrpc.NotebookService
                             .setKind(Files.isDirectory(p) ? FileKind.DIRECTORY : FileKind.FILE)
                             .build());
                 }
+            } catch (NoSuchFileException noSuchFileException) {
+                throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION, "Directory does not exist");
             }
             responseObserver.onNext(builder.build());
             responseObserver.onCompleted();
