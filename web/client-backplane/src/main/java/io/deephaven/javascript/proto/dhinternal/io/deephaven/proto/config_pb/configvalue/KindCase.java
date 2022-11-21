@@ -1,12 +1,12 @@
 package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.config_pb.configvalue;
 
+import jsinterop.annotations.JsEnum;
 import jsinterop.annotations.JsPackage;
-import jsinterop.annotations.JsType;
 
-@JsType(
+@JsEnum(
         isNative = true,
         name = "dhinternal.io.deephaven.proto.config_pb.ConfigValue.KindCase",
         namespace = JsPackage.GLOBAL)
-public class KindCase {
-    public static int KIND_NOT_SET, STRING_VALUE;
+public enum KindCase {
+    KIND_NOT_SET, STRING_VALUE;
 }

@@ -2,7 +2,6 @@ package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.config_pb;
 
 import elemental2.core.JsArray;
 import elemental2.core.Uint8Array;
-import io.deephaven.javascript.proto.dhinternal.jspb.Map;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
@@ -66,7 +65,7 @@ public class ConfigurationConstantsResponse {
 
     public native void clearConfigValuesMap();
 
-    public native Map<String, ConfigValue> getConfigValuesMap();
+    public native Object getConfigValuesMap();
 
     public native Uint8Array serializeBinary();
 

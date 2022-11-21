@@ -1,6 +1,7 @@
 package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.config_pb;
 
 import elemental2.core.Uint8Array;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.config_pb.configvalue.KindCase;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
@@ -52,7 +53,7 @@ public class ConfigValue {
 
     public native void clearStringValue();
 
-    public native int getKindCase();
+    public native KindCase getKindCase();
 
     public native String getStringValue();
 
