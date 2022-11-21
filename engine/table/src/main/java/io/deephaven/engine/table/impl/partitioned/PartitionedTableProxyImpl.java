@@ -11,7 +11,6 @@ import io.deephaven.api.updateby.UpdateByOperation;
 import io.deephaven.api.updateby.UpdateByControl;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessArtifact;
-import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.MatchPair;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
@@ -22,6 +21,7 @@ import io.deephaven.engine.table.impl.select.MatchFilter;
 import io.deephaven.engine.table.impl.select.SelectColumn;
 import io.deephaven.engine.table.impl.select.SourceColumn;
 import io.deephaven.engine.table.impl.select.WhereFilter;
+import io.deephaven.engine.table.impl.select.analyzers.SelectAndViewAnalyzer;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.util.TableTools;
 import org.jetbrains.annotations.NotNull;
@@ -254,12 +254,12 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
         final List<ListenerRecorder> recorders = new ArrayList<>(1 + dependentValidations.length);
 
         final ListenerRecorder parentRecorder = new ListenerRecorder("Validating Copy Parent", coalescedParent, null);
-        coalescedParent.listenForUpdates(parentRecorder);
+        coalescedParent.addUpdateListener(parentRecorder);
         recorders.add(parentRecorder);
 
         final ListenerRecorder[] validationRecorders = Arrays.stream(dependentValidations).map(dv -> {
             final ListenerRecorder validationRecorder = new ListenerRecorder(dv.name, dv.table, null);
-            dv.table.listenForUpdates(validationRecorder);
+            dv.table.addUpdateListener(validationRecorder);
             recorders.add(validationRecorder);
             return validationRecorder;
         }).toArray(ListenerRecorder[]::new);
@@ -432,10 +432,8 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     @NotNull
     private SelectColumn[] toSelectColumns(Collection<? extends Selectable> columns) {
         final SelectColumn[] selectColumns = SelectColumn.from(columns);
-        Map<String, ColumnDefinition<?>> targetColumnMap = target.constituentDefinition().getColumnNameMap();
-        for (SelectColumn column : selectColumns) {
-            column.initDef(targetColumnMap);
-        }
+        SelectAndViewAnalyzer.initializeSelectColumns(
+                target.constituentDefinition().getColumnNameMap(), selectColumns);
         return selectColumns;
     }
 
@@ -541,6 +539,11 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     public PartitionedTable.Proxy selectDistinct(Collection<? extends Selectable> columns) {
         final SelectColumn[] selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.selectDistinct(SelectColumn.copyFrom(selectColumns)));
+    }
+
+    @Override
+    public PartitionedTable.Proxy ungroup(boolean nullFill, Collection<? extends ColumnName> columnsToUngroup) {
+        return basicTransform(ct -> ct.ungroup(nullFill, columnsToUngroup));
     }
 
     // endregion TableOperations Implementation

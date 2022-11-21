@@ -21,7 +21,6 @@ import io.deephaven.engine.table.impl.util.MemoryTableLoggers;
 import io.deephaven.engine.tablelogger.QueryOperationPerformanceLogLogger;
 import io.deephaven.engine.tablelogger.QueryPerformanceLogLogger;
 import io.deephaven.engine.updategraph.DynamicNode;
-import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.hash.KeyedIntObjectHash;
 import io.deephaven.hash.KeyedIntObjectHashMap;
@@ -59,6 +58,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import static io.deephaven.base.log.LogOutput.MILLIS_FROM_EPOCH_FORMATTER;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyExecute;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyExecuteLocked;
 
@@ -101,6 +101,20 @@ public class SessionState {
      */
     public static <T> ExportObject<T> wrapAsExport(final T export) {
         return new ExportObject<>(export);
+    }
+
+    /**
+     * Wrap an exception in an ExportObject to make it conform to the session export API. The export behaves as if it
+     * has already failed.
+     *
+     * @param caughtException the exception to propagate
+     * @param <T> the type of the object
+     * @return a sessionless export object
+     */
+    public static <T> ExportObject<T> wrapAsFailedExport(final Exception caughtException) {
+        ExportObject<T> exportObject = new ExportObject<>(null);
+        exportObject.caughtException = caughtException;
+        return exportObject;
     }
 
     private static final Logger log = LoggerFactory.getLogger(SessionState.class);
@@ -163,7 +177,7 @@ public class SessionState {
 
         log.info().append(logPrefix)
                 .append("token initialized to '").append(expiration.token.toString())
-                .append("' which expires at ").append(expiration.deadline.toString())
+                .append("' which expires at ").append(MILLIS_FROM_EPOCH_FORMATTER, expiration.deadlineMillis)
                 .append(".").endl();
     }
 
@@ -192,7 +206,7 @@ public class SessionState {
 
         log.info().append(logPrefix)
                 .append("token rotating to '").append(expiration.token.toString())
-                .append("' which expires at ").append(expiration.deadline.toString())
+                .append("' which expires at ").append(MILLIS_FROM_EPOCH_FORMATTER, expiration.deadlineMillis)
                 .append(".").endl();
     }
 
@@ -211,7 +225,7 @@ public class SessionState {
      */
     public boolean isExpired() {
         final SessionService.TokenExpiration currToken = expiration;
-        return currToken == null || currToken.deadline.compareTo(scheduler.currentTime()) <= 0;
+        return currToken == null || currToken.deadlineMillis <= scheduler.currentTimeMillis();
     }
 
     /**
@@ -551,10 +565,16 @@ public class SessionState {
             super(true);
             this.session = null;
             this.exportId = NON_EXPORT_ID;
-            this.state = ExportNotification.State.EXPORTED;
             this.result = result;
             this.dependentCount = 0;
             this.logIdentity = Integer.toHexString(System.identityHashCode(this)) + "-sessionless";
+
+            if (result == null) {
+                assignErrorId();
+                state = ExportNotification.State.FAILED;
+            } else {
+                state = ExportNotification.State.EXPORTED;
+            }
 
             if (result instanceof LivenessReferent && DynamicNode.notDynamicOrIsRefreshing(result)) {
                 manage((LivenessReferent) result);
@@ -577,7 +597,7 @@ public class SessionState {
 
             this.parents = parents;
             dependentCount = parents.size();
-            parents.stream().filter(Objects::nonNull).forEach(this::manage);
+            parents.stream().filter(Objects::nonNull).forEach(this::tryManage);
 
             if (log.isDebugEnabled()) {
                 final Exception e = new RuntimeException();
@@ -733,8 +753,9 @@ public class SessionState {
                 exportListenerVersion = session.exportListenerVersion;
                 session.exportListeners.forEach(listener -> listener.notify(notification));
             } else {
-                log.debug().append(session.logPrefix).append("non-export '").append(logIdentity)
-                        .append("' is ExportState.").append(state.name()).endl();
+                log.debug().append(session == null ? "Session " : session.logPrefix)
+                        .append("non-export '").append(logIdentity).append("' is ExportState.")
+                        .append(state.name()).endl();
             }
 
             if (isExportStateFailure(state) && errorHandler != null) {
@@ -747,7 +768,7 @@ public class SessionState {
             if (state == ExportNotification.State.EXPORTED || isExportStateTerminal(state)) {
                 children.forEach(child -> child.onResolveOne(this));
                 children = Collections.emptyList();
-                parents.stream().filter(Objects::nonNull).forEach(this::unmanage);
+                parents.stream().filter(Objects::nonNull).forEach(this::tryUnmanage);
                 parents = Collections.emptyList();
                 exportMain = null;
                 errorHandler = null;
@@ -978,7 +999,10 @@ public class SessionState {
         protected synchronized void destroy() {
             super.destroy();
             result = null;
-            caughtException = null;
+            // keep SREs since error propagation won't reference a real errorId on the server
+            if (!(caughtException instanceof StatusRuntimeException)) {
+                caughtException = null;
+            }
         }
 
         /**

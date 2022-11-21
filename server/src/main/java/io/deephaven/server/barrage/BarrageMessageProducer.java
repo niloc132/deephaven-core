@@ -963,7 +963,7 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
 
         // copy lastUpdateTime so we are not duped by the re-read
         final long localLastUpdateTime = lastUpdateTime;
-        final long now = scheduler.currentTime().getMillis();
+        final long now = scheduler.currentTimeMillis();
         final long msSinceLastUpdate = now - localLastUpdateTime;
         if (lastScheduledUpdateTime != 0 && lastScheduledUpdateTime > lastUpdateTime) {
             // an already scheduled update is coming up
@@ -1046,8 +1046,8 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
             }
         }
 
-        public void scheduleAt(final long nextRunTime) {
-            scheduler.runAtTime(DateTimeUtils.millisToTime(nextRunTime), this);
+        public void scheduleAt(final long nextRunTimeMillis) {
+            scheduler.runAtTime(nextRunTimeMillis, this);
         }
     }
 
@@ -1093,7 +1093,7 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
      */
 
     private void updateSubscriptionsSnapshotAndPropagate() {
-        lastUpdateTime = scheduler.currentTime().getMillis();
+        lastUpdateTime = scheduler.currentTimeMillis();
         if (DEBUG) {
             log.info().append(logPrefix).append("Starting update job at " + lastUpdateTime).endl();
         }
@@ -1504,7 +1504,7 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
             updatePropagationJob.scheduleImmediately();
         }
 
-        lastUpdateTime = scheduler.currentTime().getMillis();
+        lastUpdateTime = scheduler.currentTimeMillis();
         if (DEBUG) {
             log.info().append(logPrefix).append("Completed Propagation: " + lastUpdateTime);
         }
@@ -1801,8 +1801,8 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
             final class ColumnInfo {
                 final WritableRowSet modified = RowSetFactory.empty();
                 final WritableRowSet recordedMods = RowSetFactory.empty();
-                ArrayList<long[]> addedMappings = new ArrayList<>();
-                ArrayList<long[]> modifiedMappings = new ArrayList<>();
+                long[][] addedMappings;
+                long[][] modifiedMappings;
             }
 
             final HashMap<BitSet, ColumnInfo> infoCache = new HashMap<>();
@@ -1835,23 +1835,8 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
                 retval.modified.remove(coalescer.added);
                 retval.recordedMods.remove(coalescer.added);
 
-                try (final RowSequence.Iterator it = localAdded.getRowSequenceIterator()) {
-                    while (it.hasMore()) {
-                        final RowSequence rs = it.getNextRowSequenceWithLength(SNAPSHOT_CHUNK_SIZE);
-                        long[] addedMapping = new long[rs.intSize()];
-                        Arrays.fill(addedMapping, RowSequence.NULL_ROW_KEY);
-                        retval.addedMappings.add(addedMapping);
-                    }
-                }
-
-                try (final RowSequence.Iterator it = retval.recordedMods.getRowSequenceIterator()) {
-                    while (it.hasMore()) {
-                        final RowSequence rs = it.getNextRowSequenceWithLength(SNAPSHOT_CHUNK_SIZE);
-                        long[] modifiedMapping = new long[rs.intSize()];
-                        Arrays.fill(modifiedMapping, RowSequence.NULL_ROW_KEY);
-                        retval.modifiedMappings.add(modifiedMapping);
-                    }
-                }
+                retval.addedMappings = newMappingArray(localAdded.size());
+                retval.modifiedMappings = newMappingArray(retval.recordedMods.size());
 
                 final WritableRowSet unfilledAdds = localAdded.isEmpty() ? RowSetFactory.empty()
                         : RowSetFactory.flat(localAdded.size());
@@ -1987,29 +1972,32 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
         return downstream;
     }
 
-    // Updates provided mapping so that mapping[i] returns values.get(i) for all i in keys.
-    private static void applyRedirMapping(final RowSet keys, final RowSet values, final ArrayList<long[]> mappings) {
-        Assert.eq(keys.size(), "keys.size()", values.size(), "values.size()");
-        MutableLong mapCount = new MutableLong(0L);
-        mappings.forEach((arr) -> mapCount.add(arr.length));
-        Assert.leq(keys.size(), "keys.size()", mapCount.longValue(), "mapping.length");
+    private static long[][] newMappingArray(final long size) {
+        final int numAddChunks = LongSizedDataStructure.intSize("BarrageMessageProducer",
+                (size + SNAPSHOT_CHUNK_SIZE - 1) / SNAPSHOT_CHUNK_SIZE);
+        final long[][] result = new long[numAddChunks][];
+        for (int ii = 0; ii < numAddChunks; ++ii) {
+            final int chunkSize = (ii < numAddChunks - 1 || size % SNAPSHOT_CHUNK_SIZE == 0)
+                    ? SNAPSHOT_CHUNK_SIZE
+                    : (int) (size % SNAPSHOT_CHUNK_SIZE);
+            final long[] newChunk = new long[chunkSize];
+            result[ii] = newChunk;
+            Arrays.fill(newChunk, RowSequence.NULL_ROW_KEY);
+        }
+        return result;
+    }
 
-        // we need to track our progress through multiple mapping arrays
-        MutableLong arrOffset = new MutableLong(0L);
-        MutableInt arrIdx = new MutableInt(0);
+    // Updates provided mapping so that mapping[i] returns values.get(i) for all i in keys.
+    private static void applyRedirMapping(final RowSet keys, final RowSet values, final long[][] mapping) {
+        Assert.eq(keys.size(), "keys.size()", values.size(), "values.size()");
 
         final RowSet.Iterator vit = values.iterator();
         keys.forAllRowKeys(lkey -> {
-            long[] mapping = mappings.get(arrIdx.intValue());
-            int keyIdx = LongSizedDataStructure.intSize("applyRedirMapping", lkey - arrOffset.longValue());
-
-            Assert.eq(mapping[keyIdx], "mapping[keyIdx]", RowSequence.NULL_ROW_KEY, "RowSet.NULL_ROW_KEY");
-            mapping[keyIdx] = vit.nextLong();
-
-            if (keyIdx == mapping.length - 1) {
-                arrOffset.add(mapping.length);
-                arrIdx.add(1);
-            }
+            final int arrIdx = (int) (lkey / SNAPSHOT_CHUNK_SIZE);
+            final int keyIdx = (int) (lkey % SNAPSHOT_CHUNK_SIZE);
+            final long[] chunk = mapping[arrIdx];
+            Assert.eq(chunk[keyIdx], "chunk[keyIdx]", RowSequence.NULL_ROW_KEY, "RowSet.NULL_ROW_KEY");
+            chunk[keyIdx] = vit.nextLong();
         });
     }
 
@@ -2274,11 +2262,7 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
 
         public Stats(final String tableKey) {
             this.tableKey = tableKey;
-
-            final DateTime now = scheduler.currentTime();
-            final DateTime nextRun = DateTimeUtils.plus(now,
-                    DateTimeUtils.millisToNanos(BarragePerformanceLog.CYCLE_DURATION_MILLIS));
-            scheduler.runAtTime(nextRun, this);
+            scheduler.runAfterDelay(BarragePerformanceLog.CYCLE_DURATION_MILLIS, this);
         }
 
         public void stop() {
@@ -2291,10 +2275,8 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
                 return;
             }
 
-            final DateTime now = scheduler.currentTime();
-            final DateTime nextRun = DateTimeUtils.millisToTime(
-                    now.getMillis() + BarragePerformanceLog.CYCLE_DURATION_MILLIS);
-            scheduler.runAtTime(nextRun, this);
+            final DateTime now = DateTime.ofMillis(scheduler);
+            scheduler.runAfterDelay(BarragePerformanceLog.CYCLE_DURATION_MILLIS, this);
 
             final BarrageSubscriptionPerformanceLogger logger =
                     BarragePerformanceLog.getInstance().getSubscriptionLogger();

@@ -46,10 +46,11 @@ class Classpaths {
     static final String COMMONS_GROUP = 'org.apache.commons'
 
     static final String ARROW_GROUP = 'org.apache.arrow'
+    // Note, when updated to 9.0.0+, fix deephaven-core#2923.
     static final String ARROW_VERSION = '7.0.0'
 
     static final String SLF4J_GROUP = 'org.slf4j'
-    static final String SLF4J_VERSION = '2.0.0-alpha5'
+    static final String SLF4J_VERSION = '2.0.3'
 
     static final String FLATBUFFER_GROUP = 'com.google.flatbuffers'
     static final String FLATBUFFER_NAME = 'flatbuffers-java'
@@ -58,7 +59,7 @@ class Classpaths {
     static final String DAGGER_GROUP = 'com.google.dagger'
     static final String DAGGER_NAME = 'dagger'
     static final String DAGGER_COMPILER = 'dagger-compiler'
-    static final String DAGGER_VERSION = '2.31.1'
+    static final String DAGGER_VERSION = '2.44'
 
     static final String AUTOSERVICE_GROUP = 'com.google.auto.service'
     static final String AUTOSERVICE_NAME = 'auto-service-annotations'
@@ -67,7 +68,7 @@ class Classpaths {
 
     static final String IMMUTABLES_GROUP = 'org.immutables'
     static final String IMMUTABLES_NAME = 'value'
-    static final String IMMUTABLES_VERSION = '2.8.1'
+    static final String IMMUTABLES_VERSION = '2.9.2'
 
     static final String JUNIT_GROUP = 'org.junit'
     static final String JUNIT_NAME = 'junit-bom'
@@ -88,14 +89,15 @@ class Classpaths {
 
     static final String LOGBACK_GROUP = 'ch.qos.logback'
     static final String LOGBACK_NAME = 'logback-classic'
-    static final String LOGBACK_VERSION = '1.3.0-alpha12'
+    static final String LOGBACK_VERSION = '1.4.3'
 
     static final String GROOVY_GROUP = 'org.codehaus.groovy'
-    static final String GROOVY_VERSION = '3.0.9'
+    static final String GROOVY_VERSION = '3.0.12'
 
     static final String GRPC_GROUP = 'io.grpc'
     static final String GRPC_NAME = 'grpc-bom'
-    static final String GRPC_VERSION = '1.46.0'
+    // Only bump this in concert w/ BORINGSSL_VERSION
+    static final String GRPC_VERSION = '1.50.1'
 
     // TODO(deephaven-core#1685): Create strategy around updating and maintaining protoc version
     static final String PROTOBUF_GROUP = 'com.google.protobuf'
@@ -105,7 +107,8 @@ class Classpaths {
     // See dependency matrix for particular gRPC versions at https://github.com/grpc/grpc-java/blob/master/SECURITY.md#netty
     static final String BORINGSSL_GROUP = 'io.netty'
     static final String BORINGSSL_NAME = 'netty-tcnative-boringssl-static'
-    static final String BORINGSSL_VERSION = '2.0.46.Final'
+    // Only bump this in concert w/ GRPC_VERSION
+    static final String BORINGSSL_VERSION = '2.0.54.Final'
 
     static final String JACKSON_GROUP = 'com.fasterxml.jackson'
     static final String JACKSON_NAME = 'jackson-bom'
@@ -116,7 +119,11 @@ class Classpaths {
 
     static final String JETTY11_GROUP = 'org.eclipse.jetty'
     static final String JETTY11_NAME = 'jetty-bom'
-    static final String JETTY11_VERSION = '11.0.8'
+    static final String JETTY11_VERSION = '11.0.12'
+
+    static final String GUAVA_GROUP = 'com.google.guava'
+    static final String GUAVA_NAME = 'guava'
+    static final String GUAVA_VERSION = '31.1-jre'
 
     static boolean addDependency(Configuration conf, String group, String name, String version, Action<? super DefaultExternalModuleDependency> configure = Actions.doNothing()) {
         if (!conf.dependencies.find { it.name == name && it.group == group}) {
@@ -210,10 +217,10 @@ class Classpaths {
         addDependency(ap, AUTOSERVICE_GROUP, AUTOSERVICE_COMPILER, AUTOSERVICE_VERSION)
     }
 
-    static void inheritImmutables(Project p) {
-        Configuration ap = p.configurations.getByName('annotationProcessor')
+    static void inheritImmutables(Project p, boolean test = false) {
+        Configuration ap = p.configurations.getByName(test ? 'testAnnotationProcessor' : 'annotationProcessor')
         addDependency(ap, IMMUTABLES_GROUP, IMMUTABLES_NAME, IMMUTABLES_VERSION)
-        p.getDependencies().add('compileOnly', p.project(':util-immutables'))
+        p.getDependencies().add(test ? 'testCompileOnly' : 'compileOnly', p.project(':util-immutables'))
     }
 
     static void inheritJUnitClassic(Project p, String configName) {
@@ -280,5 +287,10 @@ class Classpaths {
     static void inheritJetty11Platform(Project p, String configName = JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME) {
         Configuration config = p.configurations.getByName(configName)
         addDependency(config, p.getDependencies().platform("${JETTY11_GROUP}:${JETTY11_NAME}:${JETTY11_VERSION}"))
+    }
+
+    static void inheritGuava(Project p, String configName = JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME) {
+        Configuration config = p.configurations.getByName(configName)
+        addDependency(config, GUAVA_GROUP, GUAVA_NAME, GUAVA_VERSION)
     }
 }

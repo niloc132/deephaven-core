@@ -269,7 +269,7 @@ public class TestPartitionAwareSourceTable extends RefreshingTableTestCase {
             try {
                 coalesced = SUT.coalesce();
                 coalesced.retainReference();
-                ((QueryTable) coalesced).listenForUpdates(listener);
+                ((QueryTable) coalesced).addUpdateListener(listener);
                 if (throwException) {
                     fail("Expected exception");
                 }
@@ -425,8 +425,6 @@ public class TestPartitionAwareSourceTable extends RefreshingTableTestCase {
                     will(returnValue(columnDefinition.getDataType()));
                     allowing(columnSource).getComponentType();
                     will(returnValue(columnDefinition.getComponentType()));
-                    allowing(columnSource).preventsParallelism();
-                    will(returnValue(false));
                     allowing(columnSource).isStateless();
                     will(returnValue(true));
                 }

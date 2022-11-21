@@ -7,6 +7,7 @@ import com.github.f4b6a3.uuid.UuidCreator;
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.api.util.NameValidator;
 import io.deephaven.base.FileUtils;
+import io.deephaven.configuration.CacheDir;
 import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessScope;
@@ -287,10 +288,10 @@ public abstract class AbstractScriptSession<S extends AbstractScriptSession.Snap
     // ScriptSession-based QueryScope implementation, with no remote scope or object reflection support
     // -----------------------------------------------------------------------------------------------------------------
 
-    private abstract static class ScriptSessionQueryScope extends QueryScope {
+    public abstract static class ScriptSessionQueryScope extends QueryScope {
         final ScriptSession scriptSession;
 
-        private ScriptSessionQueryScope(ScriptSession scriptSession) {
+        public ScriptSessionQueryScope(ScriptSession scriptSession) {
             this.scriptSession = scriptSession;
         }
 

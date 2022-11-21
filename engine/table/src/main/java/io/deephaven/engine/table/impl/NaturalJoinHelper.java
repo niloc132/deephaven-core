@@ -5,7 +5,6 @@ package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.Pair;
 import io.deephaven.base.verify.Assert;
-import io.deephaven.configuration.Configuration;
 import io.deephaven.datastructures.util.CollectionUtil;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.*;
@@ -25,10 +24,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 
 class NaturalJoinHelper {
-    static boolean USE_TYPED_STATE_MANAGER =
-            Configuration.getInstance().getBooleanWithDefault(
-                    "NaturalJoinHelper.useTypedStateManager",
-                    true);
 
     private NaturalJoinHelper() {} // static use only
 
@@ -70,8 +65,9 @@ class NaturalJoinHelper {
 
                 final QueryTable result = makeResult(leftTable, rightTable, columnsToAdd, rowRedirection, true);
 
-                leftTable.listenForUpdates(new LeftTickingListener(bucketingContext.listenerDescription, columnsToMatch,
-                        columnsToAdd, leftTable, result, rowRedirection, jsm, bucketingContext.leftSources));
+                leftTable
+                        .addUpdateListener(new LeftTickingListener(bucketingContext.listenerDescription, columnsToMatch,
+                                columnsToAdd, leftTable, result, rowRedirection, jsm, bucketingContext.leftSources));
 
                 return result;
             }
@@ -81,10 +77,7 @@ class NaturalJoinHelper {
                         bucketingContext.listenerDescription);
             }
 
-            final LongArraySource leftHashSlots = new LongArraySource();
-
             final WritableRowRedirection rowRedirection;
-
             if (rightTable.isRefreshing()) {
                 if (leftTable.isRefreshing()) {
                     if (bucketingContext.useLeftGrouping) {
@@ -98,15 +91,10 @@ class NaturalJoinHelper {
                     final int tableSize = control.tableSizeForRightBuild(rightTable);
 
                     final BothIncrementalNaturalJoinStateManager jsm =
-                            USE_TYPED_STATE_MANAGER
-                                    ? TypedHasherFactory.make(IncrementalNaturalJoinStateManagerTypedBase.class,
-                                            bucketingContext.leftSources, bucketingContext.originalLeftSources,
-                                            tableSize, control.getMaximumLoadFactor(),
-                                            control.getTargetLoadFactor())
-                                    : new IncrementalChunkedNaturalJoinStateManager(
-                                            bucketingContext.leftSources, tableSize,
-                                            bucketingContext.originalLeftSources, control.getMaximumLoadFactor(),
-                                            control.getTargetLoadFactor());
+                            TypedHasherFactory.make(IncrementalNaturalJoinStateManagerTypedBase.class,
+                                    bucketingContext.leftSources, bucketingContext.originalLeftSources,
+                                    tableSize, control.getMaximumLoadFactor(),
+                                    control.getTargetLoadFactor());
                     jsm.buildFromRightSide(rightTable, bucketingContext.rightSources);
 
                     try (final BothIncrementalNaturalJoinStateManager.InitialBuildContext ibc =
@@ -134,23 +122,19 @@ class NaturalJoinHelper {
                     leftRecorder.setMergedListener(mergedJoinListener);
                     rightRecorder.setMergedListener(mergedJoinListener);
 
-                    leftTable.listenForUpdates(leftRecorder);
-                    rightTable.listenForUpdates(rightRecorder);
+                    leftTable.addUpdateListener(leftRecorder);
+                    rightTable.addUpdateListener(rightRecorder);
 
                     result.addParentReference(mergedJoinListener);
 
                     return result;
                 } else {
                     // right is live, left is static
-                    final RightIncrementalNaturalJoinStateManager jsm = USE_TYPED_STATE_MANAGER
-                            ? TypedHasherFactory.make(RightIncrementalNaturalJoinStateManagerTypedBase.class,
+                    final RightIncrementalNaturalJoinStateManager jsm =
+                            TypedHasherFactory.make(RightIncrementalNaturalJoinStateManagerTypedBase.class,
                                     bucketingContext.leftSources, bucketingContext.originalLeftSources,
                                     control.tableSizeForLeftBuild(leftTable),
-                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor())
-                            : new RightIncrementalChunkedNaturalJoinStateManager(
-                                    bucketingContext.leftSources, control.tableSizeForLeftBuild(leftTable),
-                                    bucketingContext.originalLeftSources);
-
+                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor());
                     RightIncrementalNaturalJoinStateManager.InitialBuildContext initialBuildContext =
                             jsm.makeInitialBuildContext(leftTable);
 
@@ -193,10 +177,17 @@ class NaturalJoinHelper {
 
                     final QueryTable result = makeResult(leftTable, rightTable, columnsToAdd, rowRedirection, true);
 
-                    rightTable
-                            .listenForUpdates(new RightTickingListener(bucketingContext.listenerDescription, rightTable,
-                                    columnsToMatch, columnsToAdd, result, rowRedirection, jsm,
-                                    bucketingContext.rightSources, exactMatch));
+                    rightTable.addUpdateListener(
+                            new RightTickingListener(
+                                    bucketingContext.listenerDescription,
+                                    rightTable,
+                                    columnsToMatch,
+                                    columnsToAdd,
+                                    result,
+                                    rowRedirection,
+                                    jsm,
+                                    bucketingContext.rightSources,
+                                    exactMatch));
                     return result;
                 }
             } else {
@@ -222,14 +213,12 @@ class NaturalJoinHelper {
                             Collections.singletonMap(columnsToMatch[0].leftColumn(), groupSource));
 
                     final ColumnSource<?>[] groupedSourceArray = {groupSource};
-                    final StaticHashedNaturalJoinStateManager jsm = USE_TYPED_STATE_MANAGER
-                            ? TypedHasherFactory.make(StaticNaturalJoinStateManagerTypedBase.class, groupedSourceArray,
+                    final StaticHashedNaturalJoinStateManager jsm =
+                            TypedHasherFactory.make(StaticNaturalJoinStateManagerTypedBase.class, groupedSourceArray,
                                     groupedSourceArray,
-                                    StaticChunkedNaturalJoinStateManager.hashTableSize(groupingSize.intValue()),
-                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor())
-                            : new StaticChunkedNaturalJoinStateManager(groupedSourceArray,
-                                    StaticChunkedNaturalJoinStateManager.hashTableSize(groupingSize.intValue()),
-                                    groupedSourceArray);
+                                    control.tableSize(groupingSize.intValue()),
+                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor());
+                    final IntegerArraySource leftHashSlots = new IntegerArraySource();
                     jsm.buildFromLeftSide(leftTableGrouped, groupedSourceArray, leftHashSlots);
                     try {
                         jsm.decorateWithRightSide(rightTable, bucketingContext.rightSources);
@@ -239,13 +228,12 @@ class NaturalJoinHelper {
                     rowRedirection = jsm.buildGroupedRowRedirection(leftTable, exactMatch, leftTableGrouped.size(),
                             leftHashSlots, rowSetSource, control.getRedirectionType(leftTable));
                 } else if (control.buildLeft(leftTable, rightTable)) {
-                    final StaticHashedNaturalJoinStateManager jsm = USE_TYPED_STATE_MANAGER
-                            ? TypedHasherFactory.make(StaticNaturalJoinStateManagerTypedBase.class,
+                    final StaticHashedNaturalJoinStateManager jsm =
+                            TypedHasherFactory.make(StaticNaturalJoinStateManagerTypedBase.class,
                                     bucketingContext.leftSources, bucketingContext.originalLeftSources,
                                     control.tableSizeForLeftBuild(leftTable),
-                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor())
-                            : new StaticChunkedNaturalJoinStateManager(bucketingContext.leftSources,
-                                    control.tableSizeForLeftBuild(leftTable), bucketingContext.originalLeftSources);
+                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor());
+                    final IntegerArraySource leftHashSlots = new IntegerArraySource();
                     jsm.buildFromLeftSide(leftTable, bucketingContext.leftSources, leftHashSlots);
                     try {
                         jsm.decorateWithRightSide(rightTable, bucketingContext.rightSources);
@@ -255,23 +243,29 @@ class NaturalJoinHelper {
                     rowRedirection = jsm.buildRowRedirectionFromHashSlot(leftTable, exactMatch, leftHashSlots,
                             control.getRedirectionType(leftTable));
                 } else {
-                    final StaticHashedNaturalJoinStateManager jsm = USE_TYPED_STATE_MANAGER
-                            ? TypedHasherFactory.make(StaticNaturalJoinStateManagerTypedBase.class,
+                    final LongArraySource leftRedirections = new LongArraySource();
+                    final StaticHashedNaturalJoinStateManager jsm =
+                            TypedHasherFactory.make(StaticNaturalJoinStateManagerTypedBase.class,
                                     bucketingContext.leftSources, bucketingContext.originalLeftSources,
-                                    control.tableSizeForRightBuild(leftTable),
-                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor())
-                            : new StaticChunkedNaturalJoinStateManager(bucketingContext.leftSources,
-                                    control.tableSizeForRightBuild(rightTable), bucketingContext.originalLeftSources);
+                                    control.tableSizeForRightBuild(rightTable),
+                                    control.getMaximumLoadFactor(), control.getTargetLoadFactor());
                     jsm.buildFromRightSide(rightTable, bucketingContext.rightSources);
-                    jsm.decorateLeftSide(leftTable.getRowSet(), bucketingContext.leftSources, leftHashSlots);
-                    rowRedirection = jsm.buildRowRedirectionFromRedirections(leftTable, exactMatch, leftHashSlots,
+                    jsm.decorateLeftSide(leftTable.getRowSet(), bucketingContext.leftSources, leftRedirections);
+                    rowRedirection = jsm.buildRowRedirectionFromRedirections(leftTable, exactMatch, leftRedirections,
                             control.getRedirectionType(leftTable));
 
                     final QueryTable result = makeResult(leftTable, rightTable, columnsToAdd, rowRedirection, true);
 
-                    leftTable.listenForUpdates(
-                            new LeftTickingListener(bucketingContext.listenerDescription, columnsToMatch, columnsToAdd,
-                                    leftTable, result, rowRedirection, jsm, bucketingContext.leftSources));
+                    leftTable.addUpdateListener(
+                            new LeftTickingListener(
+                                    bucketingContext.listenerDescription,
+                                    columnsToMatch,
+                                    columnsToAdd,
+                                    leftTable,
+                                    result,
+                                    rowRedirection,
+                                    jsm,
+                                    bucketingContext.leftSources));
                     return result;
                 }
             }
@@ -362,13 +356,13 @@ class NaturalJoinHelper {
 
                 leftRecorder.setMergedListener(mergedListener);
                 rightRecorder.setMergedListener(mergedListener);
-                leftTable.listenForUpdates(leftRecorder);
-                rightTable.listenForUpdates(rightRecorder);
+                leftTable.addUpdateListener(leftRecorder);
+                rightTable.addUpdateListener(rightRecorder);
                 result.addParentReference(mergedListener);
 
             } else {
                 leftTable
-                        .listenForUpdates(new BaseTable.ListenerImpl(listenerDescription, leftTable, result) {
+                        .addUpdateListener(new BaseTable.ListenerImpl(listenerDescription, leftTable, result) {
                             @Override
                             public void onUpdate(final TableUpdate upstream) {
                                 checkRightTableSizeZeroKeys(leftTable, rightTable, exactMatch);
@@ -382,7 +376,7 @@ class NaturalJoinHelper {
             }
         } else if (rightTable.isRefreshing()) {
             if (leftTable.size() > 0) {
-                rightTable.listenForUpdates(
+                rightTable.addUpdateListener(
                         new BaseTable.ListenerImpl(listenerDescription, rightTable, result) {
                             @Override
                             public void onUpdate(final TableUpdate upstream) {
@@ -522,11 +516,6 @@ class NaturalJoinHelper {
         }
 
         @Override
-        public boolean preventsParallelism() {
-            return symbolSource.preventsParallelism();
-        }
-
-        @Override
         public boolean isStateless() {
             return symbolSource.isStateless();
         }
@@ -647,7 +636,7 @@ class NaturalJoinHelper {
             final boolean addedRightColumnsChanged;
 
             final int maxSize =
-                    UpdateSizeCalculator.chunkSize(upstream, IncrementalChunkedNaturalJoinStateManager.CHUNK_SIZE);
+                    UpdateSizeCalculator.chunkSize(upstream, JoinControl.CHUNK_SIZE);
             if (maxSize == 0) {
                 Assert.assertion(upstream.empty(), "upstream.empty()");
                 return;
@@ -744,7 +733,7 @@ class NaturalJoinHelper {
         }
 
         @Override
-        public void accept(long updatedSlot, long originalRightValue, byte flag) {
+        public void accept(int updatedSlot, long originalRightValue, byte flag) {
             final RowSet leftIndices = jsm.getLeftIndex(updatedSlot);
             if (leftIndices == null || leftIndices.isEmpty()) {
                 return;
@@ -857,7 +846,7 @@ class NaturalJoinHelper {
 
                 final long probeSize =
                         UpdateSizeCalculator.chunkSize(Math.max(rightRemoved.size(), rightModified.size()),
-                                rightRecorder.getShifted(), IncrementalChunkedNaturalJoinStateManager.CHUNK_SIZE);
+                                rightRecorder.getShifted(), JoinControl.CHUNK_SIZE);
                 final long buildSize = Math.max(rightAdded.size(), rightKeysModified ? rightModified.size() : 0);
 
                 // process right updates
@@ -938,7 +927,7 @@ class NaturalJoinHelper {
                 final long buildSize = Math.max(leftAdded.size(), leftKeyModifications ? leftModified.size() : 0);
                 final long probeSize = UpdateSizeCalculator.chunkSize(
                         Math.max(leftRemoved.size(), leftKeyModifications ? leftModified.size() : 0), leftShifted,
-                        IncrementalChunkedNaturalJoinStateManager.CHUNK_SIZE);
+                        JoinControl.CHUNK_SIZE);
 
                 final LongArraySource leftRedirections = newLeftRedirections ? new LongArraySource() : null;
                 if (leftRedirections != null) {
@@ -999,7 +988,7 @@ class NaturalJoinHelper {
                         // We are almost able to fix this, because we know the hash slot and the result redirection for
                         // the left modified row; which is the new value.
                         // We could get the hash slot from the removal, and compare them, but the hash slot outside of a
-                        // modified slot tracker is unstable [and we don’t want two of them].
+                        // modified slot tracker is unstable [and we don't want two of them].
                         // On removal, we could ask our modified slot tracker if, (i) our cookie is valid, and if so
                         // (ii) what the original right value was what the right value was
                         // [presuming we add that for right side point 1]. This would let us report our original

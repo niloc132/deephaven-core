@@ -6,10 +6,14 @@ package io.deephaven.server.runner;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.ElementsIntoSet;
+import io.deephaven.base.clock.Clock;
 import io.deephaven.chunk.util.pools.MultiChunkPool;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.util.ScriptSession;
+import io.deephaven.server.config.ConfigServiceModule;
+import io.deephaven.server.notebook.FilesystemStorageServiceModule;
+import io.deephaven.server.healthcheck.HealthCheckModule;
 import io.deephaven.server.object.ObjectServiceModule;
 import io.deephaven.server.partitionedtable.PartitionedTableServiceModule;
 import io.deephaven.server.plugin.PluginsModule;
@@ -26,6 +30,7 @@ import io.deephaven.util.process.ProcessEnvironment;
 import io.deephaven.util.thread.NamingThreadFactory;
 import io.grpc.BindableService;
 import io.grpc.ServerInterceptor;
+import io.grpc.protobuf.services.HealthStatusManager;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Named;
@@ -56,13 +61,16 @@ import java.util.concurrent.TimeUnit;
         ObjectServiceModule.class,
         PluginsModule.class,
         PartitionedTableServiceModule.class,
+        FilesystemStorageServiceModule.class,
+        HealthCheckModule.class,
+        ConfigServiceModule.class,
 })
 public class DeephavenApiServerModule {
 
     @Provides
     @ElementsIntoSet
-    static Set<BindableService> primeServices() {
-        return Collections.emptySet();
+    static Set<BindableService> primeServices(HealthStatusManager healthStatusManager) {
+        return Collections.singleton(healthStatusManager.getHealthService());
     }
 
     @Provides
@@ -114,7 +122,7 @@ public class DeephavenApiServerModule {
             }
         };
 
-        return new Scheduler.DelegatingImpl(serialExecutor, concurrentExecutor);
+        return new Scheduler.DelegatingImpl(serialExecutor, concurrentExecutor, Clock.system());
     }
 
     private static void report(final String executorType, final Throwable error) {
