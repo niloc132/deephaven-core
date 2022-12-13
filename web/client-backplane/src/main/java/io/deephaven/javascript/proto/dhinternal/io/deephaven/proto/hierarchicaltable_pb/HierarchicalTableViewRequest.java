@@ -2,8 +2,6 @@ package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchical
 
 import elemental2.core.JsArray;
 import elemental2.core.Uint8Array;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.Condition;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.SortDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -20,411 +18,495 @@ public class HierarchicalTableViewRequest {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface FiltersListFieldType {
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface AndFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.AndFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getFiltersList();
-
-                @JsProperty
-                void setFiltersList(JsArray<Object> filtersList);
-
-                @JsOverlay
-                default void setFiltersList(Object[] filtersList) {
-                    setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
-                }
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface CompareFieldType {
-                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-                public interface LhsFieldType {
-                    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-                    public interface LiteralFieldType {
-                        @JsOverlay
-                        static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType create() {
-                            return Js.uncheckedCast(JsPropertyMap.of());
-                        }
-
-                        @JsProperty
-                        double getDoubleValue();
-
-                        @JsProperty
-                        String getLongValue();
-
-                        @JsProperty
-                        String getNanoTimeValue();
-
-                        @JsProperty
-                        String getStringValue();
-
-                        @JsProperty
-                        boolean isBoolValue();
-
-                        @JsProperty
-                        void setBoolValue(boolean boolValue);
-
-                        @JsProperty
-                        void setDoubleValue(double doubleValue);
-
-                        @JsProperty
-                        void setLongValue(String longValue);
-
-                        @JsProperty
-                        void setNanoTimeValue(String nanoTimeValue);
-
-                        @JsProperty
-                        void setStringValue(String stringValue);
-                    }
-
-                    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-                    public interface ReferenceFieldType {
-                        @JsOverlay
-                        static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType create() {
-                            return Js.uncheckedCast(JsPropertyMap.of());
-                        }
-
-                        @JsProperty
-                        String getColumnName();
-
-                        @JsProperty
-                        void setColumnName(String columnName);
-                    }
-
-                    @JsOverlay
-                    static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType create() {
-                        return Js.uncheckedCast(JsPropertyMap.of());
-                    }
-
-                    @JsProperty
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType getLiteral();
-
-                    @JsProperty
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType getReference();
-
-                    @JsProperty
-                    void setLiteral(
-                            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType literal);
-
-                    @JsProperty
-                    void setReference(
-                            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType reference);
-                }
-
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType getLhs();
-
-                @JsProperty
-                double getOperation();
-
-                @JsProperty
-                Object getRhs();
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setLhs(
-                        HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType.LhsFieldType lhs);
-
-                @JsProperty
-                void setOperation(double operation);
-
-                @JsProperty
-                void setRhs(Object rhs);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface ContainsFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.ContainsFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                double getMatchType();
-
-                @JsProperty
-                Object getReference();
-
-                @JsProperty
-                String getSearchString();
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setMatchType(double matchType);
-
-                @JsProperty
-                void setReference(Object reference);
-
-                @JsProperty
-                void setSearchString(String searchString);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface InvokeFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.InvokeFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getArgumentsList();
-
-                @JsProperty
-                String getMethod();
-
-                @JsProperty
-                Object getTarget();
-
-                @JsProperty
-                void setArgumentsList(JsArray<Object> argumentsList);
-
-                @JsOverlay
-                default void setArgumentsList(Object[] argumentsList) {
-                    setArgumentsList(Js.<JsArray<Object>>uncheckedCast(argumentsList));
-                }
-
-                @JsProperty
-                void setMethod(String method);
-
-                @JsProperty
-                void setTarget(Object target);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface IsNullFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.IsNullFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                Object getReference();
-
-                @JsProperty
-                void setReference(Object reference);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface MatchesFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.MatchesFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                double getMatchType();
-
-                @JsProperty
-                Object getReference();
-
-                @JsProperty
-                String getRegex();
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setMatchType(double matchType);
-
-                @JsProperty
-                void setReference(Object reference);
-
-                @JsProperty
-                void setRegex(String regex);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface NotFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.NotFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                Object getFilter();
-
-                @JsProperty
-                void setFilter(Object filter);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface OrFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.OrFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getFiltersList();
-
-                @JsProperty
-                void setFiltersList(JsArray<Object> filtersList);
-
-                @JsOverlay
-                default void setFiltersList(Object[] filtersList) {
-                    setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
-                }
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface Pb_inFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.Pb_inFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getCandidatesList();
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                double getMatchType();
-
-                @JsProperty
-                Object getTarget();
-
-                @JsProperty
-                void setCandidatesList(JsArray<Object> candidatesList);
-
-                @JsOverlay
-                default void setCandidatesList(Object[] candidatesList) {
-                    setCandidatesList(Js.<JsArray<Object>>uncheckedCast(candidatesList));
-                }
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setMatchType(double matchType);
-
-                @JsProperty
-                void setTarget(Object target);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface SearchFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.SearchFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getOptionalReferencesList();
-
-                @JsProperty
-                String getSearchString();
-
-                @JsProperty
-                void setOptionalReferencesList(JsArray<Object> optionalReferencesList);
-
-                @JsOverlay
-                default void setOptionalReferencesList(Object[] optionalReferencesList) {
-                    setOptionalReferencesList(Js.<JsArray<Object>>uncheckedCast(optionalReferencesList));
-                }
-
-                @JsProperty
-                void setSearchString(String searchString);
-            }
-
+        public interface KeytabledescriptorFieldType {
             @JsOverlay
-            static HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType create() {
+            static HierarchicalTableViewRequest.ToObjectReturnType.KeytabledescriptorFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.AndFieldType getAnd();
+            Object getKeyTable();
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType getCompare();
+            String getKeyTableActionColumn();
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.ContainsFieldType getContains();
+            void setKeyTable(Object keyTable);
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.InvokeFieldType getInvoke();
+            void setKeyTableActionColumn(String keyTableActionColumn);
+        }
+
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface OperationsFieldType {
+            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+            public interface FiltersListFieldType {
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface AndFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.AndFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getFiltersList();
+
+                    @JsProperty
+                    void setFiltersList(JsArray<Object> filtersList);
+
+                    @JsOverlay
+                    default void setFiltersList(Object[] filtersList) {
+                        setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
+                    }
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface CompareFieldType {
+                    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                    public interface LhsFieldType {
+                        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                        public interface LiteralFieldType {
+                            @JsOverlay
+                            static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType create() {
+                                return Js.uncheckedCast(JsPropertyMap.of());
+                            }
+
+                            @JsProperty
+                            double getDoubleValue();
+
+                            @JsProperty
+                            String getLongValue();
+
+                            @JsProperty
+                            String getNanoTimeValue();
+
+                            @JsProperty
+                            String getStringValue();
+
+                            @JsProperty
+                            boolean isBoolValue();
+
+                            @JsProperty
+                            void setBoolValue(boolean boolValue);
+
+                            @JsProperty
+                            void setDoubleValue(double doubleValue);
+
+                            @JsProperty
+                            void setLongValue(String longValue);
+
+                            @JsProperty
+                            void setNanoTimeValue(String nanoTimeValue);
+
+                            @JsProperty
+                            void setStringValue(String stringValue);
+                        }
+
+                        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                        public interface ReferenceFieldType {
+                            @JsOverlay
+                            static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType create() {
+                                return Js.uncheckedCast(JsPropertyMap.of());
+                            }
+
+                            @JsProperty
+                            String getColumnName();
+
+                            @JsProperty
+                            void setColumnName(String columnName);
+                        }
+
+                        @JsOverlay
+                        static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType create() {
+                            return Js.uncheckedCast(JsPropertyMap.of());
+                        }
+
+                        @JsProperty
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType getLiteral();
+
+                        @JsProperty
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType getReference();
+
+                        @JsProperty
+                        void setLiteral(
+                                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType literal);
+
+                        @JsProperty
+                        void setReference(
+                                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType reference);
+                    }
+
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType getLhs();
+
+                    @JsProperty
+                    double getOperation();
+
+                    @JsProperty
+                    Object getRhs();
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setLhs(
+                            HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType lhs);
+
+                    @JsProperty
+                    void setOperation(double operation);
+
+                    @JsProperty
+                    void setRhs(Object rhs);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface ContainsFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.ContainsFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    double getMatchType();
+
+                    @JsProperty
+                    Object getReference();
+
+                    @JsProperty
+                    String getSearchString();
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setMatchType(double matchType);
+
+                    @JsProperty
+                    void setReference(Object reference);
+
+                    @JsProperty
+                    void setSearchString(String searchString);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface InvokeFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.InvokeFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getArgumentsList();
+
+                    @JsProperty
+                    String getMethod();
+
+                    @JsProperty
+                    Object getTarget();
+
+                    @JsProperty
+                    void setArgumentsList(JsArray<Object> argumentsList);
+
+                    @JsOverlay
+                    default void setArgumentsList(Object[] argumentsList) {
+                        setArgumentsList(Js.<JsArray<Object>>uncheckedCast(argumentsList));
+                    }
+
+                    @JsProperty
+                    void setMethod(String method);
+
+                    @JsProperty
+                    void setTarget(Object target);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface IsNullFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.IsNullFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    Object getReference();
+
+                    @JsProperty
+                    void setReference(Object reference);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface MatchesFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.MatchesFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    double getMatchType();
+
+                    @JsProperty
+                    Object getReference();
+
+                    @JsProperty
+                    String getRegex();
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setMatchType(double matchType);
+
+                    @JsProperty
+                    void setReference(Object reference);
+
+                    @JsProperty
+                    void setRegex(String regex);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface NotFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.NotFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    Object getFilter();
+
+                    @JsProperty
+                    void setFilter(Object filter);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface OrFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.OrFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getFiltersList();
+
+                    @JsProperty
+                    void setFiltersList(JsArray<Object> filtersList);
+
+                    @JsOverlay
+                    default void setFiltersList(Object[] filtersList) {
+                        setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
+                    }
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface Pb_inFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.Pb_inFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getCandidatesList();
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    double getMatchType();
+
+                    @JsProperty
+                    Object getTarget();
+
+                    @JsProperty
+                    void setCandidatesList(JsArray<Object> candidatesList);
+
+                    @JsOverlay
+                    default void setCandidatesList(Object[] candidatesList) {
+                        setCandidatesList(Js.<JsArray<Object>>uncheckedCast(candidatesList));
+                    }
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setMatchType(double matchType);
+
+                    @JsProperty
+                    void setTarget(Object target);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface SearchFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.SearchFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getOptionalReferencesList();
+
+                    @JsProperty
+                    String getSearchString();
+
+                    @JsProperty
+                    void setOptionalReferencesList(JsArray<Object> optionalReferencesList);
+
+                    @JsOverlay
+                    default void setOptionalReferencesList(Object[] optionalReferencesList) {
+                        setOptionalReferencesList(Js.<JsArray<Object>>uncheckedCast(optionalReferencesList));
+                    }
+
+                    @JsProperty
+                    void setSearchString(String searchString);
+                }
+
+                @JsOverlay
+                static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType create() {
+                    return Js.uncheckedCast(JsPropertyMap.of());
+                }
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.AndFieldType getAnd();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType getCompare();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.ContainsFieldType getContains();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.InvokeFieldType getInvoke();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.IsNullFieldType getIsNull();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.MatchesFieldType getMatches();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.NotFieldType getNot();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.OrFieldType getOr();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.Pb_inFieldType getPb_in();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.SearchFieldType getSearch();
+
+                @JsProperty
+                void setAnd(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.AndFieldType and);
+
+                @JsProperty
+                void setCompare(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.CompareFieldType compare);
+
+                @JsProperty
+                void setContains(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.ContainsFieldType contains);
+
+                @JsProperty
+                void setInvoke(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.InvokeFieldType invoke);
+
+                @JsProperty
+                void setIsNull(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.IsNullFieldType isNull);
+
+                @JsProperty
+                void setMatches(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.MatchesFieldType matches);
+
+                @JsProperty
+                void setNot(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.NotFieldType not);
+
+                @JsProperty
+                void setOr(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.OrFieldType or);
+
+                @JsProperty
+                void setPb_in(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.Pb_inFieldType pb_in);
+
+                @JsProperty
+                void setSearch(
+                        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType.SearchFieldType search);
+            }
+
+            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+            public interface SortsListFieldType {
+                @JsOverlay
+                static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.SortsListFieldType create() {
+                    return Js.uncheckedCast(JsPropertyMap.of());
+                }
+
+                @JsProperty
+                String getColumnName();
+
+                @JsProperty
+                double getDirection();
+
+                @JsProperty
+                boolean isIsAbsolute();
+
+                @JsProperty
+                void setColumnName(String columnName);
+
+                @JsProperty
+                void setDirection(double direction);
+
+                @JsProperty
+                void setIsAbsolute(boolean isAbsolute);
+            }
+
+            @JsOverlay
+            static HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.IsNullFieldType getIsNull();
+            JsArray<HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType> getFiltersList();
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.MatchesFieldType getMatches();
+            JsArray<HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.SortsListFieldType> getSortsList();
+
+            @JsOverlay
+            default void setFiltersList(
+                    HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType[] filtersList) {
+                setFiltersList(
+                        Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType>>uncheckedCast(
+                                filtersList));
+            }
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.NotFieldType getNot();
+            void setFiltersList(
+                    JsArray<HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.FiltersListFieldType> filtersList);
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.OrFieldType getOr();
+            void setSortsList(
+                    JsArray<HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.SortsListFieldType> sortsList);
 
-            @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.Pb_inFieldType getPb_in();
-
-            @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.SearchFieldType getSearch();
-
-            @JsProperty
-            void setAnd(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.AndFieldType and);
-
-            @JsProperty
-            void setCompare(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.CompareFieldType compare);
-
-            @JsProperty
-            void setContains(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.ContainsFieldType contains);
-
-            @JsProperty
-            void setInvoke(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.InvokeFieldType invoke);
-
-            @JsProperty
-            void setIsNull(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.IsNullFieldType isNull);
-
-            @JsProperty
-            void setMatches(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.MatchesFieldType matches);
-
-            @JsProperty
-            void setNot(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.NotFieldType not);
-
-            @JsProperty
-            void setOr(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.OrFieldType or);
-
-            @JsProperty
-            void setPb_in(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.Pb_inFieldType pb_in);
-
-            @JsProperty
-            void setSearch(
-                    HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType.SearchFieldType search);
+            @JsOverlay
+            default void setSortsList(
+                    HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.SortsListFieldType[] sortsList) {
+                setSortsList(
+                        Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType.SortsListFieldType>>uncheckedCast(
+                                sortsList));
+            }
         }
 
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -485,32 +567,6 @@ public class HierarchicalTableViewRequest {
             }
         }
 
-        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface SortsListFieldType {
-            @JsOverlay
-            static HierarchicalTableViewRequest.ToObjectReturnType.SortsListFieldType create() {
-                return Js.uncheckedCast(JsPropertyMap.of());
-            }
-
-            @JsProperty
-            String getColumnName();
-
-            @JsProperty
-            double getDirection();
-
-            @JsProperty
-            boolean isIsAbsolute();
-
-            @JsProperty
-            void setColumnName(String columnName);
-
-            @JsProperty
-            void setDirection(double direction);
-
-            @JsProperty
-            void setIsAbsolute(boolean isAbsolute);
-        }
-
         @JsOverlay
         static HierarchicalTableViewRequest.ToObjectReturnType create() {
             return Js.uncheckedCast(JsPropertyMap.of());
@@ -520,466 +576,522 @@ public class HierarchicalTableViewRequest {
         Object getExistingViewId();
 
         @JsProperty
-        JsArray<HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType> getFiltersList();
+        HierarchicalTableViewRequest.ToObjectReturnType.KeytabledescriptorFieldType getKeytabledescriptor();
 
         @JsProperty
-        Object getKeyTable();
-
-        @JsProperty
-        String getKeyTableExpandDescendantsColumn();
+        HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType getOperations();
 
         @JsProperty
         HierarchicalTableViewRequest.ToObjectReturnType.ResultViewIdFieldType getResultViewId();
 
         @JsProperty
-        JsArray<HierarchicalTableViewRequest.ToObjectReturnType.SortsListFieldType> getSortsList();
-
-        @JsProperty
         void setExistingViewId(Object existingViewId);
 
-        @JsOverlay
-        default void setFiltersList(
-                HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType[] filtersList) {
-            setFiltersList(
-                    Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType>>uncheckedCast(
-                            filtersList));
-        }
+        @JsProperty
+        void setKeytabledescriptor(
+                HierarchicalTableViewRequest.ToObjectReturnType.KeytabledescriptorFieldType keytabledescriptor);
 
         @JsProperty
-        void setFiltersList(
-                JsArray<HierarchicalTableViewRequest.ToObjectReturnType.FiltersListFieldType> filtersList);
-
-        @JsProperty
-        void setKeyTable(Object keyTable);
-
-        @JsProperty
-        void setKeyTableExpandDescendantsColumn(String keyTableExpandDescendantsColumn);
+        void setOperations(
+                HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType operations);
 
         @JsProperty
         void setResultViewId(
                 HierarchicalTableViewRequest.ToObjectReturnType.ResultViewIdFieldType resultViewId);
-
-        @JsProperty
-        void setSortsList(
-                JsArray<HierarchicalTableViewRequest.ToObjectReturnType.SortsListFieldType> sortsList);
-
-        @JsOverlay
-        default void setSortsList(
-                HierarchicalTableViewRequest.ToObjectReturnType.SortsListFieldType[] sortsList) {
-            setSortsList(
-                    Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType.SortsListFieldType>>uncheckedCast(
-                            sortsList));
-        }
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType0 {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface FiltersListFieldType {
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface AndFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.AndFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getFiltersList();
-
-                @JsProperty
-                void setFiltersList(JsArray<Object> filtersList);
-
-                @JsOverlay
-                default void setFiltersList(Object[] filtersList) {
-                    setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
-                }
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface CompareFieldType {
-                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-                public interface LhsFieldType {
-                    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-                    public interface LiteralFieldType {
-                        @JsOverlay
-                        static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType create() {
-                            return Js.uncheckedCast(JsPropertyMap.of());
-                        }
-
-                        @JsProperty
-                        double getDoubleValue();
-
-                        @JsProperty
-                        String getLongValue();
-
-                        @JsProperty
-                        String getNanoTimeValue();
-
-                        @JsProperty
-                        String getStringValue();
-
-                        @JsProperty
-                        boolean isBoolValue();
-
-                        @JsProperty
-                        void setBoolValue(boolean boolValue);
-
-                        @JsProperty
-                        void setDoubleValue(double doubleValue);
-
-                        @JsProperty
-                        void setLongValue(String longValue);
-
-                        @JsProperty
-                        void setNanoTimeValue(String nanoTimeValue);
-
-                        @JsProperty
-                        void setStringValue(String stringValue);
-                    }
-
-                    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-                    public interface ReferenceFieldType {
-                        @JsOverlay
-                        static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType create() {
-                            return Js.uncheckedCast(JsPropertyMap.of());
-                        }
-
-                        @JsProperty
-                        String getColumnName();
-
-                        @JsProperty
-                        void setColumnName(String columnName);
-                    }
-
-                    @JsOverlay
-                    static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType create() {
-                        return Js.uncheckedCast(JsPropertyMap.of());
-                    }
-
-                    @JsProperty
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType getLiteral();
-
-                    @JsProperty
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType getReference();
-
-                    @JsProperty
-                    void setLiteral(
-                            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType literal);
-
-                    @JsProperty
-                    void setReference(
-                            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType reference);
-                }
-
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType getLhs();
-
-                @JsProperty
-                double getOperation();
-
-                @JsProperty
-                Object getRhs();
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setLhs(
-                        HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType.LhsFieldType lhs);
-
-                @JsProperty
-                void setOperation(double operation);
-
-                @JsProperty
-                void setRhs(Object rhs);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface ContainsFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.ContainsFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                double getMatchType();
-
-                @JsProperty
-                Object getReference();
-
-                @JsProperty
-                String getSearchString();
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setMatchType(double matchType);
-
-                @JsProperty
-                void setReference(Object reference);
-
-                @JsProperty
-                void setSearchString(String searchString);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface InvokeFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.InvokeFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getArgumentsList();
-
-                @JsProperty
-                String getMethod();
-
-                @JsProperty
-                Object getTarget();
-
-                @JsProperty
-                void setArgumentsList(JsArray<Object> argumentsList);
-
-                @JsOverlay
-                default void setArgumentsList(Object[] argumentsList) {
-                    setArgumentsList(Js.<JsArray<Object>>uncheckedCast(argumentsList));
-                }
-
-                @JsProperty
-                void setMethod(String method);
-
-                @JsProperty
-                void setTarget(Object target);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface IsNullFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.IsNullFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                Object getReference();
-
-                @JsProperty
-                void setReference(Object reference);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface MatchesFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.MatchesFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                double getMatchType();
-
-                @JsProperty
-                Object getReference();
-
-                @JsProperty
-                String getRegex();
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setMatchType(double matchType);
-
-                @JsProperty
-                void setReference(Object reference);
-
-                @JsProperty
-                void setRegex(String regex);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface NotFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.NotFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                Object getFilter();
-
-                @JsProperty
-                void setFilter(Object filter);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface OrFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.OrFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getFiltersList();
-
-                @JsProperty
-                void setFiltersList(JsArray<Object> filtersList);
-
-                @JsOverlay
-                default void setFiltersList(Object[] filtersList) {
-                    setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
-                }
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface Pb_inFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.Pb_inFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getCandidatesList();
-
-                @JsProperty
-                double getCaseSensitivity();
-
-                @JsProperty
-                double getMatchType();
-
-                @JsProperty
-                Object getTarget();
-
-                @JsProperty
-                void setCandidatesList(JsArray<Object> candidatesList);
-
-                @JsOverlay
-                default void setCandidatesList(Object[] candidatesList) {
-                    setCandidatesList(Js.<JsArray<Object>>uncheckedCast(candidatesList));
-                }
-
-                @JsProperty
-                void setCaseSensitivity(double caseSensitivity);
-
-                @JsProperty
-                void setMatchType(double matchType);
-
-                @JsProperty
-                void setTarget(Object target);
-            }
-
-            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-            public interface SearchFieldType {
-                @JsOverlay
-                static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.SearchFieldType create() {
-                    return Js.uncheckedCast(JsPropertyMap.of());
-                }
-
-                @JsProperty
-                JsArray<Object> getOptionalReferencesList();
-
-                @JsProperty
-                String getSearchString();
-
-                @JsProperty
-                void setOptionalReferencesList(JsArray<Object> optionalReferencesList);
-
-                @JsOverlay
-                default void setOptionalReferencesList(Object[] optionalReferencesList) {
-                    setOptionalReferencesList(Js.<JsArray<Object>>uncheckedCast(optionalReferencesList));
-                }
-
-                @JsProperty
-                void setSearchString(String searchString);
-            }
-
+        public interface KeytabledescriptorFieldType {
             @JsOverlay
-            static HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType create() {
+            static HierarchicalTableViewRequest.ToObjectReturnType0.KeytabledescriptorFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.AndFieldType getAnd();
+            Object getKeyTable();
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType getCompare();
+            String getKeyTableActionColumn();
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.ContainsFieldType getContains();
+            void setKeyTable(Object keyTable);
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.InvokeFieldType getInvoke();
+            void setKeyTableActionColumn(String keyTableActionColumn);
+        }
+
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface OperationsFieldType {
+            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+            public interface FiltersListFieldType {
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface AndFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.AndFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getFiltersList();
+
+                    @JsProperty
+                    void setFiltersList(JsArray<Object> filtersList);
+
+                    @JsOverlay
+                    default void setFiltersList(Object[] filtersList) {
+                        setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
+                    }
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface CompareFieldType {
+                    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                    public interface LhsFieldType {
+                        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                        public interface LiteralFieldType {
+                            @JsOverlay
+                            static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType create() {
+                                return Js.uncheckedCast(JsPropertyMap.of());
+                            }
+
+                            @JsProperty
+                            double getDoubleValue();
+
+                            @JsProperty
+                            String getLongValue();
+
+                            @JsProperty
+                            String getNanoTimeValue();
+
+                            @JsProperty
+                            String getStringValue();
+
+                            @JsProperty
+                            boolean isBoolValue();
+
+                            @JsProperty
+                            void setBoolValue(boolean boolValue);
+
+                            @JsProperty
+                            void setDoubleValue(double doubleValue);
+
+                            @JsProperty
+                            void setLongValue(String longValue);
+
+                            @JsProperty
+                            void setNanoTimeValue(String nanoTimeValue);
+
+                            @JsProperty
+                            void setStringValue(String stringValue);
+                        }
+
+                        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                        public interface ReferenceFieldType {
+                            @JsOverlay
+                            static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType create() {
+                                return Js.uncheckedCast(JsPropertyMap.of());
+                            }
+
+                            @JsProperty
+                            String getColumnName();
+
+                            @JsProperty
+                            void setColumnName(String columnName);
+                        }
+
+                        @JsOverlay
+                        static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType create() {
+                            return Js.uncheckedCast(JsPropertyMap.of());
+                        }
+
+                        @JsProperty
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType getLiteral();
+
+                        @JsProperty
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType getReference();
+
+                        @JsProperty
+                        void setLiteral(
+                                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.LiteralFieldType literal);
+
+                        @JsProperty
+                        void setReference(
+                                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType.ReferenceFieldType reference);
+                    }
+
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType getLhs();
+
+                    @JsProperty
+                    double getOperation();
+
+                    @JsProperty
+                    Object getRhs();
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setLhs(
+                            HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType.LhsFieldType lhs);
+
+                    @JsProperty
+                    void setOperation(double operation);
+
+                    @JsProperty
+                    void setRhs(Object rhs);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface ContainsFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.ContainsFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    double getMatchType();
+
+                    @JsProperty
+                    Object getReference();
+
+                    @JsProperty
+                    String getSearchString();
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setMatchType(double matchType);
+
+                    @JsProperty
+                    void setReference(Object reference);
+
+                    @JsProperty
+                    void setSearchString(String searchString);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface InvokeFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.InvokeFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getArgumentsList();
+
+                    @JsProperty
+                    String getMethod();
+
+                    @JsProperty
+                    Object getTarget();
+
+                    @JsProperty
+                    void setArgumentsList(JsArray<Object> argumentsList);
+
+                    @JsOverlay
+                    default void setArgumentsList(Object[] argumentsList) {
+                        setArgumentsList(Js.<JsArray<Object>>uncheckedCast(argumentsList));
+                    }
+
+                    @JsProperty
+                    void setMethod(String method);
+
+                    @JsProperty
+                    void setTarget(Object target);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface IsNullFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.IsNullFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    Object getReference();
+
+                    @JsProperty
+                    void setReference(Object reference);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface MatchesFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.MatchesFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    double getMatchType();
+
+                    @JsProperty
+                    Object getReference();
+
+                    @JsProperty
+                    String getRegex();
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setMatchType(double matchType);
+
+                    @JsProperty
+                    void setReference(Object reference);
+
+                    @JsProperty
+                    void setRegex(String regex);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface NotFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.NotFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    Object getFilter();
+
+                    @JsProperty
+                    void setFilter(Object filter);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface OrFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.OrFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getFiltersList();
+
+                    @JsProperty
+                    void setFiltersList(JsArray<Object> filtersList);
+
+                    @JsOverlay
+                    default void setFiltersList(Object[] filtersList) {
+                        setFiltersList(Js.<JsArray<Object>>uncheckedCast(filtersList));
+                    }
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface Pb_inFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.Pb_inFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getCandidatesList();
+
+                    @JsProperty
+                    double getCaseSensitivity();
+
+                    @JsProperty
+                    double getMatchType();
+
+                    @JsProperty
+                    Object getTarget();
+
+                    @JsProperty
+                    void setCandidatesList(JsArray<Object> candidatesList);
+
+                    @JsOverlay
+                    default void setCandidatesList(Object[] candidatesList) {
+                        setCandidatesList(Js.<JsArray<Object>>uncheckedCast(candidatesList));
+                    }
+
+                    @JsProperty
+                    void setCaseSensitivity(double caseSensitivity);
+
+                    @JsProperty
+                    void setMatchType(double matchType);
+
+                    @JsProperty
+                    void setTarget(Object target);
+                }
+
+                @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+                public interface SearchFieldType {
+                    @JsOverlay
+                    static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.SearchFieldType create() {
+                        return Js.uncheckedCast(JsPropertyMap.of());
+                    }
+
+                    @JsProperty
+                    JsArray<Object> getOptionalReferencesList();
+
+                    @JsProperty
+                    String getSearchString();
+
+                    @JsProperty
+                    void setOptionalReferencesList(JsArray<Object> optionalReferencesList);
+
+                    @JsOverlay
+                    default void setOptionalReferencesList(Object[] optionalReferencesList) {
+                        setOptionalReferencesList(Js.<JsArray<Object>>uncheckedCast(optionalReferencesList));
+                    }
+
+                    @JsProperty
+                    void setSearchString(String searchString);
+                }
+
+                @JsOverlay
+                static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType create() {
+                    return Js.uncheckedCast(JsPropertyMap.of());
+                }
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.AndFieldType getAnd();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType getCompare();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.ContainsFieldType getContains();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.InvokeFieldType getInvoke();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.IsNullFieldType getIsNull();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.MatchesFieldType getMatches();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.NotFieldType getNot();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.OrFieldType getOr();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.Pb_inFieldType getPb_in();
+
+                @JsProperty
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.SearchFieldType getSearch();
+
+                @JsProperty
+                void setAnd(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.AndFieldType and);
+
+                @JsProperty
+                void setCompare(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.CompareFieldType compare);
+
+                @JsProperty
+                void setContains(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.ContainsFieldType contains);
+
+                @JsProperty
+                void setInvoke(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.InvokeFieldType invoke);
+
+                @JsProperty
+                void setIsNull(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.IsNullFieldType isNull);
+
+                @JsProperty
+                void setMatches(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.MatchesFieldType matches);
+
+                @JsProperty
+                void setNot(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.NotFieldType not);
+
+                @JsProperty
+                void setOr(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.OrFieldType or);
+
+                @JsProperty
+                void setPb_in(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.Pb_inFieldType pb_in);
+
+                @JsProperty
+                void setSearch(
+                        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType.SearchFieldType search);
+            }
+
+            @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+            public interface SortsListFieldType {
+                @JsOverlay
+                static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.SortsListFieldType create() {
+                    return Js.uncheckedCast(JsPropertyMap.of());
+                }
+
+                @JsProperty
+                String getColumnName();
+
+                @JsProperty
+                double getDirection();
+
+                @JsProperty
+                boolean isIsAbsolute();
+
+                @JsProperty
+                void setColumnName(String columnName);
+
+                @JsProperty
+                void setDirection(double direction);
+
+                @JsProperty
+                void setIsAbsolute(boolean isAbsolute);
+            }
+
+            @JsOverlay
+            static HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.IsNullFieldType getIsNull();
+            JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType> getFiltersList();
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.MatchesFieldType getMatches();
+            JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.SortsListFieldType> getSortsList();
+
+            @JsOverlay
+            default void setFiltersList(
+                    HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType[] filtersList) {
+                setFiltersList(
+                        Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType>>uncheckedCast(
+                                filtersList));
+            }
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.NotFieldType getNot();
+            void setFiltersList(
+                    JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.FiltersListFieldType> filtersList);
 
             @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.OrFieldType getOr();
+            void setSortsList(
+                    JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.SortsListFieldType> sortsList);
 
-            @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.Pb_inFieldType getPb_in();
-
-            @JsProperty
-            HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.SearchFieldType getSearch();
-
-            @JsProperty
-            void setAnd(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.AndFieldType and);
-
-            @JsProperty
-            void setCompare(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.CompareFieldType compare);
-
-            @JsProperty
-            void setContains(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.ContainsFieldType contains);
-
-            @JsProperty
-            void setInvoke(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.InvokeFieldType invoke);
-
-            @JsProperty
-            void setIsNull(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.IsNullFieldType isNull);
-
-            @JsProperty
-            void setMatches(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.MatchesFieldType matches);
-
-            @JsProperty
-            void setNot(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.NotFieldType not);
-
-            @JsProperty
-            void setOr(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.OrFieldType or);
-
-            @JsProperty
-            void setPb_in(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.Pb_inFieldType pb_in);
-
-            @JsProperty
-            void setSearch(
-                    HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType.SearchFieldType search);
+            @JsOverlay
+            default void setSortsList(
+                    HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.SortsListFieldType[] sortsList) {
+                setSortsList(
+                        Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType.SortsListFieldType>>uncheckedCast(
+                                sortsList));
+            }
         }
 
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -1040,32 +1152,6 @@ public class HierarchicalTableViewRequest {
             }
         }
 
-        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface SortsListFieldType {
-            @JsOverlay
-            static HierarchicalTableViewRequest.ToObjectReturnType0.SortsListFieldType create() {
-                return Js.uncheckedCast(JsPropertyMap.of());
-            }
-
-            @JsProperty
-            String getColumnName();
-
-            @JsProperty
-            double getDirection();
-
-            @JsProperty
-            boolean isIsAbsolute();
-
-            @JsProperty
-            void setColumnName(String columnName);
-
-            @JsProperty
-            void setDirection(double direction);
-
-            @JsProperty
-            void setIsAbsolute(boolean isAbsolute);
-        }
-
         @JsOverlay
         static HierarchicalTableViewRequest.ToObjectReturnType0 create() {
             return Js.uncheckedCast(JsPropertyMap.of());
@@ -1075,56 +1161,28 @@ public class HierarchicalTableViewRequest {
         Object getExistingViewId();
 
         @JsProperty
-        JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType> getFiltersList();
+        HierarchicalTableViewRequest.ToObjectReturnType0.KeytabledescriptorFieldType getKeytabledescriptor();
 
         @JsProperty
-        Object getKeyTable();
-
-        @JsProperty
-        String getKeyTableExpandDescendantsColumn();
+        HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType getOperations();
 
         @JsProperty
         HierarchicalTableViewRequest.ToObjectReturnType0.ResultViewIdFieldType getResultViewId();
 
         @JsProperty
-        JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.SortsListFieldType> getSortsList();
-
-        @JsProperty
         void setExistingViewId(Object existingViewId);
 
-        @JsOverlay
-        default void setFiltersList(
-                HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType[] filtersList) {
-            setFiltersList(
-                    Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType>>uncheckedCast(
-                            filtersList));
-        }
+        @JsProperty
+        void setKeytabledescriptor(
+                HierarchicalTableViewRequest.ToObjectReturnType0.KeytabledescriptorFieldType keytabledescriptor);
 
         @JsProperty
-        void setFiltersList(
-                JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.FiltersListFieldType> filtersList);
-
-        @JsProperty
-        void setKeyTable(Object keyTable);
-
-        @JsProperty
-        void setKeyTableExpandDescendantsColumn(String keyTableExpandDescendantsColumn);
+        void setOperations(
+                HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType operations);
 
         @JsProperty
         void setResultViewId(
                 HierarchicalTableViewRequest.ToObjectReturnType0.ResultViewIdFieldType resultViewId);
-
-        @JsProperty
-        void setSortsList(
-                JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.SortsListFieldType> sortsList);
-
-        @JsOverlay
-        default void setSortsList(
-                HierarchicalTableViewRequest.ToObjectReturnType0.SortsListFieldType[] sortsList) {
-            setSortsList(
-                    Js.<JsArray<HierarchicalTableViewRequest.ToObjectReturnType0.SortsListFieldType>>uncheckedCast(
-                            sortsList));
-        }
     }
 
     public static native HierarchicalTableViewRequest deserializeBinary(Uint8Array bytes);
@@ -1138,47 +1196,27 @@ public class HierarchicalTableViewRequest {
     public static native HierarchicalTableViewRequest.ToObjectReturnType toObject(
             boolean includeInstance, HierarchicalTableViewRequest msg);
 
-    public native Condition addFilters();
-
-    public native Condition addFilters(Condition value, double index);
-
-    public native Condition addFilters(Condition value);
-
-    public native SortDescriptor addSorts();
-
-    public native SortDescriptor addSorts(SortDescriptor value, double index);
-
-    public native SortDescriptor addSorts(SortDescriptor value);
-
     public native void clearExistingViewId();
 
-    public native void clearFiltersList();
+    public native void clearKeytabledescriptor();
 
-    public native void clearKeyTable();
-
-    public native void clearKeyTableExpandDescendantsColumn();
+    public native void clearOperations();
 
     public native void clearResultViewId();
 
-    public native void clearSortsList();
-
     public native Ticket getExistingViewId();
 
-    public native JsArray<Condition> getFiltersList();
+    public native HierarchicalTableViewKeyTableDescriptor getKeytabledescriptor();
 
-    public native Ticket getKeyTable();
-
-    public native String getKeyTableExpandDescendantsColumn();
+    public native HierarchicalTableViewOperations getOperations();
 
     public native Ticket getResultViewId();
 
-    public native JsArray<SortDescriptor> getSortsList();
-
     public native boolean hasExistingViewId();
 
-    public native boolean hasKeyTable();
+    public native boolean hasKeytabledescriptor();
 
-    public native boolean hasKeyTableExpandDescendantsColumn();
+    public native boolean hasOperations();
 
     public native boolean hasResultViewId();
 
@@ -1188,29 +1226,17 @@ public class HierarchicalTableViewRequest {
 
     public native void setExistingViewId(Ticket value);
 
-    @JsOverlay
-    public final void setFiltersList(Condition[] value) {
-        setFiltersList(Js.<JsArray<Condition>>uncheckedCast(value));
-    }
+    public native void setKeytabledescriptor();
 
-    public native void setFiltersList(JsArray<Condition> value);
+    public native void setKeytabledescriptor(HierarchicalTableViewKeyTableDescriptor value);
 
-    public native void setKeyTable();
+    public native void setOperations();
 
-    public native void setKeyTable(Ticket value);
-
-    public native void setKeyTableExpandDescendantsColumn(String value);
+    public native void setOperations(HierarchicalTableViewOperations value);
 
     public native void setResultViewId();
 
     public native void setResultViewId(Ticket value);
-
-    public native void setSortsList(JsArray<SortDescriptor> value);
-
-    @JsOverlay
-    public final void setSortsList(SortDescriptor[] value) {
-        setSortsList(Js.<JsArray<SortDescriptor>>uncheckedCast(value));
-    }
 
     public native HierarchicalTableViewRequest.ToObjectReturnType0 toObject();
 

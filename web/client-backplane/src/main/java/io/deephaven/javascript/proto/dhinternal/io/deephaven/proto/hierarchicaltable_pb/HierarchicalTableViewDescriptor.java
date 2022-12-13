@@ -101,6 +101,58 @@ public class HierarchicalTableViewDescriptor {
             }
         }
 
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface RollupFieldType {
+            @JsOverlay
+            static HierarchicalTableViewDescriptor.ToObjectReturnType.RollupFieldType create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            String getKeyWidthColumn();
+
+            @JsProperty
+            double getLeafNodeType();
+
+            @JsProperty
+            JsArray<String> getOutputInputColumnPairsList();
+
+            @JsProperty
+            void setKeyWidthColumn(String keyWidthColumn);
+
+            @JsProperty
+            void setLeafNodeType(double leafNodeType);
+
+            @JsProperty
+            void setOutputInputColumnPairsList(JsArray<String> outputInputColumnPairsList);
+
+            @JsOverlay
+            default void setOutputInputColumnPairsList(String[] outputInputColumnPairsList) {
+                setOutputInputColumnPairsList(
+                        Js.<JsArray<String>>uncheckedCast(outputInputColumnPairsList));
+            }
+        }
+
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface TreeFieldType {
+            @JsOverlay
+            static HierarchicalTableViewDescriptor.ToObjectReturnType.TreeFieldType create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            String getRowDepthColumn();
+
+            @JsProperty
+            String getRowExpandableColumn();
+
+            @JsProperty
+            void setRowDepthColumn(String rowDepthColumn);
+
+            @JsProperty
+            void setRowExpandableColumn(String rowExpandableColumn);
+        }
+
         @JsOverlay
         static HierarchicalTableViewDescriptor.ToObjectReturnType create() {
             return Js.uncheckedCast(JsPropertyMap.of());
@@ -110,19 +162,13 @@ public class HierarchicalTableViewDescriptor {
         JsArray<String> getExpandByColumnsList();
 
         @JsProperty
-        String getRollupKeyWidthColumn();
-
-        @JsProperty
-        double getRollupLeafNodeType();
-
-        @JsProperty
-        JsArray<String> getRollupOutputInputColumnPairsList();
+        HierarchicalTableViewDescriptor.ToObjectReturnType.RollupFieldType getRollup();
 
         @JsProperty
         HierarchicalTableViewDescriptor.ToObjectReturnType.GetSchemaHeaderUnionType getSchemaHeader();
 
         @JsProperty
-        String getTreeRowExpandableColumn();
+        HierarchicalTableViewDescriptor.ToObjectReturnType.TreeFieldType getTree();
 
         @JsProperty
         void setExpandByColumnsList(JsArray<String> expandByColumnsList);
@@ -133,19 +179,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsProperty
-        void setRollupKeyWidthColumn(String rollupKeyWidthColumn);
-
-        @JsProperty
-        void setRollupLeafNodeType(double rollupLeafNodeType);
-
-        @JsProperty
-        void setRollupOutputInputColumnPairsList(JsArray<String> rollupOutputInputColumnPairsList);
-
-        @JsOverlay
-        default void setRollupOutputInputColumnPairsList(String[] rollupOutputInputColumnPairsList) {
-            setRollupOutputInputColumnPairsList(
-                    Js.<JsArray<String>>uncheckedCast(rollupOutputInputColumnPairsList));
-        }
+        void setRollup(HierarchicalTableViewDescriptor.ToObjectReturnType.RollupFieldType rollup);
 
         @JsProperty
         void setSchemaHeader(
@@ -166,7 +200,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsProperty
-        void setTreeRowExpandableColumn(String treeRowExpandableColumn);
+        void setTree(HierarchicalTableViewDescriptor.ToObjectReturnType.TreeFieldType tree);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -200,6 +234,58 @@ public class HierarchicalTableViewDescriptor {
             }
         }
 
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface RollupFieldType {
+            @JsOverlay
+            static HierarchicalTableViewDescriptor.ToObjectReturnType0.RollupFieldType create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            String getKeyWidthColumn();
+
+            @JsProperty
+            double getLeafNodeType();
+
+            @JsProperty
+            JsArray<String> getOutputInputColumnPairsList();
+
+            @JsProperty
+            void setKeyWidthColumn(String keyWidthColumn);
+
+            @JsProperty
+            void setLeafNodeType(double leafNodeType);
+
+            @JsProperty
+            void setOutputInputColumnPairsList(JsArray<String> outputInputColumnPairsList);
+
+            @JsOverlay
+            default void setOutputInputColumnPairsList(String[] outputInputColumnPairsList) {
+                setOutputInputColumnPairsList(
+                        Js.<JsArray<String>>uncheckedCast(outputInputColumnPairsList));
+            }
+        }
+
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface TreeFieldType {
+            @JsOverlay
+            static HierarchicalTableViewDescriptor.ToObjectReturnType0.TreeFieldType create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            String getRowDepthColumn();
+
+            @JsProperty
+            String getRowExpandableColumn();
+
+            @JsProperty
+            void setRowDepthColumn(String rowDepthColumn);
+
+            @JsProperty
+            void setRowExpandableColumn(String rowExpandableColumn);
+        }
+
         @JsOverlay
         static HierarchicalTableViewDescriptor.ToObjectReturnType0 create() {
             return Js.uncheckedCast(JsPropertyMap.of());
@@ -209,19 +295,13 @@ public class HierarchicalTableViewDescriptor {
         JsArray<String> getExpandByColumnsList();
 
         @JsProperty
-        String getRollupKeyWidthColumn();
-
-        @JsProperty
-        double getRollupLeafNodeType();
-
-        @JsProperty
-        JsArray<String> getRollupOutputInputColumnPairsList();
+        HierarchicalTableViewDescriptor.ToObjectReturnType0.RollupFieldType getRollup();
 
         @JsProperty
         HierarchicalTableViewDescriptor.ToObjectReturnType0.GetSchemaHeaderUnionType getSchemaHeader();
 
         @JsProperty
-        String getTreeRowExpandableColumn();
+        HierarchicalTableViewDescriptor.ToObjectReturnType0.TreeFieldType getTree();
 
         @JsProperty
         void setExpandByColumnsList(JsArray<String> expandByColumnsList);
@@ -232,19 +312,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsProperty
-        void setRollupKeyWidthColumn(String rollupKeyWidthColumn);
-
-        @JsProperty
-        void setRollupLeafNodeType(double rollupLeafNodeType);
-
-        @JsProperty
-        void setRollupOutputInputColumnPairsList(JsArray<String> rollupOutputInputColumnPairsList);
-
-        @JsOverlay
-        default void setRollupOutputInputColumnPairsList(String[] rollupOutputInputColumnPairsList) {
-            setRollupOutputInputColumnPairsList(
-                    Js.<JsArray<String>>uncheckedCast(rollupOutputInputColumnPairsList));
-        }
+        void setRollup(HierarchicalTableViewDescriptor.ToObjectReturnType0.RollupFieldType rollup);
 
         @JsProperty
         void setSchemaHeader(
@@ -265,7 +333,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsProperty
-        void setTreeRowExpandableColumn(String treeRowExpandableColumn);
+        void setTree(HierarchicalTableViewDescriptor.ToObjectReturnType0.TreeFieldType tree);
     }
 
     public static native HierarchicalTableViewDescriptor deserializeBinary(Uint8Array bytes);
@@ -283,27 +351,17 @@ public class HierarchicalTableViewDescriptor {
 
     public native String addExpandByColumns(String value);
 
-    public native String addRollupOutputInputColumnPairs(String value, double index);
-
-    public native String addRollupOutputInputColumnPairs(String value);
-
     public native void clearExpandByColumnsList();
 
-    public native void clearRollupKeyWidthColumn();
+    public native void clearRollup();
 
-    public native void clearRollupLeafNodeType();
+    public native void clearTree();
 
-    public native void clearRollupOutputInputColumnPairsList();
-
-    public native void clearTreeRowExpandableColumn();
+    public native int getDetailsCase();
 
     public native JsArray<String> getExpandByColumnsList();
 
-    public native String getRollupKeyWidthColumn();
-
-    public native int getRollupLeafNodeType();
-
-    public native JsArray<String> getRollupOutputInputColumnPairsList();
+    public native RollupDescriptorDetails getRollup();
 
     public native HierarchicalTableViewDescriptor.GetSchemaHeaderUnionType getSchemaHeader();
 
@@ -311,13 +369,11 @@ public class HierarchicalTableViewDescriptor {
 
     public native Uint8Array getSchemaHeader_asU8();
 
-    public native String getTreeRowExpandableColumn();
+    public native TreeDescriptorDetails getTree();
 
-    public native boolean hasRollupKeyWidthColumn();
+    public native boolean hasRollup();
 
-    public native boolean hasRollupLeafNodeType();
-
-    public native boolean hasTreeRowExpandableColumn();
+    public native boolean hasTree();
 
     public native Uint8Array serializeBinary();
 
@@ -328,16 +384,9 @@ public class HierarchicalTableViewDescriptor {
         setExpandByColumnsList(Js.<JsArray<String>>uncheckedCast(value));
     }
 
-    public native void setRollupKeyWidthColumn(String value);
+    public native void setRollup();
 
-    public native void setRollupLeafNodeType(int value);
-
-    public native void setRollupOutputInputColumnPairsList(JsArray<String> value);
-
-    @JsOverlay
-    public final void setRollupOutputInputColumnPairsList(String[] value) {
-        setRollupOutputInputColumnPairsList(Js.<JsArray<String>>uncheckedCast(value));
-    }
+    public native void setRollup(RollupDescriptorDetails value);
 
     public native void setSchemaHeader(
             HierarchicalTableViewDescriptor.SetSchemaHeaderValueUnionType value);
@@ -354,7 +403,9 @@ public class HierarchicalTableViewDescriptor {
                 Js.<HierarchicalTableViewDescriptor.SetSchemaHeaderValueUnionType>uncheckedCast(value));
     }
 
-    public native void setTreeRowExpandableColumn(String value);
+    public native void setTree();
+
+    public native void setTree(TreeDescriptorDetails value);
 
     public native HierarchicalTableViewDescriptor.ToObjectReturnType0 toObject();
 

@@ -2,13 +2,13 @@ package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchical
 
 import io.deephaven.javascript.proto.dhinternal.browserheaders.BrowserHeaders;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableSourceExportRequest;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableSourceExportResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableViewRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableViewResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.RollupRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.RollupResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.TreeRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.TreeResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -52,7 +52,7 @@ public class HierarchicalTableServiceClient {
 
         void onInvoke(
                 HierarchicalTableServiceClient.ExportSourceCallbackFn.P0Type p0,
-                HierarchicalTableSourceExportResponse p1);
+                ExportedTableCreationResponse p1);
     }
 
     @JsFunction
@@ -85,7 +85,7 @@ public class HierarchicalTableServiceClient {
 
         void onInvoke(
                 HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackFn.P0Type p0,
-                HierarchicalTableSourceExportResponse p1);
+                ExportedTableCreationResponse p1);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
