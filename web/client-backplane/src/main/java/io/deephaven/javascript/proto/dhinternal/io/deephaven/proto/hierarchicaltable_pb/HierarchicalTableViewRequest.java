@@ -18,9 +18,9 @@ public class HierarchicalTableViewRequest {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface KeytabledescriptorFieldType {
+        public interface KeyTableDescriptorFieldType {
             @JsOverlay
-            static HierarchicalTableViewRequest.ToObjectReturnType.KeytabledescriptorFieldType create() {
+            static HierarchicalTableViewRequest.ToObjectReturnType.KeyTableDescriptorFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
@@ -576,7 +576,7 @@ public class HierarchicalTableViewRequest {
         Object getExistingViewId();
 
         @JsProperty
-        HierarchicalTableViewRequest.ToObjectReturnType.KeytabledescriptorFieldType getKeytabledescriptor();
+        HierarchicalTableViewRequest.ToObjectReturnType.KeyTableDescriptorFieldType getKeyTableDescriptor();
 
         @JsProperty
         HierarchicalTableViewRequest.ToObjectReturnType.OperationsFieldType getOperations();
@@ -588,8 +588,8 @@ public class HierarchicalTableViewRequest {
         void setExistingViewId(Object existingViewId);
 
         @JsProperty
-        void setKeytabledescriptor(
-                HierarchicalTableViewRequest.ToObjectReturnType.KeytabledescriptorFieldType keytabledescriptor);
+        void setKeyTableDescriptor(
+                HierarchicalTableViewRequest.ToObjectReturnType.KeyTableDescriptorFieldType keyTableDescriptor);
 
         @JsProperty
         void setOperations(
@@ -603,9 +603,9 @@ public class HierarchicalTableViewRequest {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType0 {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface KeytabledescriptorFieldType {
+        public interface KeyTableDescriptorFieldType {
             @JsOverlay
-            static HierarchicalTableViewRequest.ToObjectReturnType0.KeytabledescriptorFieldType create() {
+            static HierarchicalTableViewRequest.ToObjectReturnType0.KeyTableDescriptorFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
@@ -1161,7 +1161,7 @@ public class HierarchicalTableViewRequest {
         Object getExistingViewId();
 
         @JsProperty
-        HierarchicalTableViewRequest.ToObjectReturnType0.KeytabledescriptorFieldType getKeytabledescriptor();
+        HierarchicalTableViewRequest.ToObjectReturnType0.KeyTableDescriptorFieldType getKeyTableDescriptor();
 
         @JsProperty
         HierarchicalTableViewRequest.ToObjectReturnType0.OperationsFieldType getOperations();
@@ -1173,8 +1173,8 @@ public class HierarchicalTableViewRequest {
         void setExistingViewId(Object existingViewId);
 
         @JsProperty
-        void setKeytabledescriptor(
-                HierarchicalTableViewRequest.ToObjectReturnType0.KeytabledescriptorFieldType keytabledescriptor);
+        void setKeyTableDescriptor(
+                HierarchicalTableViewRequest.ToObjectReturnType0.KeyTableDescriptorFieldType keyTableDescriptor);
 
         @JsProperty
         void setOperations(
@@ -1198,7 +1198,7 @@ public class HierarchicalTableViewRequest {
 
     public native void clearExistingViewId();
 
-    public native void clearKeytabledescriptor();
+    public native void clearKeyTableDescriptor();
 
     public native void clearOperations();
 
@@ -1206,7 +1206,7 @@ public class HierarchicalTableViewRequest {
 
     public native Ticket getExistingViewId();
 
-    public native HierarchicalTableViewKeyTableDescriptor getKeytabledescriptor();
+    public native HierarchicalTableViewKeyTableDescriptor getKeyTableDescriptor();
 
     public native HierarchicalTableViewOperations getOperations();
 
@@ -1214,7 +1214,7 @@ public class HierarchicalTableViewRequest {
 
     public native boolean hasExistingViewId();
 
-    public native boolean hasKeytabledescriptor();
+    public native boolean hasKeyTableDescriptor();
 
     public native boolean hasOperations();
 
@@ -1226,9 +1226,9 @@ public class HierarchicalTableViewRequest {
 
     public native void setExistingViewId(Ticket value);
 
-    public native void setKeytabledescriptor();
+    public native void setKeyTableDescriptor();
 
-    public native void setKeytabledescriptor(HierarchicalTableViewKeyTableDescriptor value);
+    public native void setKeyTableDescriptor(HierarchicalTableViewKeyTableDescriptor value);
 
     public native void setOperations();
 
