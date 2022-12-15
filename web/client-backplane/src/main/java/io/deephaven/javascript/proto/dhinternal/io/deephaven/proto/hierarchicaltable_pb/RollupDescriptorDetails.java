@@ -22,16 +22,10 @@ public class RollupDescriptorDetails {
         }
 
         @JsProperty
-        String getKeyWidthColumn();
-
-        @JsProperty
         double getLeafNodeType();
 
         @JsProperty
         JsArray<String> getOutputInputColumnPairsList();
-
-        @JsProperty
-        void setKeyWidthColumn(String keyWidthColumn);
 
         @JsProperty
         void setLeafNodeType(double leafNodeType);
@@ -53,16 +47,10 @@ public class RollupDescriptorDetails {
         }
 
         @JsProperty
-        String getKeyWidthColumn();
-
-        @JsProperty
         double getLeafNodeType();
 
         @JsProperty
         JsArray<String> getOutputInputColumnPairsList();
-
-        @JsProperty
-        void setKeyWidthColumn(String keyWidthColumn);
 
         @JsProperty
         void setLeafNodeType(double leafNodeType);
@@ -92,15 +80,11 @@ public class RollupDescriptorDetails {
 
     public native void clearOutputInputColumnPairsList();
 
-    public native String getKeyWidthColumn();
-
     public native int getLeafNodeType();
 
     public native JsArray<String> getOutputInputColumnPairsList();
 
     public native Uint8Array serializeBinary();
-
-    public native void setKeyWidthColumn(String value);
 
     public native void setLeafNodeType(int value);
 
