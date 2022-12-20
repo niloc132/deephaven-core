@@ -3,7 +3,6 @@
  */
 package io.deephaven.web.client.api;
 
-import elemental2.core.Global;
 import elemental2.core.JsArray;
 import elemental2.dom.CustomEventInit;
 import elemental2.dom.DomGlobal;
@@ -21,6 +20,7 @@ import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.Natu
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.RunChartDownsampleRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.SelectDistinctRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.SnapshotTableRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.comboaggregaterequest.Aggregate;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.runchartdownsamplerequest.ZoomRange;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.TypedTicket;
@@ -474,11 +474,6 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
     @JsMethod
     public TableViewportSubscription setViewport(double firstRow, double lastRow, @JsOptional JsArray<Column> columns,
             @JsOptional Double updateIntervalMs) {
-        if (lastVisibleState().getTableDef().getAttributes().getTreeHierarchicalColumnName() != null) {
-            // we only need to check the last visible state since if it isn't a tree, our current state isnt either
-            throw new IllegalStateException(
-                    "Cannot set a normal table viewport on a treetable - please re-fetch this as a treetable");
-        }
         Column[] columnsCopy = columns != null ? Js.uncheckedCast(columns.slice()) : null;
         ClientTableState currentState = state();
         TableViewportSubscription activeSubscription = subscriptions.get(getHandle());
@@ -769,7 +764,7 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
         });
 
         Promise<JsTreeTable> fetchPromise =
-                new JsTreeTable(workerConnection, new JsWidget(workerConnection, c -> {
+                Promise.resolve(new JsTreeTable(workerConnection, new JsWidget(workerConnection, c -> {
                     FetchObjectRequest partitionedTableRequest = new FetchObjectRequest();
                     partitionedTableRequest.setSourceId(new TypedTicket());
                     partitionedTableRequest.getSourceId().setType(JsVariableChanges.TREETABLE);
@@ -778,7 +773,7 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
                             workerConnection.metadata(), (fail, success) -> {
                                 c.handleResponse(fail, success, rollupTicket);
                             });
-                })).finishFetch();
+                })));
 
 
         return rollupPromise.then(ignore -> fetchPromise);
@@ -798,8 +793,8 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
 
         Promise<Object> treePromise = Callbacks.grpcUnaryPromise(c -> {
             TreeRequest requestMessage = new TreeRequest();
-            requestMessage.setSourceId(state().getHandle().makeTicket());
-            requestMessage.setResultViewId(treeTicket);
+            requestMessage.setSourceTableId(state().getHandle().makeTicket());
+            requestMessage.setResultTreeTableId(treeTicket);
             requestMessage.setIdentifierColumn(config.idColumn);
             requestMessage.setParentIdentifierColumn(config.parentColumn);
 
@@ -807,7 +802,7 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
         });
 
         Promise<JsTreeTable> fetchPromise =
-                new JsTreeTable(workerConnection, new JsWidget(workerConnection, c -> {
+                Promise.resolve(new JsTreeTable(workerConnection, new JsWidget(workerConnection, c -> {
                     FetchObjectRequest partitionedTableRequest = new FetchObjectRequest();
                     partitionedTableRequest.setSourceId(new TypedTicket());
                     partitionedTableRequest.getSourceId().setType(JsVariableChanges.TREETABLE);
@@ -816,7 +811,7 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
                             workerConnection.metadata(), (fail, success) -> {
                                 c.handleResponse(fail, success, treeTicket);
                             });
-                })).finishFetch();
+                })));
 
 
         return treePromise.then(ignore -> fetchPromise);
