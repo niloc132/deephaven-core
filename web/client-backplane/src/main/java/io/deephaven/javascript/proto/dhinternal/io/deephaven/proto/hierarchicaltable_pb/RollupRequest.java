@@ -62,11 +62,11 @@ public class RollupRequest {
         }
 
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface ResultViewIdFieldType {
+        public interface ResultRollupTableIdFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static RollupRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType of(
+                static RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType.GetTicketUnionType of(
                         Object o) {
                     return Js.cast(o);
                 }
@@ -93,28 +93,28 @@ public class RollupRequest {
             }
 
             @JsOverlay
-            static RollupRequest.ToObjectReturnType.ResultViewIdFieldType create() {
+            static RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            RollupRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType getTicket();
+            RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
             void setTicket(
-                    RollupRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType ticket);
+                    RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<RollupRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<RollupRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -131,10 +131,10 @@ public class RollupRequest {
         JsArray<String> getGroupByColumnsList();
 
         @JsProperty
-        RollupRequest.ToObjectReturnType.ResultViewIdFieldType getResultViewId();
+        RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType getResultRollupTableId();
 
         @JsProperty
-        Object getSourceId();
+        Object getSourceTableId();
 
         @JsProperty
         boolean isIncludeConstituents();
@@ -163,10 +163,11 @@ public class RollupRequest {
         void setIncludeConstituents(boolean includeConstituents);
 
         @JsProperty
-        void setResultViewId(RollupRequest.ToObjectReturnType.ResultViewIdFieldType resultViewId);
+        void setResultRollupTableId(
+                RollupRequest.ToObjectReturnType.ResultRollupTableIdFieldType resultRollupTableId);
 
         @JsProperty
-        void setSourceId(Object sourceId);
+        void setSourceTableId(Object sourceTableId);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
@@ -215,11 +216,11 @@ public class RollupRequest {
         }
 
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface ResultViewIdFieldType {
+        public interface ResultRollupTableIdFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static RollupRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType of(
+                static RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType.GetTicketUnionType of(
                         Object o) {
                     return Js.cast(o);
                 }
@@ -246,28 +247,28 @@ public class RollupRequest {
             }
 
             @JsOverlay
-            static RollupRequest.ToObjectReturnType0.ResultViewIdFieldType create() {
+            static RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            RollupRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType getTicket();
+            RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
             void setTicket(
-                    RollupRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType ticket);
+                    RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<RollupRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<RollupRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -284,10 +285,10 @@ public class RollupRequest {
         JsArray<String> getGroupByColumnsList();
 
         @JsProperty
-        RollupRequest.ToObjectReturnType0.ResultViewIdFieldType getResultViewId();
+        RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType getResultRollupTableId();
 
         @JsProperty
-        Object getSourceId();
+        Object getSourceTableId();
 
         @JsProperty
         boolean isIncludeConstituents();
@@ -316,10 +317,11 @@ public class RollupRequest {
         void setIncludeConstituents(boolean includeConstituents);
 
         @JsProperty
-        void setResultViewId(RollupRequest.ToObjectReturnType0.ResultViewIdFieldType resultViewId);
+        void setResultRollupTableId(
+                RollupRequest.ToObjectReturnType0.ResultRollupTableIdFieldType resultRollupTableId);
 
         @JsProperty
-        void setSourceId(Object sourceId);
+        void setSourceTableId(Object sourceTableId);
     }
 
     public static native RollupRequest deserializeBinary(Uint8Array bytes);
@@ -346,9 +348,9 @@ public class RollupRequest {
 
     public native void clearGroupByColumnsList();
 
-    public native void clearResultViewId();
+    public native void clearResultRollupTableId();
 
-    public native void clearSourceId();
+    public native void clearSourceTableId();
 
     public native JsArray<Aggregate> getAggregationsList();
 
@@ -356,13 +358,13 @@ public class RollupRequest {
 
     public native boolean getIncludeConstituents();
 
-    public native Ticket getResultViewId();
+    public native Ticket getResultRollupTableId();
 
-    public native Ticket getSourceId();
+    public native Ticket getSourceTableId();
 
-    public native boolean hasResultViewId();
+    public native boolean hasResultRollupTableId();
 
-    public native boolean hasSourceId();
+    public native boolean hasSourceTableId();
 
     public native Uint8Array serializeBinary();
 
@@ -382,13 +384,13 @@ public class RollupRequest {
 
     public native void setIncludeConstituents(boolean value);
 
-    public native void setResultViewId();
+    public native void setResultRollupTableId();
 
-    public native void setResultViewId(Ticket value);
+    public native void setResultRollupTableId(Ticket value);
 
-    public native void setSourceId();
+    public native void setSourceTableId();
 
-    public native void setSourceId(Ticket value);
+    public native void setSourceTableId(Ticket value);
 
     public native RollupRequest.ToObjectReturnType0 toObject();
 

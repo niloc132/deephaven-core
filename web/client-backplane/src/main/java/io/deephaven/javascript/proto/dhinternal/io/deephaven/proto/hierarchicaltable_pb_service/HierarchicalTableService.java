@@ -13,9 +13,9 @@ import jsinterop.base.JsPropertyMap;
         namespace = JsPackage.GLOBAL)
 public class HierarchicalTableService {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface ExportSourceType {
+    public interface ApplyType {
         @JsOverlay
-        static HierarchicalTableService.ExportSourceType create() {
+        static HierarchicalTableService.ApplyType create() {
             return Js.uncheckedCast(JsPropertyMap.of());
         }
 
@@ -188,7 +188,7 @@ public class HierarchicalTableService {
         void setService(Object service);
     }
 
-    public static HierarchicalTableService.ExportSourceType ExportSource;
+    public static HierarchicalTableService.ApplyType Apply;
     public static HierarchicalTableService.RollupType Rollup;
     public static HierarchicalTableService.TreeType Tree;
     public static HierarchicalTableService.ViewType View;

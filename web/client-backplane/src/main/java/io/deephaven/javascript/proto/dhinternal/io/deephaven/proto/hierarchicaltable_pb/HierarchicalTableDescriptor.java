@@ -11,13 +11,13 @@ import jsinterop.base.JsPropertyMap;
 
 @JsType(
         isNative = true,
-        name = "dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableViewDescriptor",
+        name = "dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableDescriptor",
         namespace = JsPackage.GLOBAL)
-public class HierarchicalTableViewDescriptor {
+public class HierarchicalTableDescriptor {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface GetSchemaHeaderUnionType {
+    public interface GetSnapshotDefinitionSchemaUnionType {
         @JsOverlay
-        static HierarchicalTableViewDescriptor.GetSchemaHeaderUnionType of(Object o) {
+        static HierarchicalTableDescriptor.GetSnapshotDefinitionSchemaUnionType of(Object o) {
             return Js.cast(o);
         }
 
@@ -43,9 +43,9 @@ public class HierarchicalTableViewDescriptor {
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-    public interface SetSchemaHeaderValueUnionType {
+    public interface SetSnapshotDefinitionSchemaValueUnionType {
         @JsOverlay
-        static HierarchicalTableViewDescriptor.SetSchemaHeaderValueUnionType of(Object o) {
+        static HierarchicalTableDescriptor.SetSnapshotDefinitionSchemaValueUnionType of(Object o) {
             return Js.cast(o);
         }
 
@@ -73,9 +73,9 @@ public class HierarchicalTableViewDescriptor {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface GetSchemaHeaderUnionType {
+        public interface GetSnapshotDefinitionSchemaUnionType {
             @JsOverlay
-            static HierarchicalTableViewDescriptor.ToObjectReturnType.GetSchemaHeaderUnionType of(
+            static HierarchicalTableDescriptor.ToObjectReturnType.GetSnapshotDefinitionSchemaUnionType of(
                     Object o) {
                 return Js.cast(o);
             }
@@ -104,7 +104,7 @@ public class HierarchicalTableViewDescriptor {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
         public interface RollupFieldType {
             @JsOverlay
-            static HierarchicalTableViewDescriptor.ToObjectReturnType.RollupFieldType create() {
+            static HierarchicalTableDescriptor.ToObjectReturnType.RollupFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
@@ -128,7 +128,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsOverlay
-        static HierarchicalTableViewDescriptor.ToObjectReturnType create() {
+        static HierarchicalTableDescriptor.ToObjectReturnType create() {
             return Js.uncheckedCast(JsPropertyMap.of());
         }
 
@@ -136,7 +136,7 @@ public class HierarchicalTableViewDescriptor {
         JsArray<String> getExpandByColumnsList();
 
         @JsProperty
-        HierarchicalTableViewDescriptor.ToObjectReturnType.RollupFieldType getRollup();
+        HierarchicalTableDescriptor.ToObjectReturnType.RollupFieldType getRollup();
 
         @JsProperty
         String getRowDepthColumn();
@@ -145,7 +145,7 @@ public class HierarchicalTableViewDescriptor {
         String getRowExpandedColumn();
 
         @JsProperty
-        HierarchicalTableViewDescriptor.ToObjectReturnType.GetSchemaHeaderUnionType getSchemaHeader();
+        HierarchicalTableDescriptor.ToObjectReturnType.GetSnapshotDefinitionSchemaUnionType getSnapshotDefinitionSchema();
 
         @JsProperty
         Object getTree();
@@ -159,7 +159,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsProperty
-        void setRollup(HierarchicalTableViewDescriptor.ToObjectReturnType.RollupFieldType rollup);
+        void setRollup(HierarchicalTableDescriptor.ToObjectReturnType.RollupFieldType rollup);
 
         @JsProperty
         void setRowDepthColumn(String rowDepthColumn);
@@ -168,21 +168,21 @@ public class HierarchicalTableViewDescriptor {
         void setRowExpandedColumn(String rowExpandedColumn);
 
         @JsProperty
-        void setSchemaHeader(
-                HierarchicalTableViewDescriptor.ToObjectReturnType.GetSchemaHeaderUnionType schemaHeader);
+        void setSnapshotDefinitionSchema(
+                HierarchicalTableDescriptor.ToObjectReturnType.GetSnapshotDefinitionSchemaUnionType snapshotDefinitionSchema);
 
         @JsOverlay
-        default void setSchemaHeader(String schemaHeader) {
-            setSchemaHeader(
-                    Js.<HierarchicalTableViewDescriptor.ToObjectReturnType.GetSchemaHeaderUnionType>uncheckedCast(
-                            schemaHeader));
+        default void setSnapshotDefinitionSchema(String snapshotDefinitionSchema) {
+            setSnapshotDefinitionSchema(
+                    Js.<HierarchicalTableDescriptor.ToObjectReturnType.GetSnapshotDefinitionSchemaUnionType>uncheckedCast(
+                            snapshotDefinitionSchema));
         }
 
         @JsOverlay
-        default void setSchemaHeader(Uint8Array schemaHeader) {
-            setSchemaHeader(
-                    Js.<HierarchicalTableViewDescriptor.ToObjectReturnType.GetSchemaHeaderUnionType>uncheckedCast(
-                            schemaHeader));
+        default void setSnapshotDefinitionSchema(Uint8Array snapshotDefinitionSchema) {
+            setSnapshotDefinitionSchema(
+                    Js.<HierarchicalTableDescriptor.ToObjectReturnType.GetSnapshotDefinitionSchemaUnionType>uncheckedCast(
+                            snapshotDefinitionSchema));
         }
 
         @JsProperty
@@ -192,10 +192,9 @@ public class HierarchicalTableViewDescriptor {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType0 {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface GetSchemaHeaderUnionType {
+        public interface GetSnapshotDefinitionSchemaUnionType {
             @JsOverlay
-            static HierarchicalTableViewDescriptor.ToObjectReturnType0.GetSchemaHeaderUnionType of(
-                    Object o) {
+            static HierarchicalTableDescriptor.ToObjectReturnType0.GetSnapshotDefinitionSchemaUnionType of(Object o) {
                 return Js.cast(o);
             }
 
@@ -223,7 +222,7 @@ public class HierarchicalTableViewDescriptor {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
         public interface RollupFieldType {
             @JsOverlay
-            static HierarchicalTableViewDescriptor.ToObjectReturnType0.RollupFieldType create() {
+            static HierarchicalTableDescriptor.ToObjectReturnType0.RollupFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
@@ -247,7 +246,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsOverlay
-        static HierarchicalTableViewDescriptor.ToObjectReturnType0 create() {
+        static HierarchicalTableDescriptor.ToObjectReturnType0 create() {
             return Js.uncheckedCast(JsPropertyMap.of());
         }
 
@@ -255,7 +254,7 @@ public class HierarchicalTableViewDescriptor {
         JsArray<String> getExpandByColumnsList();
 
         @JsProperty
-        HierarchicalTableViewDescriptor.ToObjectReturnType0.RollupFieldType getRollup();
+        HierarchicalTableDescriptor.ToObjectReturnType0.RollupFieldType getRollup();
 
         @JsProperty
         String getRowDepthColumn();
@@ -264,7 +263,7 @@ public class HierarchicalTableViewDescriptor {
         String getRowExpandedColumn();
 
         @JsProperty
-        HierarchicalTableViewDescriptor.ToObjectReturnType0.GetSchemaHeaderUnionType getSchemaHeader();
+        HierarchicalTableDescriptor.ToObjectReturnType0.GetSnapshotDefinitionSchemaUnionType getSnapshotDefinitionSchema();
 
         @JsProperty
         Object getTree();
@@ -278,7 +277,7 @@ public class HierarchicalTableViewDescriptor {
         }
 
         @JsProperty
-        void setRollup(HierarchicalTableViewDescriptor.ToObjectReturnType0.RollupFieldType rollup);
+        void setRollup(HierarchicalTableDescriptor.ToObjectReturnType0.RollupFieldType rollup);
 
         @JsProperty
         void setRowDepthColumn(String rowDepthColumn);
@@ -287,37 +286,37 @@ public class HierarchicalTableViewDescriptor {
         void setRowExpandedColumn(String rowExpandedColumn);
 
         @JsProperty
-        void setSchemaHeader(
-                HierarchicalTableViewDescriptor.ToObjectReturnType0.GetSchemaHeaderUnionType schemaHeader);
+        void setSnapshotDefinitionSchema(
+                HierarchicalTableDescriptor.ToObjectReturnType0.GetSnapshotDefinitionSchemaUnionType snapshotDefinitionSchema);
 
         @JsOverlay
-        default void setSchemaHeader(String schemaHeader) {
-            setSchemaHeader(
-                    Js.<HierarchicalTableViewDescriptor.ToObjectReturnType0.GetSchemaHeaderUnionType>uncheckedCast(
-                            schemaHeader));
+        default void setSnapshotDefinitionSchema(String snapshotDefinitionSchema) {
+            setSnapshotDefinitionSchema(
+                    Js.<HierarchicalTableDescriptor.ToObjectReturnType0.GetSnapshotDefinitionSchemaUnionType>uncheckedCast(
+                            snapshotDefinitionSchema));
         }
 
         @JsOverlay
-        default void setSchemaHeader(Uint8Array schemaHeader) {
-            setSchemaHeader(
-                    Js.<HierarchicalTableViewDescriptor.ToObjectReturnType0.GetSchemaHeaderUnionType>uncheckedCast(
-                            schemaHeader));
+        default void setSnapshotDefinitionSchema(Uint8Array snapshotDefinitionSchema) {
+            setSnapshotDefinitionSchema(
+                    Js.<HierarchicalTableDescriptor.ToObjectReturnType0.GetSnapshotDefinitionSchemaUnionType>uncheckedCast(
+                            snapshotDefinitionSchema));
         }
 
         @JsProperty
         void setTree(Object tree);
     }
 
-    public static native HierarchicalTableViewDescriptor deserializeBinary(Uint8Array bytes);
+    public static native HierarchicalTableDescriptor deserializeBinary(Uint8Array bytes);
 
-    public static native HierarchicalTableViewDescriptor deserializeBinaryFromReader(
-            HierarchicalTableViewDescriptor message, Object reader);
+    public static native HierarchicalTableDescriptor deserializeBinaryFromReader(
+            HierarchicalTableDescriptor message, Object reader);
 
     public static native void serializeBinaryToWriter(
-            HierarchicalTableViewDescriptor message, Object writer);
+            HierarchicalTableDescriptor message, Object writer);
 
-    public static native HierarchicalTableViewDescriptor.ToObjectReturnType toObject(
-            boolean includeInstance, HierarchicalTableViewDescriptor msg);
+    public static native HierarchicalTableDescriptor.ToObjectReturnType toObject(
+            boolean includeInstance, HierarchicalTableDescriptor msg);
 
     public native String addExpandByColumns(String value, double index);
 
@@ -339,11 +338,11 @@ public class HierarchicalTableViewDescriptor {
 
     public native String getRowExpandedColumn();
 
-    public native HierarchicalTableViewDescriptor.GetSchemaHeaderUnionType getSchemaHeader();
+    public native HierarchicalTableDescriptor.GetSnapshotDefinitionSchemaUnionType getSnapshotDefinitionSchema();
 
-    public native String getSchemaHeader_asB64();
+    public native String getSnapshotDefinitionSchema_asB64();
 
-    public native Uint8Array getSchemaHeader_asU8();
+    public native Uint8Array getSnapshotDefinitionSchema_asU8();
 
     public native TreeDescriptorDetails getTree();
 
@@ -368,27 +367,28 @@ public class HierarchicalTableViewDescriptor {
 
     public native void setRowExpandedColumn(String value);
 
-    public native void setSchemaHeader(
-            HierarchicalTableViewDescriptor.SetSchemaHeaderValueUnionType value);
+    public native void setSnapshotDefinitionSchema(
+            HierarchicalTableDescriptor.SetSnapshotDefinitionSchemaValueUnionType value);
 
     @JsOverlay
-    public final void setSchemaHeader(String value) {
-        setSchemaHeader(
-                Js.<HierarchicalTableViewDescriptor.SetSchemaHeaderValueUnionType>uncheckedCast(value));
+    public final void setSnapshotDefinitionSchema(String value) {
+        setSnapshotDefinitionSchema(
+                Js.<HierarchicalTableDescriptor.SetSnapshotDefinitionSchemaValueUnionType>uncheckedCast(
+                        value));
     }
 
     @JsOverlay
-    public final void setSchemaHeader(Uint8Array value) {
-        setSchemaHeader(
-                Js.<HierarchicalTableViewDescriptor.SetSchemaHeaderValueUnionType>uncheckedCast(value));
+    public final void setSnapshotDefinitionSchema(Uint8Array value) {
+        setSnapshotDefinitionSchema(
+                Js.<HierarchicalTableDescriptor.SetSnapshotDefinitionSchemaValueUnionType>uncheckedCast(
+                        value));
     }
 
     public native void setTree();
 
     public native void setTree(TreeDescriptorDetails value);
 
-    public native HierarchicalTableViewDescriptor.ToObjectReturnType0 toObject();
+    public native HierarchicalTableDescriptor.ToObjectReturnType0 toObject();
 
-    public native HierarchicalTableViewDescriptor.ToObjectReturnType0 toObject(
-            boolean includeInstance);
+    public native HierarchicalTableDescriptor.ToObjectReturnType0 toObject(boolean includeInstance);
 }

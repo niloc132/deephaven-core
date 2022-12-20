@@ -17,11 +17,11 @@ public class TreeRequest {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface ResultViewIdFieldType {
+        public interface ResultTreeTableIdFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static TreeRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType of(
+                static TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType.GetTicketUnionType of(
                         Object o) {
                     return Js.cast(o);
                 }
@@ -48,28 +48,28 @@ public class TreeRequest {
             }
 
             @JsOverlay
-            static TreeRequest.ToObjectReturnType.ResultViewIdFieldType create() {
+            static TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            TreeRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType getTicket();
+            TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
             void setTicket(
-                    TreeRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType ticket);
+                    TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<TreeRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<TreeRequest.ToObjectReturnType.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -86,10 +86,10 @@ public class TreeRequest {
         String getParentIdentifierColumn();
 
         @JsProperty
-        TreeRequest.ToObjectReturnType.ResultViewIdFieldType getResultViewId();
+        TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType getResultTreeTableId();
 
         @JsProperty
-        Object getSourceId();
+        Object getSourceTableId();
 
         @JsProperty
         void setIdentifierColumn(String identifierColumn);
@@ -98,20 +98,21 @@ public class TreeRequest {
         void setParentIdentifierColumn(String parentIdentifierColumn);
 
         @JsProperty
-        void setResultViewId(TreeRequest.ToObjectReturnType.ResultViewIdFieldType resultViewId);
+        void setResultTreeTableId(
+                TreeRequest.ToObjectReturnType.ResultTreeTableIdFieldType resultTreeTableId);
 
         @JsProperty
-        void setSourceId(Object sourceId);
+        void setSourceTableId(Object sourceTableId);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType0 {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface ResultViewIdFieldType {
+        public interface ResultTreeTableIdFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static TreeRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType of(
+                static TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType.GetTicketUnionType of(
                         Object o) {
                     return Js.cast(o);
                 }
@@ -138,28 +139,28 @@ public class TreeRequest {
             }
 
             @JsOverlay
-            static TreeRequest.ToObjectReturnType0.ResultViewIdFieldType create() {
+            static TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            TreeRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType getTicket();
+            TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
             void setTicket(
-                    TreeRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType ticket);
+                    TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<TreeRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<TreeRequest.ToObjectReturnType0.ResultViewIdFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -176,10 +177,10 @@ public class TreeRequest {
         String getParentIdentifierColumn();
 
         @JsProperty
-        TreeRequest.ToObjectReturnType0.ResultViewIdFieldType getResultViewId();
+        TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType getResultTreeTableId();
 
         @JsProperty
-        Object getSourceId();
+        Object getSourceTableId();
 
         @JsProperty
         void setIdentifierColumn(String identifierColumn);
@@ -188,10 +189,11 @@ public class TreeRequest {
         void setParentIdentifierColumn(String parentIdentifierColumn);
 
         @JsProperty
-        void setResultViewId(TreeRequest.ToObjectReturnType0.ResultViewIdFieldType resultViewId);
+        void setResultTreeTableId(
+                TreeRequest.ToObjectReturnType0.ResultTreeTableIdFieldType resultTreeTableId);
 
         @JsProperty
-        void setSourceId(Object sourceId);
+        void setSourceTableId(Object sourceTableId);
     }
 
     public static native TreeRequest deserializeBinary(Uint8Array bytes);
@@ -203,21 +205,21 @@ public class TreeRequest {
     public static native TreeRequest.ToObjectReturnType toObject(
             boolean includeInstance, TreeRequest msg);
 
-    public native void clearResultViewId();
+    public native void clearResultTreeTableId();
 
-    public native void clearSourceId();
+    public native void clearSourceTableId();
 
     public native String getIdentifierColumn();
 
     public native String getParentIdentifierColumn();
 
-    public native Ticket getResultViewId();
+    public native Ticket getResultTreeTableId();
 
-    public native Ticket getSourceId();
+    public native Ticket getSourceTableId();
 
-    public native boolean hasResultViewId();
+    public native boolean hasResultTreeTableId();
 
-    public native boolean hasSourceId();
+    public native boolean hasSourceTableId();
 
     public native Uint8Array serializeBinary();
 
@@ -225,13 +227,13 @@ public class TreeRequest {
 
     public native void setParentIdentifierColumn(String value);
 
-    public native void setResultViewId();
+    public native void setResultTreeTableId();
 
-    public native void setResultViewId(Ticket value);
+    public native void setResultTreeTableId(Ticket value);
 
-    public native void setSourceId();
+    public native void setSourceTableId();
 
-    public native void setSourceId(Ticket value);
+    public native void setSourceTableId(Ticket value);
 
     public native TreeRequest.ToObjectReturnType0 toObject();
 

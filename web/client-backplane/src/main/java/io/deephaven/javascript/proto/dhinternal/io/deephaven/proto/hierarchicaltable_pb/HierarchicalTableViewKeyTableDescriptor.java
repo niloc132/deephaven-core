@@ -17,11 +17,11 @@ public class HierarchicalTableViewKeyTableDescriptor {
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface KeyTableFieldType {
+        public interface KeyTableIdFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType.GetTicketUnionType of(
+                static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType.GetTicketUnionType of(
                         Object o) {
                     return Js.cast(o);
                 }
@@ -48,28 +48,28 @@ public class HierarchicalTableViewKeyTableDescriptor {
             }
 
             @JsOverlay
-            static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType create() {
+            static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType.GetTicketUnionType getTicket();
+            HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
             void setTicket(
-                    HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType.GetTicketUnionType ticket);
+                    HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -80,27 +80,27 @@ public class HierarchicalTableViewKeyTableDescriptor {
         }
 
         @JsProperty
-        HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType getKeyTable();
-
-        @JsProperty
         String getKeyTableActionColumn();
 
         @JsProperty
-        void setKeyTable(
-                HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableFieldType keyTable);
+        HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType getKeyTableId();
 
         @JsProperty
         void setKeyTableActionColumn(String keyTableActionColumn);
+
+        @JsProperty
+        void setKeyTableId(
+                HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType.KeyTableIdFieldType keyTableId);
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface ToObjectReturnType0 {
         @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
-        public interface KeyTableFieldType {
+        public interface KeyTableIdFieldType {
             @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
             public interface GetTicketUnionType {
                 @JsOverlay
-                static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType.GetTicketUnionType of(
+                static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType.GetTicketUnionType of(
                         Object o) {
                     return Js.cast(o);
                 }
@@ -127,28 +127,28 @@ public class HierarchicalTableViewKeyTableDescriptor {
             }
 
             @JsOverlay
-            static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType create() {
+            static HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType create() {
                 return Js.uncheckedCast(JsPropertyMap.of());
             }
 
             @JsProperty
-            HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType.GetTicketUnionType getTicket();
+            HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType.GetTicketUnionType getTicket();
 
             @JsProperty
             void setTicket(
-                    HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType.GetTicketUnionType ticket);
+                    HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType.GetTicketUnionType ticket);
 
             @JsOverlay
             default void setTicket(String ticket) {
                 setTicket(
-                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
 
             @JsOverlay
             default void setTicket(Uint8Array ticket) {
                 setTicket(
-                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType.GetTicketUnionType>uncheckedCast(
+                        Js.<HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType.GetTicketUnionType>uncheckedCast(
                                 ticket));
             }
         }
@@ -159,17 +159,17 @@ public class HierarchicalTableViewKeyTableDescriptor {
         }
 
         @JsProperty
-        HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType getKeyTable();
-
-        @JsProperty
         String getKeyTableActionColumn();
 
         @JsProperty
-        void setKeyTable(
-                HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableFieldType keyTable);
+        HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType getKeyTableId();
 
         @JsProperty
         void setKeyTableActionColumn(String keyTableActionColumn);
+
+        @JsProperty
+        void setKeyTableId(
+                HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0.KeyTableIdFieldType keyTableId);
     }
 
     public static native HierarchicalTableViewKeyTableDescriptor deserializeBinary(Uint8Array bytes);
@@ -183,25 +183,25 @@ public class HierarchicalTableViewKeyTableDescriptor {
     public static native HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType toObject(
             boolean includeInstance, HierarchicalTableViewKeyTableDescriptor msg);
 
-    public native void clearKeyTable();
-
     public native void clearKeyTableActionColumn();
 
-    public native Ticket getKeyTable();
+    public native void clearKeyTableId();
 
     public native String getKeyTableActionColumn();
 
-    public native boolean hasKeyTable();
+    public native Ticket getKeyTableId();
 
     public native boolean hasKeyTableActionColumn();
 
+    public native boolean hasKeyTableId();
+
     public native Uint8Array serializeBinary();
 
-    public native void setKeyTable();
-
-    public native void setKeyTable(Ticket value);
-
     public native void setKeyTableActionColumn(String value);
+
+    public native void setKeyTableId();
+
+    public native void setKeyTableId(Ticket value);
 
     public native HierarchicalTableViewKeyTableDescriptor.ToObjectReturnType0 toObject();
 
