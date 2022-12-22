@@ -3,12 +3,14 @@ package io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchical
 import io.deephaven.javascript.proto.dhinternal.browserheaders.BrowserHeaders;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableApplyRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableApplyResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableSourceExportRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableViewRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.HierarchicalTableViewResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.RollupRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.RollupResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.TreeRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb.TreeResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
@@ -113,6 +115,100 @@ public class HierarchicalTableServiceClient {
         @JsOverlay
         default boolean isBrowserHeaders() {
             return (Object) this instanceof BrowserHeaders;
+        }
+    }
+
+    @JsFunction
+    public interface ExportSourceCallbackFn {
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface P0Type {
+            @JsOverlay
+            static HierarchicalTableServiceClient.ExportSourceCallbackFn.P0Type create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            double getCode();
+
+            @JsProperty
+            String getMessage();
+
+            @JsProperty
+            BrowserHeaders getMetadata();
+
+            @JsProperty
+            void setCode(double code);
+
+            @JsProperty
+            void setMessage(String message);
+
+            @JsProperty
+            void setMetadata(BrowserHeaders metadata);
+        }
+
+        void onInvoke(
+                HierarchicalTableServiceClient.ExportSourceCallbackFn.P0Type p0,
+                ExportedTableCreationResponse p1);
+    }
+
+    @JsFunction
+    public interface ExportSourceMetadata_or_callbackFn {
+        @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+        public interface P0Type {
+            @JsOverlay
+            static HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackFn.P0Type create() {
+                return Js.uncheckedCast(JsPropertyMap.of());
+            }
+
+            @JsProperty
+            double getCode();
+
+            @JsProperty
+            String getMessage();
+
+            @JsProperty
+            BrowserHeaders getMetadata();
+
+            @JsProperty
+            void setCode(double code);
+
+            @JsProperty
+            void setMessage(String message);
+
+            @JsProperty
+            void setMetadata(BrowserHeaders metadata);
+        }
+
+        void onInvoke(
+                HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackFn.P0Type p0,
+                ExportedTableCreationResponse p1);
+    }
+
+    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+    public interface ExportSourceMetadata_or_callbackUnionType {
+        @JsOverlay
+        static HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackUnionType of(Object o) {
+            return Js.cast(o);
+        }
+
+        @JsOverlay
+        default BrowserHeaders asBrowserHeaders() {
+            return Js.cast(this);
+        }
+
+        @JsOverlay
+        default HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackFn asExportSourceMetadata_or_callbackFn() {
+            return Js.cast(this);
+        }
+
+        @JsOverlay
+        default boolean isBrowserHeaders() {
+            return (Object) this instanceof BrowserHeaders;
+        }
+
+        @JsOverlay
+        default boolean isExportSourceMetadata_or_callbackFn() {
+            return (Object) this instanceof HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackFn;
         }
     }
 
@@ -448,6 +544,58 @@ public class HierarchicalTableServiceClient {
                 Js.<HierarchicalTableServiceClient.ApplyMetadata_or_callbackUnionType>uncheckedCast(
                         metadata_or_callback));
     }
+
+    @JsOverlay
+    public final UnaryResponse exportSource(
+            HierarchicalTableSourceExportRequest requestMessage,
+            BrowserHeaders metadata_or_callback,
+            HierarchicalTableServiceClient.ExportSourceCallbackFn callback) {
+        return exportSource(
+                requestMessage,
+                Js.<HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback),
+                callback);
+    }
+
+    @JsOverlay
+    public final UnaryResponse exportSource(
+            HierarchicalTableSourceExportRequest requestMessage, BrowserHeaders metadata_or_callback) {
+        return exportSource(
+                requestMessage,
+                Js.<HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback));
+    }
+
+    @JsOverlay
+    public final UnaryResponse exportSource(
+            HierarchicalTableSourceExportRequest requestMessage,
+            HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackFn metadata_or_callback,
+            HierarchicalTableServiceClient.ExportSourceCallbackFn callback) {
+        return exportSource(
+                requestMessage,
+                Js.<HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback),
+                callback);
+    }
+
+    @JsOverlay
+    public final UnaryResponse exportSource(
+            HierarchicalTableSourceExportRequest requestMessage,
+            HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackFn metadata_or_callback) {
+        return exportSource(
+                requestMessage,
+                Js.<HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackUnionType>uncheckedCast(
+                        metadata_or_callback));
+    }
+
+    public native UnaryResponse exportSource(
+            HierarchicalTableSourceExportRequest requestMessage,
+            HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackUnionType metadata_or_callback,
+            HierarchicalTableServiceClient.ExportSourceCallbackFn callback);
+
+    public native UnaryResponse exportSource(
+            HierarchicalTableSourceExportRequest requestMessage,
+            HierarchicalTableServiceClient.ExportSourceMetadata_or_callbackUnionType metadata_or_callback);
 
     @JsOverlay
     public final UnaryResponse rollup(

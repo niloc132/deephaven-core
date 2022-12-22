@@ -57,6 +57,50 @@ public class HierarchicalTableService {
     }
 
     @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
+    public interface ExportSourceType {
+        @JsOverlay
+        static HierarchicalTableService.ExportSourceType create() {
+            return Js.uncheckedCast(JsPropertyMap.of());
+        }
+
+        @JsProperty
+        String getMethodName();
+
+        @JsProperty
+        Object getRequestType();
+
+        @JsProperty
+        Object getResponseType();
+
+        @JsProperty
+        Object getService();
+
+        @JsProperty
+        boolean isRequestStream();
+
+        @JsProperty
+        boolean isResponseStream();
+
+        @JsProperty
+        void setMethodName(String methodName);
+
+        @JsProperty
+        void setRequestStream(boolean requestStream);
+
+        @JsProperty
+        void setRequestType(Object requestType);
+
+        @JsProperty
+        void setResponseStream(boolean responseStream);
+
+        @JsProperty
+        void setResponseType(Object responseType);
+
+        @JsProperty
+        void setService(Object service);
+    }
+
+    @JsType(isNative = true, name = "?", namespace = JsPackage.GLOBAL)
     public interface RollupType {
         @JsOverlay
         static HierarchicalTableService.RollupType create() {
@@ -189,6 +233,7 @@ public class HierarchicalTableService {
     }
 
     public static HierarchicalTableService.ApplyType Apply;
+    public static HierarchicalTableService.ExportSourceType ExportSource;
     public static HierarchicalTableService.RollupType Rollup;
     public static HierarchicalTableService.TreeType Tree;
     public static HierarchicalTableService.ViewType View;
