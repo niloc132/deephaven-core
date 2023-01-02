@@ -768,7 +768,8 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
                     });
         });
 
-        return Promise.all(widget.refetch(), rollupPromise).then(ignore -> Promise.resolve(new JsTreeTable(workerConnection, widget)));
+        return Promise.all(widget.refetch(), rollupPromise)
+                .then(ignore -> Promise.resolve(new JsTreeTable(workerConnection, widget)));
     }
 
     @JsMethod
@@ -789,6 +790,7 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
             requestMessage.setResultTreeTableId(treeTicket);
             requestMessage.setIdentifierColumn(config.idColumn);
             requestMessage.setParentIdentifierColumn(config.parentColumn);
+            // requestMessage.setPromoteOrphansToRoot(config.promoteOrphansToRoot);
 
             workerConnection.hierarchicalTableServiceClient().tree(requestMessage, workerConnection.metadata(),
                     c::apply);
@@ -805,7 +807,8 @@ public class JsTable extends HasEventHandling implements HasTableBinding, HasLif
                     });
         });
 
-        return Promise.all(widget.refetch(), treePromise).then(ignore -> Promise.resolve(new JsTreeTable(workerConnection, widget)));
+        return Promise.all(widget.refetch(), treePromise)
+                .then(ignore -> Promise.resolve(new JsTreeTable(workerConnection, widget)));
     }
 
     @JsMethod
