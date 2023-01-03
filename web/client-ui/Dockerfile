@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 # Most of the time, these versions are the same, except in cases where a patch only affects one of the packages
 ARG WEB_VERSION=0.24.1-hierarchical-table.0
 ARG GRID_VERSION=0.24.1-hierarchical-table.1
-ARG CHART_VERSION=0.24.0
+ARG CHART_VERSION=0.24.1-hierarchical-table.0
 
 # Pull in the published code-studio package from npmjs and extract is
 RUN set -eux; \
