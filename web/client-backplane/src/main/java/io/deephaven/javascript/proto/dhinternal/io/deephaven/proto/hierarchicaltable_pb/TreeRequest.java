@@ -92,10 +92,16 @@ public class TreeRequest {
         Object getSourceTableId();
 
         @JsProperty
+        boolean isPromoteOrphans();
+
+        @JsProperty
         void setIdentifierColumn(String identifierColumn);
 
         @JsProperty
         void setParentIdentifierColumn(String parentIdentifierColumn);
+
+        @JsProperty
+        void setPromoteOrphans(boolean promoteOrphans);
 
         @JsProperty
         void setResultTreeTableId(
@@ -183,10 +189,16 @@ public class TreeRequest {
         Object getSourceTableId();
 
         @JsProperty
+        boolean isPromoteOrphans();
+
+        @JsProperty
         void setIdentifierColumn(String identifierColumn);
 
         @JsProperty
         void setParentIdentifierColumn(String parentIdentifierColumn);
+
+        @JsProperty
+        void setPromoteOrphans(boolean promoteOrphans);
 
         @JsProperty
         void setResultTreeTableId(
@@ -213,6 +225,8 @@ public class TreeRequest {
 
     public native String getParentIdentifierColumn();
 
+    public native boolean getPromoteOrphans();
+
     public native Ticket getResultTreeTableId();
 
     public native Ticket getSourceTableId();
@@ -226,6 +240,8 @@ public class TreeRequest {
     public native void setIdentifierColumn(String value);
 
     public native void setParentIdentifierColumn(String value);
+
+    public native void setPromoteOrphans(boolean value);
 
     public native void setResultTreeTableId();
 
