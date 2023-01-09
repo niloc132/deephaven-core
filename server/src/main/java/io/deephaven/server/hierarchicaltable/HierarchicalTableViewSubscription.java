@@ -142,8 +142,9 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
         columns.set(0, view.getHierarchicalTable().getAvailableColumnDefinitions().size());
         rows = RowSetFactory.empty();
 
-        GrpcUtil.safelyExecuteLocked(listener, () -> listener.onNext(streamGeneratorFactory.getSchemaView(
-                fbb -> HierarchicalTableSchemaUtil.makeSchemaPayload(fbb, view.getHierarchicalTable()))));
+        BarrageStreamGeneratorImpl.View schemaView = streamGeneratorFactory.getSchemaView(
+                fbb -> HierarchicalTableSchemaUtil.makeSchemaPayload(fbb, view.getHierarchicalTable()));
+        GrpcUtil.safelyOnNext(listener, schemaView);
     }
 
     @Override
@@ -352,8 +353,8 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
         // Note that we're always specifying "isInitialSnapshot=true". This is to provoke the subscription view to
         // send the added rows on every snapshot, since (1) our added rows are flat, and thus cheap to send, and
         // (2) we're relying on added rows to signal the full expanded size to the client.
-        GrpcUtil.safelyExecuteLocked(listener, () -> listener
-                .onNext(streamGenerator.getSubView(subscriptionOptions, true, rows, false, rows, columns)));
+        BarrageStreamGeneratorImpl.View subView = streamGenerator.getSubView(subscriptionOptions, true, rows, false, rows, columns);
+        GrpcUtil.safelyOnNext(listener, subView);
 
         // 6. Let the caller know what the expanded size was
         return expandedSize;
