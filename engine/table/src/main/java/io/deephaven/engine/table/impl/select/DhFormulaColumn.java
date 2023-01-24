@@ -3,50 +3,48 @@
  */
 package io.deephaven.engine.table.impl.select;
 
+import io.deephaven.chunk.ChunkType;
 import io.deephaven.configuration.Configuration;
-import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.context.QueryCompiler;
+import io.deephaven.engine.context.QueryScopeParam;
 import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.lang.QueryLanguageParser;
-import io.deephaven.engine.util.PythonScope;
-import io.deephaven.engine.util.PythonScopeJpyImpl;
-import io.deephaven.time.DateTime;
-import io.deephaven.vector.ObjectVector;
-import io.deephaven.engine.context.QueryScopeParam;
-import io.deephaven.time.DateTimeUtils;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceNugget;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
-import io.deephaven.engine.util.PythonScopeJpyImpl.NumbaCallableWrapper;
-import io.deephaven.engine.util.caching.C14nUtil;
 import io.deephaven.engine.table.impl.select.codegen.FormulaAnalyzer;
 import io.deephaven.engine.table.impl.select.codegen.JavaKernelBuilder;
 import io.deephaven.engine.table.impl.select.codegen.RichType;
 import io.deephaven.engine.table.impl.select.formula.FormulaFactory;
 import io.deephaven.engine.table.impl.select.formula.FormulaKernelFactory;
 import io.deephaven.engine.table.impl.select.formula.FormulaSourceDescriptor;
+import io.deephaven.engine.table.impl.select.python.ArgumentsChunked;
 import io.deephaven.engine.table.impl.select.python.DeephavenCompatibleFunction;
 import io.deephaven.engine.table.impl.select.python.FormulaColumnPython;
-import io.deephaven.engine.table.ColumnSource;
-import io.deephaven.chunk.ChunkType;
 import io.deephaven.engine.table.impl.util.codegen.CodeGenerator;
 import io.deephaven.engine.table.impl.util.codegen.TypeAnalyzer;
-import io.deephaven.vector.Vector;
+import io.deephaven.engine.util.PyCallableWrapper;
+import io.deephaven.engine.util.caching.C14nUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
+import io.deephaven.time.DateTime;
+import io.deephaven.time.DateTimeUtils;
 import io.deephaven.util.type.TypeUtils;
+import io.deephaven.vector.ObjectVector;
+import io.deephaven.vector.Vector;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jpy.PyDictWrapper;
-import org.jpy.PyListWrapper;
 import org.jpy.PyObject;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.security.AccessController;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -64,6 +62,7 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
             Configuration.getInstance().getBooleanWithDefault("FormulaColumn.useKernelFormulasProperty", false);
 
     private FormulaAnalyzer.Result analyzedFormula;
+    private boolean hasConstantValue;
 
     public FormulaColumnPython getFormulaColumnPython() {
         return formulaColumnPython;
@@ -191,6 +190,7 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
                     timeConversionResult);
             analyzedFormula = FormulaAnalyzer.analyze(formulaString, columnDefinitionMap,
                     timeConversionResult, result);
+            hasConstantValue = result.isConstantValueExpression();
 
             log.debug().append("Expression (after language conversion) : ").append(analyzedFormula.cookedFormulaString)
                     .endl();
@@ -201,28 +201,39 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
                 returnedType = Boolean.class;
             }
             formulaString = result.getConvertedExpression();
+
+            // check if this is a column to be created with a Python vectorizable function
+            checkAndInitializeVectorization(columnDefinitionMap);
         } catch (Exception e) {
             throw new FormulaCompilationException("Formula compilation error for: " + formulaString, e);
-        }
-
-        // check if this is a column to be created with a numba vectorized function
-        for (QueryScopeParam<?> param : params) {
-            final Object value = param.getValue();
-            if (value != null && value.getClass() == NumbaCallableWrapper.class) {
-                NumbaCallableWrapper numbaCallableWrapper = (NumbaCallableWrapper) value;
-                formulaColumnPython = FormulaColumnPython.create(this.columnName,
-                        DeephavenCompatibleFunction.create(numbaCallableWrapper.getPyObject(),
-                                numbaCallableWrapper.getReturnType(), this.analyzedFormula.sourceDescriptor.sources,
-                                true));
-                formulaColumnPython.initDef(columnDefinitionMap);
-                break;
-            }
         }
 
         formulaFactory = useKernelFormulasProperty
                 ? createKernelFormulaFactory(getFormulaKernelFactory())
                 : createFormulaFactory();
         return formulaColumnPython != null ? formulaColumnPython.usedColumns : usedColumns;
+    }
+
+    private void checkAndInitializeVectorization(Map<String, ColumnDefinition<?>> columnDefinitionMap) {
+        PyCallableWrapper[] cws = Arrays.stream(params).filter(p -> p.getValue() instanceof PyCallableWrapper)
+                .map(p -> p.getValue()).toArray(PyCallableWrapper[]::new);
+        if (cws.length != 1) {
+            return;
+        }
+        PyCallableWrapper pyCallableWrapper = cws[0];
+
+        // could be already vectorized or to-be-vectorized,
+        if (pyCallableWrapper.isVectorizable()) {
+            ArgumentsChunked argumentsChunked = pyCallableWrapper
+                    .buildArgumentsChunked(Arrays.asList(this.analyzedFormula.sourceDescriptor.sources));
+            PyObject vectorized = pyCallableWrapper.vectorizedCallable();
+            formulaColumnPython = FormulaColumnPython.create(this.columnName,
+                    DeephavenCompatibleFunction.create(vectorized,
+                            pyCallableWrapper.getReturnType(), this.analyzedFormula.sourceDescriptor.sources,
+                            argumentsChunked,
+                            true));
+            formulaColumnPython.initDef(columnDefinitionMap);
+        }
     }
 
     @NotNull
@@ -719,11 +730,17 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
         final DhFormulaColumn copy = new DhFormulaColumn(columnName, formulaString);
         if (formulaFactory != null) {
             copy.analyzedFormula = analyzedFormula;
+            copy.hasConstantValue = hasConstantValue;
             copy.returnedType = returnedType;
             copy.formulaColumnPython = formulaColumnPython;
             onCopy(copy);
         }
         return copy;
+    }
+
+    @Override
+    public boolean hasConstantValue() {
+        return hasConstantValue;
     }
 
     private FormulaFactory createFormulaFactory() {
@@ -766,13 +783,8 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
                         return null;
                     });
             final QueryCompiler compiler = ExecutionContext.getContext().getQueryCompiler();
-            return AccessController
-                    .doPrivileged(
-                            (PrivilegedExceptionAction<Class<?>>) () -> compiler.compile(className, classBody,
-                                    QueryCompiler.FORMULA_PREFIX,
-                                    QueryScopeParamTypeUtil.expandParameterClasses(paramClasses)));
-        } catch (PrivilegedActionException pae) {
-            throw new FormulaCompilationException("Formula compilation error for: " + what, pae.getException());
+            return compiler.compile(className, classBody, QueryCompiler.FORMULA_PREFIX,
+                    QueryScopeParamTypeUtil.expandParameterClasses(paramClasses));
         }
     }
 
@@ -811,7 +823,7 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
 
     /**
      * Is this parameter immutable, and thus would contribute no state to the formula?
-     *
+     * <p>
      * If any query scope parameter is not a primitive, String, or known immutable class; then it may be a mutable
      * object that results in undefined results when the column is not evaluated strictly in order.
      *
@@ -831,35 +843,8 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
         return TypeUtils.isBoxedType(type);
     }
 
-    /**
-     * Is this parameter possibly a Python type?
-     *
-     * Immutable types are not Python, known Python wrappers are Python, and anything else from a PythonScope is Python.
-     *
-     * @return true if this query scope parameter may be a Python type
-     */
-    private static boolean isPythonType(QueryScopeParam<?> param) {
-        if (isImmutableType(param)) {
-            return false;
-        }
-
-        // we want to catch PyObjects, and CallableWrappers even if they were hand inserted into a scope
-        final Object value = param.getValue();
-        if (value instanceof PyObject || value instanceof PythonScopeJpyImpl.CallableWrapper
-                || value instanceof PyListWrapper || value instanceof PyDictWrapper) {
-            return true;
-        }
-
-        // beyond the immutable types, we must assume that anything coming from Python is python
-        return ExecutionContext.getContext().getQueryScope() instanceof PythonScope;
-    }
-
     private boolean isUsedColumnStateless(String columnName) {
         return columnSources.get(columnName).isStateless();
-    }
-
-    private boolean usedColumnUsesPython(String columnName) {
-        return columnSources.get(columnName).preventsParallelism();
     }
 
     @Override
@@ -869,14 +854,4 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
                 && usedColumnArrays.stream().allMatch(this::isUsedColumnStateless);
     }
 
-    /**
-     * Does this formula column use Python (which would cause us to hang the GIL if we evaluate it off thread?)
-     *
-     * @return true if this column has the potential to hang the gil
-     */
-    public boolean preventsParallelization() {
-        return Arrays.stream(params).anyMatch(DhFormulaColumn::isPythonType)
-                || usedColumns.stream().anyMatch(this::usedColumnUsesPython)
-                || usedColumnArrays.stream().anyMatch(this::usedColumnUsesPython);
-    }
 }

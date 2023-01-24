@@ -26,14 +26,14 @@ public class FormulaColumnPython extends AbstractFormulaColumn implements Formul
 
     @SuppressWarnings("unused") // called from python
     public static FormulaColumnPython create(String columnName,
-            io.deephaven.engine.table.impl.select.python.DeephavenCompatibleFunction dcf) {
+            DeephavenCompatibleFunction dcf) {
         return new FormulaColumnPython(columnName, dcf);
     }
 
-    private final io.deephaven.engine.table.impl.select.python.DeephavenCompatibleFunction dcf;
+    private final DeephavenCompatibleFunction dcf;
 
     private FormulaColumnPython(String columnName,
-            io.deephaven.engine.table.impl.select.python.DeephavenCompatibleFunction dcf) {
+            DeephavenCompatibleFunction dcf) {
         super(columnName, "<python-formula>");
         this.dcf = Objects.requireNonNull(dcf);
     }
@@ -55,11 +55,6 @@ public class FormulaColumnPython extends AbstractFormulaColumn implements Formul
     public boolean isStateless() {
         // we can't control python
         return false;
-    }
-
-    @Override
-    public boolean preventsParallelization() {
-        return true;
     }
 
     @Override

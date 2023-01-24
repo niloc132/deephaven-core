@@ -232,9 +232,7 @@ public enum UpdateGraphProcessor implements UpdateSourceRegistrar, NotificationQ
      * The number of threads in our executor service for dispatching notifications. If 1, then we don't actually use the
      * executor service; but instead dispatch all the notifications on the UpdateGraphProcessor run thread.
      */
-    private final int updateThreads = Require.geq(
-            Configuration.getInstance().getIntegerWithDefault("UpdateGraphProcessor.updateThreads", 1), "updateThreads",
-            1);
+    private final int updateThreads;
 
     /**
      * Is this one of the threads engaged in notification processing? (Either the solitary run thread, or one of the
@@ -280,6 +278,14 @@ public enum UpdateGraphProcessor implements UpdateSourceRegistrar, NotificationQ
             }
         };
         refreshThread.setDaemon(true);
+
+        final int updateThreads =
+                Configuration.getInstance().getIntegerWithDefault("UpdateGraphProcessor.updateThreads", 1);
+        if (updateThreads <= 0) {
+            this.updateThreads = Runtime.getRuntime().availableProcessors();
+        } else {
+            this.updateThreads = updateThreads;
+        }
     }
 
     @Override
@@ -569,16 +575,16 @@ public enum UpdateGraphProcessor implements UpdateSourceRegistrar, NotificationQ
     }
 
     private void assertLockAvailable(@NotNull final String action) {
-        if (!UpdateGraphProcessor.DEFAULT.exclusiveLock().tryLock()) {
+        final AwareFunctionalLock exclusiveLock = UpdateGraphProcessor.DEFAULT.exclusiveLock();
+        if (!exclusiveLock.tryLock()) {
             log.error().append("Lock is held when ").append(action).append(", with previous holder: ")
                     .append(unitTestModeHolder).endl();
             ThreadDump.threadDump(System.err);
-            UpdateGraphLock.DebugAwareFunctionalLock lock =
-                    (UpdateGraphLock.DebugAwareFunctionalLock) UpdateGraphProcessor.DEFAULT.exclusiveLock();
+            UpdateGraphLock.DebugAwareFunctionalLock lock = (UpdateGraphLock.DebugAwareFunctionalLock) exclusiveLock;
             throw new IllegalStateException(
                     "Lock is held when " + action + ", with previous holder: " + lock.getDebugMessage());
         }
-        UpdateGraphProcessor.DEFAULT.exclusiveLock().unlock();
+        exclusiveLock.unlock();
     }
 
     /**
@@ -1725,6 +1731,8 @@ public enum UpdateGraphProcessor implements UpdateSourceRegistrar, NotificationQ
             Assert.eqNull(refreshScope, "refreshScope");
             refreshScope = new LivenessScope();
             final long updatingCycleValue = LogicalClock.DEFAULT.startUpdateCycle();
+            logDependencies().append("Beginning UpdateGraphProcessor cycle step=")
+                    .append(LogicalClock.DEFAULT.currentStep()).endl();
             try (final SafeCloseable ignored = LivenessScopeStack.open(refreshScope, true)) {
                 refreshFunction.run();
                 flushNotificationsAndCompleteCycle();
@@ -1732,6 +1740,8 @@ public enum UpdateGraphProcessor implements UpdateSourceRegistrar, NotificationQ
                 LogicalClock.DEFAULT.ensureUpdateCycleCompleted(updatingCycleValue);
                 refreshScope = null;
             }
+            logDependencies().append("Completed UpdateGraphProcessor cycle step=")
+                    .append(LogicalClock.DEFAULT.currentStep()).endl();
         });
     }
 

@@ -7,11 +7,12 @@ import io.deephaven.api.*;
 import io.deephaven.api.agg.Aggregation;
 import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.api.filter.Filter;
+import io.deephaven.api.snapshot.SnapshotWhenOptions;
+import io.deephaven.api.snapshot.SnapshotWhenOptions.Flag;
 import io.deephaven.api.updateby.UpdateByOperation;
 import io.deephaven.api.updateby.UpdateByControl;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessArtifact;
-import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.MatchPair;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
@@ -22,6 +23,7 @@ import io.deephaven.engine.table.impl.select.MatchFilter;
 import io.deephaven.engine.table.impl.select.SelectColumn;
 import io.deephaven.engine.table.impl.select.SourceColumn;
 import io.deephaven.engine.table.impl.select.WhereFilter;
+import io.deephaven.engine.table.impl.select.analyzers.SelectAndViewAnalyzer;
 import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.util.TableTools;
 import org.jetbrains.annotations.NotNull;
@@ -150,7 +152,10 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     private PartitionedTable.Proxy basicTransform(
             final boolean requiresFullContext, @NotNull final UnaryOperator<Table> transformer) {
         return new PartitionedTableProxyImpl(
-                target.transform(getOrCreateExecutionContext(requiresFullContext), transformer),
+                target.transform(
+                        getOrCreateExecutionContext(requiresFullContext),
+                        transformer,
+                        target.table().isRefreshing()),
                 requireMatchingKeys,
                 sanityCheckJoins);
     }
@@ -170,17 +175,19 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
         final ExecutionContext context = getOrCreateExecutionContext(requiresFullContext);
         if (other instanceof Table) {
             final Table otherTable = (Table) other;
-            if ((target.table().isRefreshing() || otherTable.isRefreshing()) && joinMatches != null) {
+            final boolean refreshingResults = target.table().isRefreshing() || otherTable.isRefreshing();
+            if (refreshingResults && joinMatches != null) {
                 UpdateGraphProcessor.DEFAULT.checkInitiateTableOperation();
             }
             return new PartitionedTableProxyImpl(
-                    target.transform(context, ct -> transformer.apply(ct, otherTable)),
+                    target.transform(context, ct -> transformer.apply(ct, otherTable), refreshingResults),
                     requireMatchingKeys,
                     sanityCheckJoins);
         }
         if (other instanceof PartitionedTable.Proxy) {
             final PartitionedTable.Proxy otherProxy = (PartitionedTable.Proxy) other;
             final PartitionedTable otherTarget = otherProxy.target();
+            final boolean refreshingResults = target.table().isRefreshing() || otherTarget.table().isRefreshing();
 
             if (target.table().isRefreshing() || otherTarget.table().isRefreshing()) {
                 UpdateGraphProcessor.DEFAULT.checkInitiateTableOperation();
@@ -203,7 +210,7 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
             final PartitionedTable rhsToUse = maybeRewrap(validatedRhsTable, otherTarget);
 
             return new PartitionedTableProxyImpl(
-                    lhsToUse.partitionedTransform(rhsToUse, context, transformer),
+                    lhsToUse.partitionedTransform(rhsToUse, context, transformer, refreshingResults),
                     requireMatchingKeys,
                     sanityCheckJoins);
         }
@@ -254,12 +261,12 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
         final List<ListenerRecorder> recorders = new ArrayList<>(1 + dependentValidations.length);
 
         final ListenerRecorder parentRecorder = new ListenerRecorder("Validating Copy Parent", coalescedParent, null);
-        coalescedParent.listenForUpdates(parentRecorder);
+        coalescedParent.addUpdateListener(parentRecorder);
         recorders.add(parentRecorder);
 
         final ListenerRecorder[] validationRecorders = Arrays.stream(dependentValidations).map(dv -> {
             final ListenerRecorder validationRecorder = new ListenerRecorder(dv.name, dv.table, null);
-            dv.table.listenForUpdates(validationRecorder);
+            dv.table.addUpdateListener(validationRecorder);
             recorders.add(validationRecorder);
             return validationRecorder;
         }).toArray(ListenerRecorder[]::new);
@@ -350,8 +357,11 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
         // NB: At the moment, we are assuming that constituents appear only once per partitioned table in scenarios
         // where overlapping join keys are concerning.
         final AtomicLong sequenceCounter = new AtomicLong(0);
-        final PartitionedTable stamped = input.transform(null, table -> table
-                .updateView(new LongConstantColumn(ENCLOSING_CONSTITUENT.name(), sequenceCounter.getAndIncrement())));
+        final PartitionedTable stamped = input.transform(
+                null,
+                table -> table.updateView(
+                        new LongConstantColumn(ENCLOSING_CONSTITUENT.name(), sequenceCounter.getAndIncrement())),
+                input.table().isRefreshing());
         final Table merged = stamped.merge();
         final Table mergedWithUniqueAgg = merged.aggAllBy(AggSpec.unique(), joinKeyColumnNames);
         final Table overlappingJoinKeys = mergedWithUniqueAgg.where(Filter.isNull(ENCLOSING_CONSTITUENT));
@@ -397,9 +407,24 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     }
 
     @Override
-    public PartitionedTable.Proxy snapshot(TableOperations<?, ?> baseTable, boolean doInitialSnapshot,
+    public PartitionedTable.Proxy snapshot() {
+        return basicTransform(TableOperations::snapshot);
+    }
+
+    @Override
+    public PartitionedTable.Proxy snapshotWhen(TableOperations<?, ?> trigger, Flag... features) {
+        return complexTransform(trigger, (base, tr) -> base.snapshotWhen(tr, features), null);
+    }
+
+    @Override
+    public PartitionedTable.Proxy snapshotWhen(TableOperations<?, ?> trigger, Collection<Flag> features,
             String... stampColumns) {
-        return complexTransform(baseTable, (ct, ot) -> ct.snapshot(ot, doInitialSnapshot, stampColumns), null);
+        return complexTransform(trigger, (base, tr) -> base.snapshotWhen(tr, features, stampColumns), null);
+    }
+
+    @Override
+    public PartitionedTable.Proxy snapshotWhen(TableOperations<?, ?> trigger, SnapshotWhenOptions options) {
+        return complexTransform(trigger, (base, tr) -> base.snapshotWhen(tr, options), null);
     }
 
     @Override
@@ -432,10 +457,8 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     @NotNull
     private SelectColumn[] toSelectColumns(Collection<? extends Selectable> columns) {
         final SelectColumn[] selectColumns = SelectColumn.from(columns);
-        Map<String, ColumnDefinition<?>> targetColumnMap = target.constituentDefinition().getColumnNameMap();
-        for (SelectColumn column : selectColumns) {
-            column.initDef(targetColumnMap);
-        }
+        SelectAndViewAnalyzer.initializeSelectColumns(
+                target.constituentDefinition().getColumnNameMap(), selectColumns);
         return selectColumns;
     }
 
@@ -541,6 +564,11 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     public PartitionedTable.Proxy selectDistinct(Collection<? extends Selectable> columns) {
         final SelectColumn[] selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.selectDistinct(SelectColumn.copyFrom(selectColumns)));
+    }
+
+    @Override
+    public PartitionedTable.Proxy ungroup(boolean nullFill, Collection<? extends ColumnName> columnsToUngroup) {
+        return basicTransform(ct -> ct.ungroup(nullFill, columnsToUngroup));
     }
 
     // endregion TableOperations Implementation

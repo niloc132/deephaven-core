@@ -36,9 +36,11 @@ import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.application_p
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.application_pb.FieldsChangeUpdate;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.application_pb.ListFieldsRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.application_pb_service.ApplicationServiceClient;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.config_pb_service.ConfigServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.LogSubscriptionData;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.LogSubscriptionRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb_service.ConsoleServiceClient;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.hierarchicaltable_pb_service.HierarchicalTableServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.inputtable_pb_service.InputTableServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb_service.ObjectServiceClient;
@@ -49,6 +51,7 @@ import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.session_pb.Re
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.session_pb.TerminationNotificationRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.session_pb.terminationnotificationresponse.StackTrace;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.session_pb_service.SessionServiceClient;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.storage_pb_service.StorageServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ApplyPreviewColumnsRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.EmptyTableRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
@@ -61,7 +64,7 @@ import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.Time
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb_service.TableServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.TypedTicket;
-import io.deephaven.web.client.api.barrage.BarrageUtils;
+import io.deephaven.web.client.api.barrage.WebBarrageUtils;
 import io.deephaven.web.client.api.barrage.def.ColumnDefinition;
 import io.deephaven.web.client.api.barrage.def.InitialTableDefinition;
 import io.deephaven.web.client.api.barrage.stream.BiDiStream;
@@ -70,6 +73,7 @@ import io.deephaven.web.client.api.batch.RequestBatcher;
 import io.deephaven.web.client.api.batch.TableConfig;
 import io.deephaven.web.client.api.console.JsVariableChanges;
 import io.deephaven.web.client.api.console.JsVariableDefinition;
+import io.deephaven.web.client.api.grpc.MultiplexedWebsocketTransport;
 import io.deephaven.web.client.api.i18n.JsTimeZone;
 import io.deephaven.web.client.api.lifecycle.HasLifecycle;
 import io.deephaven.web.client.api.parse.JsDataHandler;
@@ -108,7 +112,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static io.deephaven.web.client.api.barrage.BarrageUtils.*;
+import static io.deephaven.web.client.api.barrage.WebBarrageUtils.*;
 
 /**
  * Non-exported class, manages the connection to a given worker server. Exported types like QueryInfo and Table will
@@ -132,7 +136,9 @@ public class WorkerConnection {
         // TODO configurable, let us support this even when ssl?
         if (DomGlobal.window.location.protocol.equals("http:")) {
             useWebsockets = true;
-            Grpc.setDefaultTransport.onInvoke(Grpc.WebsocketTransport.onInvoke());
+            Grpc.setDefaultTransport.onInvoke(options -> new MultiplexedWebsocketTransport(options, () -> {
+                Grpc.setDefaultTransport.onInvoke(Grpc.WebsocketTransport.onInvoke());
+            }));
         } else {
             useWebsockets = false;
         }
@@ -181,6 +187,9 @@ public class WorkerConnection {
     private InputTableServiceClient inputTableServiceClient;
     private ObjectServiceClient objectServiceClient;
     private PartitionedTableServiceClient partitionedTableServiceClient;
+    private StorageServiceClient storageServiceClient;
+    private ConfigServiceClient configServiceClient;
+    private HierarchicalTableServiceClient hierarchicalTableServiceClient;
 
     private final StateCache cache = new StateCache();
     private final JsWeakMap<HasTableBinding, RequestBatcher> batchers = new JsWeakMap<>();
@@ -224,6 +233,10 @@ public class WorkerConnection {
         objectServiceClient = new ObjectServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
         partitionedTableServiceClient =
                 new PartitionedTableServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
+        storageServiceClient = new StorageServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
+        configServiceClient = new ConfigServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
+        hierarchicalTableServiceClient =
+                new HierarchicalTableServiceClient(info.getServerUrl(), JsPropertyMap.of("debug", debugGrpc));
 
         // builder.setConnectionErrorHandler(msg -> info.failureHandled(String.valueOf(msg)));
 
@@ -434,9 +447,12 @@ public class WorkerConnection {
                         if (checkStatus((ResponseStreamWrapper.Status) fail)) {
                             // restart the termination notification
                             subscribeToTerminationNotification();
-                            return;
+                        } else {
+                            info.notifyConnectionError(Js.cast(fail));
                         }
+                        return;
                     }
+                    assert success != null;
 
                     // welp; the server is gone -- let everyone know
                     info.notifyConnectionError(new ResponseStreamWrapper.Status() {
@@ -726,10 +742,16 @@ public class WorkerConnection {
                     .then(widget -> widget.getExportedObjects()[0].fetch());
         } else if (JsVariableChanges.PARTITIONEDTABLE.equals(definition.getType())) {
             return getPartitionedTable(definition);
+        } else if (JsVariableChanges.HIERARCHICALTABLE.equals(definition.getType())) {
+            return getHierarchicalTable(definition);
         } else {
             if (JsVariableChanges.TABLEMAP.equals(definition.getType())) {
                 JsLog.warn(
                         "TableMap is now known as PartitionedTable, fetching as a plain widget. To fetch as a PartitionedTable use that as the type.");
+            }
+            if (JsVariableChanges.TREETABLE.equals(definition.getType())) {
+                JsLog.warn(
+                        "TreeTable is now HierarchicalTable, fetching as a plain widget. To fetch as a HierarchicalTable use that as this type.");
             }
             return getWidget(definition);
         }
@@ -853,11 +875,11 @@ public class WorkerConnection {
     }
 
     public Promise<JsTreeTable> getTreeTable(JsVariableDefinition varDef) {
-        return getTable(varDef, null).then(t -> {
-            Promise<JsTreeTable> result = Promise.resolve(new JsTreeTable(t.state(), this).finishFetch());
-            t.close();
-            return result;
-        });
+        return getWidget(varDef).then(w -> Promise.resolve(new JsTreeTable(this, w)));
+    }
+
+    public Promise<JsTreeTable> getHierarchicalTable(JsVariableDefinition varDef) {
+        return getWidget(varDef).then(w -> Promise.resolve(new JsTreeTable(this, w)));
     }
 
     public Promise<JsFigure> getFigure(JsVariableDefinition varDef) {
@@ -925,6 +947,18 @@ public class WorkerConnection {
         return partitionedTableServiceClient;
     }
 
+    public StorageServiceClient storageServiceClient() {
+        return storageServiceClient;
+    }
+
+    public ConfigServiceClient configServiceClient() {
+        return configServiceClient;
+    }
+
+    public HierarchicalTableServiceClient hierarchicalTableServiceClient() {
+        return hierarchicalTableServiceClient;
+    }
+
     public BrowserHeaders metadata() {
         return metadata;
     }
@@ -988,7 +1022,7 @@ public class WorkerConnection {
                     createMessage(schema, MessageHeader.Schema, Schema.endSchema(schema), 0, 0);
             schemaMessage.setDataHeader(schemaMessagePayload);
 
-            schemaMessage.setAppMetadata(BarrageUtils.emptyMessage());
+            schemaMessage.setAppMetadata(WebBarrageUtils.emptyMessage());
             schemaMessage.setFlightDescriptor(cts.getHandle().makeFlightDescriptor());
 
             // we wait for any errors in this response to pass to the caller, but success is determined by the eventual
@@ -1017,7 +1051,7 @@ public class WorkerConnection {
                 }
             });
             FlightData bodyMessage = new FlightData();
-            bodyMessage.setAppMetadata(BarrageUtils.emptyMessage());
+            bodyMessage.setAppMetadata(WebBarrageUtils.emptyMessage());
 
             Builder bodyData = new Builder(1024);
 
@@ -1321,7 +1355,7 @@ public class WorkerConnection {
 
                 FlightData request = new FlightData();
                 request.setAppMetadata(
-                        BarrageUtils.wrapMessage(subscriptionReq, BarrageMessageType.BarrageSubscriptionRequest));
+                        WebBarrageUtils.wrapMessage(subscriptionReq, BarrageMessageType.BarrageSubscriptionRequest));
 
                 BiDiStream<FlightData, FlightData> stream = this.<FlightData, FlightData>streamFactory().create(
                         headers -> flightServiceClient.doExchange(headers),

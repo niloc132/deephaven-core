@@ -21,7 +21,6 @@ import io.deephaven.engine.table.impl.util.MemoryTableLoggers;
 import io.deephaven.engine.tablelogger.QueryOperationPerformanceLogLogger;
 import io.deephaven.engine.tablelogger.QueryPerformanceLogLogger;
 import io.deephaven.engine.updategraph.DynamicNode;
-import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.hash.KeyedIntObjectHash;
 import io.deephaven.hash.KeyedIntObjectHashMap;
@@ -59,8 +58,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyExecute;
-import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyExecuteLocked;
+import static io.deephaven.base.log.LogOutput.MILLIS_FROM_EPOCH_FORMATTER;
+import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyComplete;
+import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyError;
 
 /**
  * SessionState manages all exports for a single session.
@@ -103,6 +103,20 @@ public class SessionState {
         return new ExportObject<>(export);
     }
 
+    /**
+     * Wrap an exception in an ExportObject to make it conform to the session export API. The export behaves as if it
+     * has already failed.
+     *
+     * @param caughtException the exception to propagate
+     * @param <T> the type of the object
+     * @return a sessionless export object
+     */
+    public static <T> ExportObject<T> wrapAsFailedExport(final Exception caughtException) {
+        ExportObject<T> exportObject = new ExportObject<>(null);
+        exportObject.caughtException = caughtException;
+        return exportObject;
+    }
+
     private static final Logger log = LoggerFactory.getLogger(SessionState.class);
 
     private final String logPrefix;
@@ -142,7 +156,7 @@ public class SessionState {
         this.logPrefix = "SessionState{" + sessionId + "}: ";
         this.scheduler = scheduler;
         this.authContext = authContext;
-        this.executionContext = executionContextProvider.get();
+        this.executionContext = executionContextProvider.get().withAuthContext(authContext);
         log.info().append(logPrefix).append("session initialized").endl();
     }
 
@@ -163,7 +177,7 @@ public class SessionState {
 
         log.info().append(logPrefix)
                 .append("token initialized to '").append(expiration.token.toString())
-                .append("' which expires at ").append(expiration.deadline.toString())
+                .append("' which expires at ").append(MILLIS_FROM_EPOCH_FORMATTER, expiration.deadlineMillis)
                 .append(".").endl();
     }
 
@@ -192,7 +206,7 @@ public class SessionState {
 
         log.info().append(logPrefix)
                 .append("token rotating to '").append(expiration.token.toString())
-                .append("' which expires at ").append(expiration.deadline.toString())
+                .append("' which expires at ").append(MILLIS_FROM_EPOCH_FORMATTER, expiration.deadlineMillis)
                 .append(".").endl();
     }
 
@@ -211,7 +225,7 @@ public class SessionState {
      */
     public boolean isExpired() {
         final SessionService.TokenExpiration currToken = expiration;
-        return currToken == null || currToken.deadline.compareTo(scheduler.currentTime()) <= 0;
+        return currToken == null || currToken.deadlineMillis <= scheduler.currentTimeMillis();
     }
 
     /**
@@ -488,8 +502,7 @@ public class SessionState {
      * @param <T> Is context sensitive depending on the export.
      *
      * @apiNote ExportId may be 0, if this is a task that has exported dependencies, but does not export anything
-     *          itself.
-     * @apiNote Non-exports do not publish state changes.
+     *          itself. Non-exports do not publish state changes.
      */
     public final static class ExportObject<T> extends LivenessArtifact {
         private final int exportId;
@@ -500,6 +513,9 @@ public class SessionState {
         private volatile T result;
         private volatile ExportNotification.State state = ExportNotification.State.UNKNOWN;
         private volatile int exportListenerVersion = 0;
+
+        /** Indicates whether this export has already been well defined. This prevents export object reuse. */
+        private boolean hasHadWorkSet = false;
 
         /** This indicates whether or not this export should use the serial execution queue. */
         private boolean requiresSerialQueue;
@@ -551,10 +567,17 @@ public class SessionState {
             super(true);
             this.session = null;
             this.exportId = NON_EXPORT_ID;
-            this.state = ExportNotification.State.EXPORTED;
             this.result = result;
             this.dependentCount = 0;
+            this.hasHadWorkSet = true;
             this.logIdentity = Integer.toHexString(System.identityHashCode(this)) + "-sessionless";
+
+            if (result == null) {
+                assignErrorId();
+                state = ExportNotification.State.FAILED;
+            } else {
+                state = ExportNotification.State.EXPORTED;
+            }
 
             if (result instanceof LivenessReferent && DynamicNode.notDynamicOrIsRefreshing(result)) {
                 manage((LivenessReferent) result);
@@ -577,7 +600,7 @@ public class SessionState {
 
             this.parents = parents;
             dependentCount = parents.size();
-            parents.stream().filter(Objects::nonNull).forEach(this::manage);
+            parents.stream().filter(Objects::nonNull).forEach(this::tryManage);
 
             if (log.isDebugEnabled()) {
                 final Exception e = new RuntimeException();
@@ -600,9 +623,10 @@ public class SessionState {
          */
         private synchronized void setWork(final Callable<T> exportMain, final ExportErrorHandler errorHandler,
                 final boolean requiresSerialQueue) {
-            if (this.exportMain != null) {
-                throw new IllegalStateException("work can only be set once on an exportable object");
+            if (hasHadWorkSet) {
+                throw new IllegalStateException("export object can only be defined once");
             }
+            hasHadWorkSet = true;
             this.requiresSerialQueue = requiresSerialQueue;
 
             if (isExportStateTerminal(this.state)) {
@@ -733,21 +757,26 @@ public class SessionState {
                 exportListenerVersion = session.exportListenerVersion;
                 session.exportListeners.forEach(listener -> listener.notify(notification));
             } else {
-                log.debug().append(session.logPrefix).append("non-export '").append(logIdentity)
-                        .append("' is ExportState.").append(state.name()).endl();
+                log.debug().append(session == null ? "Session " : session.logPrefix)
+                        .append("non-export '").append(logIdentity).append("' is ExportState.")
+                        .append(state.name()).endl();
             }
 
             if (isExportStateFailure(state) && errorHandler != null) {
                 if (errorId == null) {
                     assignErrorId();
                 }
-                safelyExecute(() -> errorHandler.onError(state, errorId, caughtException, dependentHandle));
+                try {
+                    errorHandler.onError(state, errorId, caughtException, dependentHandle);
+                } catch (final Exception err) {
+                    log.error().append("Unexpected error while reporting state failure: ").append(err).endl();
+                }
             }
 
             if (state == ExportNotification.State.EXPORTED || isExportStateTerminal(state)) {
                 children.forEach(child -> child.onResolveOne(this));
                 children = Collections.emptyList();
-                parents.stream().filter(Objects::nonNull).forEach(this::unmanage);
+                parents.stream().filter(Objects::nonNull).forEach(this::tryUnmanage);
                 parents = Collections.emptyList();
                 exportMain = null;
                 errorHandler = null;
@@ -798,7 +827,10 @@ public class SessionState {
 
                         assignErrorId();
                         dependentHandle = parent.logIdentity;
-                        log.error().append("Internal Error '").append(errorId).append("' ").append(errorDetails).endl();
+                        if (!(caughtException instanceof StatusRuntimeException)) {
+                            log.error().append("Internal Error '").append(errorId).append("' ").append(errorDetails)
+                                    .endl();
+                        }
                     }
 
                     setState(terminalState);
@@ -865,7 +897,9 @@ public class SessionState {
                 synchronized (this) {
                     if (!isExportStateTerminal(state)) {
                         assignErrorId();
-                        log.error().append("Internal Error '").append(errorId).append("' ").append(err).endl();
+                        if (!(caughtException instanceof StatusRuntimeException)) {
+                            log.error().append("Internal Error '").append(errorId).append("' ").append(err).endl();
+                        }
                         setState(ExportNotification.State.FAILED);
                     }
                 }
@@ -978,7 +1012,10 @@ public class SessionState {
         protected synchronized void destroy() {
             super.destroy();
             result = null;
-            caughtException = null;
+            // keep SREs since error propagation won't reference a real errorId on the server
+            if (!(caughtException instanceof StatusRuntimeException)) {
+                caughtException = null;
+            }
         }
 
         /**
@@ -1131,7 +1168,7 @@ public class SessionState {
                 isClosed = true;
             }
 
-            safelyExecuteLocked(listener, listener::onCompleted);
+            safelyComplete(listener);
         }
     }
 
@@ -1176,17 +1213,6 @@ public class SessionState {
             } else {
                 // noinspection unchecked
                 this.export = (ExportObject<T>) exportMap.putIfAbsent(exportId, EXPORT_OBJECT_VALUE_FACTORY);
-                switch (this.export.getState()) {
-                    case UNKNOWN:
-                        return;
-                    case RELEASED:
-                    case CANCELLED:
-                        throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION,
-                                "export already released/cancelled id: " + exportId);
-                    default:
-                        throw GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION,
-                                "cannot re-export to existing exportId: " + exportId);
-                }
             }
         }
 
@@ -1262,9 +1288,14 @@ public class SessionState {
 
                 final String dependentStr = dependentExportId == null ? ""
                         : (" (related parent export id: " + dependentExportId + ")");
-                errorHandler.onError(GrpcUtil.statusRuntimeException(
-                        Code.FAILED_PRECONDITION,
-                        "Details Logged w/ID '" + errorContext + "'" + dependentStr));
+                if (cause == null) {
+                    errorHandler.onError(GrpcUtil.statusRuntimeException(Code.FAILED_PRECONDITION,
+                            "Export in state " + resultState + dependentStr));
+                } else {
+                    errorHandler.onError(GrpcUtil.statusRuntimeException(
+                            Code.FAILED_PRECONDITION,
+                            "Details Logged w/ID '" + errorContext + "'" + dependentStr));
+                }
             }));
         }
 
@@ -1281,9 +1312,7 @@ public class SessionState {
          */
         public ExportBuilder<T> onError(StreamObserver<?> streamObserver) {
             return onErrorHandler(statusRuntimeException -> {
-                synchronized (streamObserver) {
-                    streamObserver.onError(statusRuntimeException);
-                }
+                safelyError(streamObserver, statusRuntimeException);
             });
         }
 

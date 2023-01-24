@@ -24,21 +24,6 @@ public interface TableOperationsDefaults<TOPS extends TableOperations<TOPS, TABL
     ColumnName[] ZERO_LENGTH_COLUMNNAME_ARRAY = new ColumnName[0];
 
     // -----------------------------------------------------------------------------------------------------------------
-    // Snapshot Operations
-    // -----------------------------------------------------------------------------------------------------------------
-
-    @Override
-    default TOPS snapshot(TABLE baseTable, String... stampColumns) {
-        return snapshot(baseTable, true, stampColumns);
-    }
-
-    @Override
-    default TOPS snapshot(TABLE baseTable, boolean doInitialSnapshot, Collection<ColumnName> stampColumns) {
-        return snapshot(baseTable, doInitialSnapshot,
-                stampColumns.stream().map(ColumnName::name).toArray(String[]::new));
-    }
-
-    // -----------------------------------------------------------------------------------------------------------------
     // Sort Operations
     // -----------------------------------------------------------------------------------------------------------------
 
@@ -232,6 +217,28 @@ public interface TableOperationsDefaults<TOPS extends TableOperations<TOPS, TABL
     // -------------------------------------------------------------------------------------------
 
     @Override
+    default TOPS ungroup() {
+        return ungroup(false, Collections.emptyList());
+    }
+
+    @Override
+    default TOPS ungroup(boolean nullFill) {
+        return ungroup(nullFill, Collections.emptyList());
+    }
+
+    @Override
+    default TOPS ungroup(String... columnsToUngroup) {
+        return ungroup(false, Arrays.stream(columnsToUngroup).map(ColumnName::of).collect(Collectors.toList()));
+    }
+
+    @Override
+    default TOPS ungroup(boolean nullFill, String... columnsToUngroup) {
+        return ungroup(nullFill, Arrays.stream(columnsToUngroup).map(ColumnName::of).collect(Collectors.toList()));
+    }
+
+    // -------------------------------------------------------------------------------------------
+
+    @Override
     @ConcurrentMethod
     default TOPS aggAllBy(AggSpec spec) {
         return aggAllBy(spec, Collections.emptyList());
@@ -291,7 +298,7 @@ public interface TableOperationsDefaults<TOPS extends TableOperations<TOPS, TABL
     @ConcurrentMethod
     default TOPS aggBy(Collection<? extends Aggregation> aggregations,
             Collection<? extends ColumnName> groupByColumns) {
-        return aggBy(aggregations, false, null, groupByColumns);
+        return aggBy(aggregations, AGG_BY_PRESERVE_EMPTY_DEFAULT, null, groupByColumns);
     }
 
     // -------------------------------------------------------------------------------------------

@@ -7,9 +7,11 @@ import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.base.FileUtils;
 import io.deephaven.base.Pair;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.configuration.DataDir;
 import io.deephaven.datastructures.util.CollectionUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
+import io.deephaven.util.ByteUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,14 +23,13 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -38,8 +39,6 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static java.security.AccessController.doPrivileged;
 
 public class QueryCompiler {
     private static final Logger log = LoggerFactory.getLogger(QueryCompiler.class);
@@ -72,8 +71,9 @@ public class QueryCompiler {
     }
 
     static QueryCompiler createForUnitTests() {
-        return new QueryCompiler(new File(Configuration.getInstance().getWorkspacePath() +
-                File.separator + "cache" + File.separator + "classes"));
+        final Path queryCompilerDir = DataDir.get()
+                .resolve("io.deephaven.engine.context.QueryCompiler.createForUnitTests");
+        return new QueryCompiler(queryCompilerDir.toFile());
     }
 
     private final Map<String, CompletableFuture<Class<?>>> knownClasses = new HashMap<>();
@@ -115,10 +115,7 @@ public class QueryCompiler {
         } catch (MalformedURLException e) {
             throw new RuntimeException("", e);
         }
-        // We should be able to create this class loader, even if this is invoked from external code
-        // that does not have sufficient security permissions.
-        this.ucl = doPrivileged((PrivilegedAction<WritableURLClassLoader>) () -> new WritableURLClassLoader(urls,
-                parentClassLoaderToUse));
+        this.ucl = new WritableURLClassLoader(urls, parentClassLoaderToUse);
 
         if (isCacheDirectory) {
             addClassSource(classDestination);
@@ -206,11 +203,7 @@ public class QueryCompiler {
     }
 
     public void setParentClassLoader(final ClassLoader parentClassLoader) {
-        // The system should always be able to create this class loader, even if invoked from something that
-        // doesn't have the right security permissions for it.
-        ucl = doPrivileged(
-                (PrivilegedAction<WritableURLClassLoader>) () -> new WritableURLClassLoader(ucl.getURLs(),
-                        parentClassLoader));
+        ucl = new WritableURLClassLoader(ucl.getURLs(), parentClassLoader);
     }
 
     public final Class<?> compile(String className, String classBody, String packageNameRoot) {
@@ -241,34 +234,34 @@ public class QueryCompiler {
             @NotNull final String packageNameRoot,
             @Nullable final StringBuilder codeLog,
             @NotNull final Map<String, Class<?>> parameterClasses) {
-        CompletableFuture<Class<?>> promise;
-        final boolean promiseAlreadyMade;
+        CompletableFuture<Class<?>> future;
+        final boolean alreadyExists;
 
         synchronized (this) {
-            promise = knownClasses.get(classBody);
-            if (promise != null) {
-                promiseAlreadyMade = true;
+            future = knownClasses.get(classBody);
+            if (future != null) {
+                alreadyExists = true;
             } else {
-                promise = new CompletableFuture<>();
-                knownClasses.put(classBody, promise);
-                promiseAlreadyMade = false;
+                future = new CompletableFuture<>();
+                knownClasses.put(classBody, future);
+                alreadyExists = false;
             }
         }
 
-        // Someone else has already made the promise. I'll just wait for the answer.
-        if (promiseAlreadyMade) {
+        // Someone else has already made the future. I'll just wait for the answer.
+        if (alreadyExists) {
             try {
-                return promise.get();
+                return future.get();
             } catch (InterruptedException | ExecutionException error) {
                 throw new UncheckedDeephavenException(error);
             }
         }
 
-        // It's my job to fulfill the promise
+        // It's my job to fulfill the future.
         try {
-            return compileHelper(className, classBody, packageNameRoot, codeLog, parameterClasses);
+            return compileHelper(className, classBody, packageNameRoot, codeLog, parameterClasses, future);
         } catch (RuntimeException e) {
-            promise.completeExceptionally(e);
+            future.completeExceptionally(e);
             throw e;
         }
     }
@@ -286,9 +279,7 @@ public class QueryCompiler {
     }
 
     private ClassLoader getClassLoaderForFormula(final Map<String, Class<?>> parameterClasses) {
-        // We should always be able to get our own class loader, even if this is invoked from external code
-        // that doesn't have security permissions to make ITS own class loader.
-        return doPrivileged((PrivilegedAction<URLClassLoader>) () -> new URLClassLoader(ucl.getURLs(), ucl) {
+        return new URLClassLoader(ucl.getURLs(), ucl) {
             // Once we find a class that is missing, we should not attempt to load it again,
             // otherwise we can end up with a StackOverflow Exception
             final HashSet<String> missingClasses = new HashSet<>();
@@ -344,36 +335,23 @@ public class QueryCompiler {
             }
 
             private byte[] loadClassData(String name) throws IOException {
-                try {
-                    // The compiler should always have access to the class-loader directories,
-                    // even if code that invokes this does not.
-                    return doPrivileged((PrivilegedExceptionAction<byte[]>) () -> {
-                        final File destFile = new File(classDestination,
-                                name.replace('.', File.separatorChar) + JavaFileObject.Kind.CLASS.extension);
-                        if (destFile.exists()) {
-                            return Files.readAllBytes(destFile.toPath());
-                        }
+                final File destFile = new File(classDestination,
+                        name.replace('.', File.separatorChar) + JavaFileObject.Kind.CLASS.extension);
+                if (destFile.exists()) {
+                    return Files.readAllBytes(destFile.toPath());
+                }
 
-                        for (File location : additionalClassLocations) {
-                            final File checkFile = new File(location,
-                                    name.replace('.', File.separatorChar) + JavaFileObject.Kind.CLASS.extension);
-                            if (checkFile.exists()) {
-                                return Files.readAllBytes(checkFile.toPath());
-                            }
-                        }
-
-                        throw new FileNotFoundException(name);
-                    });
-                } catch (final PrivilegedActionException pae) {
-                    final Exception inner = pae.getException();
-                    if (inner instanceof IOException) {
-                        throw (IOException) inner;
-                    } else {
-                        throw new RuntimeException(inner);
+                for (File location : additionalClassLocations) {
+                    final File checkFile = new File(location,
+                            name.replace('.', File.separatorChar) + JavaFileObject.Kind.CLASS.extension);
+                    if (checkFile.exists()) {
+                        return Files.readAllBytes(checkFile.toPath());
                     }
                 }
+
+                throw new FileNotFoundException(name);
             }
-        });
+        };
     }
 
     private static class WritableURLClassLoader extends URLClassLoader {
@@ -437,23 +415,23 @@ public class QueryCompiler {
         return sb.toString();
     }
 
-    private WritableURLClassLoader getClassLoader() {
-        return ucl;
-    }
-
     private Class<?> compileHelper(@NotNull final String className,
             @NotNull final String classBody,
             @NotNull final String packageNameRoot,
             @Nullable final StringBuilder codeLog,
-            @NotNull final Map<String, Class<?>> parameterClasses) {
-        // NB: We include class name hash in order to (hopefully) account for case insensitive file systems.
-        final int classNameHash = className.hashCode();
-        final int classBodyHash = classBody.hashCode();
+            @NotNull final Map<String, Class<?>> parameterClasses,
+            @NotNull final CompletableFuture<Class<?>> resultFuture) {
+        final MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Unable to create SHA-256 hashing digest", e);
+        }
+        final String basicHashText =
+                ByteUtils.byteArrToHex(digest.digest(classBody.getBytes(StandardCharsets.UTF_8)));
 
         for (int pi = 0; pi < MAX_CLASS_COLLISIONS; ++pi) {
-            final String packageNameSuffix = "c"
-                    + (classBodyHash < 0 ? "m" : "") + (classBodyHash & Integer.MAX_VALUE)
-                    + (classNameHash < 0 ? "n" : "") + (classNameHash & Integer.MAX_VALUE)
+            final String packageNameSuffix = "c_" + basicHashText
                     + (pi == 0 ? "" : ("p" + pi))
                     + "v" + JAVA_CLASS_VERSION;
             final String packageName = (packageNameRoot.isEmpty()
@@ -496,35 +474,22 @@ public class QueryCompiler {
 
             final String identifyingFieldValue = loadIdentifyingField(result);
 
-            // We have a class. It either contains the formula we are looking for (cases 2, A, and B) or a different
-            // formula with the same name (cases 3 and C). In either case, we should store the result in our cache,
-            // either fulfilling an existing promise or making a new, fulfilled promise.
-            synchronized (this) {
-                // Note we are doing something kind of subtle here. We are removing an entry whose key was matched by
-                // value equality and replacing it with a value-equal but reference-different string that is a static
-                // member of the class we just loaded. This should be easier on the garbage collector because we are
-                // replacing a calculated value with a classloaded value and so in effect we are "canonicalizing" the
-                // string. This is important because these long strings stay in knownClasses forever.
-                CompletableFuture<Class<?>> p = knownClasses.remove(identifyingFieldValue);
-                if (p == null) {
-                    // If we encountered a different class than the one we're looking for, make a fresh promise and
-                    // immediately fulfill it. This is for the purpose of populating the cache in case someone comes
-                    // looking for that class later. Rationale: we already did all the classloading work; no point in
-                    // throwing it away now, even though this is not the class we're looking for.
-                    p = new CompletableFuture<>();
-                }
-                knownClasses.put(identifyingFieldValue, p);
-                // It's also possible that some other code has already fulfilled this promise with exactly the same
-                // class. That's ok though: the promise code does not reject multiple sets to the identical value.
-                p.complete(result);
-            }
-
-            // If the class we found was indeed the class we were looking for, then return it
+            // If the class we found was indeed the class we were looking for, then complete the future and return it.
             if (classBody.equals(identifyingFieldValue)) {
-                // Cases 2, A, and B.
                 if (codeLog != null) {
                     // If the caller wants a textual copy of the code we either made, or just found in the cache.
                     codeLog.append(makeFinalCode(className, classBody, packageName));
+                }
+                resultFuture.complete(result);
+                synchronized (this) {
+                    // Note we are doing something kind of subtle here. We are removing an entry whose key was matched
+                    // by value equality and replacing it with a value-equal but reference-different string that is a
+                    // static member of the class we just loaded. This should be easier on the garbage collector because
+                    // we are replacing a calculated value with a classloaded value and so in effect we are
+                    // "canonicalizing" the string. This is important because these long strings stay in knownClasses
+                    // forever.
+                    knownClasses.remove(identifyingFieldValue);
+                    knownClasses.put(identifyingFieldValue, resultFuture);
                 }
                 return result;
             }
@@ -532,7 +497,7 @@ public class QueryCompiler {
         }
         throw new IllegalStateException("Found too many collisions for package name root " + packageNameRoot
                 + ", class name=" + className
-                + ", class body hash=" + classBodyHash + " - contact Deephaven support!");
+                + ", class body hash=" + basicHashText + " - contact Deephaven support!");
     }
 
     private Class<?> tryLoadClassByFqName(String fqClassName, Map<String, Class<?>> parameterClasses) {
@@ -672,8 +637,6 @@ public class QueryCompiler {
     private void maybeCreateClass(String className, String code, String packageName, String fqClassName) {
         final String finalCode = makeFinalCode(className, code, packageName);
 
-        // The 'compile' action does a bunch of things that need security permissions; this always needs to run
-        // with elevated permissions.
         if (logEnabled) {
             log.info().append("Generating code ").append(finalCode).endl();
         }
@@ -698,34 +661,25 @@ public class QueryCompiler {
         final String rootPathAsString;
         final String tempDirAsString;
         try {
-            final Pair<String, String> resultPair =
-                    AccessController.doPrivileged((PrivilegedExceptionAction<Pair<String, String>>) () -> {
-                        final String rootPathString = ctxClassDestination.getAbsolutePath();
-                        final Path rootPathWithPackage = Paths.get(rootPathString, truncatedSplitPackageName);
-                        final File rpf = rootPathWithPackage.toFile();
-                        ensureDirectories(rpf, () -> "Couldn't create package directories: " + rootPathWithPackage);
-                        final Path tempPath =
-                                Files.createTempDirectory(Paths.get(rootPathString), "temporaryCompilationDirectory");
-                        final String tempPathString = tempPath.toFile().getAbsolutePath();
-                        return new Pair<>(rootPathString, tempPathString);
-                    });
-            rootPathAsString = resultPair.first;
-            tempDirAsString = resultPair.second;
-        } catch (PrivilegedActionException pae) {
-            throw new RuntimeException(pae.getException());
+            rootPathAsString = ctxClassDestination.getAbsolutePath();
+            final Path rootPathWithPackage = Paths.get(rootPathAsString, truncatedSplitPackageName);
+            final File rpf = rootPathWithPackage.toFile();
+            ensureDirectories(rpf, () -> "Couldn't create package directories: " + rootPathWithPackage);
+            final Path tempPath =
+                    Files.createTempDirectory(Paths.get(rootPathAsString), "temporaryCompilationDirectory");
+            tempDirAsString = tempPath.toFile().getAbsolutePath();
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
         }
 
         try {
             maybeCreateClassHelper(fqClassName, finalCode, splitPackageName, rootPathAsString, tempDirAsString);
         } finally {
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                try {
-                    FileUtils.deleteRecursively(new File(tempDirAsString));
-                } catch (Exception e) {
-                    // ignore errors here
-                }
-                return null;
-            });
+            try {
+                FileUtils.deleteRecursively(new File(tempDirAsString));
+            } catch (Exception e) {
+                // ignore errors here
+            }
         }
     }
 
@@ -733,15 +687,13 @@ public class QueryCompiler {
             String rootPathAsString, String tempDirAsString) {
         final StringWriter compilerOutput = new StringWriter();
 
-        final JavaCompiler compiler =
-                AccessController.doPrivileged((PrivilegedAction<JavaCompiler>) ToolProvider::getSystemJavaCompiler);
+        final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
             throw new RuntimeException("No Java compiler provided - are you using a JRE instead of a JDK?");
         }
 
         final String classPathAsString = getClassPath() + File.pathSeparator + getJavaClassPath();
-        final List<String> compilerOptions = AccessController.doPrivileged(
-                (PrivilegedAction<List<String>>) () -> Arrays.asList("-d", tempDirAsString, "-cp", classPathAsString));
+        final List<String> compilerOptions = Arrays.asList("-d", tempDirAsString, "-cp", classPathAsString);
 
         final StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
 
@@ -760,25 +712,18 @@ public class QueryCompiler {
         // class files}
         // We want to atomically move it to e.g.
         // /tmp/workspace/cache/classes/io/deephaven/test/cm12862183232603186v52_0/{various class files}
+        Path srcDir = Paths.get(tempDirAsString, splitPackageName);
+        Path destDir = Paths.get(rootPathAsString, splitPackageName);
         try {
-            AccessController.doPrivileged((PrivilegedExceptionAction<Void>) () -> {
-                Path srcDir = Paths.get(tempDirAsString, splitPackageName);
-                Path destDir = Paths.get(rootPathAsString, splitPackageName);
-                try {
-                    Files.move(srcDir, destDir, StandardCopyOption.ATOMIC_MOVE);
-                } catch (IOException ioe) {
-                    // The move might have failed for a variety of bad reasons. However, if the reason was because
-                    // we lost the race to some other process, that's a harmless/desirable outcome, and we can ignore
-                    // it.
-                    if (!Files.exists(destDir)) {
-                        throw new IOException("Move failed for some reason other than destination already existing",
-                                ioe);
-                    }
-                }
-                return null;
-            });
-        } catch (PrivilegedActionException pae) {
-            throw new RuntimeException(pae.getException());
+            Files.move(srcDir, destDir, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException ioe) {
+            // The move might have failed for a variety of bad reasons. However, if the reason was because
+            // we lost the race to some other process, that's a harmless/desirable outcome, and we can ignore
+            // it.
+            if (!Files.exists(destDir)) {
+                throw new UncheckedIOException("Move failed for some reason other than destination already existing",
+                        ioe);
+            }
         }
     }
 
@@ -790,41 +735,28 @@ public class QueryCompiler {
      * @return a Pair of success, and the compiler output
      */
     private Pair<Boolean, String> tryCompile(File basePath, Collection<File> javaFiles) throws IOException {
+        final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if (compiler == null) {
+            throw new RuntimeException("No Java compiler provided - are you using a JRE instead of a JDK?");
+        }
+
+        final File outputDirectory = Files.createTempDirectory("temporaryCompilationDirectory").toFile();
+
         try {
-            // We need multiple filesystem accesses et al, so make this whole section privileged.
-            return AccessController.doPrivileged((PrivilegedExceptionAction<Pair<Boolean, String>>) () -> {
+            final StringWriter compilerOutput = new StringWriter();
+            final String javaClasspath = getJavaClassPath();
 
-                final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-                if (compiler == null) {
-                    throw new RuntimeException("No Java compiler provided - are you using a JRE instead of a JDK?");
-                }
+            final Collection<JavaFileObject> javaFileObjects = javaFiles.stream()
+                    .map(f -> new JavaSourceFromFile(basePath, f)).collect(Collectors.toList());
 
-                final File outputDirectory = Files.createTempDirectory("temporaryCompilationDirectory").toFile();
+            final boolean result = compiler.getTask(compilerOutput, null, null,
+                    Arrays.asList("-d", outputDirectory.getAbsolutePath(), "-cp",
+                            getClassPath() + File.pathSeparator + javaClasspath),
+                    null, javaFileObjects).call();
 
-                try {
-                    final StringWriter compilerOutput = new StringWriter();
-                    final String javaClasspath = getJavaClassPath();
-
-                    final Collection<JavaFileObject> javaFileObjects = javaFiles.stream()
-                            .map(f -> new JavaSourceFromFile(basePath, f)).collect(Collectors.toList());
-
-                    final boolean result = compiler.getTask(compilerOutput, null, null,
-                            Arrays.asList("-d", outputDirectory.getAbsolutePath(), "-cp",
-                                    getClassPath() + File.pathSeparator + javaClasspath),
-                            null, javaFileObjects).call();
-
-                    return new Pair<>(result, compilerOutput.toString());
-
-                } finally {
-                    FileUtils.deleteRecursively(outputDirectory);
-                }
-            });
-        } catch (final PrivilegedActionException pae) {
-            if (pae.getException() instanceof IOException) {
-                throw (IOException) pae.getException();
-            } else {
-                throw new RuntimeException(pae.getException());
-            }
+            return new Pair<>(result, compilerOutput.toString());
+        } finally {
+            FileUtils.deleteRecursively(outputDirectory);
         }
     }
 

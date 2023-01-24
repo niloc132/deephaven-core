@@ -6,27 +6,22 @@ package io.deephaven.server.auth;
 import dagger.Module;
 import dagger.Provides;
 import io.deephaven.UncheckedDeephavenException;
-import io.deephaven.auth.AnonymousAuthenticationHandler;
 import io.deephaven.auth.AuthenticationRequestHandler;
 import io.deephaven.auth.BasicAuthMarshaller;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
-import io.deephaven.server.barrage.BarrageStreamGenerator;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
-@Module()
+@Module
 public class AuthContextModule {
-    private static final Logger log = LoggerFactory.getLogger(BarrageStreamGenerator.class);
-    private static final String[] AUTH_HANDLERS = Configuration.getInstance()
-            .getStringArrayFromPropertyWithDefault("AuthHandlers",
-                    new String[] {AnonymousAuthenticationHandler.class.getCanonicalName()});
+    private static final Logger log = LoggerFactory.getLogger(AuthContextModule.class);
+    private static final String[] AUTH_HANDLERS =
+            Configuration.getInstance().getStringArrayFromProperty("AuthHandlers");
 
-    private static BasicAuthMarshaller basicAuthMarshaller;
     private static Map<String, AuthenticationRequestHandler> authHandlerMap;
 
     private static void initializeAuthHandlers() {
@@ -41,14 +36,18 @@ public class AuthContextModule {
                 final Class<?> clazz = AuthContextModule.class.getClassLoader().loadClass(handler);
                 Object instance = clazz.getDeclaredConstructor().newInstance();
                 if (instance instanceof BasicAuthMarshaller.Handler) {
-                    if (basicAuthMarshaller != null) {
-                        throw new UncheckedDeephavenException("Found multiple BasicAuthMarshaller.Handlers");
-                    }
-                    basicAuthMarshaller = new BasicAuthMarshaller((BasicAuthMarshaller.Handler) instance);
-                    authHandlerMap.put(basicAuthMarshaller.getAuthType(), basicAuthMarshaller);
-                } else if (instance instanceof AuthenticationRequestHandler) {
+                    // Re-wrap this special case in a general auth request handler
+                    instance = new BasicAuthMarshaller((BasicAuthMarshaller.Handler) instance);
+                }
+                if (instance instanceof AuthenticationRequestHandler) {
                     final AuthenticationRequestHandler authHandler = (AuthenticationRequestHandler) instance;
-                    authHandlerMap.put(authHandler.getAuthType(), authHandler);
+                    AuthenticationRequestHandler existing = authHandlerMap.put(authHandler.getAuthType(), authHandler);
+                    if (existing != null) {
+                        log.error().append("Multiple handlers registered for authentication type ")
+                                .append(existing.getAuthType()).end();
+                        throw new UncheckedDeephavenException(
+                                "Multiple authentication handlers registered for type " + existing.getAuthType());
+                    }
                 } else {
                     log.error().append("Provided auth handler does not implement an auth interface: ")
                             .append(handler).endl();
@@ -62,12 +61,6 @@ public class AuthContextModule {
         }
 
         authHandlerMap = Collections.unmodifiableMap(authHandlerMap);
-    }
-
-    @Provides
-    public Optional<BasicAuthMarshaller> bindBasicAuth() {
-        initializeAuthHandlers();
-        return Optional.ofNullable(basicAuthMarshaller);
     }
 
     @Provides

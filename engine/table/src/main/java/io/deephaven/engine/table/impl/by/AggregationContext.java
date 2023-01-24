@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.ToIntFunction;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
@@ -234,10 +234,11 @@ class AggregationContext {
      * initialization.
      *
      * @param resultTable The result {@link QueryTable} after initialization
+     * @param startingDestinationsCount The number of used destinations at the beginning of this step
      */
-    void propagateInitialStateToOperators(@NotNull final QueryTable resultTable) {
+    void propagateInitialStateToOperators(@NotNull final QueryTable resultTable, final int startingDestinationsCount) {
         for (final IterativeChunkedAggregationOperator operator : operators) {
-            operator.propagateInitialState(resultTable);
+            operator.propagateInitialState(resultTable, startingDestinationsCount);
         }
     }
 
@@ -266,7 +267,7 @@ class AggregationContext {
     /**
      * Allow all operators to reset any per-step internal state. Note that the arguments to this method should not be
      * mutated in any way.
-     *
+     * 
      * @param upstream The upstream {@link TableUpdateImpl}
      * @param startingDestinationsCount The number of used destinations at the beginning of this step
      */
@@ -280,7 +281,7 @@ class AggregationContext {
      * Allow all operators to perform any internal state keeping needed for destinations that were added (went from 0
      * keys to &gt 0), removed (went from &gt 0 keys to 0), or modified (keys added or removed, or keys modified) by
      * this iteration. Note that the arguments to this method should not be mutated in any way.
-     *
+     * 
      * @param downstream The downstream {@link TableUpdate} (which does <em>not</em> have its {@link ModifiedColumnSet}
      *        finalized yet)
      * @param newDestinations New destinations added on this update
@@ -472,12 +473,12 @@ class AggregationContext {
         return permuteKernels;
     }
 
-    void setReverseLookupFunction(ToIntFunction<Object> reverseLookupFunction) {
+    void supplyRowLookup(@NotNull final Supplier<AggregationRowLookup> rowLookupFactory) {
         if (transformers == null) {
             return;
         }
         for (final AggregationContextTransformer aggregationContextTransformer : transformers) {
-            aggregationContextTransformer.setReverseLookupFunction(reverseLookupFunction);
+            aggregationContextTransformer.supplyRowLookup(rowLookupFactory);
         }
     }
 }

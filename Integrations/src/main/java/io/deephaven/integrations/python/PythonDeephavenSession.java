@@ -56,9 +56,7 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
     private static final Logger log = LoggerFactory.getLogger(PythonDeephavenSession.class);
 
     private static final String DEFAULT_SCRIPT_PATH = Configuration.getInstance()
-            .getProperty("PythonDeephavenSession.defaultScriptPath")
-            .replace("<devroot>", Configuration.getInstance().getDevRootPath())
-            .replace("<workspace>", Configuration.getInstance().getWorkspacePath());
+            .getStringWithDefault("PythonDeephavenSession.defaultScriptPath", ".");
 
     public static String SCRIPT_TYPE = "Python";
 
@@ -156,7 +154,7 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
     public Object getVariable(String name) throws QueryScope.MissingVariableException {
         return scope
                 .getValue(name)
-                .orElseThrow(() -> new QueryScope.MissingVariableException("No global variable for: " + name));
+                .orElseThrow(() -> new QueryScope.MissingVariableException("No variable for: " + name));
     }
 
     @Override

@@ -22,6 +22,7 @@ configurations {
   js {}
   python {}
   go {}
+  cpp {}
 }
 
 dependencies {
@@ -94,6 +95,9 @@ artifacts {
   go(layout.buildDirectory.dir('generated/source/proto/main/go')) {
     builtBy generateProtobuf
   }
+  cpp(layout.buildDirectory.dir('generated/source/proto/main/cpp')) {
+    builtBy generateProtobuf
+  }
 }
 
 
@@ -104,6 +108,9 @@ sourceSets {
     java {
       srcDir 'build/generated/source/proto/main/grpc'
       srcDir 'build/generated/source/proto/main/java'
+    }
+    resources {
+      srcDir 'src/main/proto/deephaven/proto'
     }
   }
 }

@@ -73,13 +73,19 @@ abstract class SubscribeExampleBase extends BarrageClientExampleBase {
             TableTools.show(subscriptionTable);
             System.out.println("");
 
-            subscriptionTable.listenForUpdates(listener = new InstrumentedTableUpdateListener("example-listener") {
+            subscriptionTable.addUpdateListener(listener = new InstrumentedTableUpdateListener("example-listener") {
                 @ReferentialIntegrity
                 final BarrageTable tableRef = subscriptionTable;
                 {
                     // Maintain a liveness ownership relationship with subscriptionTable for the lifetime of the
                     // listener
                     manage(tableRef);
+                }
+
+                @Override
+                protected void destroy() {
+                    super.destroy();
+                    tableRef.removeUpdateListener(this);
                 }
 
                 @Override

@@ -27,6 +27,33 @@ public abstract class JettyConfig implements ServerConfig {
     public static final String HTTP_WEBSOCKETS = "http.websockets";
     public static final String HTTP_HTTP1 = "http.http1";
 
+    /**
+     * Values to indicate what kind of websocket support should be offered.
+     */
+    public enum WebsocketsSupport {
+
+        /**
+         * Disable all websockets. Recommended for use with https, including behind a proxy that will offer its own
+         * https.
+         */
+        NONE,
+        /**
+         * Establish one websocket per grpc stream (including unary calls). Compatible with the websocket client
+         * provided by https://github.com/improbable-eng/grpc-web/, but not recommended.
+         */
+        GRPC_WEBSOCKET,
+        /**
+         * Allows reuse of a single websocket for many grpc streams, even between services. This reduces latency by
+         * avoiding a fresh websocket handshake per rpc.
+         */
+        GRPC_WEBSOCKET_MULTIPLEXED,
+
+        /**
+         * Enables both {@link #GRPC_WEBSOCKET} and {@link #GRPC_WEBSOCKET_MULTIPLEXED}, letting the client specify
+         * which to use via websocket subprotocols.
+         */
+        BOTH;
+    }
 
     public static Builder builder() {
         return ImmutableJettyConfig.builder();
@@ -35,9 +62,8 @@ public abstract class JettyConfig implements ServerConfig {
     /**
      * The default configuration is suitable for local development purposes. It inherits all of the defaults, which are
      * documented on each individual method. In brief, the default server starts up on all interfaces with plaintext
-     * port {@value DEFAULT_PLAINTEXT_PORT}, a token expiration duration of {@value DEFAULT_TOKEN_EXPIRE_MIN} minutes, a
-     * scheduler pool size of {@value DEFAULT_SCHEDULER_POOL_SIZE}, and a max inbound message size of
-     * {@value DEFAULT_MAX_INBOUND_MESSAGE_SIZE_MiB} MiB.
+     * port {@value DEFAULT_PLAINTEXT_PORT}, a scheduler pool size of {@value DEFAULT_SCHEDULER_POOL_SIZE}, and a max
+     * inbound message size of {@value DEFAULT_MAX_INBOUND_MESSAGE_SIZE_MiB} MiB.
      */
     public static JettyConfig defaultConfig() {
         return builder().build();
@@ -48,7 +74,7 @@ public abstract class JettyConfig implements ServerConfig {
      * {@link ServerConfig#buildFromConfig(ServerConfig.Builder, Configuration)}.
      *
      * <p>
-     * Additionally, parses the property {@value HTTP_WEBSOCKETS} into {@link Builder#websockets(Boolean)} and
+     * Additionally, parses the property {@value HTTP_WEBSOCKETS} into {@link Builder#websockets(WebsocketsSupport)} and
      * {@value HTTP_HTTP1} into {@link Builder#http1(Boolean)}.
      *
      * @param config the config
@@ -59,7 +85,21 @@ public abstract class JettyConfig implements ServerConfig {
         String httpWebsockets = config.getStringWithDefault(HTTP_WEBSOCKETS, null);
         String httpHttp1 = config.getStringWithDefault(HTTP_HTTP1, null);
         if (httpWebsockets != null) {
-            builder.websockets(Boolean.parseBoolean(httpWebsockets));
+            switch (httpWebsockets.toLowerCase()) {
+                case "true":// backwards compatible
+                case "both":
+                    builder.websockets(WebsocketsSupport.BOTH);
+                    break;
+                case "grpc-websockets":
+                    builder.websockets(WebsocketsSupport.GRPC_WEBSOCKET);
+                    break;
+                case "grpc-websockets-multiplex":
+                    builder.websockets(WebsocketsSupport.GRPC_WEBSOCKET_MULTIPLEXED);
+                    break;
+                default:
+                    // backwards compatible, either "false" or "none" or anything else
+                    builder.websockets(WebsocketsSupport.NONE);
+            }
         }
         if (httpHttp1 != null) {
             builder.http1(Boolean.parseBoolean(httpHttp1));
@@ -80,7 +120,7 @@ public abstract class JettyConfig implements ServerConfig {
      * Include websockets.
      */
     @Nullable
-    public abstract Boolean websockets();
+    public abstract WebsocketsSupport websockets();
 
     /**
      * Include HTTP/1.1.
@@ -93,15 +133,15 @@ public abstract class JettyConfig implements ServerConfig {
      * Otherwise, defaults to {@code true} when {@link #ssl()} is empty, and {@code false} when {@link #ssl()} is
      * present.
      */
-    public final boolean websocketsOrDefault() {
-        final Boolean websockets = websockets();
+    public final WebsocketsSupport websocketsOrDefault() {
+        final WebsocketsSupport websockets = websockets();
         if (websockets != null) {
             return websockets;
         }
         if (Boolean.TRUE.equals(proxyHint())) {
-            return false;
+            return WebsocketsSupport.NONE;
         }
-        return ssl().isEmpty();
+        return ssl().isEmpty() ? WebsocketsSupport.BOTH : WebsocketsSupport.NONE;
     }
 
     /**
@@ -124,7 +164,7 @@ public abstract class JettyConfig implements ServerConfig {
 
     public interface Builder extends ServerConfig.Builder<JettyConfig, Builder> {
 
-        Builder websockets(Boolean websockets);
+        Builder websockets(WebsocketsSupport websockets);
 
         Builder http1(Boolean http1);
     }

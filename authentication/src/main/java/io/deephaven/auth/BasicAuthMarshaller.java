@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.auth;
 
 import com.google.protobuf.CodedInputStream;
@@ -27,6 +30,8 @@ import static com.google.protobuf.WireFormat.WIRETYPE_LENGTH_DELIMITED;
  * This class delegates to a typed auth handler once it is certain that the payload appears to be a BasicAuth value.
  */
 public class BasicAuthMarshaller implements AuthenticationRequestHandler {
+    public static final String AUTH_TYPE = Auth2Constants.BASIC_PREFIX.trim();
+
     private final static Logger log = LoggerFactory.getLogger(AnonymousAuthenticationHandler.class);
 
     public interface Handler {
@@ -41,21 +46,17 @@ public class BasicAuthMarshaller implements AuthenticationRequestHandler {
 
     @Override
     public String getAuthType() {
-        return Auth2Constants.BASIC_PREFIX.trim();
+        return AUTH_TYPE;
     }
 
     @Override
     public void initialize(String targetUrl) {
-        for (int ii = 0; ii < 5; ++ii) {
-            log.warn().endl();
-        }
+        log.warn().endl().endl().endl().endl().endl();
         log.warn().append("================================================================================").endl();
         log.warn().append("Basic Authentication is enabled.").endl();
         log.warn().append("       Listening on ").append(targetUrl).endl();
         log.warn().append("================================================================================").endl();
-        for (int ii = 0; ii < 5; ++ii) {
-            log.warn().endl();
-        }
+        log.warn().endl().endl().endl().endl().endl();
     }
 
     @Override

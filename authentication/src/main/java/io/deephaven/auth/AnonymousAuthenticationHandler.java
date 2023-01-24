@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+ */
 package io.deephaven.auth;
 
 import io.deephaven.internal.log.LoggerFactory;
@@ -20,16 +23,8 @@ public class AnonymousAuthenticationHandler implements AuthenticationRequestHand
 
     @Override
     public void initialize(String targetUrl) {
-        for (int ii = 0; ii < 5; ++ii) {
-            log.warn().endl();
-        }
-        log.warn().append("================================================================================").endl();
-        log.warn().append("WARNING! Anonymous authentication is enabled. This is not recommended!").endl();
-        log.warn().append("       Listening on ").append(targetUrl).endl();
-        log.warn().append("================================================================================").endl();
-        for (int ii = 0; ii < 5; ++ii) {
-            log.warn().endl();
-        }
+        // TODO(deephaven-core#2934): Enable anonymous authentication warning
+        log.info().append("Anonymous authentication is enabled. Listening on ").append(targetUrl).endl();
     }
 
     @Override

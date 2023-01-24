@@ -4,7 +4,6 @@
 package io.deephaven.server.runner;
 
 import io.deephaven.auth.AuthenticationRequestHandler;
-import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
@@ -16,6 +15,7 @@ import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.server.appmode.ApplicationInjector;
+import io.deephaven.server.config.ServerConfig;
 import io.deephaven.server.log.LogInit;
 import io.deephaven.server.plugin.PluginRegistration;
 import io.deephaven.server.session.SessionService;
@@ -40,9 +40,6 @@ import java.util.concurrent.TimeoutException;
 public class DeephavenApiServer {
     private static final Logger log = LoggerFactory.getLogger(DeephavenApiServer.class);
 
-    private static final String TARGET_URL = Configuration.getInstance()
-            .getStringWithDefault("TargetUrl", "https://localhost:10000/");
-
     private final GrpcServer server;
     private final UpdateGraphProcessor ugp;
     private final LogInit logInit;
@@ -53,6 +50,7 @@ public class DeephavenApiServer {
     private final SessionService sessionService;
     private final Map<String, AuthenticationRequestHandler> authenticationHandlers;
     private final Provider<ExecutionContext> executionContextProvider;
+    private final ServerConfig serverConfig;
 
     @Inject
     public DeephavenApiServer(
@@ -65,7 +63,8 @@ public class DeephavenApiServer {
             final UriResolvers uriResolvers,
             final SessionService sessionService,
             final Map<String, AuthenticationRequestHandler> authenticationHandlers,
-            final Provider<ExecutionContext> executionContextProvider) {
+            final Provider<ExecutionContext> executionContextProvider,
+            final ServerConfig serverConfig) {
         this.server = server;
         this.ugp = ugp;
         this.logInit = logInit;
@@ -76,6 +75,7 @@ public class DeephavenApiServer {
         this.sessionService = sessionService;
         this.authenticationHandlers = authenticationHandlers;
         this.executionContextProvider = executionContextProvider;
+        this.serverConfig = serverConfig;
     }
 
     @VisibleForTesting
@@ -98,17 +98,19 @@ public class DeephavenApiServer {
      * @throws ClassNotFoundException thrown if a class can't be found while finding and running an application.
      */
     public DeephavenApiServer run() throws IOException, ClassNotFoundException, TimeoutException {
-        // Stop accepting new gRPC requests.
-        ProcessEnvironment.getGlobalShutdownManager().registerTask(ShutdownManager.OrderingCategory.FIRST,
-                () -> server.stopWithTimeout(10, TimeUnit.SECONDS));
 
-        // Close outstanding sessions to give any gRPCs closure.
+        // Prevent new gRPC calls from being started
+        ProcessEnvironment.getGlobalShutdownManager().registerTask(ShutdownManager.OrderingCategory.FIRST,
+                server::beginShutdown);
+
+        // Now that no new gRPC calls may be made, close outstanding sessions to give any clients closure
         ProcessEnvironment.getGlobalShutdownManager().registerTask(ShutdownManager.OrderingCategory.MIDDLE,
                 sessionService::onShutdown);
 
-        // Finally wait for gRPC to exit now.
+        // Finally, wait for the http server to be finished stopping
         ProcessEnvironment.getGlobalShutdownManager().registerTask(ShutdownManager.OrderingCategory.LAST, () -> {
             try {
+                server.stopWithTimeout(10, TimeUnit.SECONDS);
                 server.join();
             } catch (final InterruptedException ignored) {
             }
@@ -145,7 +147,8 @@ public class DeephavenApiServer {
         applicationInjector.run();
 
         log.info().append("Initializing Authentication...").endl();
-        authenticationHandlers.forEach((name, handler) -> handler.initialize(TARGET_URL));
+        final String targetUrl = serverConfig.targetUrlOrDefault();
+        authenticationHandlers.forEach((name, handler) -> handler.initialize(targetUrl));
 
         log.info().append("Starting server...").endl();
         server.start();

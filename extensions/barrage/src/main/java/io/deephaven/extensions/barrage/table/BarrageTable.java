@@ -187,11 +187,12 @@ public abstract class BarrageTable extends QueryTable implements BarrageMessage.
     }
 
     public Class<?>[] getWireTypes() {
-        return Arrays.stream(destSources).map(ColumnSource::getType).toArray(Class<?>[]::new);
+        // The wire types are the expected result types of each column.
+        return getColumnSources().stream().map(ColumnSource::getType).toArray(Class<?>[]::new);
     }
 
     public Class<?>[] getWireComponentTypes() {
-        return Arrays.stream(destSources).map(ColumnSource::getComponentType).toArray(Class<?>[]::new);
+        return getColumnSources().stream().map(ColumnSource::getComponentType).toArray(Class<?>[]::new);
     }
 
     @VisibleForTesting
@@ -427,7 +428,7 @@ public abstract class BarrageTable extends QueryTable implements BarrageMessage.
             writableSources[ii] = ArrayBackedColumnSource.getMemoryColumnSource(
                     0, column.getDataType(), column.getComponentType());
             finalColumns.put(column.getName(),
-                    new WritableRedirectedColumnSource<>(emptyRowRedirection, writableSources[ii], 0));
+                    WritableRedirectedColumnSource.maybeRedirect(emptyRowRedirection, writableSources[ii], 0));
         }
         return finalColumns;
     }
@@ -481,6 +482,7 @@ public abstract class BarrageTable extends QueryTable implements BarrageMessage.
     }
 
     @Override
+    @Nullable
     public Object getAttribute(@NotNull String key) {
         final Object localAttribute = super.getAttribute(key);
         if (localAttribute != null) {

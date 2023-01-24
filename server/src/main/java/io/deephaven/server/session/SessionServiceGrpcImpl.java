@@ -5,6 +5,7 @@ package io.deephaven.server.session;
 
 import com.google.protobuf.ByteString;
 import com.google.rpc.Code;
+import io.deephaven.auth.AuthContext;
 import io.deephaven.auth.AuthenticationException;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.internal.log.LoggerFactory;
@@ -21,7 +22,6 @@ import io.deephaven.proto.backplane.grpc.ReleaseResponse;
 import io.deephaven.proto.backplane.grpc.SessionServiceGrpc;
 import io.deephaven.proto.backplane.grpc.TerminationNotificationRequest;
 import io.deephaven.proto.backplane.grpc.TerminationNotificationResponse;
-import io.deephaven.auth.AuthContext;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
@@ -57,7 +57,9 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
     private final TicketRouter ticketRouter;
 
     @Inject()
-    public SessionServiceGrpcImpl(final SessionService service, final TicketRouter ticketRouter) {
+    public SessionServiceGrpcImpl(
+            final SessionService service,
+            final TicketRouter ticketRouter) {
         this.service = service;
         this.ticketRouter = ticketRouter;
     }
@@ -72,7 +74,7 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
             responseObserver.onNext(HandshakeResponse.newBuilder()
                     .setMetadataHeader(ByteString.copyFromUtf8(DEEPHAVEN_SESSION_ID))
                     .setSessionToken(session.getExpiration().getBearerTokenAsByteString())
-                    .setTokenDeadlineTimeMillis(session.getExpiration().deadline.getMillis())
+                    .setTokenDeadlineTimeMillis(session.getExpiration().deadlineMillis)
                     .setTokenExpirationDelayMillis(service.getExpirationDelayMs())
                     .build());
 
@@ -97,7 +99,7 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
             responseObserver.onNext(HandshakeResponse.newBuilder()
                     .setMetadataHeader(ByteString.copyFromUtf8(DEEPHAVEN_SESSION_ID))
                     .setSessionToken(expiration.getBearerTokenAsByteString())
-                    .setTokenDeadlineTimeMillis(expiration.deadline.getMillis())
+                    .setTokenDeadlineTimeMillis(expiration.deadlineMillis)
                     .setTokenExpirationDelayMillis(service.getExpirationDelayMs())
                     .build());
 
@@ -126,6 +128,7 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
     public void release(final ReleaseRequest request, final StreamObserver<ReleaseResponse> responseObserver) {
         GrpcUtil.rpcWrapper(log, responseObserver, () -> {
             final SessionState session = service.getCurrentSession();
+
             if (!request.hasId()) {
                 responseObserver
                         .onError(GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Release ticket not supplied"));
@@ -137,16 +140,8 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
                 return;
             }
 
-            // noinspection SynchronizationOnLocalVariableOrMethodParameter
-            synchronized (export) {
-                final ExportNotification.State currState = export.getState();
-                if (SessionState.isExportStateTerminal(currState)) {
-                    responseObserver.onError(
-                            GrpcUtil.statusRuntimeException(Code.NOT_FOUND, "Ticket already in state: " + currState));
-                    return;
-                }
-            }
-
+            // If the export is already in a terminal state, the implementation quietly ignores the request as there
+            // are no additional resources to release.
             export.cancel();
             responseObserver.onNext(ReleaseResponse.getDefaultInstance());
             responseObserver.onCompleted();
@@ -157,6 +152,7 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
     public void exportFromTicket(ExportRequest request, StreamObserver<ExportResponse> responseObserver) {
         GrpcUtil.rpcWrapper(log, responseObserver, () -> {
             final SessionState session = service.getCurrentSession();
+
             if (!request.hasSourceId()) {
                 responseObserver
                         .onError(GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Source ticket not supplied"));
@@ -174,8 +170,7 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
                     .require(source)
                     .onError(responseObserver)
                     .submit(() -> {
-                        GrpcUtil.safelyExecute(() -> responseObserver.onNext(ExportResponse.getDefaultInstance()));
-                        GrpcUtil.safelyExecute(responseObserver::onCompleted);
+                        GrpcUtil.safelyComplete(responseObserver, ExportResponse.getDefaultInstance());
                         return source.get();
                     });
         });
@@ -282,6 +277,8 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
                 final Metadata metadata,
                 final ServerCallHandler<ReqT, RespT> serverCallHandler) {
             SessionState session = null;
+
+            // Lookup the session using Flight Auth 1.0 token.
             final byte[] altToken = metadata.get(AuthConstants.TOKEN_KEY);
             if (altToken != null) {
                 try {
@@ -290,19 +287,27 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
                 }
             }
 
+            // Lookup the session using Flight Auth 2.0 token.
             final String token = metadata.get(SESSION_HEADER_KEY);
             if (session == null && token != null) {
                 try {
                     session = service.getSessionForAuthToken(token);
                 } catch (AuthenticationException e) {
-                    log.error().append("Failed to authenticate: ").append(e).endl();
-                    throw Status.UNAUTHENTICATED.asRuntimeException();
+                    try {
+                        call.close(Status.UNAUTHENTICATED, new Metadata());
+                    } catch (IllegalStateException ignored) {
+                        // could be thrown if the call was already closed. As an interceptor, we can't throw,
+                        // so ignoring this and just returning the no-op listener.
+                    }
+                    return new ServerCall.Listener<>() {};
                 }
             }
+
+            // On the outer half of the call we'll install the context that includes our session.
             final InterceptedCall<ReqT, RespT> serverCall = new InterceptedCall<>(service, call, session);
-            final Context newContext = Context.current().withValues(
+            final Context context = Context.current().withValues(
                     SESSION_CONTEXT_KEY, session, SESSION_CALL_KEY, serverCall);
-            return Contexts.interceptCall(newContext, serverCall, metadata, serverCallHandler);
+            return Contexts.interceptCall(context, serverCall, metadata, serverCallHandler);
         }
     }
 }
