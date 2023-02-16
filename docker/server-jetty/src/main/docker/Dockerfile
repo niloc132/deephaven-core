@@ -2,6 +2,7 @@ ARG BASE
 FROM $BASE as install
 
 COPY licenses/ /
+RUN mkdir -p /apps/libs
 
 # Note: all of the pip installs have the --no-index flag, with the expectation that all external dependencies are
 # already satisfied via the base image. If that is not the case, we want the install to error out, and we'll need to

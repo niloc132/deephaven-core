@@ -1,0 +1,20 @@
+version: "3.4"
+
+services:
+  server:
+    extends:
+      file: ../../../docker-compose-common.yml
+      service: server
+    image: deephaven/server-jetty-sql-username-password:local-build
+    build:
+      context: .
+      args:
+        - DEEPHAVEN_SERVER_IMAGE=${DEEPHAVEN_SERVER_IMAGE}
+#    volumes:
+#      - ./build/libs/deephaven-sql-username-password-*-all.jar:/apps/libs/deephaven-sql-username-password.jar
+    environment:
+      JAVA_OPTS: >
+        -DAuthHandlers=io.deephaven.authentication.sql.BasicSqlAuthenticationHandler
+        -Dauthentication.basic.sql.jdbc.connection=jdbc:postgresql://postgres:5432/postgres
+        -Dauthentication.basic.sql.jdbc.user=postgres
+        -Dauthentication.basic.sql.jdbc.password=password

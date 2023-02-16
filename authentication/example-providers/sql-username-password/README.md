@@ -6,15 +6,20 @@ to follow best practices in storing secure information like the password itself,
 rudimentary.
 
 ## Example database setup
-In this directory, run `docker-compose up` to start a SQL database. The `init-users.sql` file will be used to initialize
-this database, which has one user, named `admin`, with a password of `p@ssw0rd`. This docker-compose configuration is
-designed to be fast to start and ephemeral, and is not meant for production use.
+In this directory, run `docker-compose up`in this directory to start a SQL database. The `init-users.sql` file will be
+used to initialize this database, which has one user, named `admin`, with a password of `p@ssw0rd`. This docker-compose
+configuration is designed to be fast to start and ephemeral, and is not meant for production use.
 
 After that has run, there will be a docker container running with port 5432 exposed on localhost. The password for the
 postgres account is `password`.
 
 ## Server setup
 To test this when building from gradle with `:server-jetty-app:run`, specify `-Psql-username-password` to enable this.
+
+To run this from a sample docker-compose:
+ * First build the project, at least `./gradlew prepareCompose :authentication:example-providers:sql-username-password:assemble`
+   from the top-level directory of the project.
+ * Then run `docker-compose -f docker-compose.yml -f docker-compose-dh.yml up` in this directory. 
 
 To use this from a pre-built installation:
 * Add the sql-username-password-authentication-provider jar to your Deephaven installation's classpath:
