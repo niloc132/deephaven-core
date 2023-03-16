@@ -58,3 +58,15 @@ jobs:
         if: failure()
         with:
           tool_name: spotless
+      - name: On failure, try to generate proto output and propose fixes
+        uses: burrunan/gradle-cache-action@v1
+        if: failure()
+        with:
+          job-id: spotless-formatting
+          arguments: updateProto
+          gradle-version: wrapper
+      - name: suggester / updateProto
+        uses: reviewdog/action-suggester@v1
+        if: failure()
+        with:
+          tool_name: spotless
