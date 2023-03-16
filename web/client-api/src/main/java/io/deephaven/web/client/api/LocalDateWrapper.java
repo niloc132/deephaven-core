@@ -63,8 +63,6 @@ public class LocalDateWrapper {
     @JsMethod
     @Override
     public String toString() {
-        return YEAR_FORMAT.format(getYear())
-                + "-" + MONTH_DAY_FORMAT.format(getMonthValue())
-                + "-" + MONTH_DAY_FORMAT.format(getDayOfMonth());
+        return YEAR_FORMAT.format(getYear()) + "-" + MONTH_DAY_FORMAT.format(getMonthValue()) + "-" + MONTH_DAY_FORMAT.format(getDayOfMonth());
     }
 }
