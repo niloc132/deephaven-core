@@ -46,27 +46,15 @@ jobs:
           name: quick-ci-jvm-err
           path: '**/*_pid*.log'
           if-no-files-found: ignore
-      - name: On failure, try to reformat and propose fixes
+      - name: On failure, try to apply correct formatting and generate proto output
         uses: burrunan/gradle-cache-action@v1
         if: failure()
         with:
           job-id: spotless-formatting
-          arguments: spotlessJavaApply
+          arguments: spotlessApply updateProto
           gradle-version: wrapper
-      - name: suggester / shellcheck
+      - name: Suggest code cleanup
         uses: reviewdog/action-suggester@v1
         if: failure()
         with:
-          tool_name: spotless
-      - name: On failure, try to generate proto output and propose fixes
-        uses: burrunan/gradle-cache-action@v1
-        if: failure()
-        with:
-          job-id: spotless-formatting
-          arguments: updateProto
-          gradle-version: wrapper
-      - name: suggester / updateProto
-        uses: reviewdog/action-suggester@v1
-        if: failure()
-        with:
-          tool_name: spotless
+          tool_name: spotless, protoc
