@@ -51,22 +51,24 @@ jobs:
         if: failure()
         with:
           job-id: spotless-formatting
-          arguments: spotlessJavaApply
+          arguments: spotlessApply
           gradle-version: wrapper
-      - name: suggester / shellcheck
+      - name: suggester / applySpotless
         uses: reviewdog/action-suggester@v1
         if: failure()
         with:
           tool_name: spotless
+          filter_mode: diff_context
       - name: On failure, try to generate proto output and propose fixes
         uses: burrunan/gradle-cache-action@v1
         if: failure()
         with:
-          job-id: spotless-formatting
+          job-id: protoc-codegen
           arguments: updateProto
           gradle-version: wrapper
       - name: suggester / updateProto
         uses: reviewdog/action-suggester@v1
         if: failure()
         with:
-          tool_name: spotless
+          tool_name: protoc
+          filter_mode: added
