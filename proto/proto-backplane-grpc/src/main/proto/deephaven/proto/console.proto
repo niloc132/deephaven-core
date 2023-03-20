@@ -484,5 +484,8 @@ message FigureDescriptor {
         repeated string columns = 1;
         repeated string column_types = 2;
         bool require_all_filters_to_display = 3;
+
+        repeated string more_stuffs = 4;
+        OneClickDescriptor self = 5;
     }
 }
