@@ -11,6 +11,7 @@ import io.deephaven.web.client.api.BigDecimalWrapper;
 import io.deephaven.web.client.api.BigIntegerWrapper;
 import io.deephaven.web.client.api.LongWrapper;
 import jsinterop.annotations.JsConstructor;
+import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
@@ -35,39 +36,47 @@ public class JsNumberFormat {
         default boolean isNumber() {
             return (Object) this instanceof Double;
         }
+
         @JsOverlay
         default boolean isBigInteger() {
             return this instanceof BigIntegerWrapper;
         }
+
         @JsOverlay
         default boolean isBigDecimal() {
             return this instanceof BigDecimalWrapper;
         }
+
         @JsOverlay
         default boolean isLongWrapper() {
             return this instanceof LongWrapper;
         }
+
         @TsUnionMember
         @JsOverlay
         default double asNumber() {
             return Js.asDouble(this);
         }
+
         @TsUnionMember
         @JsOverlay
         default BigIntegerWrapper asBigInteger() {
             return Js.cast(this);
         }
+
         @TsUnionMember
         @JsOverlay
         default BigDecimalWrapper asBigDecimal() {
             return Js.cast(this);
         }
+
         @TsUnionMember
         @JsOverlay
         default LongWrapper asLongWrapper() {
             return Js.cast(this);
         }
     }
+
     private static final Map<String, JsNumberFormat> cache = new HashMap<>();
 
     public static JsNumberFormat getFormat(String pattern) {
@@ -93,6 +102,16 @@ public class JsNumberFormat {
 
     public double parse(String text) {
         return wrapped.parse(text);
+    }
+
+    @JsIgnore
+    public String format(double number) {
+        return format(Js.<NumberUnion>cast(number));
+    }
+
+    @JsIgnore
+    public String format(LongWrapper number) {
+        return format(Js.<NumberUnion>cast(number));
     }
 
     public String format(NumberUnion number) {

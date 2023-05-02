@@ -57,24 +57,33 @@ public class FilterValue {
         static OfNumberUnionParam of(@DoNotAutobox Object value) {
             return Js.cast(value);
         }
+
         @JsOverlay
         default boolean isLongWrapper() {
             return this instanceof LongWrapper;
         }
+
         @JsOverlay
         default boolean isNumber() {
             return (Object) this instanceof Double;
         }
+
         @TsUnionMember
         @JsOverlay
         default LongWrapper asLongWrapper() {
             return Js.cast(this);
         }
+
         @TsUnionMember
         @JsOverlay
         default double asNumber() {
             return Js.asDouble(this);
         }
+    }
+
+    @JsIgnore
+    public static FilterValue ofNumber(double input) {
+        return ofNumber(Js.cast(input));
     }
 
     @JsMethod(namespace = "dh.FilterValue")
