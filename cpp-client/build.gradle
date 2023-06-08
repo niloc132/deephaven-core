@@ -55,6 +55,7 @@ deephavenDocker {
     ])
     containerName.set "dh-server-for-cpp-${randomSuffix}"
     networkName.set "cpp-test-network-${randomSuffix}"
+    sslEnabled.set true
 }
 
 def testCppClient = Docker.registerDockerTask(project, 'testCppClient') {

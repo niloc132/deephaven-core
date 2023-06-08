@@ -45,7 +45,9 @@ public abstract class DeephavenInDockerExtension {
     abstract Property<Integer> getAwaitStatusTimeout()
     abstract Property<Integer> getCheckInterval()
 
-    abstract MapProperty<String, String> getEnvVars();
+    abstract MapProperty<String, String> getEnvVars()
+
+    abstract Property<Boolean> getSslEnabled()
 
     /**
      * Makes the exposed port available to other docker tasks. Rather than hardcode a particular
@@ -64,6 +66,7 @@ public abstract class DeephavenInDockerExtension {
         awaitStatusTimeout.set 20
         checkInterval.set 100
         shouldLog.set Specs.satisfyNone()
+        sslEnabled.set false
 
         // irritating configuration order of operations to work out here, so just leaving
         // these as constants until we decide they aren't any more
@@ -86,6 +89,14 @@ public abstract class DeephavenInDockerExtension {
             task.containerName.set containerName.get()
             task.hostConfig.network.set networkName.get()
             task.envVars.set(this.getEnvVars())
+
+            if (sslEnabled.get()) {
+                // append paths to env vars
+                def sslSettings = '-Dhttp.port=10000 -Dssl.identity.type=privatekey -Dssl.identity.certChainPath=/dev-certs/server.chain.crt -Dssl.identity.privateKeyPath=/dev-certs/server.key'
+                def existingStartOps = task.envVars.get().get('START_OPTS')
+                task.envVars.put('START_OPTS', existingStartOps ? existingStartOps + ' ' + sslSettings : sslSettings)
+                task.hostConfig.binds.put("${project.rootDir}/server/dev-certs/".toString(),'/dev-certs')
+            }
 
             // In the jetty image, port 10000 is the http server
             task.exposePorts("tcp", [10000])
