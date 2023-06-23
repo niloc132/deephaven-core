@@ -54,12 +54,12 @@ Docker.registerDockerTask(project, 'regenerateGwtBindings') {
     imageName = 'deephaven/jsinterop-generate-grpc-bindings:local-build'
     dockerfile {
         // Basing our image on node, so we can easily use node and npm
-        from 'docker.io/library/node:14.16.0'
+        from 'docker.io/library/node:18.16.1'
 
         // Install bazelisk so we can handle any version of bazel
         runCommand '''set -eux; \\
                       apt-get update; \\
-                      apt-get install openjdk-8-jdk-headless --no-install-recommends -y; \\
+                      apt-get install openjdk-17-jdk-headless --no-install-recommends -y; \\
                       rm -rf /var/lib/apt/lists/*; \\
                       mkdir -p /bazelisk; \\
                       curl --silent --show-error --location --fail --retry 3 --output /bazelisk/bazel  https://github.com/bazelbuild/bazelisk/releases/download/v1.7.4/bazelisk-linux-amd64; \\
@@ -76,7 +76,7 @@ Docker.registerDockerTask(project, 'regenerateGwtBindings') {
 
         // Get .d.ts files from all sources, only rebuild this when package.json updates
         runCommand '''set -eux; \\
-                      npm ci --unsafe-perm; \\
+                      npm ci --unsafe-perm --legacy-peer-deps; \\
                       mkdir -p src/dhinternal/jspb; \\
                       cp node_modules/@types/google-protobuf/index.d.ts src/dhinternal/jspb/; \\
                       mkdir src/dhinternal/grpcWeb; \\
