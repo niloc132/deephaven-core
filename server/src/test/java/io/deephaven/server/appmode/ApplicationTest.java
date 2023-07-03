@@ -10,6 +10,7 @@ import io.deephaven.engine.table.Table;
 import io.deephaven.engine.testutil.junit4.EngineCleanup;
 import io.deephaven.engine.util.AbstractScriptSession;
 import io.deephaven.engine.util.GroovyDeephavenSession;
+import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.integrations.python.PythonDeephavenSession;
 import io.deephaven.engine.util.PythonEvaluatorJpy;
 import io.deephaven.plugin.type.ObjectTypeLookup.NoOp;
@@ -52,7 +53,7 @@ public class ApplicationTest {
     public void app01() throws IOException {
         session = new GroovyDeephavenSession(
                 ExecutionContext.getContext().getUpdateGraph(), NoOp.INSTANCE, null,
-                GroovyDeephavenSession.RunScripts.none());
+                ScriptSession.RunScripts.none());
         ApplicationState app = ApplicationFactory.create(ApplicationConfigs.testAppDir(), ApplicationConfigs.app01(),
                 session, new NoopStateListener());
         assertThat(app.name()).isEqualTo("My Groovy Application");

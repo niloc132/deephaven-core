@@ -3,6 +3,7 @@
  */
 package io.deephaven.engine.util;
 
+import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.liveness.LivenessNode;
@@ -11,9 +12,17 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Interface for interactive console script sessions.
@@ -177,5 +186,47 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
      */
     default Object unwrapObject(Object object) {
         return object;
+    }
+
+    /**
+     * Script file to loadable on startup. Provide through {@link RunScripts} factory methods.
+     */
+    interface InitScript {
+        String getScriptPath();
+
+        int priority();
+    }
+
+    class RunScripts {
+        public static RunScripts of(Iterable<GroovyDeephavenSession.InitScript> initScripts) {
+            List<String> paths = StreamSupport.stream(initScripts.spliterator(), false)
+                    .sorted(Comparator.comparingInt(InitScript::priority))
+                    .map(InitScript::getScriptPath)
+                    .collect(Collectors.toList());
+            return new RunScripts(paths);
+        }
+
+        public static RunScripts none() {
+            return new RunScripts(Collections.emptyList());
+        }
+
+        public static RunScripts serviceLoader() {
+            return of(ServiceLoader.load(GroovyDeephavenSession.InitScript.class));
+        }
+
+        public static RunScripts oldConfiguration(String configPropertyName) {
+            return new RunScripts(Arrays
+                    .asList(Configuration.getInstance().getProperty(configPropertyName).split(",")));
+        }
+
+        private final List<String> paths;
+
+        public RunScripts(List<String> paths) {
+            this.paths = Objects.requireNonNull(paths);
+        }
+
+        public List<String> paths() {
+            return Collections.unmodifiableList(paths);
+        }
     }
 }

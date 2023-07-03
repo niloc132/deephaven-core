@@ -4,7 +4,7 @@
 package io.deephaven.plot;
 
 import com.google.auto.service.AutoService;
-import io.deephaven.engine.util.GroovyDeephavenSession.InitScript;
+import io.deephaven.engine.util.ScriptSession.InitScript;
 import javax.inject.Inject;
 
 @AutoService(InitScript.class)

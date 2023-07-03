@@ -43,11 +43,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Groovy {@link ScriptSession}. Not safe for concurrent use.
@@ -707,41 +704,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         public String call(Object... args) {
             throw new UnsupportedOperationException("This console does not support source.");
         }
-    }
-
-    public static class RunScripts {
-        public static RunScripts of(Iterable<InitScript> initScripts) {
-            List<String> paths = StreamSupport.stream(initScripts.spliterator(), false)
-                    .sorted(Comparator.comparingInt(InitScript::priority))
-                    .map(InitScript::getScriptPath)
-                    .collect(Collectors.toList());
-            return new RunScripts(paths);
-        }
-
-        public static RunScripts none() {
-            return new RunScripts(Collections.emptyList());
-        }
-
-        public static RunScripts serviceLoader() {
-            return of(ServiceLoader.load(InitScript.class));
-        }
-
-        public static RunScripts oldConfiguration() {
-            return new RunScripts(Arrays
-                    .asList(Configuration.getInstance().getProperty("GroovyDeephavenSession.initScripts").split(",")));
-        }
-
-        private final List<String> paths;
-
-        public RunScripts(List<String> paths) {
-            this.paths = Objects.requireNonNull(paths);
-        }
-    }
-
-    public interface InitScript {
-        String getScriptPath();
-
-        int priority();
     }
 
     @AutoService(InitScript.class)

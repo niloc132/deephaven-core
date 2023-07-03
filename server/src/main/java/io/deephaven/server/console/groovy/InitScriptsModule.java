@@ -10,8 +10,8 @@ import dagger.multibindings.IntoSet;
 import io.deephaven.engine.table.impl.util.PerformanceQueries;
 import io.deephaven.engine.util.GroovyDeephavenSession.Base;
 import io.deephaven.engine.util.GroovyDeephavenSession.CountMetrics;
-import io.deephaven.engine.util.GroovyDeephavenSession.InitScript;
-import io.deephaven.engine.util.GroovyDeephavenSession.RunScripts;
+import io.deephaven.engine.util.ScriptSession.InitScript;
+import io.deephaven.engine.util.ScriptSession.RunScripts;
 
 import java.util.Set;
 
@@ -51,7 +51,7 @@ public class InitScriptsModule {
 
         @Provides
         static RunScripts providesRunScriptLogic() {
-            return RunScripts.oldConfiguration();
+            return RunScripts.oldConfiguration("GroovyDeephavenSession.initScripts");
         }
     }
 }
