@@ -71,7 +71,7 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
      * @param updateGraph the default update graph to install for the repl
      * @param objectTypeLookup the object type lookup
      * @param listener an optional listener that will be notified whenever the query scope changes
-     * @param runInitScripts if init scripts should be executed
+     * @param runScripts scripts to run on startup
      * @param pythonEvaluator
      * @throws IOException if an IO error occurs running initialization scripts
      */
@@ -79,7 +79,7 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
             final UpdateGraph updateGraph,
             final ObjectTypeLookup objectTypeLookup,
             @Nullable final Listener listener,
-            final boolean runInitScripts,
+            final RunScripts runScripts,
             final PythonEvaluatorJpy pythonEvaluator) throws IOException {
         super(updateGraph, objectTypeLookup, listener);
 
