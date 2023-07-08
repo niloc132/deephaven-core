@@ -115,16 +115,14 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
     public GroovyDeephavenSession(
             final UpdateGraph updateGraph,
-            final ObjectTypeLookup objectTypeLookup,
-            final RunScripts runScripts) throws IOException {
-        this(updateGraph, objectTypeLookup, null, runScripts);
+            final ObjectTypeLookup objectTypeLookup) throws IOException {
+        this(updateGraph, objectTypeLookup, null);
     }
 
     public GroovyDeephavenSession(
             final UpdateGraph updateGraph,
             ObjectTypeLookup objectTypeLookup,
-            @Nullable final Listener changeListener,
-            final RunScripts runScripts)
+            @Nullable final Listener changeListener)
             throws IOException {
         super(updateGraph, objectTypeLookup, changeListener);
 
@@ -136,10 +134,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         executionContext.getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
 
         publishInitial();
-
-        for (final String path : runScripts.paths) {
-            runScript(path);
-        }
     }
 
     @Override

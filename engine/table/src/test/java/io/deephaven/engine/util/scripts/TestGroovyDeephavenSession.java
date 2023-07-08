@@ -30,8 +30,7 @@ public class TestGroovyDeephavenSession {
         livenessScope = new LivenessScope();
         LivenessScopeStack.push(livenessScope);
         session = new GroovyDeephavenSession(
-                ExecutionContext.getContext().getUpdateGraph(), NoOp.INSTANCE, null,
-                ScriptSession.RunScripts.none());
+                ExecutionContext.getContext().getUpdateGraph(), NoOp.INSTANCE, null);
     }
 
     @After

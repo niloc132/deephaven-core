@@ -52,8 +52,7 @@ public class ApplicationTest {
     @Test
     public void app01() throws IOException {
         session = new GroovyDeephavenSession(
-                ExecutionContext.getContext().getUpdateGraph(), NoOp.INSTANCE, null,
-                ScriptSession.RunScripts.none());
+                ExecutionContext.getContext().getUpdateGraph(), NoOp.INSTANCE, null);
         ApplicationState app = ApplicationFactory.create(ApplicationConfigs.testAppDir(), ApplicationConfigs.app01(),
                 session, new NoopStateListener());
         assertThat(app.name()).isEqualTo("My Groovy Application");
@@ -66,7 +65,7 @@ public class ApplicationTest {
     @Ignore("TODO: deephaven-core#1741 python test needs to run in a container")
     public void app02() throws IOException, InterruptedException, TimeoutException {
         session = new PythonDeephavenSession(
-                ExecutionContext.getDefaultContext().getUpdateGraph(), NoOp.INSTANCE, null, false,
+                ExecutionContext.getDefaultContext().getUpdateGraph(), NoOp.INSTANCE, null,
                 PythonEvaluatorJpy.withGlobalCopy());
         ApplicationState app = ApplicationFactory.create(ApplicationConfigs.testAppDir(), ApplicationConfigs.app02(),
                 session, new NoopStateListener());

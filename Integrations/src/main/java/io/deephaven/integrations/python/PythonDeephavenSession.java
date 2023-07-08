@@ -71,7 +71,6 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
      * @param updateGraph the default update graph to install for the repl
      * @param objectTypeLookup the object type lookup
      * @param listener an optional listener that will be notified whenever the query scope changes
-     * @param runScripts scripts to run on startup
      * @param pythonEvaluator
      * @throws IOException if an IO error occurs running initialization scripts
      */
@@ -79,7 +78,6 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
             final UpdateGraph updateGraph,
             final ObjectTypeLookup objectTypeLookup,
             @Nullable final Listener listener,
-            final RunScripts runScripts,
             final PythonEvaluatorJpy pythonEvaluator) throws IOException {
         super(updateGraph, objectTypeLookup, listener);
 
@@ -93,16 +91,6 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
         scriptFinder = new ScriptFinder(DEFAULT_SCRIPT_PATH);
 
         publishInitial();
-        /*
-         * And now the user-defined initialization scripts, if any.
-         */
-        if (runInitScripts) {
-            String[] scripts = Configuration.getInstance().getProperty("PythonDeephavenSession.initScripts").split(",");
-
-            for (String script : scripts) {
-                runScript(script);
-            }
-        }
     }
 
     /**
