@@ -192,13 +192,22 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
      * Script file to loadable on startup. Provide through {@link RunScripts} factory methods.
      */
     interface InitScript {
+        /**
+         * Path to the script to run, will be evaluted first as a file system path, then as a
+         * classpath element.
+         */
         String getScriptPath();
 
+        /**
+         * Defines the order in which scripts will be loaded - lower numbers are loaded first. Values
+         * 0-100 are reserved for deephaven-core scripts.
+         */
         int priority();
     }
 
+
     class RunScripts {
-        public static RunScripts of(Iterable<GroovyDeephavenSession.InitScript> initScripts) {
+        public static RunScripts of(Iterable<ScriptSession.InitScript> initScripts) {
             List<String> paths = StreamSupport.stream(initScripts.spliterator(), false)
                     .sorted(Comparator.comparingInt(InitScript::priority))
                     .map(InitScript::getScriptPath)
