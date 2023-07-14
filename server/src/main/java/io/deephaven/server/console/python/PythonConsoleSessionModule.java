@@ -16,6 +16,7 @@ import io.deephaven.integrations.python.PythonDeephavenSession;
 import io.deephaven.plugin.type.ObjectTypeLookup;
 
 import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
@@ -28,6 +29,7 @@ public class PythonConsoleSessionModule {
         return pythonSession;
     }
 
+    @Singleton
     @Provides
     PythonDeephavenSession bindPythonSession(
             @Named(PeriodicUpdateGraph.DEFAULT_UPDATE_GRAPH_NAME) final UpdateGraph updateGraph,

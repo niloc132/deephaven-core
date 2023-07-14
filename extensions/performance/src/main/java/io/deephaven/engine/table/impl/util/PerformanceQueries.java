@@ -161,8 +161,13 @@ public class PerformanceQueries {
     @AutoService(GroovyDeephavenSession.InitScript.class)
     public static class InitScript implements GroovyDeephavenSession.InitScript {
         @Override
-        public String getScriptPath() {
+        public String scriptPath() {
             return "groovy/1-performance.groovy";
+        }
+
+        @Override
+        public String scriptLanguage() {
+            return GroovyDeephavenSession.SCRIPT_TYPE;
         }
 
         @Override

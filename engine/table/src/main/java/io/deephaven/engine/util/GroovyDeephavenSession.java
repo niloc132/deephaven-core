@@ -154,21 +154,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         evaluateScript(FileUtils.readTextFile(file), scriptName).throwIfError();
     }
 
-    private final Set<String> executedScripts = new HashSet<>();
-
-    // Used by closures that implement source() more directly to figure out if we've loaded a script already
-    public boolean hasExecutedScript(final String scriptName) {
-        return !executedScripts.add(scriptName);
-    }
-
-    public void runScriptOnce(String script) throws IOException {
-        if (executedScripts.contains(script)) {
-            return;
-        }
-        runScript(script);
-        executedScripts.add(script);
-    }
-
     @NotNull
     @Override
     public Object getVariable(String name) throws QueryScope.MissingVariableException {
@@ -187,10 +172,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         } catch (QueryScope.MissingVariableException e) {
             return defaultValue;
         }
-    }
-
-    private void evaluateCommand(String command) {
-        groovyShell.evaluate(command);
     }
 
     @Override
@@ -213,7 +194,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
             try {
                 ExecutionContext.getContext().getUpdateGraph().exclusiveLock()
-                        .doLockedInterruptibly(() -> evaluateCommand(lastCommand));
+                        .doLockedInterruptibly(() -> groovyShell.evaluate(lastCommand));
             } catch (InterruptedException e) {
                 throw new CancellationException(e.getMessage() != null ? e.getMessage() : "Query interrupted",
                         maybeRewriteStackTrace(scriptName, currentScriptName, e, lastCommand, commandPrefix));
@@ -703,8 +684,13 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     @AutoService(InitScript.class)
     public static class Base implements InitScript {
         @Override
-        public String getScriptPath() {
+        public String scriptPath() {
             return "groovy/0-base.groovy";
+        }
+
+        @Override
+        public String scriptLanguage() {
+            return SCRIPT_TYPE;
         }
 
         @Override
@@ -716,8 +702,13 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     @AutoService(InitScript.class)
     public static class Calendars implements InitScript {
         @Override
-        public String getScriptPath() {
+        public String scriptPath() {
             return "groovy/2-calendars.groovy";
+        }
+
+        @Override
+        public String scriptLanguage() {
+            return SCRIPT_TYPE;
         }
 
         @Override
@@ -729,8 +720,13 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     @AutoService(InitScript.class)
     public static class CountMetrics implements InitScript {
         @Override
-        public String getScriptPath() {
+        public String scriptPath() {
             return "groovy/4-count-metrics.groovy";
+        }
+
+        @Override
+        public String scriptLanguage() {
+            return SCRIPT_TYPE;
         }
 
         @Override

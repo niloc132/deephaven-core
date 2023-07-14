@@ -11,7 +11,6 @@ import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
 import io.deephaven.engine.util.NoLanguageDeephavenSession;
 import io.deephaven.engine.util.ScriptSession;
-import io.deephaven.server.console.groovy.InitScriptsModule;
 
 import javax.inject.Named;
 

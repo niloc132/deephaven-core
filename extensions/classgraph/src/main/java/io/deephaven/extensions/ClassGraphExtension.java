@@ -6,6 +6,7 @@ package io.deephaven.extensions;
 import com.google.auto.service.AutoService;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.context.QueryLibraryImports;
+import io.deephaven.engine.util.GroovyDeephavenSession;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.util.ScriptSession.InitScript;
 import io.deephaven.util.QueryConstants;
@@ -30,8 +31,13 @@ public class ClassGraphExtension {
         public Script() {}
 
         @Override
-        public String getScriptPath() {
+        public String scriptPath() {
             return "classgraph-init.groovy";
+        }
+
+        @Override
+        public String scriptLanguage() {
+            return GroovyDeephavenSession.SCRIPT_TYPE;
         }
 
         @Override

@@ -55,12 +55,6 @@ PeriodicUpdateGraph.allowUnitTestMode=true
 
 QueryPerformanceRecorder.packageFilter.internal=defaultPackageFilters.qpr
 
-########## Deephaven Groovy and Python Session defaults ##########
-
-GroovyDeephavenSession.initScripts=
-
-PythonDeephavenSession.initScripts=
-
 ###### Measurement Options ######
 statsdriver.enabled=false
 allocation.stats.enabled=false

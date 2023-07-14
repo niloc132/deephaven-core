@@ -193,24 +193,30 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
      */
     interface InitScript {
         /**
-         * Path to the script to run, will be evaluted first as a file system path, then as a
-         * classpath element.
+         * Path to the script to run, will be evaluated first as a file system path, then as a classpath element.
          */
-        String getScriptPath();
+        String scriptPath();
 
         /**
-         * Defines the order in which scripts will be loaded - lower numbers are loaded first. Values
-         * 0-100 are reserved for deephaven-core scripts.
+         * The language that this script was written in, so that it can be filtered from a list (e.g. from a service
+         * loader) to only those that can run a specific ScriptSession instance.
+         */
+        String scriptLanguage();
+
+        /**
+         * Defines the order in which scripts will be loaded - lower numbers are loaded first. Values 0-100 are reserved
+         * for deephaven-core scripts.
          */
         int priority();
     }
 
 
     class RunScripts {
-        public static RunScripts of(Iterable<ScriptSession.InitScript> initScripts) {
+        public static RunScripts of(String language, Iterable<ScriptSession.InitScript> initScripts) {
             List<String> paths = StreamSupport.stream(initScripts.spliterator(), false)
+                    .filter(script -> script.scriptLanguage().equals(language))
                     .sorted(Comparator.comparingInt(InitScript::priority))
-                    .map(InitScript::getScriptPath)
+                    .map(InitScript::scriptPath)
                     .collect(Collectors.toList());
             return new RunScripts(paths);
         }
@@ -219,10 +225,11 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
             return new RunScripts(Collections.emptyList());
         }
 
-        public static RunScripts serviceLoader() {
-            return of(ServiceLoader.load(GroovyDeephavenSession.InitScript.class));
+        public static RunScripts serviceLoader(String language) {
+            return of(language, ServiceLoader.load(ScriptSession.InitScript.class));
         }
 
+        @Deprecated
         public static RunScripts oldConfiguration(String configPropertyName) {
             return new RunScripts(Arrays
                     .asList(Configuration.getInstance().getProperty(configPropertyName).split(",")));

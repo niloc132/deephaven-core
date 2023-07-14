@@ -4,18 +4,20 @@
 package io.deephaven.plot;
 
 import com.google.auto.service.AutoService;
+import io.deephaven.engine.util.GroovyDeephavenSession;
 import io.deephaven.engine.util.ScriptSession.InitScript;
 import javax.inject.Inject;
 
 @AutoService(InitScript.class)
 public class PlottingScript implements InitScript {
-
-    @Inject
-    public PlottingScript() {}
+    @Override
+    public String scriptPath() {
+        return "groovy/3-plotting.groovy";
+    }
 
     @Override
-    public String getScriptPath() {
-        return "groovy/3-plotting.groovy";
+    public String scriptLanguage() {
+        return GroovyDeephavenSession.SCRIPT_TYPE;
     }
 
     @Override

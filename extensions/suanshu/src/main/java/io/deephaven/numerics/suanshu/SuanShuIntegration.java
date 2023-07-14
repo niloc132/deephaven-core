@@ -35,13 +35,14 @@ public class SuanShuIntegration {
 
     @AutoService(GroovyDeephavenSession.InitScript.class)
     public static class Script implements GroovyDeephavenSession.InitScript {
-
-        @Inject
-        public Script() {}
+        @Override
+        public String scriptPath() {
+            return "suanshu-init.groovy";
+        }
 
         @Override
-        public String getScriptPath() {
-            return "suanshu-init.groovy";
+        public String scriptLanguage() {
+            return GroovyDeephavenSession.SCRIPT_TYPE;
         }
 
         @Override

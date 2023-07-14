@@ -12,6 +12,7 @@ import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
 import io.deephaven.engine.util.GroovyDeephavenSession;
 import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.plugin.type.ObjectTypeLookup;
+import io.deephaven.server.console.InitScriptsModule;
 
 import javax.inject.Named;
 import java.io.IOException;
