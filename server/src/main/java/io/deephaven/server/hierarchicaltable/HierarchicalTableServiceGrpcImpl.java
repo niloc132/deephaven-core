@@ -36,6 +36,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.lang.Object;
 import java.util.Collection;
 import java.util.List;
@@ -45,6 +46,7 @@ import java.util.stream.Collectors;
 import static io.deephaven.engine.table.impl.AbsoluteSortColumnConventions.baseColumnNameToAbsoluteName;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyComplete;
 
+@Singleton
 public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGrpc.HierarchicalTableServiceImplBase {
 
     private static final Logger log = LoggerFactory.getLogger(HierarchicalTableServiceGrpcImpl.class);

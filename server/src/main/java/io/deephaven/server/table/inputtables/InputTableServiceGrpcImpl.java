@@ -25,13 +25,12 @@ import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.List;
 
+@Singleton
 public class InputTableServiceGrpcImpl extends InputTableServiceGrpc.InputTableServiceImplBase {
-
-    private static final Logger log = LoggerFactory.getLogger(InputTableServiceGrpcImpl.class);
-
     private final InputTableServiceContextualAuthWiring authWiring;
     private final TicketRouter ticketRouter;
     private final SessionService sessionService;

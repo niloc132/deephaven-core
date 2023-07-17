@@ -35,10 +35,10 @@ public class PythonAutoCompleteObserver extends SessionCloseableObserver<AutoCom
      * We only log timing for completions that take longer than, currently, 100ms
      */
     private static final long HUNDRED_MS_IN_NS = 100_000_000;
-    private final Provider<ScriptSession> scriptSession;
+    private final ScriptSession scriptSession;
 
     public PythonAutoCompleteObserver(StreamObserver<AutoCompleteResponse> responseObserver,
-            Provider<ScriptSession> scriptSession, final SessionState session) {
+            ScriptSession scriptSession, final SessionState session) {
         super(session, responseObserver);
         this.scriptSession = scriptSession;
     }
@@ -49,7 +49,7 @@ public class PythonAutoCompleteObserver extends SessionCloseableObserver<AutoCom
         switch (value.getRequestCase()) {
             case OPEN_DOCUMENT: {
                 final TextDocumentItem doc = value.getOpenDocument().getTextDocument();
-                PyObject completer = (PyObject) scriptSession.get().getVariable("jedi_settings");
+                PyObject completer = (PyObject) scriptSession.getVariable("jedi_settings");
                 completer.callMethod("open_doc", doc.getText(), doc.getUri(), doc.getVersion());
                 break;
             }
@@ -57,7 +57,7 @@ public class PythonAutoCompleteObserver extends SessionCloseableObserver<AutoCom
                 ChangeDocumentRequest request = value.getChangeDocument();
                 final VersionedTextDocumentIdentifier text = request.getTextDocument();
 
-                PyObject completer = (PyObject) scriptSession.get().getVariable("jedi_settings");
+                PyObject completer = (PyObject) scriptSession.getVariable("jedi_settings");
                 String uri = text.getUri();
                 int version = text.getVersion();
                 String document = completer.callMethod("get_doc", text.getUri()).getStringValue();
@@ -75,7 +75,7 @@ public class PythonAutoCompleteObserver extends SessionCloseableObserver<AutoCom
                 break;
             }
             case CLOSE_DOCUMENT: {
-                PyObject completer = (PyObject) scriptSession.get().getVariable("jedi_settings");
+                PyObject completer = (PyObject) scriptSession.getVariable("jedi_settings");
                 CloseDocumentRequest request = value.getCloseDocument();
                 completer.callMethod("close_doc", request.getTextDocument().getUri());
                 break;

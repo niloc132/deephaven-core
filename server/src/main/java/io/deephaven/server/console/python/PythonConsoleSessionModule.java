@@ -42,9 +42,4 @@ public class PythonConsoleSessionModule {
             throw new UncheckedIOException("Unable to run python startup scripts", e);
         }
     }
-
-    @Provides
-    ScriptSession.RunScripts provideScripts() {
-        return ScriptSession.RunScripts.oldConfiguration("PythonDeephavenSession.initScripts");
-    }
 }

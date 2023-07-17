@@ -14,8 +14,6 @@ import io.deephaven.engine.table.impl.util.EngineMetrics;
 import io.deephaven.engine.table.impl.util.ServerStateTracker;
 import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
-import io.deephaven.engine.util.AbstractScriptSession;
-import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.server.appmode.ApplicationInjector;
@@ -23,10 +21,6 @@ import io.deephaven.server.config.ServerConfig;
 import io.deephaven.server.log.LogInit;
 import io.deephaven.server.plugin.PluginRegistration;
 import io.deephaven.server.session.SessionService;
-import io.deephaven.server.util.Scheduler;
-import io.deephaven.uri.resolver.UriResolver;
-import io.deephaven.uri.resolver.UriResolvers;
-import io.deephaven.uri.resolver.UriResolversInstance;
 import io.deephaven.util.annotations.VisibleForTesting;
 import io.deephaven.util.process.ProcessEnvironment;
 import io.deephaven.util.process.ShutdownManager;
@@ -53,11 +47,8 @@ public class DeephavenApiServer {
     private final GrpcServer server;
     private final UpdateGraph ug;
     private final LogInit logInit;
-    private final Scheduler scheduler;
-    private final Provider<ScriptSession> scriptSessionProvider;
     private final PluginRegistration pluginRegistration;
     private final ApplicationInjector applicationInjector;
-    private final UriResolvers uriResolvers;
     private final SessionService sessionService;
     private final Map<String, AuthenticationRequestHandler> authenticationHandlers;
     private final Provider<ExecutionContext> executionContextProvider;
@@ -68,11 +59,8 @@ public class DeephavenApiServer {
             final GrpcServer server,
             @Named(PeriodicUpdateGraph.DEFAULT_UPDATE_GRAPH_NAME) final UpdateGraph ug,
             final LogInit logInit,
-            final Scheduler scheduler,
-            final Provider<ScriptSession> scriptSessionProvider,
             final PluginRegistration pluginRegistration,
             final ApplicationInjector applicationInjector,
-            final UriResolvers uriResolvers,
             final SessionService sessionService,
             final Map<String, AuthenticationRequestHandler> authenticationHandlers,
             final Provider<ExecutionContext> executionContextProvider,
@@ -80,11 +68,8 @@ public class DeephavenApiServer {
         this.server = server;
         this.ug = ug;
         this.logInit = logInit;
-        this.scheduler = scheduler;
-        this.scriptSessionProvider = scriptSessionProvider;
         this.pluginRegistration = pluginRegistration;
         this.applicationInjector = applicationInjector;
-        this.uriResolvers = uriResolvers;
         this.sessionService = sessionService;
         this.authenticationHandlers = authenticationHandlers;
         this.executionContextProvider = executionContextProvider;
@@ -132,22 +117,8 @@ public class DeephavenApiServer {
         log.info().append("Configuring logging...").endl();
         logInit.run();
 
-        log.info().append("Creating/Clearing Script Cache...").endl();
-        AbstractScriptSession.createScriptCache();
-
-        log.info().append("Initializing Script Session...").endl();
-        checkScopeChanges(scriptSessionProvider.get());
-        pluginRegistration.registerAll();
-
-        log.info().append("Initializing Execution Context for Main Thread...").endl();
-        // noinspection resource
-        executionContextProvider.get().open();
-
         log.info().append("Starting Operation Initialization Thread Pool...").endl();
         OperationInitializationThreadPool.start();
-
-        log.info().append("Starting Update Graph...").endl();
-        ug.<PeriodicUpdateGraph>cast().start();
 
         EngineMetrics.maybeStartStatsCollection();
 
@@ -158,14 +129,6 @@ public class DeephavenApiServer {
         ServerStateTracker.start();
         AsyncErrorLogger.init();
 
-        for (UriResolver resolver : uriResolvers.resolvers()) {
-            log.debug().append("Found table resolver ").append(resolver.getClass().toString()).endl();
-        }
-        UriResolversInstance.init(uriResolvers);
-
-        // inject applications before we start the gRPC server
-        applicationInjector.run();
-
         log.info().append("Initializing Authentication...").endl();
         final String targetUrl = serverConfig.targetUrlOrDefault();
         authenticationHandlers.forEach((name, handler) -> handler.initialize(targetUrl));
@@ -174,13 +137,6 @@ public class DeephavenApiServer {
         server.start();
         log.info().append("Server started on port ").append(server.getPort()).endl();
         return this;
-    }
-
-    private void checkScopeChanges(ScriptSession scriptSession) {
-        scriptSession.observeScopeChanges();
-        scheduler.runAfterDelay(CHECK_SCOPE_CHANGES_INTERVAL_MILLIS, () -> {
-            checkScopeChanges(scriptSession);
-        });
     }
 
     /**

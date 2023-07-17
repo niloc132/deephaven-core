@@ -55,15 +55,11 @@ import java.util.stream.Collectors;
 public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot> {
     private static final Logger log = LoggerFactory.getLogger(PythonDeephavenSession.class);
 
-    private static final String DEFAULT_SCRIPT_PATH = Configuration.getInstance()
-            .getStringWithDefault("PythonDeephavenSession.defaultScriptPath", ".");
-
     public static String SCRIPT_TYPE = "Python";
 
     private final PythonEvaluator evaluator;
     private final PythonScope<PyObject> scope;
     private final PythonScriptSessionModule module;
-    private final ScriptFinder scriptFinder;
 
     /**
      * Create a Python ScriptSession.
@@ -88,7 +84,6 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
             module = (PythonScriptSessionModule) PyModule.importModule("deephaven.server.script_session")
                     .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
         }
-        scriptFinder = new ScriptFinder(DEFAULT_SCRIPT_PATH);
 
         publishInitial();
     }
@@ -107,7 +102,6 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
             module = (PythonScriptSessionModule) PyModule.importModule("deephaven.server.script_session")
                     .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
         }
-        scriptFinder = null;
 
         publishInitial();
     }
@@ -117,32 +111,6 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
     public QueryScope newQueryScope() {
         // depend on the GIL instead of local synchronization
         return new UnsynchronizedScriptSessionQueryScope(this);
-    }
-
-    /**
-     * Finds the specified script; and runs it as a file, or if it is a stream writes it to a temporary file in order to
-     * run it.
-     *
-     * @param script the script's name
-     * @throws IOException if an error occurs reading or writing the script
-     */
-    private void runScript(String script) throws IOException {
-        final ScriptFinder.FileOrStream file = scriptFinder.findScriptEx(script);
-        if (file.getFile().isPresent()) {
-            evaluator.runScript(file.getFile().get().getAbsolutePath());
-        } else {
-            Assert.assertion(file.getStream().isPresent(), "file.getStream().isPresent()");
-            final String scriptText = FileUtils.readTextFile(file.getStream().get());
-            Path f = Files.createTempFile("PythonDeephavenSession", ".py");
-            try (FileWriter fileWriter = new FileWriter(f.toFile())) {
-                fileWriter.write(scriptText);
-                fileWriter.close();
-
-                evaluator.runScript(f.toFile().getAbsolutePath());
-            } finally {
-                Files.delete(f);
-            }
-        }
     }
 
     @NotNull

@@ -17,6 +17,7 @@ import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -25,8 +26,8 @@ import java.util.stream.Collectors;
 /**
  * Serves specified configuration properties to gRPC clients.
  */
+@Singleton
 public class ConfigServiceGrpcImpl extends ConfigServiceGrpc.ConfigServiceImplBase {
-    private static final Logger log = LoggerFactory.getLogger(ConfigServiceGrpcImpl.class);
     private static final String VERSION_LIST_PROPERTY = "client.version.list";
 
     private static final String AUTH_CLIENT_CONFIG_PROPERTY = "authentication.client.configuration.list";

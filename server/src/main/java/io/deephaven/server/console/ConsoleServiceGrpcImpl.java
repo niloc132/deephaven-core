@@ -41,7 +41,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jpy.PyObject;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.util.Map;
 import java.util.Objects;
@@ -74,7 +73,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
 
     private final TicketRouter ticketRouter;
     private final SessionService sessionService;
-    private final Provider<ScriptSession> scriptSessionProvider;
+    private final ScriptSession scriptSession;
     private final Scheduler scheduler;
     private final LogBuffer logBuffer;
     private final Set<CustomCompletion.Factory> customCompletionFactory;
@@ -82,12 +81,13 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
     @Inject
     public ConsoleServiceGrpcImpl(final TicketRouter ticketRouter,
             final SessionService sessionService,
-            final Provider<ScriptSession> scriptSessionProvider,
+            final ScriptSession scriptSession,
             final Scheduler scheduler,
-            final LogBuffer logBuffer, Set<CustomCompletion.Factory> customCompletionFactory) {
+            final LogBuffer logBuffer,
+            final Set<CustomCompletion.Factory> customCompletionFactory) {
         this.ticketRouter = ticketRouter;
         this.sessionService = sessionService;
-        this.scriptSessionProvider = scriptSessionProvider;
+        this.scriptSession = scriptSession;
         this.scheduler = Objects.requireNonNull(scheduler);
         this.logBuffer = Objects.requireNonNull(logBuffer);
         this.customCompletionFactory = customCompletionFactory;
@@ -100,7 +100,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         // TODO (deephaven-core#3147): for legacy reasons, this method is used prior to authentication
         if (!REMOTE_CONSOLE_DISABLED) {
             responseObserver.onNext(GetConsoleTypesResponse.newBuilder()
-                    .addConsoleTypes(scriptSessionProvider.get().scriptType().toLowerCase())
+                    .addConsoleTypes(scriptSession.scriptType().toLowerCase())
                     .build());
         } else {
             responseObserver.onNext(GetConsoleTypesResponse.getDefaultInstance());
@@ -122,7 +122,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         // TODO (#702): initially global session will be null; set it here if applicable
 
         final String sessionType = request.getSessionType();
-        if (!scriptSessionProvider.get().scriptType().equalsIgnoreCase(sessionType)) {
+        if (!scriptSession.scriptType().equalsIgnoreCase(sessionType)) {
             throw Exceptions.statusRuntimeException(Code.FAILED_PRECONDITION,
                     "session type '" + sessionType + "' is not supported");
         }
@@ -130,7 +130,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         session.newExport(request.getResultId(), "resultId")
                 .onError(responseObserver)
                 .submit(() -> {
-                    final ScriptSession scriptSession = new DelegatingScriptSession(scriptSessionProvider.get());
+                    final ScriptSession scriptSession = new DelegatingScriptSession(this.scriptSession);
 
                     safelyComplete(responseObserver, StartConsoleResponse.newBuilder()
                             .setResultId(request.getResultId())
@@ -256,8 +256,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         }
 
         exportBuilder.submit(() -> {
-            ScriptSession scriptSession =
-                    exportedConsole != null ? exportedConsole.get() : scriptSessionProvider.get();
+            ScriptSession scriptSession = exportedConsole != null ? exportedConsole.get() : this.scriptSession;
             Table table = exportedTable.get();
             scriptSession.setVariable(request.getVariableName(), table);
             if (DynamicNode.notDynamicOrIsRefreshing(table)) {
@@ -275,10 +274,10 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         if (AUTOCOMPLETE_DISABLED) {
             return new NoopAutoCompleteObserver(session, responseObserver);
         }
-        if (PythonDeephavenSession.SCRIPT_TYPE.equals(scriptSessionProvider.get().scriptType())) {
+        if (PythonDeephavenSession.SCRIPT_TYPE.equals(scriptSession.scriptType())) {
             PyObject[] settings = new PyObject[1];
             try {
-                final ScriptSession scriptSession = scriptSessionProvider.get();
+                final ScriptSession scriptSession = this.scriptSession;
                 scriptSession.evaluateScript(
                         "from deephaven_internal.auto_completer import jedi_settings ; jedi_settings.set_scope(globals())");
                 settings[0] = (PyObject) scriptSession.getVariable("jedi_settings");
@@ -288,7 +287,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
             boolean canJedi = settings[0] != null && settings[0].call("can_jedi").getBooleanValue();
             log.info().append(canJedi ? "Using jedi for python autocomplete"
                     : "No jedi dependency available in python environment; disabling autocomplete.").endl();
-            return canJedi ? new PythonAutoCompleteObserver(responseObserver, scriptSessionProvider, session)
+            return canJedi ? new PythonAutoCompleteObserver(responseObserver, scriptSession, session)
                     : new NoopAutoCompleteObserver(session, responseObserver);
         }
 

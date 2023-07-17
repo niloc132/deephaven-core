@@ -55,7 +55,8 @@ public class InitScriptsModule {
     public interface OldConfig {
         @Provides
         static RunScripts providesRunScriptLogic(ScriptSession scriptSession) {
-            return RunScripts.oldConfiguration(scriptSession.getClass().getSimpleName() + ".initScripts");
+            return RunScripts.oldConfiguration(scriptSession.scriptType(),
+                    scriptSession.getClass().getSimpleName() + ".initScripts");
         }
     }
 }

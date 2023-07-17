@@ -22,6 +22,7 @@ import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import java.util.Collections;
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.List;
 import static io.deephaven.extensions.barrage.util.ExportUtil.buildTableCreationResponse;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyComplete;
 
+@Singleton
 public class PartitionedTableServiceGrpcImpl extends PartitionedTableServiceGrpc.PartitionedTableServiceImplBase {
     private static final Logger log = LoggerFactory.getLogger(PartitionedTableServiceGrpcImpl.class);
 

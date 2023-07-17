@@ -8,7 +8,6 @@ import groovy.lang.Binding;
 import groovy.lang.Closure;
 import groovy.lang.GroovyShell;
 import groovy.lang.MissingPropertyException;
-import io.deephaven.base.FileUtils;
 import io.deephaven.base.Pair;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryCompiler;
@@ -34,7 +33,6 @@ import org.jetbrains.annotations.Nullable;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -55,9 +53,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     public static final String SCRIPT_TYPE = "Groovy";
     private static final String PACKAGE = QueryCompiler.DYNAMIC_GROOVY_CLASS_PREFIX;
     private static final String SCRIPT_PREFIX = "io.deephaven.engine.util.Script";
-
-    private static final String DEFAULT_SCRIPT_PATH = Configuration.getInstance()
-            .getStringWithDefault("GroovyDeephavenSession.defaultScriptPath", ".");
 
     private static final boolean ALLOW_UNKNOWN_GROOVY_PACKAGE_IMPORTS = Configuration.getInstance()
             .getBooleanForClassWithDefault(GroovyDeephavenSession.class, "allowUnknownGroovyPackageImports", false);
@@ -90,8 +85,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
                     }
                 }
             };
-
-    private final ScriptFinder scriptFinder;
 
     private final ArrayList<String> scriptImports = new ArrayList<>();
 
@@ -126,10 +119,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
             throws IOException {
         super(updateGraph, objectTypeLookup, changeListener);
 
-        this.scriptFinder = new ScriptFinder(DEFAULT_SCRIPT_PATH);
-
         groovyShell.setVariable("__groovySession", this);
-        groovyShell.setVariable("DB_SCRIPT_PATH", DEFAULT_SCRIPT_PATH);
 
         executionContext.getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
 
@@ -139,19 +129,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     @Override
     public QueryScope newQueryScope() {
         return new SynchronizedScriptSessionQueryScope(this);
-    }
-
-    public static InputStream findScript(String relativePath) throws IOException {
-        return new ScriptFinder(DEFAULT_SCRIPT_PATH).findScript(relativePath);
-    }
-
-    public void runScript(String script) throws IOException {
-        final String dbScriptPath = (String) groovyShell.getVariable("DB_SCRIPT_PATH");
-        final InputStream file = scriptFinder.findScript(script, dbScriptPath);
-        final String scriptName = script.substring(0, script.indexOf("."));
-
-        log.info("Executing script: " + script);
-        evaluateScript(FileUtils.readTextFile(file), scriptName).throwIfError();
     }
 
     @NotNull

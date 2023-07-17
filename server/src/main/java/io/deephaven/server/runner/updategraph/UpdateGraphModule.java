@@ -17,8 +17,10 @@ public class UpdateGraphModule {
     @Singleton
     @Named(PeriodicUpdateGraph.DEFAULT_UPDATE_GRAPH_NAME)
     public static UpdateGraph provideUpdateGraph() {
-        return PeriodicUpdateGraph.newBuilder(PeriodicUpdateGraph.DEFAULT_UPDATE_GRAPH_NAME)
+        PeriodicUpdateGraph updateGraph = PeriodicUpdateGraph.newBuilder(PeriodicUpdateGraph.DEFAULT_UPDATE_GRAPH_NAME)
                 .numUpdateThreads(PeriodicUpdateGraph.NUM_THREADS_DEFAULT_UPDATE_GRAPH)
                 .existingOrBuild();
+        updateGraph.start();
+        return updateGraph;
     }
 }

@@ -69,6 +69,7 @@ import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
@@ -84,10 +85,8 @@ import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyComplete;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyError;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyOnNext;
 
+@Singleton
 public class TableServiceGrpcImpl extends TableServiceGrpc.TableServiceImplBase {
-
-    private static final Logger log = LoggerFactory.getLogger(TableServiceGrpcImpl.class);
-
     private final TicketRouter ticketRouter;
     private final SessionService sessionService;
     private final TableServiceContextualAuthWiring authWiring;

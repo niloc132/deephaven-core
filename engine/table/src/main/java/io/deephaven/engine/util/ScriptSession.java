@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -25,7 +26,11 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * Interface for interactive console script sessions.
+ * Interface for interactive console script sessions. This class is insufficient by itself to offer details about
+ * changes to the scope to an application - be sure when using it to call {@link #observeScopeChanges()} when anything
+ * might have changed (including over time to catch other threads that might not directly call it. Initialization
+ * scripts and applications will also not be started by using this, but must be passed to
+ * {@link #evaluateScript(String, String)} or one of its overloads.
  */
 public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
 
@@ -213,10 +218,9 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
 
     class RunScripts {
         public static RunScripts of(String language, Iterable<ScriptSession.InitScript> initScripts) {
-            List<String> paths = StreamSupport.stream(initScripts.spliterator(), false)
+            List<InitScript> paths = StreamSupport.stream(initScripts.spliterator(), false)
                     .filter(script -> script.scriptLanguage().equals(language))
                     .sorted(Comparator.comparingInt(InitScript::priority))
-                    .map(InitScript::scriptPath)
                     .collect(Collectors.toList());
             return new RunScripts(paths);
         }
@@ -230,19 +234,45 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
         }
 
         @Deprecated
-        public static RunScripts oldConfiguration(String configPropertyName) {
-            return new RunScripts(Arrays
-                    .asList(Configuration.getInstance().getProperty(configPropertyName).split(",")));
+        public static RunScripts oldConfiguration(String scriptType, String configPropertyName) {
+            List<InitScript> list = new ArrayList<>();
+            String[] paths = Configuration.getInstance().getProperty(configPropertyName).split(",");
+            for (int i = 0; i < paths.length; i++) {
+                String path = paths[i];
+                final int priority = i;
+                InitScript initScript = new InitScript() {
+                    @Override
+                    public String scriptPath() {
+                        return path;
+                    }
+
+                    @Override
+                    public String scriptLanguage() {
+                        return scriptType;
+                    }
+
+                    @Override
+                    public int priority() {
+                        return priority;
+                    }
+                };
+                list.add(initScript);
+            }
+            return new RunScripts(list);
         }
 
-        private final List<String> paths;
+        private final List<InitScript> scripts;
 
-        public RunScripts(List<String> paths) {
-            this.paths = Objects.requireNonNull(paths);
+        public RunScripts(List<InitScript> scripts) {
+            this.scripts = List.copyOf(scripts);
+        }
+
+        public List<InitScript> scripts() {
+            return scripts;
         }
 
         public List<String> paths() {
-            return Collections.unmodifiableList(paths);
+            return scripts.stream().map(InitScript::scriptPath).collect(Collectors.toList());
         }
     }
 }

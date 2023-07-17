@@ -39,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Singleton
 public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImplBase {
     /**
      * Deprecated, use {@link Auth2Constants#AUTHORIZATION_HEADER} instead.
