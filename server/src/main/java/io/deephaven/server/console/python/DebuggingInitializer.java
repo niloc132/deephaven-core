@@ -1,11 +1,13 @@
 package io.deephaven.server.console.python;
 
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.util.PythonEvaluatorJpy;
 import io.deephaven.util.thread.ThreadInitializationFactory;
 import org.jpy.PyLib;
 import org.jpy.PyModule;
 import org.jpy.PyObject;
 
+import javax.inject.Inject;
 import java.io.Closeable;
 
 /**
@@ -13,13 +15,15 @@ import java.io.Closeable;
  * will be able to be debugged. If python is disabled, this does nothing.
  */
 public class DebuggingInitializer implements ThreadInitializationFactory {
+
+    @Inject
+    public DebuggingInitializer(PythonEvaluatorJpy evaluatorJpy) {
+        // This constructor depends on, but doesn't explicitly use, the jpy evaluator. This ensures that jpy and the
+        // python interpreter are running before this instance can be created.
+    }
+
     @Override
     public Runnable createInitializer(Runnable runnable) {
-        if (!"python".equals(Configuration.getInstance().getStringWithDefault("deephaven.console.type", null))) {
-            // python not enabled, don't accidentally start it
-            return runnable;
-        }
-
         return () -> {
             DeephavenModule py_deephaven = (DeephavenModule) PyModule.importModule("deephaven_internal.java_threads")
                     .createProxy(PyLib.CallableKind.FUNCTION, DeephavenModule.class);

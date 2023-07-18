@@ -59,6 +59,7 @@ public class ScopeTicketResolver extends TicketResolverBase {
         final String scopeName = nameForDescriptor(descriptor, logId);
 
         final ScriptSession gss = scriptSessionProvider.get();
+        // Why does this take the UGP shared lock? shouldn't it be enough that ScriptSession.getVariable handles it?
         final Flight.FlightInfo flightInfo =
                 gss.getExecutionContext().getUpdateGraph().sharedLock().computeLocked(() -> {
                     Object scopeVar = gss.getVariable(scopeName, null);
@@ -103,6 +104,8 @@ public class ScopeTicketResolver extends TicketResolverBase {
     private <T> SessionState.ExportObject<T> resolve(
             @Nullable final SessionState session, final String scopeName, final String logId) {
         final ScriptSession gss = scriptSessionProvider.get();
+        // Can we tweak the ScriptSession so this is already safe? As above, we shouldn't need the UGP here, or
+        // the call to ScriptSession.getExecutionContext() at all...
         // fetch the variable from the scope right now
         T export = gss.getExecutionContext().getUpdateGraph().sharedLock().computeLocked(() -> {
             T scopeVar = null;

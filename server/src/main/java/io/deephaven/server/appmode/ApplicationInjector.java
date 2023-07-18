@@ -85,8 +85,7 @@ public class ApplicationInjector {
         log.info().append("Starting application '").append(config.toString()).append('\'').endl();
 
         final ApplicationState app;
-        try (final SafeCloseable ignored = LivenessScopeStack.open();
-                final SafeCloseable ignored2 = scriptSessionProvider.get().getExecutionContext().open()) {
+        try (final SafeCloseable ignored = LivenessScopeStack.open()) {
             app = ApplicationFactory.create(applicationDir, config, scriptSessionProvider.get(), applicationListener);
         }
         int numExports = app.listFields().size();
@@ -97,8 +96,7 @@ public class ApplicationInjector {
     private void loadApplicationFactory(ApplicationState.Factory factory) {
         log.info().append("Starting ApplicationState.Factory '").append(factory.toString()).append('\'').endl();
         final ApplicationState app;
-        try (final SafeCloseable ignored1 = LivenessScopeStack.open();
-                final SafeCloseable ignored2 = scriptSessionProvider.get().getExecutionContext().open()) {
+        try (final SafeCloseable ignored1 = LivenessScopeStack.open()) {
             app = factory.create(applicationListener);
         }
         int numExports = app.listFields().size();

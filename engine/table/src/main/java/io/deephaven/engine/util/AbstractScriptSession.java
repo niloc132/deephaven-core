@@ -3,12 +3,9 @@
  */
 package io.deephaven.engine.util;
 
-import com.github.f4b6a3.uuid.UuidCreator;
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.api.util.NameValidator;
 import io.deephaven.base.FileUtils;
-import io.deephaven.configuration.CacheDir;
-import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
@@ -18,20 +15,17 @@ import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.context.QueryScopeParam;
 import io.deephaven.engine.table.hierarchical.HierarchicalTable;
-import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.plugin.type.ObjectType;
 import io.deephaven.plugin.type.ObjectTypeLookup;
 import io.deephaven.util.SafeCloseable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 import static io.deephaven.engine.table.Table.NON_DISPLAY_TABLE;
 
@@ -42,59 +36,16 @@ import static io.deephaven.engine.table.Table.NON_DISPLAY_TABLE;
 public abstract class AbstractScriptSession<S extends AbstractScriptSession.Snapshot> extends LivenessScope
         implements ScriptSession, VariableProvider {
 
-    private static final Path CLASS_CACHE_LOCATION = CacheDir.get().resolve("script-session-classes");
-
-    public static void createScriptCache() {
-        final File classCacheDirectory = CLASS_CACHE_LOCATION.toFile();
-        createOrClearDirectory(classCacheDirectory);
-    }
-
-    private static void createOrClearDirectory(final File directory) {
-        if (directory.exists()) {
-            FileUtils.deleteRecursively(directory);
-        }
-        if (!directory.mkdirs()) {
-            throw new UncheckedDeephavenException(
-                    "Failed to create class cache directory " + directory.getAbsolutePath());
-        }
-    }
-
-    private final File classCacheDirectory;
-
-    protected final ExecutionContext executionContext;
-
     private final ObjectTypeLookup objectTypeLookup;
     private final Listener changeListener;
 
     private S lastSnapshot;
 
     protected AbstractScriptSession(
-            UpdateGraph updateGraph,
             ObjectTypeLookup objectTypeLookup,
             @Nullable Listener changeListener) {
         this.objectTypeLookup = objectTypeLookup;
         this.changeListener = changeListener;
-
-        // TODO(deephaven-core#1713): Introduce instance-id concept
-        final UUID scriptCacheId = UuidCreator.getRandomBased();
-        classCacheDirectory = CLASS_CACHE_LOCATION.resolve(UuidCreator.toString(scriptCacheId)).toFile();
-        createOrClearDirectory(classCacheDirectory);
-
-        final QueryScope queryScope = newQueryScope();
-        final QueryCompiler compilerContext = QueryCompiler.create(classCacheDirectory, getClass().getClassLoader());
-
-        executionContext = ExecutionContext.newBuilder()
-                .markSystemic()
-                .newQueryLibrary()
-                .setQueryScope(queryScope)
-                .setQueryCompiler(compilerContext)
-                .setUpdateGraph(updateGraph)
-                .build();
-    }
-
-    @Override
-    public ExecutionContext getExecutionContext() {
-        return executionContext;
     }
 
     protected synchronized void publishInitial() {
@@ -144,10 +95,8 @@ public abstract class AbstractScriptSession<S extends AbstractScriptSession.Snap
         try (final SafeCloseable ignored = LivenessScopeStack.open(this, false)) {
 
             try {
-                // Actually evaluate the script; use the enclosing auth context, since AbstractScriptSession's
-                // ExecutionContext never has a non-null AuthContext
-                executionContext.withAuthContext(ExecutionContext.getContext().getAuthContext())
-                        .apply(() -> evaluate(script, scriptName));
+                // actually evaluate the script
+                evaluate(script, scriptName);
             } catch (final RuntimeException err) {
                 evaluateErr = err;
             }
@@ -223,15 +172,6 @@ public abstract class AbstractScriptSession<S extends AbstractScriptSession.Snap
         }
     }
 
-    @Override
-    protected void destroy() {
-        super.destroy();
-        // Clear our session's script directory:
-        if (classCacheDirectory.exists()) {
-            FileUtils.deleteRecursively(classCacheDirectory);
-        }
-    }
-
     /**
      * Evaluates command in the context of the current ScriptSession.
      *
@@ -244,7 +184,7 @@ public abstract class AbstractScriptSession<S extends AbstractScriptSession.Snap
     /**
      * @return a query scope for this session; only invoked during construction
      */
-    protected abstract QueryScope newQueryScope();
+    public abstract QueryScope newQueryScope();
 
     @Override
     public Class<?> getVariableType(final String var) {

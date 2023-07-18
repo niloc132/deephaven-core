@@ -3,18 +3,13 @@
  */
 package io.deephaven.integrations.python;
 
-import io.deephaven.base.FileUtils;
-import io.deephaven.base.verify.Assert;
-import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.exceptions.CancellationException;
 import io.deephaven.engine.context.QueryScope;
-import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.util.AbstractScriptSession;
 import io.deephaven.engine.util.PythonEvaluator;
 import io.deephaven.engine.util.PythonEvaluatorJpy;
 import io.deephaven.engine.util.PythonScope;
-import io.deephaven.engine.util.ScriptFinder;
 import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.integrations.python.PythonDeephavenSession.PythonSnapshot;
 import io.deephaven.internal.log.LoggerFactory;
@@ -34,16 +29,12 @@ import org.jpy.PyModule;
 import org.jpy.PyObject;
 
 import java.io.Closeable;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -64,26 +55,24 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
     /**
      * Create a Python ScriptSession.
      *
-     * @param updateGraph the default update graph to install for the repl
      * @param objectTypeLookup the object type lookup
      * @param listener an optional listener that will be notified whenever the query scope changes
      * @param pythonEvaluator
      * @throws IOException if an IO error occurs running initialization scripts
      */
     public PythonDeephavenSession(
-            final UpdateGraph updateGraph,
             final ObjectTypeLookup objectTypeLookup,
             @Nullable final Listener listener,
             final PythonEvaluatorJpy pythonEvaluator) throws IOException {
-        super(updateGraph, objectTypeLookup, listener);
+        super(objectTypeLookup, listener);
 
         evaluator = pythonEvaluator;
         scope = pythonEvaluator.getScope();
-        executionContext.getQueryLibrary().importClass(org.jpy.PyObject.class);
-        try (final SafeCloseable ignored = executionContext.open()) {
-            module = (PythonScriptSessionModule) PyModule.importModule("deephaven.server.script_session")
-                    .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
-        }
+        // executionContext.getQueryLibrary().importClass(org.jpy.PyObject.class);
+        // try (final SafeCloseable ignored = executionContext.open()) {
+        module = (PythonScriptSessionModule) PyModule.importModule("deephaven.server.script_session")
+                .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
+        // }
 
         publishInitial();
     }
@@ -92,18 +81,21 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
      * Creates a Python "{@link ScriptSession}", for use where we should only be reading from the scope, such as an
      * IPython kernel session.
      */
-    public PythonDeephavenSession(
-            final UpdateGraph updateGraph, final PythonScope<?> scope) {
-        super(updateGraph, NoOp.INSTANCE, null);
+    public PythonDeephavenSession(final PythonScope<?> scope) {
+        super(NoOp.INSTANCE, null);
 
-        evaluator = null;
         this.scope = (PythonScope<PyObject>) scope;
-        try (final SafeCloseable ignored = executionContext.open()) {
-            module = (PythonScriptSessionModule) PyModule.importModule("deephaven.server.script_session")
-                    .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
-        }
+        module = (PythonScriptSessionModule) PyModule.importModule("deephaven.server.script_session")
+                .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
+        evaluator = null;
 
         publishInitial();
+    }
+
+    @Override
+    public void initialize(ExecutionContext executionContext) {
+        executionContext.getQueryLibrary().importClass(org.jpy.PyObject.class);
+        // we initially needed it wrapping the session, but it may not serve a purpose
     }
 
     @Override

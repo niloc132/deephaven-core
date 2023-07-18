@@ -6,7 +6,6 @@ package io.deephaven.server.runner;
 import io.deephaven.auth.AuthenticationRequestHandler;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
-import io.deephaven.engine.table.impl.OperationInitializationThreadPool;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
 import io.deephaven.engine.table.impl.util.AsyncErrorLogger;
@@ -14,6 +13,7 @@ import io.deephaven.engine.table.impl.util.EngineMetrics;
 import io.deephaven.engine.table.impl.util.ServerStateTracker;
 import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
+import io.deephaven.engine.util.AbstractScriptSession;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.server.appmode.ApplicationInjector;
@@ -116,9 +116,6 @@ public class DeephavenApiServer {
 
         log.info().append("Configuring logging...").endl();
         logInit.run();
-
-        log.info().append("Starting Operation Initialization Thread Pool...").endl();
-        OperationInitializationThreadPool.start();
 
         EngineMetrics.maybeStartStatsCollection();
 

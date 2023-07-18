@@ -69,8 +69,23 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
     /**
      * Obtain an {@link ExecutionContext} instance for the current script session. This is the execution context that is
      * used when executing scripts.
+     *
+     * Usages: ScopeTicketResolver uses the update graph as a lock on the script session to read variables from the
+     * script session consistent. This is probably not the correct lock for this.
+     *
+     * ApplicationInjector opens the execution context for the duration of a script to be invoked. This might be
+     * important for script-based applications (so as to be tied to the script session), except that
+     * ApplicationFactory.visit(ScriptApplication) will call ScriptSession.evaluateScript, which specifies its own exec
+     * context (though probably the same exec context). Provided ScriptSession keeps an internal ExecContext, this outer
+     * wrap is probably not necessary.
      */
-    ExecutionContext getExecutionContext();
+    default ExecutionContext getExecutionContext() {
+        throw new UnsupportedOperationException("getExecContext()");
+    }
+
+    void initialize(ExecutionContext executionContext);
+
+    QueryScope newQueryScope();
 
     class Changes {
         public RuntimeException error = null;

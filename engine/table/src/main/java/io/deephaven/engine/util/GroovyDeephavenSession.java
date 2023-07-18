@@ -106,24 +106,27 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         return script + "_" + (counter + 1);
     }
 
-    public GroovyDeephavenSession(
-            final UpdateGraph updateGraph,
-            final ObjectTypeLookup objectTypeLookup) throws IOException {
-        this(updateGraph, objectTypeLookup, null);
+    public GroovyDeephavenSession(final ObjectTypeLookup objectTypeLookup) {
+        this(objectTypeLookup, null);
     }
 
     public GroovyDeephavenSession(
-            final UpdateGraph updateGraph,
             ObjectTypeLookup objectTypeLookup,
-            @Nullable final Listener changeListener)
-            throws IOException {
-        super(updateGraph, objectTypeLookup, changeListener);
+            @Nullable final Listener changeListener) {
+        super(objectTypeLookup, changeListener);
 
         groovyShell.setVariable("__groovySession", this);
 
-        executionContext.getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
+        // moved this "later" so that we know the exec context isn't poisoned
+        // mildly suspicious of this - but we weren't guaranteed to use _this_ exec context when executing anyway!
+        // ExecutionContext.getContext().getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
 
         publishInitial();
+    }
+
+    @Override
+    public void initialize(ExecutionContext executionContext) {
+        executionContext.getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
     }
 
     @Override
@@ -531,7 +534,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
                 // only increment QueryLibrary version if some dynamic class overrides an existing class
                 if (!dynamicClasses.add(entry.getKey()) && !notifiedQueryLibrary) {
                     notifiedQueryLibrary = true;
-                    executionContext.getQueryLibrary().updateVersionString();
+                    ExecutionContext.getContext().getQueryLibrary().updateVersionString();
                 }
 
                 try {

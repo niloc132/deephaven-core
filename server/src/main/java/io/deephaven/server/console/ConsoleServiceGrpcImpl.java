@@ -82,6 +82,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
     public ConsoleServiceGrpcImpl(final TicketRouter ticketRouter,
             final SessionService sessionService,
             final ScriptSession scriptSession,
+            final ScriptInitialization scriptInitialization,
             final Scheduler scheduler,
             final LogBuffer logBuffer,
             final Set<CustomCompletion.Factory> customCompletionFactory) {

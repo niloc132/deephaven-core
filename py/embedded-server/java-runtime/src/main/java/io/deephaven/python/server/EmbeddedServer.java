@@ -16,6 +16,7 @@ import io.deephaven.server.auth.CommunityAuthorizationModule;
 import io.deephaven.server.console.ExecutionContextModule;
 import io.deephaven.server.console.groovy.GroovyConsoleSessionModule;
 import io.deephaven.server.console.python.PythonConsoleSessionModule;
+import io.deephaven.server.console.python.PythonDebuggingModule;
 import io.deephaven.server.console.python.PythonGlobalScopeModule;
 import io.deephaven.server.healthcheck.HealthCheckModule;
 import io.deephaven.server.jetty.JettyConfig;
@@ -50,6 +51,7 @@ public class EmbeddedServer {
             PythonPluginsRegistration.Module.class,
             JettyServerModule.class,
             HealthCheckModule.class,
+            PythonDebuggingModule.class,
             PythonConsoleSessionModule.class,
             GroovyConsoleSessionModule.class,
             ExecutionContextModule.class,
@@ -98,9 +100,6 @@ public class EmbeddedServer {
                 .withErr(null)
                 .build()
                 .injectFields(this);
-
-        // We need to open the systemic execution context to permanently install the contexts for this thread.
-        scriptSession.get().getExecutionContext().open();
     }
 
     public void start() throws Exception {

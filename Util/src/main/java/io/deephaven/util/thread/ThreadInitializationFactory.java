@@ -4,6 +4,7 @@ import io.deephaven.configuration.Configuration;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,16 +30,32 @@ public interface ThreadInitializationFactory {
             })
             .collect(Collectors.toUnmodifiableList());
 
-    /**
-     * Chains configured initializers to run before/around any given runnable, returning a runnable intended to be run
-     * by a new thread.
-     */
-    static Runnable wrapRunnable(Runnable runnable) {
-        Runnable acc = runnable;
-        for (ThreadInitializationFactory INITIALIZER : INITIALIZERS) {
-            acc = INITIALIZER.createInitializer(acc);
-        }
-        return acc;
+
+
+    // /**
+    // * Chains configured and provided initializers to run before/around any given runnable, returning a runnable
+    // intended to be run
+    // * by a new thread. Globally configured initializers will be attached first.
+    // */
+    // static Runnable wrapRunnable(Runnable runnable, List<ThreadInitializationFactory> factories) {
+    // Runnable acc = runnable;
+    // for (ThreadInitializationFactory INITIALIZER : INITIALIZERS) {
+    // acc = INITIALIZER.createInitializer(acc);
+    // }
+    // for (ThreadInitializationFactory factory : factories) {
+    // acc = factory.createInitializer(acc);
+    // }
+    // return acc;
+    // }
+
+    static ThreadInitializationFactory of(Collection<ThreadInitializationFactory> factories) {
+        return runnable -> {
+            Runnable acc = runnable;
+            for (ThreadInitializationFactory factory : factories) {
+                acc = factory.createInitializer(acc);
+            }
+            return acc;
+        };
     }
 
     Runnable createInitializer(Runnable runnable);

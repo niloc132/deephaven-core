@@ -9,6 +9,7 @@ import io.deephaven.engine.context.ExecutionContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -28,6 +29,11 @@ public class DelegatingScriptSession implements ScriptSession {
 
     public DelegatingScriptSession(final ScriptSession delegate) {
         this.delegate = Objects.requireNonNull(delegate);
+    }
+
+    @Override
+    public void initialize(ExecutionContext executionContext) {
+        throw new IllegalStateException("Can't initialize a delegate instance");
     }
 
     private Changes contextualizeChanges(final Changes diff) {
@@ -54,8 +60,8 @@ public class DelegatingScriptSession implements ScriptSession {
     }
 
     @Override
-    public ExecutionContext getExecutionContext() {
-        return delegate.getExecutionContext();
+    public QueryScope newQueryScope() {
+        return delegate.newQueryScope();
     }
 
     @Override

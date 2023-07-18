@@ -14,6 +14,7 @@ import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessManager;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
+import io.deephaven.engine.table.impl.OperationInitializationThreadPool;
 import io.deephaven.engine.table.impl.util.StepUpdater;
 import io.deephaven.engine.updategraph.*;
 import io.deephaven.engine.util.reference.CleanupReferenceProcessorInstance;
@@ -135,6 +136,8 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     private final long defaultTargetCycleDurationMillis;
     private volatile long targetCycleDurationMillis;
     private final long minimumCycleDurationToLogNanos;
+    private final ThreadInitializationFactory threadInitializationFactory;
+    private final OperationInitializer threadPool;
 
     /**
      * How many cycles we have not logged, but were non-zero.
@@ -276,12 +279,15 @@ public class PeriodicUpdateGraph implements UpdateGraph {
             final boolean allowUnitTestMode,
             final long targetCycleDurationMillis,
             final long minimumCycleDurationToLogNanos,
-            final int numUpdateThreads) {
+            final int numUpdateThreads,
+            final ThreadInitializationFactory threadInitializationFactory) {
         this.name = name;
         this.allowUnitTestMode = allowUnitTestMode;
         this.defaultTargetCycleDurationMillis = targetCycleDurationMillis;
         this.targetCycleDurationMillis = targetCycleDurationMillis;
         this.minimumCycleDurationToLogNanos = minimumCycleDurationToLogNanos;
+        this.threadInitializationFactory = threadInitializationFactory;
+        this.threadPool = new OperationInitializationThreadPool(threadInitializationFactory);
         this.lock = UpdateGraphLock.create(this, this.allowUnitTestMode);
 
         if (numUpdateThreads <= 0) {
@@ -293,7 +299,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         notificationProcessor = PoisonedNotificationProcessor.INSTANCE;
         jvmIntrospectionContext = new JvmIntrospectionContext();
 
-        refreshThread = new Thread(ThreadInitializationFactory.wrapRunnable(() -> {
+        refreshThread = new Thread(threadInitializationFactory.createInitializer(() -> {
             configureRefreshThread();
             while (running) {
                 Assert.eqFalse(this.allowUnitTestMode, "allowUnitTestMode");
@@ -1863,7 +1869,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
 
         @Override
         public Thread newThread(@NotNull final Runnable r) {
-            return super.newThread(ThreadInitializationFactory.wrapRunnable(() -> {
+            return super.newThread(threadInitializationFactory.createInitializer(() -> {
                 configureRefreshThread();
                 r.run();
             }));
@@ -1952,6 +1958,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
 
         private String name;
         private int numUpdateThreads = -1;
+        private ThreadInitializationFactory threadInitializationFactory = runnable -> runnable;
 
         public Builder(String name) {
             this.name = name;
@@ -1995,6 +2002,16 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         }
 
         /**
+         *
+         * @param threadInitializationFactory
+         * @return
+         */
+        public Builder threadInitializationFactory(ThreadInitializationFactory threadInitializationFactory) {
+            this.threadInitializationFactory = threadInitializationFactory;
+            return this;
+        }
+
+        /**
          * Constructs and returns a PeriodicUpdateGraph. It is an error to do so an instance already exists with the
          * name provided to this builder.
          *
@@ -2029,7 +2046,8 @@ public class PeriodicUpdateGraph implements UpdateGraph {
                     allowUnitTestMode,
                     targetCycleDurationMillis,
                     minimumCycleDurationToLogNanos,
-                    numUpdateThreads);
+                    numUpdateThreads,
+                    threadInitializationFactory);
         }
     }
 }

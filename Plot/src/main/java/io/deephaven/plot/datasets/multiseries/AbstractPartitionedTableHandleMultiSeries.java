@@ -90,8 +90,9 @@ public abstract class AbstractPartitionedTableHandleMultiSeries<SERIES extends D
     public void applyTransform(final String columnName, final String update, final Class[] classesToImport,
             final Map<String, Object> params, boolean columnTypesPreserved) {
         ArgumentValidations.assertNull(partitionedTable, "partitionedTable must be null", getPlotInfo());
-        Arrays.stream(classesToImport).forEach(aClass -> ExecutionContext.getContext().getQueryLibrary().importClass(aClass));
-        params.forEach(QueryScope::addParam);
+        ExecutionContext context = ExecutionContext.getContext();
+        Arrays.stream(classesToImport).forEach(aClass -> context.getQueryLibrary().importClass(aClass));
+        params.forEach(context.getQueryScope()::putParam);
         partitionedTableHandle.addColumn(columnName);
 
         chart().figure().registerTableFunction(partitionedTableHandle.getTable(), t -> {

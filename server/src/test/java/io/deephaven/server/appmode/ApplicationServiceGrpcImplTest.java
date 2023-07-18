@@ -86,8 +86,7 @@ public class ApplicationServiceGrpcImplTest {
         faultyObserverShouldStillWork.set(false);
 
         // trigger a change
-        ScriptSession scriptSession = new NoLanguageDeephavenSession(
-                ExecutionContext.getDefaultContext().getUpdateGraph());
+        ScriptSession scriptSession = new NoLanguageDeephavenSession();
         scriptSession.setVariable("key", "hello world");
         ScriptSession.Changes changes = new ScriptSession.Changes();
         changes.created.put("key", "Object");

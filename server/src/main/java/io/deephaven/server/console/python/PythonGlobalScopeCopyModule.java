@@ -7,12 +7,14 @@ import dagger.Module;
 import dagger.Provides;
 import io.deephaven.engine.util.PythonEvaluatorJpy;
 
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 
 @Module
 public interface PythonGlobalScopeCopyModule {
 
+    @Singleton
     @Provides
     static PythonEvaluatorJpy providePythonEvaluatorJpy() {
         try {

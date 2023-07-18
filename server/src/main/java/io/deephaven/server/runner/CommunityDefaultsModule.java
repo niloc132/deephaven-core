@@ -8,6 +8,7 @@ import io.deephaven.client.ClientDefaultsModule;
 import io.deephaven.server.console.ExecutionContextModule;
 import io.deephaven.server.console.groovy.GroovyConsoleSessionModule;
 import io.deephaven.server.console.python.PythonConsoleSessionModule;
+import io.deephaven.server.console.python.PythonDebuggingModule;
 import io.deephaven.server.console.python.PythonGlobalScopeCopyModule;
 import io.deephaven.server.healthcheck.HealthCheckModule;
 import io.deephaven.server.log.LogModule;
@@ -31,6 +32,7 @@ import io.deephaven.server.session.ObfuscatingErrorTransformerModule;
  * @see PythonGlobalScopeCopyModule
  * @see HealthCheckModule
  * @see PythonPluginsRegistration.Module
+ * @see PythonDebuggingModule
  * @see PythonConsoleSessionModule
  * @see GroovyConsoleSessionModule
  * @see ExecutionContextModule
@@ -44,6 +46,7 @@ import io.deephaven.server.session.ObfuscatingErrorTransformerModule;
         PythonGlobalScopeCopyModule.class,
         HealthCheckModule.class,
         PythonPluginsRegistration.Module.class,
+        PythonDebuggingModule.class,
         PythonConsoleSessionModule.class,
         GroovyConsoleSessionModule.class,
         ExecutionContextModule.class,

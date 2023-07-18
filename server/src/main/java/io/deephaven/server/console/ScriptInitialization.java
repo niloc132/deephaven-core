@@ -2,6 +2,7 @@ package io.deephaven.server.console;
 
 import io.deephaven.base.FileUtils;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.util.AbstractScriptSession;
 import io.deephaven.engine.util.ScriptFinder;
 import io.deephaven.engine.util.ScriptSession;
@@ -38,6 +39,7 @@ public class ScriptInitialization {
 
     @Inject
     public ScriptInitialization(
+            ExecutionContext executionContext,
             ScriptSession scriptSession,
             ScriptSession.RunScripts runScripts,
             PluginRegistration pluginRegistration,
@@ -46,7 +48,6 @@ public class ScriptInitialization {
             ApplicationInjector applicationInjector) {
 
         log.info().append("Creating/Clearing Script Cache...").endl();
-        AbstractScriptSession.createScriptCache();
 
         // review note: this is now _before_ init scripts.
         pluginRegistration.registerAll();

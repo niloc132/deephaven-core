@@ -40,6 +40,10 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Manages compiling formulas to bytecode, and persisting them on disk. Owns a particular path on disk to write output,
+ * and manages a classloader to read generated classes from that path as needed.
+ */
 public class QueryCompiler {
     private static final Logger log = LoggerFactory.getLogger(QueryCompiler.class);
     /**
@@ -832,5 +836,11 @@ public class QueryCompiler {
             }
         }
         return javaClasspath;
+    }
+
+    public void destroy() {
+        // Note to reviewers (delete before merge): This follows AbstractScriptSession.destroy(), rather than
+        // AbstractScriptSession.createOrClearDirectory.
+        FileUtils.deleteRecursively(classDestination);
     }
 }
