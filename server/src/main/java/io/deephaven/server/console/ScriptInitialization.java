@@ -39,7 +39,7 @@ public class ScriptInitialization {
 
     @Inject
     public ScriptInitialization(
-            ExecutionContext executionContext,
+            @SuppressWarnings("unused") ExecutionContext executionContext,
             ScriptSession scriptSession,
             ScriptSession.RunScripts runScripts,
             PluginRegistration pluginRegistration,
@@ -52,6 +52,7 @@ public class ScriptInitialization {
         // review note: this is now _before_ init scripts.
         pluginRegistration.registerAll();
 
+        // There is no set time at which uri resolvers must be made available, except before user code starts.
         for (UriResolver resolver : uriResolvers.resolvers()) {
             log.debug().append("Found table resolver ").append(resolver.getClass().toString()).endl();
         }
