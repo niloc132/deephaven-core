@@ -35,6 +35,11 @@ QueryPerformanceRecorder.packageFilter.internal=defaultPackageFilters.qpr
 
 ########## Deephaven Groovy and Python Session defaults ##########
 
+=======
+GroovyDeephavenSession.initScripts=
+
+PythonDeephavenSession.initScripts=
+
 default.processEnvironmentFactory=io.deephaven.util.process.DefaultProcessEnvironment$Factory
 
 deephaven.console.type=python

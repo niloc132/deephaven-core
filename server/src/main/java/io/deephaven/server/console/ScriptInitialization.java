@@ -3,6 +3,7 @@ package io.deephaven.server.console;
 import io.deephaven.base.FileUtils;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.liveness.LivenessScopeStack;
 import io.deephaven.engine.util.AbstractScriptSession;
 import io.deephaven.engine.util.ScriptFinder;
 import io.deephaven.engine.util.ScriptSession;
@@ -15,6 +16,7 @@ import io.deephaven.server.util.Scheduler;
 import io.deephaven.uri.resolver.UriResolver;
 import io.deephaven.uri.resolver.UriResolvers;
 import io.deephaven.uri.resolver.UriResolversInstance;
+import io.deephaven.util.SafeCloseable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -85,7 +87,9 @@ public class ScriptInitialization {
     }
 
     private static void checkScopeChanges(Scheduler scheduler, ScriptSession scriptSession) {
-        scriptSession.observeScopeChanges();
+        try (SafeCloseable ignored = LivenessScopeStack.open()) {
+            scriptSession.observeScopeChanges();
+        }
         if (CHECK_SCOPE_CHANGES_INTERVAL_MILLIS > 0) {
             scheduler.runAfterDelay(CHECK_SCOPE_CHANGES_INTERVAL_MILLIS, () -> {
                 checkScopeChanges(scheduler, scriptSession);
