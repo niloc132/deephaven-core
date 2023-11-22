@@ -31,15 +31,20 @@ C++ compiler and tool suite (cmake etc).
 6. Build and install dependencies for Deephaven C++ client.
 
    Get the `build-dependencies.sh` script from Deephaven's base images repository
-   at https://github.com/deephaven/deephaven-base-images/blob/main/cpp-client
+   at the correct version.
    You can download it directly from the link
-   https://github.com/deephaven/deephaven-base-images/raw/main/cpp-client/build-dependencies.sh
+   https://raw.githubusercontent.com/deephaven/deephaven-base-images/53081b141aebea4c43238ddae233be49db28cf7b/cpp-client/build-dependencies.sh
    (this script is also used from our automated tools, to generate a docker image to
    support tests runs; that's why it lives in a separate repo).
    The script downloads, builds and installs the dependent libraries
    (Protobuf, re2, gflags, absl, flatbuffers, c-ares, zlib, gRPC, and Arrow).
    Decide on a directory for the dependencies to live (eg, "$HOME/dhcpp").
    Create that directory and save the script there.
+
+   The two main build types of a standard cmake build are supported,
+   `Release` and `Debug`.  By default. `build-dependencies.sh`
+   creates a `Debug` build.  To create a `Release` build, set the
+   environment variable `BUILD_TYPE=Release` (1)
 
    Edit your local copy of the script if necessary to reflect your selection
    of build tools and build target;
@@ -55,7 +60,7 @@ C++ compiler and tool suite (cmake etc).
    # If the directory already exists from a previous attempt, ensure is clean/empty
    mkdir -p $DHCPP
    cd $DHCPP
-   wget https://github.com/deephaven/deephaven-base-images/raw/main/cpp-client/build-dependencies.sh
+   wget https://raw.githubusercontent.com/deephaven/deephaven-base-images/53081b141aebea4c43238ddae233be49db28cf7b/cpp-client/build-dependencies.sh
    chmod +x ./build-dependencies.sh
    # Maybe edit build-dependencies.sh to reflect choices of build tools and build target, if you
    # want anything different than defaults; defaults are tested to work,
@@ -120,6 +125,20 @@ C++ compiler and tool suite (cmake etc).
     make -j$NCPUS
     ./tests
     ```
+
+Notes
+  (1) The standard assumptions for `Debug` and `Release` apply here.
+      With a `Debug` build you get debug information which is useful during
+      development and testing of your own code that depends on the client
+      and indirectly on these libraries.  A `Release` build gives you
+      optimized libraries that are faster and smaller but with no
+      debugging information.  Note that while in general it is expected
+      to be able to freely mix some `Debug` and `Release` code,
+      some of the dependent libraries are incompatible; in particular,
+      protobuf generates different code and code compiled for a `Release`
+      target using protobuf header files will not link against a `Debug`
+      version of protobuf.  To keep things simple, we suggest that you run
+      a consistent setting for your code and all dependencies.
 
 # Updating proto generated C++ stubs (intended for developers)
    1. Ensure you have a local installation of the dependent libraries
