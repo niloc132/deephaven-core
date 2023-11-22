@@ -78,6 +78,7 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.ListTopicsResult;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
@@ -192,8 +193,18 @@ public class KafkaTools {
             final Map<String, String> fieldPathToColumnNameOut,
             final Schema schema,
             final Function<String, String> requestedFieldPathToColumnName) {
+        avroSchemaToColumnDefinitions(columnsOut, fieldPathToColumnNameOut, schema, requestedFieldPathToColumnName,
+                false);
+    }
+
+    public static void avroSchemaToColumnDefinitions(
+            final List<ColumnDefinition<?>> columnsOut,
+            final Map<String, String> fieldPathToColumnNameOut,
+            final Schema schema,
+            final Function<String, String> requestedFieldPathToColumnName,
+            final boolean useUTF8Strings) {
         AvroImpl.avroSchemaToColumnDefinitions(columnsOut, fieldPathToColumnNameOut, schema,
-                requestedFieldPathToColumnName);
+                requestedFieldPathToColumnName, useUTF8Strings);
     }
 
     /**
@@ -312,12 +323,6 @@ public class KafkaTools {
                     KeyOrValueIngestData data);
         }
 
-        /**
-         * The names for the key or value columns can be provided in the properties as "key.column.name" or
-         * "value.column.name", and otherwise default to "key" or "value". The types for key or value are either
-         * specified in the properties as "key.type" or "value.type", or deduced from the serializer classes for key or
-         * value in the provided Properties object.
-         */
         private static final KeyOrValueSpec FROM_PROPERTIES = new SimpleConsume(null, null);
 
         public static final KeyOrValueSpec IGNORE = new IgnoreConsume();
@@ -448,6 +453,26 @@ public class KafkaTools {
         /**
          * Avro spec from fetching an Avro schema from a Confluent compatible Schema Server. The Properties used to
          * initialize Kafka should contain the URL for the Schema Server to use under the "schema.registry.url"
+         * property.
+         *
+         * @param schemaName The registered name for the schema on Schema Server
+         * @param schemaVersion The version to fetch
+         * @param fieldNameToColumnName A mapping specifying which Avro fields to include and what column name to use
+         *        for them; fields mapped to null are excluded.
+         * @param useUTF8Strings If true, String fields will be not be converted to Java Strings.
+         * @return A spec corresponding to the schema provided.
+         */
+        @SuppressWarnings("unused")
+        public static KeyOrValueSpec avroSpec(final String schemaName,
+                final String schemaVersion,
+                final Function<String, String> fieldNameToColumnName,
+                final boolean useUTF8Strings) {
+            return new AvroConsume(schemaName, schemaVersion, fieldNameToColumnName, useUTF8Strings);
+        }
+
+        /**
+         * Avro spec from fetching an Avro schema from a Confluent compatible Schema Server. The Properties used to
+         * initialize Kafka should contain the URL for the Schema Server to use under the "schema.registry.url"
          * property. The version fetched would be latest.
          *
          * @param schemaName The registered name for the schema on Schema Server
@@ -488,14 +513,29 @@ public class KafkaTools {
             return new AvroConsume(schemaName, AVRO_LATEST_VERSION, DIRECT_MAPPING);
         }
 
+        /**
+         * If {@code columnName} is set, that column name will be used. Otherwise, the names for the key or value
+         * columns can be provided in the properties as {@value KEY_COLUMN_NAME_PROPERTY} or
+         * {@value VALUE_COLUMN_NAME_PROPERTY}, and otherwise default to {@value KEY_COLUMN_NAME_DEFAULT} or
+         * {@value VALUE_COLUMN_NAME_DEFAULT}. If {@code dataType} is set, that type will be used for the column type.
+         * Otherwise, the types for key or value are either specified in the properties as
+         * {@value KEY_COLUMN_TYPE_PROPERTY} or {@value VALUE_COLUMN_TYPE_PROPERTY} or deduced from the serializer
+         * classes for {@value ConsumerConfig#KEY_DESERIALIZER_CLASS_CONFIG} or
+         * {@value ConsumerConfig#VALUE_DESERIALIZER_CLASS_CONFIG} in the provided Properties object.
+         */
         @SuppressWarnings("unused")
         public static KeyOrValueSpec simpleSpec(final String columnName, final Class<?> dataType) {
             return new SimpleConsume(columnName, dataType);
         }
 
         /**
-         * The types for key or value are either specified in the properties as "key.type" or "value.type", or deduced
-         * from the serializer classes for key or value in the provided Properties object.
+         * If {@code columnName} is set, that column name will be used. Otherwise, the names for the key or value
+         * columns can be provided in the properties as {@value KEY_COLUMN_NAME_PROPERTY} or
+         * {@value VALUE_COLUMN_NAME_PROPERTY}, and otherwise default to {@value KEY_COLUMN_NAME_DEFAULT} or
+         * {@value VALUE_COLUMN_NAME_DEFAULT}. The types for key or value are either specified in the properties as
+         * {@value KEY_COLUMN_TYPE_PROPERTY} or {@value VALUE_COLUMN_TYPE_PROPERTY} or deduced from the serializer
+         * classes for {@value ConsumerConfig#KEY_DESERIALIZER_CLASS_CONFIG} or
+         * {@value ConsumerConfig#VALUE_DESERIALIZER_CLASS_CONFIG} in the provided Properties object.
          */
         @SuppressWarnings("unused")
         public static KeyOrValueSpec simpleSpec(final String columnName) {
@@ -1470,6 +1510,15 @@ public class KafkaTools {
     @SuppressWarnings("unused")
     public static final Function<String, String> DIRECT_MAPPING =
             fieldName -> fieldName.replace(NESTED_FIELD_NAME_SEPARATOR, NESTED_FIELD_COLUMN_NAME_SEPARATOR);
+
+    /**
+     * The names for the key or value columns can be provided in the properties as {@value KEY_COLUMN_NAME_PROPERTY} or
+     * {@value VALUE_COLUMN_NAME_PROPERTY}, and otherwise default to {@value KEY_COLUMN_NAME_DEFAULT} or
+     * {@value VALUE_COLUMN_NAME_DEFAULT}. The types for key or value are either specified in the properties as
+     * {@value KEY_COLUMN_TYPE_PROPERTY} or {@value VALUE_COLUMN_TYPE_PROPERTY} or deduced from the serializer classes
+     * for {@value ConsumerConfig#KEY_DESERIALIZER_CLASS_CONFIG} or
+     * {@value ConsumerConfig#VALUE_DESERIALIZER_CLASS_CONFIG} in the provided Properties object.
+     */
     @SuppressWarnings("unused")
     public static final Consume.KeyOrValueSpec FROM_PROPERTIES = Consume.FROM_PROPERTIES;
 
