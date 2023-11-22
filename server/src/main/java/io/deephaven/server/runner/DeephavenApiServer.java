@@ -6,7 +6,7 @@ package io.deephaven.server.runner;
 import io.deephaven.auth.AuthenticationRequestHandler;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
-import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
+import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorderState;
 import io.deephaven.engine.table.impl.util.AsyncErrorLogger;
 import io.deephaven.engine.table.impl.util.EngineMetrics;
 import io.deephaven.engine.table.impl.util.ServerStateTracker;
@@ -80,7 +80,7 @@ public class DeephavenApiServer {
     }
 
     @VisibleForTesting
-    SessionService sessionService() {
+    public SessionService sessionService() {
         return sessionService;
     }
 
@@ -121,8 +121,8 @@ public class DeephavenApiServer {
         EngineMetrics.maybeStartStatsCollection();
 
         log.info().append("Starting Performance Trackers...").endl();
-        QueryPerformanceRecorder.installPoolAllocationRecorder();
-        QueryPerformanceRecorder.installUpdateGraphLockInstrumentation();
+        QueryPerformanceRecorderState.installPoolAllocationRecorder();
+        QueryPerformanceRecorderState.installUpdateGraphLockInstrumentation();
         ServerStateTracker.start();
         AsyncErrorLogger.init();
 

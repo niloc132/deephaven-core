@@ -38,9 +38,7 @@ public class OperationInitializationPoolJobScheduler implements JobScheduler {
                 throw e;
             } finally {
                 basePerformanceEntry.onBaseEntryEnd();
-                synchronized (accumulatedBaseEntry) {
-                    accumulatedBaseEntry.accumulate(basePerformanceEntry);
-                }
+                accumulatedBaseEntry.accumulate(basePerformanceEntry);
             }
         });
     }
