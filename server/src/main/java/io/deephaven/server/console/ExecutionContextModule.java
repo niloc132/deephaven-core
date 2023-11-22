@@ -37,7 +37,7 @@ public interface ExecutionContextModule {
             throw new UncheckedDeephavenException(
                     "Failed to create class cache directory " + classCacheDirectory.getAbsolutePath());
         }
-        return QueryCompiler.create(classCacheDirectory, ExecutionContextModule.class.getClassLoader());
+        return QueryCompiler.create(classCacheDirectory, Thread.currentThread().getContextClassLoader());
     }
 
 
