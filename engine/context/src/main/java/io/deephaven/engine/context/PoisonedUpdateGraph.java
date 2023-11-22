@@ -39,6 +39,11 @@ public class PoisonedUpdateGraph implements UpdateGraph {
     }
 
     @Override
+    public String getName() {
+        return "PoisonedUpdateGraph";
+    }
+
+    @Override
     public void addNotification(@NotNull Notification notification) {
         fail();
     }

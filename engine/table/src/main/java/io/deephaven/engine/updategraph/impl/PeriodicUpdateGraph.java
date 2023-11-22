@@ -15,6 +15,8 @@ import io.deephaven.engine.liveness.LivenessManager;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
 import io.deephaven.engine.table.impl.OperationInitializationThreadPool;
+import io.deephaven.engine.table.impl.perf.PerformanceEntry;
+import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
 import io.deephaven.engine.table.impl.util.StepUpdater;
 import io.deephaven.engine.updategraph.*;
 import io.deephaven.engine.util.reference.CleanupReferenceProcessorInstance;
@@ -68,12 +70,35 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     public static final int NUM_THREADS_DEFAULT_UPDATE_GRAPH =
             Configuration.getInstance().getIntegerWithDefault("PeriodicUpdateGraph.updateThreads", -1);
 
-    private static final KeyedObjectHashMap<String, PeriodicUpdateGraph> INSTANCES = new KeyedObjectHashMap<>(
-            new KeyedObjectKey.BasicAdapter<>(PeriodicUpdateGraph::getName));
-
     public static Builder newBuilder(final String name) {
         return new Builder(name);
     }
+
+    /**
+     * If the provided update graph is a {@link PeriodicUpdateGraph} then create a PerformanceEntry using the given
+     * description. Otherwise, return null.
+     *
+     * @param updateGraph The update graph to create a performance entry for.
+     * @param description The description for the performance entry.
+     * @return The performance entry, or null if the update graph is not a {@link PeriodicUpdateGraph}.
+     */
+    @Nullable
+    public static PerformanceEntry createUpdatePerformanceEntry(
+            final UpdateGraph updateGraph,
+            final String description) {
+        if (updateGraph instanceof PeriodicUpdateGraph) {
+            final PeriodicUpdateGraph pug = (PeriodicUpdateGraph) updateGraph;
+            if (pug.updatePerformanceTracker != null) {
+                return pug.updatePerformanceTracker.getEntry(description);
+            }
+            throw new IllegalStateException("Cannot create a performance entry for a PeriodicUpdateGraph that has "
+                    + "not been completely constructed.");
+        }
+        return null;
+    }
+
+    private static final KeyedObjectHashMap<String, PeriodicUpdateGraph> INSTANCES = new KeyedObjectHashMap<>(
+            new KeyedObjectKey.BasicAdapter<>(PeriodicUpdateGraph::getName));
 
     private final Logger log = LoggerFactory.getLogger(PeriodicUpdateGraph.class);
 
@@ -138,6 +163,9 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     private final long minimumCycleDurationToLogNanos;
     private final ThreadInitializationFactory threadInitializationFactory;
     private final OperationInitializer threadPool;
+
+    /** when to next flush the performance tracker; initializes to zero to force a flush on start */
+    private long nextUpdatePerformanceTrackerFlushTime = 0;
 
     /**
      * How many cycles we have not logged, but were non-zero.
@@ -274,6 +302,8 @@ public class PeriodicUpdateGraph implements UpdateGraph {
 
     private final String name;
 
+    private final UpdatePerformanceTracker updatePerformanceTracker;
+
     public PeriodicUpdateGraph(
             final String name,
             final boolean allowUnitTestMode,
@@ -307,6 +337,8 @@ public class PeriodicUpdateGraph implements UpdateGraph {
             }
         }), "PeriodicUpdateGraph." + name + ".refreshThread");
         refreshThread.setDaemon(true);
+
+        updatePerformanceTracker = new UpdatePerformanceTracker(this);
     }
 
     public String getName() {
@@ -528,6 +560,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         lock.reset();
         unitTestMode = true;
         unitTestRefreshThreadPool = makeUnitTestRefreshExecutor();
+        updatePerformanceTracker.enableUnitTestMode();
     }
 
     /**
@@ -591,6 +624,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
             if (!refreshThread.isAlive()) {
                 log.info().append("PeriodicUpdateGraph starting with ").append(updateThreads)
                         .append(" notification processing threads").endl();
+                updatePerformanceTracker.start();
                 refreshThread.start();
             }
         }
@@ -1730,9 +1764,18 @@ public class PeriodicUpdateGraph implements UpdateGraph {
      * @param timeSource The source of time that startTime was based on
      */
     private void waitForNextCycle(final long startTime, final Scheduler timeSource) {
+        final long now = timeSource.currentTimeMillis();
         long expectedEndTime = startTime + targetCycleDurationMillis;
         if (minimumInterCycleSleep > 0) {
-            expectedEndTime = Math.max(expectedEndTime, timeSource.currentTimeMillis() + minimumInterCycleSleep);
+            expectedEndTime = Math.max(expectedEndTime, now + minimumInterCycleSleep);
+        }
+        if (expectedEndTime >= nextUpdatePerformanceTrackerFlushTime) {
+            nextUpdatePerformanceTrackerFlushTime = now + UpdatePerformanceTracker.REPORT_INTERVAL_MILLIS;
+            try {
+                updatePerformanceTracker.flush();
+            } catch (Exception err) {
+                log.error().append("Error flushing UpdatePerformanceTracker: ").append(err).endl();
+            }
         }
         waitForEndTime(expectedEndTime, timeSource);
     }
@@ -1946,6 +1989,10 @@ public class PeriodicUpdateGraph implements UpdateGraph {
 
     public void takeAccumulatedCycleStats(AccumulatedCycleStats updateGraphAccumCycleStats) {
         accumulatedCycleStats.take(updateGraphAccumCycleStats);
+    }
+
+    public static PeriodicUpdateGraph getInstance(final String name) {
+        return INSTANCES.get(name);
     }
 
     public static final class Builder {
