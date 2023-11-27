@@ -37,8 +37,8 @@ public interface PluginsModule {
 
     @Provides
     static Registration.Callback providesPluginRegistrationCallback(
-            ObjectTypeRegistration objectTypeRegistration,
-            @Named(JS_PLUGIN_CONSUMER_NAME) Consumer<JsPlugin> jsPluginConsumer) {
-        return new PluginRegistrationVisitor(objectTypeRegistration, jsPluginConsumer);
+            ObjectTypeRegistration objectTypeRegistration/*,
+            @Named(JS_PLUGIN_CONSUMER_NAME) Consumer<JsPlugin> jsPluginConsumer*/) {
+        return new PluginRegistrationVisitor(objectTypeRegistration, a -> {});
     }
 }
