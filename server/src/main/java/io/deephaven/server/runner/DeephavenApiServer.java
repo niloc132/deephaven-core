@@ -45,8 +45,6 @@ public class DeephavenApiServer {
     private final GrpcServer server;
     private final UpdateGraph ug;
     private final LogInit logInit;
-//    private final PluginRegistration pluginRegistration;
-//    private final ApplicationInjector applicationInjector;
     private final SessionService sessionService;
     private final Map<String, AuthenticationRequestHandler> authenticationHandlers;
     private final Provider<ExecutionContext> executionContextProvider;
@@ -64,8 +62,6 @@ public class DeephavenApiServer {
         this.server = server;
         this.ug = ug;
         this.logInit = logInit;
-//        this.pluginRegistration = pluginRegistration;
-//        this.applicationInjector = applicationInjector;
         this.sessionService = sessionService;
         this.authenticationHandlers = authenticationHandlers;
         this.executionContextProvider = executionContextProvider;
@@ -145,8 +141,6 @@ public class DeephavenApiServer {
 
 
     void startForUnitTests() throws Exception {
-//        pluginRegistration.registerAll();
-//        applicationInjector.run();
         executionContextProvider.get().getQueryLibrary().updateVersionString("DEFAULT");
 
         log.info().append("Starting server...").endl();

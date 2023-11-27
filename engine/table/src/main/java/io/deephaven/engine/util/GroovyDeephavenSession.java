@@ -165,9 +165,12 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
         groovyShell = new GroovyShell(scriptClassLoader, consoleConfig) {
             @Override
-            public Object evaluate(String scriptText, String fileName, String codeBase) throws CompilationFailedException {
-                scriptConfig.setTargetDirectory(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination());
-                consoleConfig.setTargetDirectory(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination());
+            public Object evaluate(String scriptText, String fileName, String codeBase)
+                    throws CompilationFailedException {
+                scriptConfig
+                        .setTargetDirectory(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination());
+                consoleConfig
+                        .setTargetDirectory(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination());
                 return super.evaluate(scriptText, fileName, codeBase);
             }
 
