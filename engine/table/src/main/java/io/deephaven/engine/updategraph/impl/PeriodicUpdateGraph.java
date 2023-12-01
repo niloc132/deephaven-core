@@ -28,9 +28,6 @@ import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.log.LogEntry;
 import io.deephaven.io.log.impl.LogOutputStringImpl;
 import io.deephaven.io.logger.Logger;
-import io.deephaven.io.sched.Scheduler;
-import io.deephaven.io.sched.TimedJob;
-import io.deephaven.net.CommBase;
 import io.deephaven.util.SafeCloseable;
 import io.deephaven.util.annotations.TestUseOnly;
 import io.deephaven.util.datastructures.SimpleReferenceManager;
@@ -51,6 +48,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongConsumer;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * <p>
@@ -134,24 +133,29 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     private volatile boolean running = true;
 
     /**
+     * {@link ScheduledExecutorService} used for scheduling the {@link #watchDogTimeoutProcedure}.
+     */
+    private final ScheduledExecutorService watchdogScheduler;
+
+    /**
      * If this is set to a positive value, then we will call the {@link #watchDogTimeoutProcedure} if any single run
      * loop takes longer than this value. The intention is to use this for strategies, or other queries, where a
      * PeriodicUpdateGraph loop that is "stuck" is the equivalent of an error. Set the value with
      * {@link #setWatchDogMillis(int)}.
      */
-    private int watchDogMillis = 0;
+    private volatile int watchDogMillis = 0;
     /**
      * If a timeout time has been {@link #setWatchDogMillis(int) set}, this procedure will be called if any single run
      * loop takes longer than the value specified. Set the value with
      * {@link #setWatchDogTimeoutProcedure(LongConsumer)}.
      */
-    private LongConsumer watchDogTimeoutProcedure = null;
+    private volatile LongConsumer watchDogTimeoutProcedure;
 
     public static final String ALLOW_UNIT_TEST_MODE_PROP = "PeriodicUpdateGraph.allowUnitTestMode";
     private final boolean allowUnitTestMode;
-    private int notificationAdditionDelay = 0;
+    private int notificationAdditionDelay;
     private Random notificationRandomizer = new Random(0);
-    private boolean unitTestMode = false;
+    private boolean unitTestMode;
     private ExecutorService unitTestRefreshThreadPool;
 
     public static final String DEFAULT_TARGET_CYCLE_DURATION_MILLIS_PROP =
@@ -165,27 +169,27 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     private final OperationInitializer threadPool;
 
     /** when to next flush the performance tracker; initializes to zero to force a flush on start */
-    private long nextUpdatePerformanceTrackerFlushTime = 0;
+    private long nextUpdatePerformanceTrackerFlushTimeNanos;
 
     /**
      * How many cycles we have not logged, but were non-zero.
      */
-    private long suppressedCycles = 0;
-    private long suppressedCyclesTotalNanos = 0;
-    private long suppressedCyclesTotalSafePointTimeMillis = 0;
+    private long suppressedCycles;
+    private long suppressedCyclesTotalNanos;
+    private long suppressedCyclesTotalSafePointTimeMillis;
 
     /**
      * Accumulated UpdateGraph exclusive lock waits for the current cycle (or previous, if idle).
      */
-    private long currentCycleLockWaitTotalNanos = 0;
+    private long currentCycleLockWaitTotalNanos;
     /**
      * Accumulated delays due to intracycle yields for the current cycle (or previous, if idle).
      */
-    private long currentCycleYieldTotalNanos = 0L;
+    private long currentCycleYieldTotalNanos;
     /**
      * Accumulated delays due to intracycle sleeps for the current cycle (or previous, if idle).
      */
-    private long currentCycleSleepTotalNanos = 0L;
+    private long currentCycleSleepTotalNanos;
 
     public static class AccumulatedCycleStats {
         /**
@@ -337,6 +341,14 @@ public class PeriodicUpdateGraph implements UpdateGraph {
             }
         }), "PeriodicUpdateGraph." + name + ".refreshThread");
         refreshThread.setDaemon(true);
+        watchdogScheduler = Executors.newSingleThreadScheduledExecutor(
+                new NamingThreadFactory(PeriodicUpdateGraph.class, "watchdogScheduler", true) {
+                    @Override
+                    public Thread newThread(@NotNull final Runnable r) {
+                        // Not a refresh thread, but should still be instrumented for debugging purposes.
+                        return super.newThread(ThreadInitializationFactory.wrapRunnable(r));
+                    }
+                });
 
         updatePerformanceTracker = new UpdatePerformanceTracker(this);
     }
@@ -597,15 +609,6 @@ public class PeriodicUpdateGraph implements UpdateGraph {
      */
     public void setWatchDogTimeoutProcedure(LongConsumer procedure) {
         this.watchDogTimeoutProcedure = procedure;
-    }
-
-    private class WatchdogJob extends TimedJob {
-        @Override
-        public void timedOut() {
-            if (watchDogTimeoutProcedure != null) {
-                watchDogTimeoutProcedure.accept(watchDogMillis);
-            }
-        }
     }
 
     /**
@@ -940,13 +943,28 @@ public class PeriodicUpdateGraph implements UpdateGraph {
      */
     @TestUseOnly
     public void completeCycleForUnitTests() {
+        completeCycleForUnitTests(false);
+    }
+
+    /**
+     * Do the second half of the update cycle, including flushing notifications, and completing the
+     * {@link LogicalClockImpl#completeUpdateCycle() LogicalClock} update cycle. Note that this happens on a simulated
+     * UpdateGraph run thread, rather than this thread.
+     *
+     * @param errorCaughtAndInFinallyBlock Whether an error was caught, and we are in a {@code finally} block
+     */
+    private void completeCycleForUnitTests(boolean errorCaughtAndInFinallyBlock) {
         Assert.assertion(unitTestMode, "unitTestMode");
-        Assert.eq(sourcesLastSatisfiedStep, "sourcesLastSatisfiedStep", logicalClock.currentStep(),
-                "logicalClock.currentStep()");
+        if (!errorCaughtAndInFinallyBlock) {
+            Assert.eq(sourcesLastSatisfiedStep, "sourcesLastSatisfiedStep", logicalClock.currentStep(),
+                    "logicalClock.currentStep()");
+        }
         try {
             unitTestRefreshThreadPool.submit(this::completeCycleForUnitTestsInternal).get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new UncheckedDeephavenException(e);
+            if (!errorCaughtAndInFinallyBlock) {
+                throw new UncheckedDeephavenException(e);
+            }
         }
     }
 
@@ -992,10 +1010,14 @@ public class PeriodicUpdateGraph implements UpdateGraph {
             final boolean sourcesSatisfied)
             throws T {
         startCycleForUnitTests(sourcesSatisfied);
+        boolean errorCaught = false;
         try {
             runnable.run();
+        } catch (final Throwable err) {
+            errorCaught = true;
+            throw err;
         } finally {
-            completeCycleForUnitTests();
+            completeCycleForUnitTests(errorCaught);
         }
     }
 
@@ -1022,13 +1044,26 @@ public class PeriodicUpdateGraph implements UpdateGraph {
      */
     @TestUseOnly
     public boolean flushOneNotificationForUnitTests() {
+        return flushOneNotificationForUnitTests(false);
+    }
+
+    /**
+     * Flush a single notification from the UpdateGraph queue. Note that this happens on a simulated UpdateGraph run
+     * thread, rather than this thread.
+     *
+     * @param expectOnlyUnsatisfiedNotifications Whether we expect there to be only unsatisfied notifications pending
+     * @return whether a notification was found in the queue
+     */
+    @TestUseOnly
+    public boolean flushOneNotificationForUnitTests(final boolean expectOnlyUnsatisfiedNotifications) {
         Assert.assertion(unitTestMode, "unitTestMode");
 
         final NotificationProcessor existingNotificationProcessor = notificationProcessor;
         try {
             this.notificationProcessor = new ControlledNotificationProcessor();
             // noinspection AutoUnboxing,AutoBoxing
-            return unitTestRefreshThreadPool.submit(this::flushOneNotificationForUnitTestsInternal).get();
+            return unitTestRefreshThreadPool.submit(
+                    () -> flushOneNotificationForUnitTestsInternal(expectOnlyUnsatisfiedNotifications)).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new UncheckedDeephavenException(e);
         } finally {
@@ -1037,7 +1072,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     }
 
     @TestUseOnly
-    public boolean flushOneNotificationForUnitTestsInternal() {
+    private boolean flushOneNotificationForUnitTestsInternal(final boolean expectOnlyUnsatisfiedNotifications) {
         final IntrusiveDoublyLinkedQueue<Notification> pendingToEvaluate =
                 new IntrusiveDoublyLinkedQueue<>(IntrusiveDoublyLinkedNode.Adapter.<Notification>getInstance());
         notificationProcessor.beforeNotificationsDrained();
@@ -1064,7 +1099,12 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         }
         if (satisfied != null) {
             notificationProcessor.submit(satisfied);
-        } else if (somethingWasPending) {
+            if (expectOnlyUnsatisfiedNotifications) {
+                // noinspection ThrowableNotThrown
+                Assert.statementNeverExecuted(
+                        "Flushed a notification in unit test mode, but expected only unsatisfied pending notifications");
+            }
+        } else if (somethingWasPending && !expectOnlyUnsatisfiedNotifications) {
             // noinspection ThrowableNotThrown
             Assert.statementNeverExecuted(
                     "Did not flush any notifications in unit test mode, yet there were outstanding notifications");
@@ -1098,9 +1138,9 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         final ControlledNotificationProcessor controlledNotificationProcessor = new ControlledNotificationProcessor();
         notificationProcessor = controlledNotificationProcessor;
         final Future<?> flushJobFuture = unitTestRefreshThreadPool.submit(() -> {
-            final long deadlineNanoTime = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+            final long deadlineNanoTime = System.nanoTime() + MILLISECONDS.toNanos(timeoutMillis);
             boolean flushed;
-            while ((flushed = flushOneNotificationForUnitTestsInternal()) || !done.getAsBoolean()) {
+            while ((flushed = flushOneNotificationForUnitTestsInternal(false)) || !done.getAsBoolean()) {
                 if (!flushed) {
                     final long remainingNanos = deadlineNanoTime - System.nanoTime();
                     if (!controlledNotificationProcessor.blockUntilNotificationAdded(remainingNanos)) {
@@ -1645,8 +1685,6 @@ public class PeriodicUpdateGraph implements UpdateGraph {
      * {@link #getTargetCycleDurationMillis() minimum cycle time}.
      */
     private void refreshTablesAndFlushNotifications() {
-        final Scheduler sched = CommBase.getScheduler();
-        final long startTime = sched.currentTimeMillis();
         final long startTimeNanos = System.nanoTime();
         jvmIntrospectionContext.startSample();
 
@@ -1655,17 +1693,20 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         } else {
             currentCycleLockWaitTotalNanos = currentCycleYieldTotalNanos = currentCycleSleepTotalNanos = 0L;
 
-            WatchdogJob watchdogJob = null;
+            ScheduledFuture<?> watchdogFuture = null;
 
-            if ((watchDogMillis > 0) && (watchDogTimeoutProcedure != null)) {
-                watchdogJob = new WatchdogJob();
-                sched.installJob(watchdogJob, startTime + watchDogMillis);
+            final long localWatchdogMillis = watchDogMillis;
+            final LongConsumer localWatchdogTimeoutProcedure = watchDogTimeoutProcedure;
+            if ((localWatchdogMillis > 0) && (localWatchdogTimeoutProcedure != null)) {
+                watchdogFuture = watchdogScheduler.schedule(
+                        () -> localWatchdogTimeoutProcedure.accept(localWatchdogMillis),
+                        localWatchdogMillis, MILLISECONDS);
             }
 
             refreshAllTables();
 
-            if (watchdogJob != null) {
-                sched.cancelJob(watchdogJob);
+            if (watchdogFuture != null) {
+                watchdogFuture.cancel(true);
             }
             jvmIntrospectionContext.endSample();
             final long cycleTimeNanos = System.nanoTime() - startTimeNanos;
@@ -1676,7 +1717,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
             Thread.yield();
         }
 
-        waitForNextCycle(startTime, sched);
+        waitForNextCycle(startTimeNanos);
     }
 
     private void computeStatsAndLogCycle(final long cycleTimeNanos) {
@@ -1760,24 +1801,25 @@ public class PeriodicUpdateGraph implements UpdateGraph {
      * wait the remaining period.
      * </p>
      *
-     * @param startTime The start time of the last run cycle
-     * @param timeSource The source of time that startTime was based on
+     * @param startTimeNanos The start time of the last run cycle as reported by {@link System#nanoTime()}
      */
-    private void waitForNextCycle(final long startTime, final Scheduler timeSource) {
-        final long now = timeSource.currentTimeMillis();
-        long expectedEndTime = startTime + targetCycleDurationMillis;
+    private void waitForNextCycle(final long startTimeNanos) {
+        final long nowNanos = System.nanoTime();
+        long expectedEndTimeNanos = startTimeNanos + MILLISECONDS.toNanos(targetCycleDurationMillis);
         if (minimumInterCycleSleep > 0) {
-            expectedEndTime = Math.max(expectedEndTime, now + minimumInterCycleSleep);
+            expectedEndTimeNanos =
+                    Math.max(expectedEndTimeNanos, nowNanos + MILLISECONDS.toNanos(minimumInterCycleSleep));
         }
-        if (expectedEndTime >= nextUpdatePerformanceTrackerFlushTime) {
-            nextUpdatePerformanceTrackerFlushTime = now + UpdatePerformanceTracker.REPORT_INTERVAL_MILLIS;
+        if (expectedEndTimeNanos >= nextUpdatePerformanceTrackerFlushTimeNanos) {
+            nextUpdatePerformanceTrackerFlushTimeNanos =
+                    nowNanos + MILLISECONDS.toNanos(UpdatePerformanceTracker.REPORT_INTERVAL_MILLIS);
             try {
                 updatePerformanceTracker.flush();
             } catch (Exception err) {
                 log.error().append("Error flushing UpdatePerformanceTracker: ").append(err).endl();
             }
         }
-        waitForEndTime(expectedEndTime, timeSource);
+        waitForEndTime(expectedEndTimeNanos);
     }
 
     /**
@@ -1788,12 +1830,11 @@ public class PeriodicUpdateGraph implements UpdateGraph {
      * If the delay is interrupted for any other {@link InterruptedException reason}, it will be logged and continue to
      * wait the remaining period.
      *
-     * @param expectedEndTime The time which we should sleep until
-     * @param timeSource The source of time that startTime was based on
+     * @param expectedEndTimeNanos The time (as reported by {@link System#nanoTime()}) which we should sleep until
      */
-    private void waitForEndTime(final long expectedEndTime, final Scheduler timeSource) {
-        long remainingMillis;
-        while ((remainingMillis = expectedEndTime - timeSource.currentTimeMillis()) > 0) {
+    private void waitForEndTime(final long expectedEndTimeNanos) {
+        long remainingNanos;
+        while ((remainingNanos = expectedEndTimeNanos - System.nanoTime()) > 0) {
             if (refreshRequested.get()) {
                 return;
             }
@@ -1801,8 +1842,10 @@ public class PeriodicUpdateGraph implements UpdateGraph {
                 if (refreshRequested.get()) {
                     return;
                 }
+                final long millisToWait = remainingNanos / 1_000_000;
+                final int extraNanosToWait = (int) (remainingNanos - (millisToWait * 1_000_000));
                 try {
-                    refreshRequested.wait(remainingMillis);
+                    refreshRequested.wait(millisToWait, extraNanosToWait);
                 } catch (final InterruptedException logAndIgnore) {
                     log.warn().append("Interrupted while waiting on refreshRequested. Ignoring: ").append(logAndIgnore)
                             .endl();
@@ -2000,7 +2043,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
                 Configuration.getInstance().getBooleanWithDefault(ALLOW_UNIT_TEST_MODE_PROP, false);
         private long targetCycleDurationMillis =
                 Configuration.getInstance().getIntegerWithDefault(DEFAULT_TARGET_CYCLE_DURATION_MILLIS_PROP, 1000);
-        private long minimumCycleDurationToLogNanos = TimeUnit.MILLISECONDS.toNanos(
+        private long minimumCycleDurationToLogNanos = MILLISECONDS.toNanos(
                 Configuration.getInstance().getIntegerWithDefault(MINIMUM_CYCLE_DURATION_TO_LOG_MILLIS_PROP, 25));
 
         private String name;
