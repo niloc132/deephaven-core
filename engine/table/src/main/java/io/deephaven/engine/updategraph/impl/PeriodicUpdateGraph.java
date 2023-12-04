@@ -346,7 +346,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
                     @Override
                     public Thread newThread(@NotNull final Runnable r) {
                         // Not a refresh thread, but should still be instrumented for debugging purposes.
-                        return super.newThread(ThreadInitializationFactory.wrapRunnable(r));
+                        return super.newThread(threadInitializationFactory.createInitializer(r));
                     }
                 });
 
@@ -631,6 +631,7 @@ public class PeriodicUpdateGraph implements UpdateGraph {
                 refreshThread.start();
             }
         }
+        threadPool.start();
     }
 
     /**
