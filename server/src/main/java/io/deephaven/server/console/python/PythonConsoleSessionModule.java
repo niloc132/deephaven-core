@@ -15,6 +15,7 @@ import io.deephaven.engine.util.PythonEvaluatorJpy;
 import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.integrations.python.PythonDeephavenSession;
 import io.deephaven.plugin.type.ObjectTypeLookup;
+import io.deephaven.util.thread.ThreadInitializationFactory;
 
 import javax.inject.Named;
 import javax.inject.Singleton;

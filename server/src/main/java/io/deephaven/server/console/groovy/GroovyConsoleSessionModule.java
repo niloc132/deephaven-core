@@ -7,18 +7,12 @@ import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.IntoMap;
 import dagger.multibindings.StringKey;
-import io.deephaven.engine.context.ExecutionContext;
-import io.deephaven.engine.updategraph.UpdateGraph;
-import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
 import io.deephaven.engine.util.GroovyDeephavenSession;
 import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.plugin.type.ObjectTypeLookup;
 import io.deephaven.server.console.InitScriptsModule;
 
-import javax.inject.Named;
 import javax.inject.Singleton;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 
 @Module(includes = InitScriptsModule.ServiceLoader.class)
 public class GroovyConsoleSessionModule {

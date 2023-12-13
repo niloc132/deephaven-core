@@ -14,7 +14,6 @@ import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessManager;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
-import io.deephaven.engine.table.impl.OperationInitializationThreadPool;
 import io.deephaven.engine.table.impl.perf.PerformanceEntry;
 import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
 import io.deephaven.engine.table.impl.util.StepUpdater;
@@ -166,7 +165,6 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     private volatile long targetCycleDurationMillis;
     private final long minimumCycleDurationToLogNanos;
     private final ThreadInitializationFactory threadInitializationFactory;
-    private final OperationInitializer threadPool;
 
     /** when to next flush the performance tracker; initializes to zero to force a flush on start */
     private long nextUpdatePerformanceTrackerFlushTimeNanos;
@@ -321,7 +319,6 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         this.targetCycleDurationMillis = targetCycleDurationMillis;
         this.minimumCycleDurationToLogNanos = minimumCycleDurationToLogNanos;
         this.threadInitializationFactory = threadInitializationFactory;
-        this.threadPool = new OperationInitializationThreadPool(threadInitializationFactory);
         this.lock = UpdateGraphLock.create(this, this.allowUnitTestMode);
 
         if (numUpdateThreads <= 0) {
@@ -333,8 +330,9 @@ public class PeriodicUpdateGraph implements UpdateGraph {
         notificationProcessor = PoisonedNotificationProcessor.INSTANCE;
         jvmIntrospectionContext = new JvmIntrospectionContext();
 
+        OperationInitializer captured = ExecutionContext.getContext().getInitializer();
         refreshThread = new Thread(threadInitializationFactory.createInitializer(() -> {
-            configureRefreshThread();
+            configureRefreshThread(captured);
             while (running) {
                 Assert.eqFalse(this.allowUnitTestMode, "allowUnitTestMode");
                 refreshTablesAndFlushNotifications();
@@ -631,7 +629,6 @@ public class PeriodicUpdateGraph implements UpdateGraph {
                 refreshThread.start();
             }
         }
-        threadPool.start();
     }
 
     /**
@@ -1956,8 +1953,9 @@ public class PeriodicUpdateGraph implements UpdateGraph {
 
         @Override
         public Thread newThread(@NotNull final Runnable r) {
+            OperationInitializer captured = ExecutionContext.getContext().getInitializer();
             return super.newThread(threadInitializationFactory.createInitializer(() -> {
-                configureRefreshThread();
+                configureRefreshThread(captured);
                 r.run();
             }));
         }
@@ -2006,13 +2004,13 @@ public class PeriodicUpdateGraph implements UpdateGraph {
     /**
      * Configure the primary UpdateGraph thread or one of the auxiliary notification processing threads.
      */
-    private void configureRefreshThread() {
+    private void configureRefreshThread(OperationInitializer captured) {
         SystemicObjectTracker.markThreadSystemic();
         MultiChunkPool.enableDedicatedPoolForThisThread();
         isUpdateThread.set(true);
-        // Install this UpdateGraph via ExecutionContext for refresh threads
+        // Install this UpdateGraph via ExecutionContext for refresh threads, share the same operation initializer
         // noinspection resource
-        ExecutionContext.newBuilder().setUpdateGraph(this).build().open();
+        ExecutionContext.newBuilder().setUpdateGraph(this).setOperationInitializer(captured).build().open();
     }
 
     /**
@@ -2026,9 +2024,9 @@ public class PeriodicUpdateGraph implements UpdateGraph {
             existing.uncaughtException(errorThread, throwable);
         });
         isUpdateThread.set(true);
-        // Install this UpdateGraph via ExecutionContext for refresh threads
+        // Install this UpdateGraph and share operation initializer pool via ExecutionContext for refresh threads
         // noinspection resource
-        ExecutionContext.newBuilder().setUpdateGraph(this).build().open();
+        ExecutionContext.newBuilder().setUpdateGraph(this).captureOperationInitializer().build().open();
     }
 
     public void takeAccumulatedCycleStats(AccumulatedCycleStats updateGraphAccumCycleStats) {

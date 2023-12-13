@@ -556,6 +556,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                 .captureQueryLibrary()
                 .captureQueryCompiler()
                 .captureUpdateGraph()
+                .captureOperationInitializer()
                 .build();
         final PartitionedTable result2 =
                 sourceTable2.update("SlowItDown=pauseHelper.pauseValue(k)").partitionBy("USym2").transform(
@@ -647,6 +648,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                 .captureQueryLibrary()
                 .captureQueryCompiler()
                 .captureUpdateGraph()
+                .captureOperationInitializer()
                 .build();
         final PartitionedTable result2 = sourceTable2.partitionBy("USym2").transform(executionContext,
                 t -> t.withAttributes(Map.of(BaseTable.TEST_SOURCE_TABLE_ATTRIBUTE, "true"))
@@ -936,6 +938,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                         .captureQueryCompiler()
                         .captureQueryLibrary()
                         .captureUpdateGraph()
+                        .captureOperationInitializer()
                         .build().open()) {
 
                     ExecutionContext.getContext().getQueryScope().putParam("queryScopeVar", "queryScopeValue");
@@ -998,6 +1001,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                 .newQueryLibrary()
                 .captureUpdateGraph()
                 .captureQueryCompiler()
+                .captureOperationInitializer()
                 .build();
         final PartitionedTable transformed = partitioned.transform(executionContext, tableIn -> {
             final QueryTable tableOut = (QueryTable) tableIn.getSubTable(tableIn.getRowSet());

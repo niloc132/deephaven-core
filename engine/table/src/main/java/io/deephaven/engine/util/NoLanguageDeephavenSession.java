@@ -5,7 +5,6 @@ package io.deephaven.engine.util;
 
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryScope;
-import io.deephaven.engine.updategraph.UpdateGraph;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +12,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 
 /**
  * ScriptSession implementation that simply allows variables to be exported. This is not intended for use in user

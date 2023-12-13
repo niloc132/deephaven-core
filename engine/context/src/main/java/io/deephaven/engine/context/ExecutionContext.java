@@ -148,6 +148,14 @@ public class ExecutionContext {
                 operationInitializer);
     }
 
+    public ExecutionContext withOperationInitializer(final OperationInitializer operationInitializer) {
+        if (operationInitializer == this.operationInitializer) {
+            return this;
+        }
+        return new ExecutionContext(isSystemic, authContext, queryLibrary, queryScope, queryCompiler, updateGraph,
+                operationInitializer);
+    }
+
     /**
      * Execute runnable within this execution context.
      */
@@ -379,6 +387,12 @@ public class ExecutionContext {
         @ScriptApi
         public Builder setOperationInitializer(OperationInitializer operationInitializer) {
             this.operationInitializer = operationInitializer;
+            return this;
+        }
+
+        @ScriptApi
+        public Builder captureOperationInitializer() {
+            this.operationInitializer = getContext().getInitializer();
             return this;
         }
 

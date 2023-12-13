@@ -7,7 +7,6 @@ import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.IntoMap;
 import dagger.multibindings.StringKey;
-import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.util.NoLanguageDeephavenSession;
 import io.deephaven.engine.util.ScriptSession;
 
