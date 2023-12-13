@@ -6,9 +6,9 @@ import io.deephaven.engine.testutil.ControlledUpdateGraph;
 import io.deephaven.util.thread.ThreadInitializationFactory;
 
 public class TestExecutionContext {
-    private static final ControlledUpdateGraph UPDATE_GRAPH =
-            new ControlledUpdateGraph("TEST", true, 1000, 25, -1, ThreadInitializationFactory.NO_OP);
-    private static final OperationInitializationThreadPool OPERATION_INITIALIZATION =
+    public static final ControlledUpdateGraph UPDATE_GRAPH = new ControlledUpdateGraph();
+
+    public static final OperationInitializationThreadPool OPERATION_INITIALIZATION =
             new OperationInitializationThreadPool(ThreadInitializationFactory.NO_OP);
 
     public static ExecutionContext createForUnitTests() {
