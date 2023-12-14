@@ -65,6 +65,11 @@ public class NoLanguageDeephavenSession extends AbstractScriptSession<AbstractSc
     }
 
     @Override
+    public synchronized void observeScopeChanges() {
+        // no-op, ignore calls since we don't support snapshots
+    }
+
+    @Override
     protected Snapshot emptySnapshot() {
         throw new UnsupportedOperationException(SCRIPT_TYPE + " session does not support emptySnapshot");
     }
