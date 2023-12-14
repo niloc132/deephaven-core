@@ -1244,13 +1244,17 @@ public class PeriodicUpdateGraph extends BaseUpdateGraph {
         }
 
         private PeriodicUpdateGraph construct() {
-            return new PeriodicUpdateGraph(
+            PeriodicUpdateGraph periodicUpdateGraph = new PeriodicUpdateGraph(
                     name,
                     allowUnitTestMode,
                     targetCycleDurationMillis,
                     minimumCycleDurationToLogNanos,
                     numUpdateThreads,
                     threadInitializationFactory);
+            if (!periodicUpdateGraph.allowUnitTestMode) {
+                periodicUpdateGraph.start();
+            }
+            return periodicUpdateGraph;
         }
     }
 }
