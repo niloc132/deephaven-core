@@ -10,9 +10,9 @@ public class UriResolversInstance {
 
     public static void init(UriResolvers instance) {
         synchronized (UriResolversInstance.class) {
-            if (resolvers != null) {
-                throw new IllegalStateException("Can only initialize UriResolversInstance once");
-            }
+            // if (resolvers != null) {
+            // throw new IllegalStateException("Can only initialize UriResolversInstance once");
+            // }
             resolvers = instance;
         }
     }
