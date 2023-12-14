@@ -30,6 +30,7 @@ import io.deephaven.engine.liveness.LivenessScopeStack;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.table.impl.DataAccessHelpers;
+import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
 import io.deephaven.engine.util.AbstractScriptSession;
 import io.deephaven.engine.util.NoLanguageDeephavenSession;
 import io.deephaven.engine.util.ScriptSession;
@@ -53,6 +54,7 @@ import io.deephaven.server.runner.MainHelper;
 import io.deephaven.server.session.*;
 import io.deephaven.server.test.TestAuthModule.FakeBearer;
 import io.deephaven.server.util.Scheduler;
+import io.deephaven.ssl.config.SSLConfig;
 import io.deephaven.util.SafeCloseable;
 import io.deephaven.auth.AuthContext;
 import io.grpc.*;
@@ -144,11 +146,18 @@ public abstract class FlightMessageRoundTripTest {
             return 1024 * 1024;
         }
 
+        // @Provides
+        // @Nullable
+        // ScheduledExecutorService provideExecutorService() {
+        // return null;
+        // }
+
         @Provides
-        @Nullable
-        ScheduledExecutorService provideExecutorService() {
-            return null;
+        @Named("client.sslConfig")
+        SSLConfig provideClientSSLConfig() {
+            return SSLConfig.empty();
         }
+
 
         @Provides
         AuthorizationProvider provideAuthorizationProvider(TestAuthorizationProvider provider) {
@@ -163,8 +172,14 @@ public abstract class FlightMessageRoundTripTest {
 
         @Provides
         @Singleton
+        @Named(PeriodicUpdateGraph.DEFAULT_UPDATE_GRAPH_NAME)
         static UpdateGraph provideUpdateGraph() {
             return ExecutionContext.getContext().getUpdateGraph();
+        }
+
+        @Provides
+        ScriptSession.RunScripts provideRunScripts() {
+            return ScriptSession.RunScripts.none();
         }
     }
 
