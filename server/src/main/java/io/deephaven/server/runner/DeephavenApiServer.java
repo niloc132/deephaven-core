@@ -36,10 +36,6 @@ import java.util.concurrent.TimeoutException;
 public class DeephavenApiServer {
     private static final Logger log = LoggerFactory.getLogger(DeephavenApiServer.class);
 
-    private static final long CHECK_SCOPE_CHANGES_INTERVAL_MILLIS =
-            Configuration.getInstance().getLongForClassWithDefault(
-                    DeephavenApiServer.class, "checkScopeChangesIntervalMillis", 100);
-
     private final GrpcServer server;
     private final UpdateGraph ug;
     private final LogInit logInit;

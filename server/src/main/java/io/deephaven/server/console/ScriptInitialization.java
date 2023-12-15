@@ -50,6 +50,7 @@ public class ScriptInitialization {
             ApplicationInjector applicationInjector) {
 
         log.info().append("Creating/Clearing Script Cache...").endl();
+        //TODO finish
 
         // review note: this is now _before_ init scripts.
         pluginRegistration.registerAll();
