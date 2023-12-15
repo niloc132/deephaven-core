@@ -172,6 +172,14 @@ public class ExecutionContext {
                 operationInitializer);
     }
 
+    public ExecutionContext withQueryScope(QueryScope queryScope) {
+        if (queryScope == this.queryScope) {
+            return this;
+        }
+        return new ExecutionContext(isSystemic, authContext, queryLibrary, queryScope, queryCompiler, updateGraph,
+                operationInitializer);
+    }
+
     /**
      * Execute runnable within this execution context.
      */

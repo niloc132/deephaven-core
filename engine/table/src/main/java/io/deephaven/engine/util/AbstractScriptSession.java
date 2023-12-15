@@ -6,6 +6,7 @@ package io.deephaven.engine.util;
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.api.util.NameValidator;
 import io.deephaven.base.FileUtils;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
 import io.deephaven.engine.table.PartitionedTable;
@@ -84,10 +85,12 @@ public abstract class AbstractScriptSession<S extends AbstractScriptSession.Snap
 
         RuntimeException evaluateErr = null;
         final Changes diff;
-        // retain any objects which are created in the executed code, we'll release them when the script session
-        // closes
+        // Retain any objects which are created in the executed code, we'll release them when the script session
+        // closes. Also modify the exec context to provide the current script session's query scope to any operations
+        // started within this invocation.
         try (final S initialSnapshot = takeSnapshot();
-                final SafeCloseable ignored = LivenessScopeStack.open(this, false)) {
+                final SafeCloseable ignored = LivenessScopeStack.open(this, false);
+                final SafeCloseable ignored2 = ExecutionContext.getContext().withQueryScope(newQueryScope()).open()) {
 
             try {
                 // actually evaluate the script
