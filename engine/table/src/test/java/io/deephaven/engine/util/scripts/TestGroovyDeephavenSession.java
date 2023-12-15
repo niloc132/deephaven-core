@@ -3,7 +3,6 @@
  */
 package io.deephaven.engine.util.scripts;
 
-import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;

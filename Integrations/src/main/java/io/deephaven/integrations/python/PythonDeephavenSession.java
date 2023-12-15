@@ -19,6 +19,8 @@ import io.deephaven.plugin.type.ObjectTypeLookup.NoOp;
 import io.deephaven.util.SafeCloseable;
 import io.deephaven.util.annotations.ScriptApi;
 import io.deephaven.util.annotations.VisibleForTesting;
+import io.deephaven.util.thread.NamingThreadFactory;
+import io.deephaven.util.thread.ThreadInitializationFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jpy.KeyError;
@@ -35,6 +37,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -74,6 +79,7 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
                 .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
         // }
 
+        // registerJavaExecutor(threadInitializationFactory);
         publishInitial();
     }
 
@@ -89,7 +95,24 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
                 .createProxy(CallableKind.FUNCTION, PythonScriptSessionModule.class);
         evaluator = null;
 
+        // registerJavaExecutor(threadInitializationFactory);
         publishInitial();
+    }
+
+    private void registerJavaExecutor(ThreadInitializationFactory threadInitializationFactory) {
+        // TODO (deephaven-core#4040) Temporary exec service until we have cleaner startup wiring
+        try (PyModule pyModule = PyModule.importModule("deephaven.server.executors");
+                final PythonDeephavenThreadsModule module = pyModule.createProxy(PythonDeephavenThreadsModule.class)) {
+            NamingThreadFactory threadFactory = new NamingThreadFactory(PythonDeephavenSession.class, "serverThread") {
+                @Override
+                public Thread newThread(@NotNull Runnable r) {
+                    return super.newThread(threadInitializationFactory.createInitializer(r));
+                }
+            };
+            ExecutorService executorService = Executors.newFixedThreadPool(1, threadFactory);
+            module._register_named_java_executor("serial", executorService::submit);
+            module._register_named_java_executor("concurrent", executorService::submit);
+        }
     }
 
     @Override
@@ -273,5 +296,11 @@ public class PythonDeephavenSession extends AbstractScriptSession<PythonSnapshot
         Object javaify(PyObject object);
 
         void close();
+    }
+
+    interface PythonDeephavenThreadsModule extends Closeable {
+        void close();
+
+        void _register_named_java_executor(String executorName, Consumer<Runnable> execute);
     }
 }

@@ -6,20 +6,8 @@ package io.deephaven.server.netty;
 import dagger.Component;
 import dagger.Module;
 import dagger.Provides;
-import io.deephaven.client.ClientDefaultsModule;
-import io.deephaven.server.appmode.AppModeModule;
-import io.deephaven.server.arrow.ArrowModule;
-import io.deephaven.server.config.ConfigServiceModule;
-import io.deephaven.server.console.ConsoleModule;
-import io.deephaven.server.log.LogModule;
-import io.deephaven.server.plugin.PluginsModule;
 import io.deephaven.server.runner.ExecutionContextUnitTestModule;
-import io.deephaven.server.session.ObfuscatingErrorTransformerModule;
-import io.deephaven.server.session.SessionModule;
-import io.deephaven.server.table.TableModule;
-import io.deephaven.server.test.TestAuthModule;
 import io.deephaven.server.test.FlightMessageRoundTripTest;
-import io.deephaven.server.uri.UriModule;
 
 import javax.inject.Singleton;
 import java.time.Duration;
@@ -40,22 +28,10 @@ public class NettyFlightRoundTripTest extends FlightMessageRoundTripTest {
 
     @Singleton
     @Component(modules = {
-            ArrowModule.class,
-            ConfigServiceModule.class,
-            ConsoleModule.class,
             ExecutionContextUnitTestModule.class,
             FlightTestModule.class,
-            LogModule.class,
             NettyServerModule.class,
             NettyTestConfig.class,
-            SessionModule.class,
-            TableModule.class,
-            TestAuthModule.class,
-            ObfuscatingErrorTransformerModule.class,
-            AppModeModule.class,
-            PluginsModule.class,
-            UriModule.class,
-            ClientDefaultsModule.class,
     })
     public interface NettyTestComponent extends TestComponent {
     }

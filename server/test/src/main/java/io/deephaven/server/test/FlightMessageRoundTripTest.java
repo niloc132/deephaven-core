@@ -24,6 +24,7 @@ import io.deephaven.chunk.LongChunk;
 import io.deephaven.chunk.ObjectChunk;
 import io.deephaven.chunk.WritableChunk;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.client.ClientDefaultsModule;
 import io.deephaven.client.impl.*;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessScopeStack;
@@ -41,18 +42,27 @@ import io.deephaven.extensions.barrage.util.BarrageChunkAppendingMarshaller;
 import io.deephaven.extensions.barrage.util.BarrageUtil;
 import io.deephaven.io.logger.LogBuffer;
 import io.deephaven.io.logger.LogBufferGlobal;
+import io.deephaven.plugin.Registration;
 import io.deephaven.proto.backplane.grpc.SortTableRequest;
 import io.deephaven.proto.backplane.grpc.WrappedAuthenticationRequest;
 import io.deephaven.proto.backplane.script.grpc.BindTableToVariableRequest;
 import io.deephaven.proto.flight.util.FlightExportTicketHelper;
 import io.deephaven.proto.util.ScopeTicketHelper;
 import io.deephaven.qst.table.TicketTable;
+import io.deephaven.server.appmode.AppModeModule;
+import io.deephaven.server.arrow.ArrowModule;
 import io.deephaven.server.auth.AuthorizationProvider;
+import io.deephaven.server.config.ConfigServiceModule;
+import io.deephaven.server.console.ConsoleModule;
 import io.deephaven.server.console.ScopeTicketResolver;
+import io.deephaven.server.log.LogModule;
+import io.deephaven.server.plugin.PluginsModule;
 import io.deephaven.server.runner.GrpcServer;
 import io.deephaven.server.runner.MainHelper;
 import io.deephaven.server.session.*;
+import io.deephaven.server.table.TableModule;
 import io.deephaven.server.test.TestAuthModule.FakeBearer;
+import io.deephaven.server.uri.UriModule;
 import io.deephaven.server.util.Scheduler;
 import io.deephaven.ssl.config.SSLConfig;
 import io.deephaven.util.SafeCloseable;
@@ -74,7 +84,6 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.jetbrains.annotations.Nullable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -101,7 +110,21 @@ public abstract class FlightMessageRoundTripTest {
     private static final String ANONYMOUS = "Anonymous";
     private static final String DISABLED_FOR_TEST = "Disabled For Test";
 
-    @Module
+    @Module(includes = {
+            ArrowModule.class,
+            ConfigServiceModule.class,
+            ConsoleModule.class,
+            LogModule.class,
+            SessionModule.class,
+            TableModule.class,
+            TestAuthModule.class,
+            ObfuscatingErrorTransformerModule.class,
+            PluginsModule.class,
+            AppModeModule.class,
+            PluginsModule.class,
+            UriModule.class,
+            ClientDefaultsModule.class,
+    })
     public static class FlightTestModule {
         @IntoSet
         @Provides
@@ -201,11 +224,13 @@ public abstract class FlightMessageRoundTripTest {
         ExecutionContext executionContext();
 
         TestAuthorizationProvider authorizationProvider();
+
+        Registration.Callback registration();
     }
 
     private LogBuffer logBuffer;
     private GrpcServer server;
-
+    protected int localPort;
     private FlightClient flightClient;
 
     protected SessionService sessionService;
@@ -214,7 +239,7 @@ public abstract class FlightMessageRoundTripTest {
     private AbstractScriptSession<?> scriptSession;
     private SafeCloseable executionContext;
     private Location serverLocation;
-    private TestComponent component;
+    protected TestComponent component;
 
     private ManagedChannel clientChannel;
     private ScheduledExecutorService clientScheduler;
@@ -236,12 +261,12 @@ public abstract class FlightMessageRoundTripTest {
 
         server = component.server();
         server.start();
-        int actualPort = server.getPort();
+        localPort = server.getPort();
 
         scriptSession = component.scriptSession();
         sessionService = component.sessionService();
 
-        serverLocation = Location.forGrpcInsecure("localhost", actualPort);
+        serverLocation = Location.forGrpcInsecure("localhost", localPort);
         currentSession = sessionService.newSession(new AuthContext.SuperUser());
         flightClient = FlightClient.builder().location(serverLocation)
                 .allocator(new RootAllocator()).intercept(info -> new FlightClientMiddleware() {
@@ -258,7 +283,7 @@ public abstract class FlightMessageRoundTripTest {
                     public void onCallCompleted(CallStatus status) {}
                 }).build();
 
-        clientChannel = ManagedChannelBuilder.forTarget("localhost:" + actualPort)
+        clientChannel = ManagedChannelBuilder.forTarget("localhost:" + localPort)
                 .usePlaintext()
                 .intercept(new TestAuthClientInterceptor(currentSession.getExpiration().token.toString()))
                 .build();
