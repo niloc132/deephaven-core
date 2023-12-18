@@ -164,10 +164,10 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
             @Override
             public Object evaluate(String scriptText, String fileName, String codeBase)
                     throws CompilationFailedException {
-                scriptConfig
-                        .setTargetDirectory(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination());
-                consoleConfig
-                        .setTargetDirectory(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination());
+                File fakeClassDestination = ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination();
+                System.out.println(fakeClassDestination);
+                scriptConfig.setTargetDirectory(fakeClassDestination);
+                consoleConfig.setTargetDirectory(fakeClassDestination);
                 return super.evaluate(scriptText, fileName, codeBase);
             }
 
