@@ -3,6 +3,7 @@
  */
 package io.deephaven.engine.util.scripts;
 
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
@@ -47,7 +48,9 @@ public class TestGroovyDeephavenSession {
         livenessScope = new LivenessScope();
         LivenessScopeStack.push(livenessScope);
         session = new GroovyDeephavenSession(NoOp.INSTANCE, null);
-        executionContext = session.getExecutionContext().open();
+        ExecutionContext scriptCtx = ExecutionContext.getContext().withQueryScope(session.newQueryScope());
+        session.initialize(scriptCtx);
+        executionContext = scriptCtx.open();
     }
 
     @After

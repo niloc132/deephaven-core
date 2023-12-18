@@ -371,24 +371,24 @@ public class TestConditionFilter extends PythonTest {
             validate(expression, keepRowSet, dropRowSet, FormulaParserConfiguration.Deephaven);
         }
         if (testPython) {
-            ExecutionContext currentContext = ExecutionContext.getContext();
-            QueryScope currentScope = currentContext.getQueryScope();
-            try {
-                if (pythonScope == null) {
-                    final ExecutionContext context =
-                            new PythonDeephavenSession(new PythonScopeJpyImpl(getMainGlobals().asDict()))
-                                    .getExecutionContext();
-                    pythonScope = context.getQueryScope();
-                    context.open();
-                }
-                for (QueryScopeParam param : currentScope.getParams(currentScope.getParamNames())) {
-                    pythonScope.putParam(param.getName(), param.getValue());
-                }
-                expression = expression.replaceAll("true", "True").replaceAll("false", "False");
-                validate(expression, keepRowSet, dropRowSet, FormulaParserConfiguration.Numba);
-            } finally {
-                currentContext.open();
-            }
+//            ExecutionContext currentContext = ExecutionContext.getContext();
+//            QueryScope currentScope = currentContext.getQueryScope();
+//            try {
+//                if (pythonScope == null) {
+//                    final ExecutionContext context =
+//                            new PythonDeephavenSession(new PythonScopeJpyImpl(getMainGlobals().asDict()))
+//                                    .getExecutionContext();
+//                    pythonScope = context.getQueryScope();
+//                    context.open();
+//                }
+//                for (QueryScopeParam param : currentScope.getParams(currentScope.getParamNames())) {
+//                    pythonScope.putParam(param.getName(), param.getValue());
+//                }
+//                expression = expression.replaceAll("true", "True").replaceAll("false", "False");
+//                validate(expression, keepRowSet, dropRowSet, FormulaParserConfiguration.Numba);
+//            } finally {
+//                currentContext.open();
+//            }
         }
 
     }

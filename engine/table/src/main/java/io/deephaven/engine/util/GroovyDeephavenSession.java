@@ -56,7 +56,6 @@ import org.jetbrains.annotations.Nullable;
 import javax.tools.JavaFileObject;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -178,10 +177,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         };
 
         groovyShell.setVariable("__groovySession", this);
-
-        // moved this "later" so that we know the exec context isn't poisoned
-        // mildly suspicious of this - but we weren't guaranteed to use _this_ exec context when executing anyway!
-        // ExecutionContext.getContext().getQueryCompiler().setParentClassLoader(getShell().getClassLoader());
 
         publishInitial();
     }

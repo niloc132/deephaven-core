@@ -79,9 +79,9 @@ public interface ScriptSession extends ReleasableLivenessManager, LivenessNode {
      * context (though probably the same exec context). Provided ScriptSession keeps an internal ExecContext, this outer
      * wrap is probably not necessary.
      */
-    default ExecutionContext getExecutionContext() {
-        throw new UnsupportedOperationException("getExecContext()");
-    }
+//    default ExecutionContext getExecutionContext() {
+//        throw new UnsupportedOperationException("getExecContext()");
+//    }
 
     void initialize(ExecutionContext executionContext);
 
