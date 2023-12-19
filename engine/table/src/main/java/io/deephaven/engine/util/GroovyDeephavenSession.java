@@ -44,7 +44,6 @@ import io.deephaven.util.type.TypeUtils;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ScanResult;
-import org.codehaus.groovy.control.CompilationFailedException;
 import org.codehaus.groovy.control.CompilationUnit;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.control.Phases;
@@ -126,6 +125,8 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
     private final ImportCustomizer consoleImports = new ImportCustomizer();
     /** Contains imports to be applied to .groovy files loaded from the classpath */
     private final ImportCustomizer loadedGroovyScriptImports = new ImportCustomizer();
+    CompilerConfiguration scriptConfig;
+    CompilerConfiguration consoleConfig;
 
     private final Set<String> dynamicClasses = new HashSet<>();
     private final GroovyShell groovyShell;
@@ -152,25 +153,15 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         }
 
         // Specify a classloader to read from the classpath, with script imports
-        CompilerConfiguration scriptConfig = new CompilerConfiguration();
+        scriptConfig = new CompilerConfiguration();
         scriptConfig.getCompilationCustomizers().add(loadedGroovyScriptImports);
         GroovyClassLoader scriptClassLoader = new GroovyClassLoader(STATIC_LOADER, scriptConfig);
 
         // Specify a configuration for compiling/running console commands for custom imports
-        CompilerConfiguration consoleConfig = new CompilerConfiguration();
+        consoleConfig = new CompilerConfiguration();
         consoleConfig.getCompilationCustomizers().add(consoleImports);
 
         groovyShell = new GroovyShell(scriptClassLoader, consoleConfig) {
-            @Override
-            public Object evaluate(String scriptText, String fileName, String codeBase)
-                    throws CompilationFailedException {
-                File fakeClassDestination = ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination();
-                System.out.println(fakeClassDestination);
-                scriptConfig.setTargetDirectory(fakeClassDestination);
-                consoleConfig.setTargetDirectory(fakeClassDestination);
-                return super.evaluate(scriptText, fileName, codeBase);
-            }
-
             protected synchronized String generateScriptName() {
                 return GroovyDeephavenSession.this.generateScriptName();
             }
@@ -263,6 +254,10 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
     @Override
     protected void evaluate(String command, String scriptName) {
+        final File dynamicClassDestination = ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination();
+        scriptConfig.setTargetDirectory(dynamicClassDestination);
+        consoleConfig.setTargetDirectory(dynamicClassDestination);
+
         grepScriptImports(removeComments(command));
 
         final Pair<String, String> fc = fullCommand(command);
@@ -604,7 +599,8 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         final String name = getNextScriptClassName();
 
         CompilerConfiguration config = new CompilerConfiguration(CompilerConfiguration.DEFAULT);
-        config.setTargetDirectory(ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination());
+        final File dynamicClassDestination = ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination();
+        config.setTargetDirectory(dynamicClassDestination);
         config.getCompilationCustomizers().add(consoleImports);
         final CompilationUnit cu = new CompilationUnit(config, null, groovyShell.getClassLoader());
         cu.addSource(name, currentCommand);
@@ -614,7 +610,6 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         } catch (RuntimeException e) {
             throw new GroovyExceptionWrapper(e);
         }
-        final File dynamicClassDestination = ExecutionContext.getContext().getQueryCompiler().getFakeClassDestination();
         if (dynamicClassDestination == null) {
             return;
         }
