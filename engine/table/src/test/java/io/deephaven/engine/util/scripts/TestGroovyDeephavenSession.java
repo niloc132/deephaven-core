@@ -4,6 +4,7 @@
 package io.deephaven.engine.util.scripts;
 
 import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
@@ -22,6 +23,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -39,6 +41,9 @@ public class TestGroovyDeephavenSession {
     @Rule
     public final EngineCleanup framework = new EngineCleanup();
 
+    @Rule
+    public final TemporaryFolder queryCompilerDir = new TemporaryFolder();
+
     private LivenessScope livenessScope;
     private GroovyDeephavenSession session;
     private SafeCloseable executionContext;
@@ -48,7 +53,11 @@ public class TestGroovyDeephavenSession {
         livenessScope = new LivenessScope();
         LivenessScopeStack.push(livenessScope);
         session = new GroovyDeephavenSession(NoOp.INSTANCE, null);
-        ExecutionContext scriptCtx = ExecutionContext.getContext().withQueryScope(session.newQueryScope());
+        ExecutionContext scriptCtx = ExecutionContext.newBuilder()
+                .setQueryLibrary(ExecutionContext.getContext().getQueryLibrary())
+                .setQueryScope(session.newQueryScope())
+                .setQueryCompiler(QueryCompiler.create(queryCompilerDir.getRoot(), Thread.currentThread().getContextClassLoader()))
+                .build();
         session.initialize(scriptCtx);
         executionContext = scriptCtx.open();
     }

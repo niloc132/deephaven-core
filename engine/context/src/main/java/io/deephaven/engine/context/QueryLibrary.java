@@ -72,6 +72,7 @@ public class QueryLibrary {
     }
 
     public void importClass(Class<?> aClass) {
+        System.out.println("import " + aClass);
         final Class<?> previous = classImports.put(aClass.getName(), aClass);
         if (aClass != previous) {
             updateVersionString();
