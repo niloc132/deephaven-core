@@ -104,7 +104,7 @@ public class ScopeTicketResolver extends TicketResolverBase {
         // fetch the variable from the scope right now
         T export = null;
         try {
-            //noinspection unchecked
+            // noinspection unchecked
             export = (T) gss.unwrapObject(gss.getVariable(scopeName));
         } catch (QueryScope.MissingVariableException ignored) {
         }

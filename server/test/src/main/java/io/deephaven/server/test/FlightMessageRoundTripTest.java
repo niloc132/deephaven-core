@@ -169,12 +169,6 @@ public abstract class FlightMessageRoundTripTest {
             return 1024 * 1024;
         }
 
-        // @Provides
-        // @Nullable
-        // ScheduledExecutorService provideExecutorService() {
-        // return null;
-        // }
-
         @Provides
         @Named("client.sslConfig")
         SSLConfig provideClientSSLConfig() {

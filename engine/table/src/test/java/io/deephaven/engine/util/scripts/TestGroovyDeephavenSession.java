@@ -56,7 +56,8 @@ public class TestGroovyDeephavenSession {
         ExecutionContext scriptCtx = ExecutionContext.newBuilder()
                 .setQueryLibrary(ExecutionContext.getContext().getQueryLibrary())
                 .setQueryScope(session.newQueryScope())
-                .setQueryCompiler(QueryCompiler.create(queryCompilerDir.getRoot(), Thread.currentThread().getContextClassLoader()))
+                .setQueryCompiler(QueryCompiler.create(queryCompilerDir.getRoot(),
+                        Thread.currentThread().getContextClassLoader()))
                 .build();
         session.initialize(scriptCtx);
         executionContext = scriptCtx.open();
