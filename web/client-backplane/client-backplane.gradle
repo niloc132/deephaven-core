@@ -24,7 +24,7 @@ Classpaths.inheritElemental(project, 'elemental2-promise', 'implementation')
  *
  * After building, these will have to be reverted or corrected by hand.
  */
-Docker.registerDockerTask(project, 'regenerateGwtBindings') {
+def regenerateGwtBindings = Docker.registerDockerTask(project, 'regenerateGwtBindings') {
     copyIn {
         // scripts and setup
         from(file('docker')) {
@@ -104,6 +104,10 @@ Docker.registerDockerTask(project, 'regenerateGwtBindings') {
         }
         includeEmptyDirs = false
     }
-}.configure {
+}
+regenerateGwtBindings.configure {
     finalizedBy spotlessApply
+}
+tasks.named('spotlessJava').configure {
+    mustRunAfter regenerateGwtBindings
 }
