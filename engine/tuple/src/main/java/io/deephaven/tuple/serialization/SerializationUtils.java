@@ -1,12 +1,13 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.tuple.serialization;
 
-import io.deephaven.time.DateTime;
-import io.deephaven.util.FunctionalInterfaces;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import io.deephaven.time.DateTimeUtils;
+import io.deephaven.util.function.ThrowingConsumer;
+import io.deephaven.util.function.ThrowingSupplier;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.Externalizable;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.lang.reflect.Constructor;
+import java.time.Instant;
 import java.util.Date;
 
 /**
@@ -21,7 +23,7 @@ import java.util.Date;
  */
 public class SerializationUtils {
 
-    public interface Writer<ITEM_TYPE> extends FunctionalInterfaces.ThrowingConsumer<ITEM_TYPE, IOException> {
+    public interface Writer<ITEM_TYPE> extends ThrowingConsumer<ITEM_TYPE, IOException> {
     }
 
     /**
@@ -60,8 +62,8 @@ public class SerializationUtils {
         if (itemClass == String.class) {
             return k -> out.writeUTF((String) k);
         }
-        if (itemClass == DateTime.class) {
-            return k -> out.writeLong(((DateTime) k).getNanos());
+        if (itemClass == Instant.class) {
+            return k -> out.writeLong(DateTimeUtils.epochNanos(((Instant) k)));
         }
         if (itemClass == Date.class) {
             return k -> out.writeLong(((Date) k).getTime());
@@ -76,7 +78,7 @@ public class SerializationUtils {
         return out::writeObject;
     }
 
-    public interface Reader<ITEM_TYPE> extends FunctionalInterfaces.ThrowingSupplier<ITEM_TYPE, Exception> {
+    public interface Reader<ITEM_TYPE> extends ThrowingSupplier<ITEM_TYPE, Exception> {
     }
 
     /**
@@ -116,8 +118,8 @@ public class SerializationUtils {
         if (itemClass == String.class) {
             return () -> (ITEM_TYPE) in.readUTF();
         }
-        if (itemClass == DateTime.class) {
-            return () -> (ITEM_TYPE) new DateTime(in.readLong());
+        if (itemClass == Instant.class) {
+            return () -> (ITEM_TYPE) DateTimeUtils.epochNanosToInstant(in.readLong());
         }
         if (itemClass == Date.class) {
             return () -> (ITEM_TYPE) new Date(in.readLong());

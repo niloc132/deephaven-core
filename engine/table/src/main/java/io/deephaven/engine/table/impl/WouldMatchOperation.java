@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Require;
@@ -38,7 +38,7 @@ public class WouldMatchOperation implements QueryTable.MemoizableOperation<Query
     /**
      * Just a little helper to keep column stuff together.
      */
-    private static class ColumnHolder {
+    private class ColumnHolder {
         final WouldMatchPair wouldMatchPair;
         IndexWrapperColumnSource column;
 
@@ -314,7 +314,11 @@ public class WouldMatchOperation implements QueryTable.MemoizableOperation<Query
 
         @Override
         public WritableRowSet match(
-                boolean invertMatch, boolean usePrev, boolean caseInsensitive, RowSet mapper, Object... keys) {
+                final boolean invertMatch,
+                final boolean usePrev,
+                final boolean caseInsensitive,
+                @NotNull final RowSet mapper,
+                final Object... keys) {
             boolean hasFalse = false;
             boolean hasTrue = false;
             boolean hasOther = false;

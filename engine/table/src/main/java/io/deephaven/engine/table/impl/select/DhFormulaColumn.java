@@ -1,8 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
+import io.deephaven.base.Pair;
 import io.deephaven.chunk.ChunkType;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
@@ -10,9 +11,9 @@ import io.deephaven.engine.context.QueryCompiler;
 import io.deephaven.engine.context.QueryScopeParam;
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.ColumnSource;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.lang.QueryLanguageParser;
-import io.deephaven.engine.table.impl.perf.QueryPerformanceNugget;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.select.codegen.FormulaAnalyzer;
 import io.deephaven.engine.table.impl.select.codegen.JavaKernelBuilder;
@@ -25,12 +26,12 @@ import io.deephaven.engine.table.impl.select.python.DeephavenCompatibleFunction;
 import io.deephaven.engine.table.impl.select.python.FormulaColumnPython;
 import io.deephaven.engine.table.impl.util.codegen.CodeGenerator;
 import io.deephaven.engine.table.impl.util.codegen.TypeAnalyzer;
-import io.deephaven.engine.util.PyCallableWrapper;
+import io.deephaven.engine.util.PyCallableWrapperJpyImpl;
 import io.deephaven.engine.util.caching.C14nUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
-import io.deephaven.time.DateTime;
-import io.deephaven.time.DateTimeUtils;
+import io.deephaven.time.TimeLiteralReplacedExpression;
+import io.deephaven.util.SafeCloseable;
 import io.deephaven.util.type.TypeUtils;
 import io.deephaven.vector.ObjectVector;
 import io.deephaven.vector.Vector;
@@ -40,6 +41,8 @@ import org.jpy.PyObject;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -63,6 +66,7 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
 
     private FormulaAnalyzer.Result analyzedFormula;
     private boolean hasConstantValue;
+    private Pair<String, Map<Long, List<MatchPair>>> formulaShiftColPair;
 
     public FormulaColumnPython getFormulaColumnPython() {
         return formulaColumnPython;
@@ -185,17 +189,19 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
         }
 
         try {
-            final DateTimeUtils.Result timeConversionResult = DateTimeUtils.convertExpression(formulaString);
+            final TimeLiteralReplacedExpression timeConversionResult =
+                    TimeLiteralReplacedExpression.convertExpression(formulaString);
             final QueryLanguageParser.Result result = FormulaAnalyzer.getCompiledFormula(columnDefinitionMap,
                     timeConversionResult);
             analyzedFormula = FormulaAnalyzer.analyze(formulaString, columnDefinitionMap,
                     timeConversionResult, result);
             hasConstantValue = result.isConstantValueExpression();
+            formulaShiftColPair = result.getFormulaShiftColPair();
 
             log.debug().append("Expression (after language conversion) : ").append(analyzedFormula.cookedFormulaString)
                     .endl();
 
-            applyUsedVariables(columnDefinitionMap, result.getVariablesUsed());
+            applyUsedVariables(columnDefinitionMap, result.getVariablesUsed(), result.getPossibleParams());
             returnedType = result.getType();
             if (returnedType == boolean.class) {
                 returnedType = Boolean.class;
@@ -215,12 +221,15 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
     }
 
     private void checkAndInitializeVectorization(Map<String, ColumnDefinition<?>> columnDefinitionMap) {
-        PyCallableWrapper[] cws = Arrays.stream(params).filter(p -> p.getValue() instanceof PyCallableWrapper)
-                .map(p -> p.getValue()).toArray(PyCallableWrapper[]::new);
+        // noinspection SuspiciousToArrayCall
+        final PyCallableWrapperJpyImpl[] cws = Arrays.stream(params)
+                .filter(p -> p.getValue() instanceof PyCallableWrapperJpyImpl)
+                .map(QueryScopeParam::getValue)
+                .toArray(PyCallableWrapperJpyImpl[]::new);
         if (cws.length != 1) {
             return;
         }
-        PyCallableWrapper pyCallableWrapper = cws[0];
+        final PyCallableWrapperJpyImpl pyCallableWrapper = cws[0];
 
         // could be already vectorized or to-be-vectorized,
         if (pyCallableWrapper.isVectorizable()) {
@@ -627,7 +636,7 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
     private CodeGenerator generateIntSize() {
         final CodeGenerator g = CodeGenerator.create(
                 "private int __intSize(final long l)", CodeGenerator.block(
-                        "return LongSizedDataStructure.intSize(\"FormulaColumn ii usage\", l);"));
+                        "return LongSizedDataStructure.intSize(\"FormulaColumn i usage\", l);"));
         return g.freeze();
     }
 
@@ -733,6 +742,7 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
             copy.hasConstantValue = hasConstantValue;
             copy.returnedType = returnedType;
             copy.formulaColumnPython = formulaColumnPython;
+            copy.formulaShiftColPair = formulaShiftColPair;
             onCopy(copy);
         }
         return copy;
@@ -741,6 +751,11 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
     @Override
     public boolean hasConstantValue() {
         return hasConstantValue;
+    }
+
+    @Override
+    public Pair<String, Map<Long, List<MatchPair>>> getFormulaShiftColPair() {
+        return formulaShiftColPair;
     }
 
     private FormulaFactory createFormulaFactory() {
@@ -757,8 +772,7 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
     @SuppressWarnings("SameParameterValue")
     private Class<?> compileFormula(final String what, final String classBody, final String className) {
         // System.out.printf("compileFormula: what is %s. Code is...%n%s%n", what, classBody);
-        try (final QueryPerformanceNugget ignored =
-                QueryPerformanceRecorder.getInstance().getNugget("Compile:" + what)) {
+        try (final SafeCloseable ignored = QueryPerformanceRecorder.getInstance().getCompilationNugget(what)) {
             // Compilation needs to take place with elevated privileges, but the created object should not have them.
 
             final List<Class<?>> paramClasses = new ArrayList<>();
@@ -835,8 +849,8 @@ public class DhFormulaColumn extends AbstractFormulaColumn {
             return true;
         }
         final Class<?> type = value.getClass();
-        if (type == String.class || type == DateTime.class || type == BigInteger.class || type == BigDecimal.class ||
-                Table.class.isAssignableFrom(type)) {
+        if (type == String.class || type == BigInteger.class || type == BigDecimal.class
+                || type == Instant.class || type == ZonedDateTime.class || Table.class.isAssignableFrom(type)) {
             return true;
         }
         // if it is a boxed type, then it is immutable; otherwise we don't know what to do with it

@@ -1,14 +1,14 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sort;
 
 import io.deephaven.chunk.attributes.Any;
 import io.deephaven.chunk.attributes.Indices;
 import io.deephaven.engine.table.Context;
+import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.table.impl.SortingOrder;
 import io.deephaven.engine.table.impl.sort.megamerge.*;
-import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
 import io.deephaven.engine.table.impl.sources.LongArraySource;
 import io.deephaven.chunk.*;
 
@@ -26,7 +26,8 @@ public interface LongMegaMergeKernel<ATTR extends Any, KEY_INDICES extends Indic
      * @param order whether we should sort in an ascending or descending direction
      * @return a SortKernel suitable for the given type, order, and size
      */
-    static <ATTR extends Any, KEY_INDICES extends Indices> LongMegaMergeKernel<ATTR, KEY_INDICES> makeContext(ChunkType chunkType, SortingOrder order) {
+    static <ATTR extends Any, KEY_INDICES extends Indices> LongMegaMergeKernel<ATTR, KEY_INDICES> makeContext(
+            ChunkType chunkType, SortingOrder order) {
         switch (chunkType) {
             case Char:
                 if (order == SortingOrder.Ascending) {
@@ -82,7 +83,7 @@ public interface LongMegaMergeKernel<ATTR extends Any, KEY_INDICES extends Indic
         throw new IllegalStateException("Did not match chunk type: " + chunkType);
     }
 
-    void merge(LongArraySource indexDestinationSource, ArrayBackedColumnSource<?> valuesDestinationSource,
-               long destinationOffset, long destinationSize,
-               LongChunk<KEY_INDICES> indexKeys, Chunk<ATTR> valuesToMerge);
+    void merge(LongArraySource indexDestinationSource, WritableColumnSource<?> valuesDestinationSource,
+            long destinationOffset, long destinationSize,
+            LongChunk<KEY_INDICES> indexKeys, Chunk<ATTR> valuesToMerge);
 }

@@ -1,14 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plugin;
 
+import io.deephaven.plugin.js.JsPlugin;
 import io.deephaven.plugin.type.ObjectType;
 
 /**
  * A plugin is a structured extension point for user-definable behavior.
  *
  * @see ObjectType
+ * @see JsPlugin
  */
 public interface Plugin extends Registration {
 
@@ -24,5 +26,7 @@ public interface Plugin extends Registration {
 
     interface Visitor<T> {
         T visit(ObjectType objectType);
+
+        T visit(JsPlugin jsPlugin);
     }
 }

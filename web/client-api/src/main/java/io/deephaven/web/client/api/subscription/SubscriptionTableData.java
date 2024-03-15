@@ -1,8 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.subscription;
 
+import com.vertispan.tsdefs.annotations.TsInterface;
+import com.vertispan.tsdefs.annotations.TsName;
 import elemental2.core.JsArray;
 import elemental2.dom.CustomEventInit;
 import io.deephaven.web.client.api.*;
@@ -10,8 +12,10 @@ import io.deephaven.web.client.fu.JsSettings;
 import io.deephaven.web.shared.data.*;
 import io.deephaven.web.shared.data.columns.ColumnData;
 import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 import jsinterop.base.Any;
 import jsinterop.base.Js;
 import jsinterop.base.JsArrayLike;
@@ -27,6 +31,7 @@ import static io.deephaven.web.client.api.subscription.ViewportData.NO_ROW_FORMA
 public class SubscriptionTableData {
     @JsFunction
     private interface ArrayCopy {
+        @SuppressWarnings("unusable-by-js")
         void copyTo(Object destArray, long destPos, Object srcArray, int srcPos);
     }
 
@@ -270,14 +275,15 @@ public class SubscriptionTableData {
         switch (type) {
             case "long":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    long value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asLong();
+                    final long value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asLong();
                     if (value == QueryConstants.NULL_LONG) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
                         Js.asArrayLike(destArray).setAt((int) destPos, LongWrapper.of(value));
                     }
                 };
-            case "io.deephaven.time.DateTime":
+            case "java.time.Instant":
+            case "java.time.ZonedDateTime":
                 return (destArray, destPos, srcArray, srcPos) -> {
                     long value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asLong();
                     if (value == QueryConstants.NULL_LONG) {
@@ -324,18 +330,19 @@ public class SubscriptionTableData {
                 };
             case "java.lang.Boolean":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    int value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asInt();
-                    if (value == 1) {
-                        Js.asArrayLike(destArray).setAt((int) destPos, true);
-                    } else if (value == 0) {
-                        Js.asArrayLike(destArray).setAt((int) destPos, false);
-                    } else {
+                    final Any value = Js.asArrayLike(srcArray).getAtAsAny(srcPos);
+
+                    if (value == null) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
+                    } else if (value.asBoolean()) {
+                        Js.asArrayLike(destArray).setAt((int) destPos, true);
+                    } else {
+                        Js.asArrayLike(destArray).setAt((int) destPos, false);
                     }
                 };
             case "int":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    int value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asInt();
+                    final int value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asInt();
                     if (value == QueryConstants.NULL_INT) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -344,7 +351,7 @@ public class SubscriptionTableData {
                 };
             case "byte":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    byte value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asByte();
+                    final byte value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asByte();
                     if (value == QueryConstants.NULL_BYTE) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -353,7 +360,7 @@ public class SubscriptionTableData {
                 };
             case "short":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    short value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asShort();
+                    final short value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asShort();
                     if (value == QueryConstants.NULL_SHORT) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -362,7 +369,7 @@ public class SubscriptionTableData {
                 };
             case "double":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    double value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asDouble();
+                    final double value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asDouble();
                     if (value == QueryConstants.NULL_DOUBLE) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -371,7 +378,7 @@ public class SubscriptionTableData {
                 };
             case "float":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    float value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asFloat();
+                    final float value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asFloat();
                     if (value == QueryConstants.NULL_FLOAT) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -380,7 +387,7 @@ public class SubscriptionTableData {
                 };
             case "char":
                 return (destArray, destPos, srcArray, srcPos) -> {
-                    char value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asChar();
+                    final char value = Js.asArrayLike(srcArray).getAtAsAny(srcPos).asChar();
                     if (value == QueryConstants.NULL_CHAR) {
                         Js.asArrayLike(destArray).setAt((int) destPos, null);
                     } else {
@@ -446,6 +453,8 @@ public class SubscriptionTableData {
         return created;
     }
 
+    @TsInterface
+    @TsName(namespace = "dh")
     public class SubscriptionRow implements TableData.Row {
         private final long index;
         public LongWrapper indexCached;
@@ -455,7 +464,6 @@ public class SubscriptionTableData {
         }
 
         @Override
-        @JsProperty
         public LongWrapper getIndex() {
             if (indexCached == null) {
                 indexCached = LongWrapper.of(index);
@@ -464,7 +472,6 @@ public class SubscriptionTableData {
         }
 
         @Override
-        @JsMethod
         public Any get(Column column) {
             int redirectedIndex = (int) (long) redirectedIndexes.get(this.index);
             JsArrayLike<Object> columnData = Js.asArrayLike(data[column.getIndex()]);
@@ -472,7 +479,6 @@ public class SubscriptionTableData {
         }
 
         @Override
-        @JsMethod
         public Format getFormat(Column column) {
             long cellColors = 0;
             long rowColors = 0;
@@ -503,7 +509,19 @@ public class SubscriptionTableData {
     /**
      * Event data, describing the indexes that were added/removed/updated, and providing access to Rows (and thus data
      * in columns) either by index, or scanning the complete present index.
+     *
+     * This class supports two ways of reading the table - checking the changes made since the last update, and reading
+     * all data currently in the table. While it is more expensive to always iterate over every single row in the table,
+     * it may in some cases actually be cheaper than maintaining state separately and updating only the changes, though
+     * both options should be considered.
+     *
+     * The RangeSet objects allow iterating over the LongWrapper indexes in the table. Note that these "indexes" are not
+     * necessarily contiguous and may be negative, and represent some internal state on the server, allowing it to keep
+     * track of data efficiently. Those LongWrapper objects can be passed to the various methods on this instance to
+     * read specific rows or cells out of the table.
      */
+    @TsInterface
+    @TsName(name = "SubscriptionTableData", namespace = "dh")
     public class UpdateEventData implements TableData {
         private JsRangeSet added;
         private JsRangeSet removed;
@@ -518,8 +536,12 @@ public class SubscriptionTableData {
             this.modified = new JsRangeSet(modified);
         }
 
+        /**
+         * A lazily computed array of all rows in the entire table
+         * 
+         * @return {@link SubscriptionRow} array.
+         */
         @Override
-        @JsProperty
         public JsArray<SubscriptionRow> getRows() {
             if (allRows == null) {
                 allRows = new JsArray<>();
@@ -535,9 +557,15 @@ public class SubscriptionTableData {
 
         @Override
         public Row get(int index) {
-            return get(LongWrapper.of(index));
+            return this.get((long) index);
         }
 
+        /**
+         * Reads a row object from the table, from which any subscribed column can be read
+         * 
+         * @param index
+         * @return {@link SubscriptionRow}
+         */
         @Override
         public SubscriptionRow get(long index) {
             return new SubscriptionRow(index);
@@ -548,6 +576,13 @@ public class SubscriptionTableData {
             return getData((long) index, column);
         }
 
+        /**
+         * a specific cell from the table, from the specified row and column
+         * 
+         * @param index
+         * @param column
+         * @return Any
+         */
         @Override
         public Any getData(long index, Column column) {
             int redirectedIndex = (int) (long) redirectedIndexes.get(index);
@@ -555,6 +590,13 @@ public class SubscriptionTableData {
             return columnData.getAtAsAny(redirectedIndex);
         }
 
+        /**
+         * the Format to use for a cell from the specified row and column
+         * 
+         * @param index
+         * @param column
+         * @return {@link Format}
+         */
         @Override
         public Format getFormat(int index, Column column) {
             return getFormat((long) index, column);
@@ -591,16 +633,31 @@ public class SubscriptionTableData {
             return columns;
         }
 
+        /**
+         * The ordered set of row indexes added since the last update
+         * 
+         * @return dh.RangeSet
+         */
         @JsProperty
         public JsRangeSet getAdded() {
             return added;
         }
 
+        /**
+         * The ordered set of row indexes removed since the last update
+         * 
+         * @return dh.RangeSet
+         */
         @JsProperty
         public JsRangeSet getRemoved() {
             return removed;
         }
 
+        /**
+         * The ordered set of row indexes updated since the last update
+         * 
+         * @return dh.RangeSet
+         */
         @JsProperty
         public JsRangeSet getModified() {
             return modified;

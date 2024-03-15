@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table;
 
 import io.deephaven.base.verify.Require;
@@ -11,9 +11,8 @@ import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.util.annotations.FinalDefault;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nullable;
 import javax.annotation.OverridingMethodsMustInvokeSuper;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,8 +40,8 @@ public interface ColumnSource<T>
         return ChunkType.fromElementType(dataType);
     }
 
-    WritableRowSet match(boolean invertMatch, boolean usePrev, boolean caseInsensitive, RowSet mapper,
-            final Object... keys);
+    WritableRowSet match(
+            boolean invertMatch, boolean usePrev, boolean caseInsensitive, @NotNull RowSet mapper, Object... keys);
 
     Map<T, RowSet> getValuesMapping(RowSet subRange);
 
@@ -151,7 +150,7 @@ public interface ColumnSource<T>
      * {@code String} data:
      *
      * <pre>
-     *     ColumnSource&lt;String&gt; colSource = table.getColumnSource("MyString").getParameterized(String.class)
+     *     ColumnSource&lt;String&gt; colSource = table.getColumnSource("MyString").cast(String.class)
      * </pre>
      * <p>
      * Due to the nature of type erasure, the JVM will still insert an additional cast to {@code TYPE} when elements are
@@ -161,14 +160,41 @@ public interface ColumnSource<T>
      * @param <TYPE> The target type, as a type parameter. Intended to be inferred from {@code clazz}.
      * @return A {@code ColumnSource} parameterized by {@code TYPE}.
      */
+    @FinalDefault
     default <TYPE> ColumnSource<TYPE> cast(Class<? extends TYPE> clazz) {
         Require.neqNull(clazz, "clazz");
-        final Class<?> columnSourceType = getType();
-        if (!clazz.isAssignableFrom(columnSourceType)) {
-            throw new ClassCastException(
-                    "Cannot convert column source for type " + columnSourceType.getName() + " to " +
-                            "type " + clazz.getName());
-        }
+        TypeHelper.checkCastTo("ColumnSource", getType(), clazz);
+        // noinspection unchecked
+        return (ColumnSource<TYPE>) this;
+    }
+
+    /**
+     * Returns this {@code ColumnSource}, parameterized by {@code <TYPE>}, if the data type of this column (as given by
+     * {@link #getType()}) can be cast to {@code clazz}. This is analogous to casting the objects provided by this
+     * column source to {@code clazz}. Additionally, this checks that the component type of this column (as given by
+     * {@link #getComponentType()}) can be cast to {@code componentType} (both must be present and castable, or both
+     * must be {@code null}).
+     *
+     * <p>
+     * For example, the following code will throw an exception if the "MyString" column does not actually contain
+     * {@code String} data:
+     *
+     * <pre>
+     *     ColumnSource&lt;String&gt; colSource = table.getColumnSource("MyString").cast(String.class, null)
+     * </pre>
+     * <p>
+     * Due to the nature of type erasure, the JVM will still insert an additional cast to {@code TYPE} when elements are
+     * retrieved from the column source, such as with {@code String myStr = colSource.get(0)}.
+     *
+     * @param clazz The target type.
+     * @param componentType The target component type, may be {@code null}.
+     * @param <TYPE> The target type, as a type parameter. Intended to be inferred from {@code clazz}.
+     * @return A {@code ColumnSource} parameterized by {@code TYPE}.
+     */
+    @FinalDefault
+    default <TYPE> ColumnSource<TYPE> cast(Class<? extends TYPE> clazz, @Nullable Class<?> componentType) {
+        Require.neqNull(clazz, "clazz");
+        TypeHelper.checkCastTo("ColumnSource", getType(), getComponentType(), clazz, componentType);
         // noinspection unchecked
         return (ColumnSource<TYPE>) this;
     }

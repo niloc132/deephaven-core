@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Assert;
@@ -8,8 +8,10 @@ import io.deephaven.engine.rowset.TrackingWritableRowSet;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.rowset.RowSet;
+import io.deephaven.engine.updategraph.NotificationQueue;
+import io.deephaven.engine.updategraph.UpdateGraph;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
@@ -17,7 +19,9 @@ import java.util.List;
 /**
  * This will filter a table starting off with the first N rows, and then adding new rows to the table on each run.
  */
-public class RollingReleaseFilter extends WhereFilterLivenessArtifactImpl implements Runnable {
+public class RollingReleaseFilter
+        extends WhereFilterLivenessArtifactImpl
+        implements Runnable, NotificationQueue.Dependency {
     private final long workingSize;
     private final long rollingSize;
     private long offset = 0;
@@ -43,8 +47,13 @@ public class RollingReleaseFilter extends WhereFilterLivenessArtifactImpl implem
     @Override
     public void init(TableDefinition tableDefinition) {}
 
+    @NotNull
     @Override
-    public WritableRowSet filter(RowSet selection, RowSet fullSet, Table table, boolean usePrev) {
+    public WritableRowSet filter(
+            @NotNull final RowSet selection,
+            @NotNull final RowSet fullSet,
+            @NotNull final Table table,
+            final boolean usePrev) {
         if (usePrev) {
             throw new PreviousFilteringNotSupported();
         }
@@ -79,7 +88,17 @@ public class RollingReleaseFilter extends WhereFilterLivenessArtifactImpl implem
         Assert.eqNull(this.listener, "this.listener");
         this.listener = listener;
         listener.setIsRefreshing(true);
-        UpdateGraphProcessor.DEFAULT.addSource(this);
+        updateGraph.addSource(this);
+    }
+
+    @Override
+    public boolean satisfied(long step) {
+        return updateGraph.satisfied(step);
+    }
+
+    @Override
+    public UpdateGraph getUpdateGraph() {
+        return updateGraph;
     }
 
     @Override
@@ -101,6 +120,11 @@ public class RollingReleaseFilter extends WhereFilterLivenessArtifactImpl implem
     @Override
     protected void destroy() {
         super.destroy();
-        UpdateGraphProcessor.DEFAULT.removeSource(this);
+        updateGraph.removeSource(this);
+    }
+
+    @Override
+    public boolean permitParallelization() {
+        return false;
     }
 }

@@ -1,10 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.benchmarking.impl;
 
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.testutil.QueryTableTestBase;
 import io.deephaven.benchmarking.BenchmarkTable;
 import io.deephaven.benchmarking.BenchmarkTableBuilder;

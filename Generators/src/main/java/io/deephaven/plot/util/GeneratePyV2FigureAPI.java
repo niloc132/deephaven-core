@@ -1,10 +1,11 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.util;
 
 import io.deephaven.base.Pair;
-import io.deephaven.libs.GroovyStaticImportGenerator.JavaFunction;
+import io.deephaven.gen.GenUtils;
+import io.deephaven.gen.JavaFunction;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -73,10 +74,8 @@ public class GeneratePyV2FigureAPI {
 
         if (assertNoChange) {
             String oldCode = new String(Files.readAllBytes(Paths.get(figureWrapperOutput)));
-            if (!pyCode.equals(oldCode)) {
-                throw new RuntimeException(
-                        "Change in generated code.  Run GeneratePyV2FigureAPI or \"./gradlew :Generators:generatePythonFigureWrapper\" to regenerate\n");
-            }
+            GenUtils.assertGeneratedCodeSame(GeneratePyV2FigureAPI.class, ":Generators:generatePythonFigureWrapper",
+                    oldCode, pyCode);
         } else {
             try (final PrintWriter out = new PrintWriter(pythonFile)) {
                 out.print(pyCode);
@@ -123,7 +122,7 @@ public class GeneratePyV2FigureAPI {
      * @throws ClassNotFoundException JCLASS is not found
      */
     public static Map<Key, ArrayList<JavaFunction>> getMethodSignatures() throws ClassNotFoundException {
-        final Class<?> c = Class.forName(JCLASS);
+        final Class<?> c = Class.forName(JCLASS, false, Thread.currentThread().getContextClassLoader());
         final Map<Key, ArrayList<JavaFunction>> signatures = new TreeMap<>();
 
         for (final Method m : c.getMethods()) {
@@ -879,6 +878,7 @@ public class GeneratePyV2FigureAPI {
                     .append(INDENT)
                     .append("j_figure = self.j_figure\n\n");
 
+            boolean needsMskCheck = false;
 
             final Set<Set<String>> alreadyGenerated = new HashSet<>();
 
@@ -890,9 +890,16 @@ public class GeneratePyV2FigureAPI {
                 final List<String[]> argNames = pyArgNames(sigs, pyArgMap);
 
                 for (String[] argName : argNames) {
+                    needsMskCheck = needsMskCheck || Arrays.stream(argName).anyMatch("multi_series_key"::equals);
                     final Pair<Key, String[]> e = new Pair<>(key, argName);
                     items.add(e);
                 }
+            }
+
+            if (needsMskCheck) {
+                sb.append(INDENT)
+                        .append(INDENT)
+                        .append("multi_series_key_used = False\n\n");
             }
 
             // sort from largest number of args to smallest number of args so that the most specific method is called
@@ -902,10 +909,17 @@ public class GeneratePyV2FigureAPI {
                 final Key key = item.first;
                 final String[] an = item.second;
 
-                validateArgNames(an, alreadyGenerated, signatures, pyArgMap);
-                final String[] quoted_an = Arrays.stream(an).map(s -> "\"" + s + "\"").toArray(String[]::new);
+                final boolean mskUsed = Arrays.stream(an).anyMatch("multi_series_key"::equals);
 
-                if (quoted_an.length == 0) {
+                validateArgNames(an, alreadyGenerated, signatures, pyArgMap);
+                final String[] quotedAn = Arrays.stream(an).map(s -> "\"" + s + "\"").toArray(String[]::new);
+
+                // prevent removal of multi_series_key until after it's been fully used
+                final String[] filteredQuotedAn = Arrays.stream(quotedAn)
+                        .filter(s -> !s.equals("\"multi_series_key\""))
+                        .toArray(String[]::new);
+
+                if (quotedAn.length == 0) {
                     sb.append(INDENT)
                             .append(INDENT)
                             .append("if set()")
@@ -914,7 +928,7 @@ public class GeneratePyV2FigureAPI {
                     sb.append(INDENT)
                             .append(INDENT)
                             .append("if {")
-                            .append(String.join(", ", quoted_an))
+                            .append(String.join(", ", quotedAn))
                             .append("}.issubset(non_null_args):\n");
                 }
                 sb.append(INDENT)
@@ -929,12 +943,31 @@ public class GeneratePyV2FigureAPI {
                         .append(INDENT)
                         .append(INDENT)
                         .append("non_null_args = non_null_args.difference({")
-                        .append(String.join(", ", quoted_an))
+                        .append(String.join(", ", filteredQuotedAn))
                         .append("})\n")
                         .append(INDENT)
                         .append(INDENT)
                         .append(INDENT)
-                        .append("f_called = True\n\n");
+                        .append("f_called = True\n");
+
+                if (mskUsed) {
+                    sb.append(INDENT)
+                            .append(INDENT)
+                            .append(INDENT)
+                            .append("multi_series_key_used = True\n");
+                }
+
+                sb.append("\n");
+            }
+
+            if (needsMskCheck) {
+                sb.append(INDENT)
+                        .append(INDENT)
+                        .append("if multi_series_key_used:\n")
+                        .append(INDENT)
+                        .append(INDENT)
+                        .append(INDENT)
+                        .append("non_null_args = non_null_args.difference({\"multi_series_key\"})\n\n");
             }
 
             sb.append(INDENT)
@@ -1030,8 +1063,8 @@ public class GeneratePyV2FigureAPI {
         final String[] taTable = new String[] {"Table", "SelectableDataSet"};
 
         final String[] taDataCategory = new String[] {"str", "List[str]", "List[int]", "List[float]"};
-        final String[] taDataNumeric = new String[] {"str", "List[int]", "List[float]", "List[DateTime]"};
-        final String[] taDataTime = new String[] {"str", "List[DateTime]"};
+        final String[] taDataNumeric = new String[] {"str", "List[int]", "List[float]", "List[Instant]"};
+        final String[] taDataTime = new String[] {"str", "List[Instant]"};
         final String[] taMultiSeriesKey = new String[] {"List[Any]"}; // todo keys are technically Object[]. How to
         // support?
         final String[] taColor = new String[] {"str", "int", "Color"};

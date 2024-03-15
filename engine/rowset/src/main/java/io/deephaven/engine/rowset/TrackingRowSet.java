@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.rowset;
 
 import io.deephaven.engine.updategraph.LogicalClock;
@@ -44,6 +44,16 @@ public interface TrackingRowSet extends RowSet {
      * @return A copy of the previous value
      */
     WritableRowSet copyPrev();
+
+    /**
+     * Access the read-only value of this TrackingRowSet as of the end of the previous update graph cycle. The returned
+     * {@link RowSet} must not be mutated or {@link #close() closed}; it belongs to this TrackingRowSet. Callers should
+     * be sure to only use the result during the updating phase of a cycle, and never across logical clock phases/steps.
+     *
+     * @return A read-only view of the previous value, owned by this TrackingRowSet
+     */
+    RowSet prev();
+
 
     /**
      * Same as {@code get(rowPosition)}, as of the end of the previous update graph cycle.

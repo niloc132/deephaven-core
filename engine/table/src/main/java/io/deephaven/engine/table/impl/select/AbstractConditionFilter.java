@@ -1,23 +1,27 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
+import io.deephaven.api.util.NameValidator;
+import io.deephaven.base.Pair;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.context.QueryScopeParam;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.table.ColumnDefinition;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.table.impl.BaseTable;
 import io.deephaven.engine.table.impl.lang.QueryLanguageParser;
 import io.deephaven.engine.table.impl.select.python.ArgumentsChunked;
 import io.deephaven.engine.table.impl.select.python.DeephavenCompatibleFunction;
-import io.deephaven.engine.util.PyCallableWrapper;
+import io.deephaven.engine.util.PyCallableWrapperJpyImpl;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
-import io.deephaven.time.DateTimeUtils;
+import io.deephaven.time.TimeLiteralReplacedExpression;
 import io.deephaven.vector.ObjectVector;
 import org.jetbrains.annotations.NotNull;
 import org.jpy.PyObject;
@@ -26,12 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -50,7 +49,7 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
     boolean usesII;
     boolean usesK;
     private final boolean unboxArguments;
-
+    private Pair<String, Map<Long, List<MatchPair>>> formulaShiftColPair;
 
     protected AbstractConditionFilter(@NotNull String formula, boolean unboxArguments) {
         this.formula = formula;
@@ -94,26 +93,37 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
         final Map<String, Class<?>[]> possibleVariableParameterizedTypes = new HashMap<>();
 
         try {
-            final Map<String, QueryScopeParam<?>> possibleParams = new HashMap<>();
             final QueryScope queryScope = ExecutionContext.getContext().getQueryScope();
-            for (QueryScopeParam<?> param : queryScope.getParams(queryScope.getParamNames())) {
-                possibleParams.put(param.getName(), param);
-                possibleVariables.put(param.getName(), QueryScopeParamTypeUtil.getDeclaredClass(param.getValue()));
+            final Map<String, Object> queryScopeVariables = queryScope.toMap(
+                    (name, value) -> NameValidator.isValidQueryParameterName(name));
+            for (Map.Entry<String, Object> param : queryScopeVariables.entrySet()) {
+                possibleVariables.put(param.getKey(), QueryScopeParamTypeUtil.getDeclaredClass(param.getValue()));
                 Type declaredType = QueryScopeParamTypeUtil.getDeclaredType(param.getValue());
                 if (declaredType instanceof ParameterizedType) {
                     ParameterizedType pt = (ParameterizedType) declaredType;
                     Class<?>[] paramTypes = Arrays.stream(pt.getActualTypeArguments())
                             .map(QueryScopeParamTypeUtil::classFromType)
                             .toArray(Class<?>[]::new);
-                    possibleVariableParameterizedTypes.put(param.getName(), paramTypes);
+                    possibleVariableParameterizedTypes.put(param.getKey(), paramTypes);
                 }
             }
+
+            final Set<String> columnVariables = new HashSet<>();
+            columnVariables.add("i");
+            columnVariables.add("ii");
+            columnVariables.add("k");
 
             final BiConsumer<String, ColumnDefinition<?>> createColumnMappings = (columnName, column) -> {
                 final Class<?> vectorType = DhFormulaColumn.getVectorType(column.getDataType());
 
-                possibleVariables.put(columnName, column.getDataType());
-                possibleVariables.put(columnName + COLUMN_SUFFIX, vectorType);
+                columnVariables.add(columnName);
+                if (possibleVariables.put(columnName, column.getDataType()) != null) {
+                    possibleVariableParameterizedTypes.remove(columnName);
+                }
+                columnVariables.add(columnName + COLUMN_SUFFIX);
+                if (possibleVariables.put(columnName + COLUMN_SUFFIX, vectorType) != null) {
+                    possibleVariableParameterizedTypes.remove(columnName + COLUMN_SUFFIX);
+                }
 
                 final Class<?> compType = column.getComponentType();
                 if (compType != null && !compType.isPrimitive()) {
@@ -138,18 +148,43 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
 
             log.debug("Expression (before) : " + formula);
 
-            final DateTimeUtils.Result timeConversionResult = DateTimeUtils.convertExpression(formula);
+            final TimeLiteralReplacedExpression timeConversionResult =
+                    TimeLiteralReplacedExpression.convertExpression(formula);
 
             log.debug("Expression (after time conversion) : " + timeConversionResult.getConvertedFormula());
 
             possibleVariables.putAll(timeConversionResult.getNewVariables());
 
-            final QueryLanguageParser.Result result =
-                    new QueryLanguageParser(timeConversionResult.getConvertedFormula(),
-                            ExecutionContext.getContext().getQueryLibrary().getPackageImports(),
-                            ExecutionContext.getContext().getQueryLibrary().getClassImports(),
-                            ExecutionContext.getContext().getQueryLibrary().getStaticImports(),
-                            possibleVariables, possibleVariableParameterizedTypes, unboxArguments).getResult();
+            final QueryLanguageParser.Result result = new QueryLanguageParser(
+                    timeConversionResult.getConvertedFormula(),
+                    ExecutionContext.getContext().getQueryLibrary().getPackageImports(),
+                    ExecutionContext.getContext().getQueryLibrary().getClassImports(),
+                    ExecutionContext.getContext().getQueryLibrary().getStaticImports(),
+                    possibleVariables, possibleVariableParameterizedTypes, queryScopeVariables, columnVariables,
+                    unboxArguments)
+                    .getResult();
+            formulaShiftColPair = result.getFormulaShiftColPair();
+            if (formulaShiftColPair != null) {
+                log.debug("Formula (after shift conversion) : " + formulaShiftColPair.getFirst());
+
+                // apply renames to shift column pairs immediately
+                if (!outerToInnerNames.isEmpty()) {
+                    final Map<Long, List<MatchPair>> shifts = formulaShiftColPair.getSecond();
+                    for (Map.Entry<Long, List<MatchPair>> entry : shifts.entrySet()) {
+                        List<MatchPair> pairs = entry.getValue();
+                        ArrayList<MatchPair> resultPairs = new ArrayList<>(pairs.size());
+                        for (MatchPair pair : pairs) {
+                            if (outerToInnerNames.containsKey(pair.rightColumn())) {
+                                final String newRightColumn = outerToInnerNames.get(pair.rightColumn());
+                                resultPairs.add(new MatchPair(pair.leftColumn(), newRightColumn));
+                            } else {
+                                resultPairs.add(pair);
+                            }
+                        }
+                        entry.setValue(resultPairs);
+                    }
+                }
+            }
 
             log.debug("Expression (after language conversion) : " + result.getConvertedExpression());
 
@@ -179,11 +214,11 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
                     usedColumns.add(variable);
                 } else if (arrayColumnToFind != null && tableDefinition.getColumn(arrayColumnToFind) != null) {
                     usedColumnArrays.add(arrayColumnOuterName);
-                } else if (possibleParams.containsKey(variable)) {
-                    paramsList.add(possibleParams.get(variable));
+                } else if (result.getPossibleParams().containsKey(variable)) {
+                    paramsList.add(new QueryScopeParam<>(variable, result.getPossibleParams().get(variable)));
                 }
             }
-            params = paramsList.toArray(QueryScopeParam.ZERO_LENGTH_PARAM_ARRAY);
+            params = paramsList.toArray(QueryScopeParam[]::new);
 
             checkAndInitializeVectorization(result, paramsList);
             if (!initialized) {
@@ -198,15 +233,38 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
         }
     }
 
+    @Override
+    public void validateSafeForRefresh(BaseTable<?> sourceTable) {
+        if (sourceTable.hasAttribute(BaseTable.TEST_SOURCE_TABLE_ATTRIBUTE)) {
+            // allow any tests to use i, ii, and k without throwing an exception; we're probably using it safely
+            return;
+        }
+        if (sourceTable.isRefreshing() && !AbstractFormulaColumn.ALLOW_UNSAFE_REFRESHING_FORMULAS) {
+            // note that constant offset array accesss does not use i/ii or end up in usedColumnArrays
+            boolean isUnsafe = (usesI || usesII) && !sourceTable.isAppendOnly() && !sourceTable.isBlink();
+            isUnsafe |= usesK && !sourceTable.isAddOnly() && !sourceTable.isBlink();
+            isUnsafe |= !usedColumnArrays.isEmpty() && !sourceTable.isBlink();
+            if (isUnsafe) {
+                throw new IllegalArgumentException("Formula '" + formula + "' uses i, ii, k, or column array " +
+                        "variables, and is not safe to refresh. Note that some usages, such as on an append-only " +
+                        "table are safe. To allow unsafe refreshing formulas, set the system property " +
+                        "io.deephaven.engine.table.impl.select.AbstractFormulaColumn.allowUnsafeRefreshingFormulas.");
+            }
+        }
+    }
+
     private void checkAndInitializeVectorization(QueryLanguageParser.Result result,
             List<QueryScopeParam<?>> paramsList) {
 
-        PyCallableWrapper[] cws = paramsList.stream().filter(p -> p.getValue() instanceof PyCallableWrapper)
-                .map(p -> p.getValue()).toArray(PyCallableWrapper[]::new);
+        // noinspection SuspiciousToArrayCall
+        final PyCallableWrapperJpyImpl[] cws = paramsList.stream()
+                .filter(p -> p.getValue() instanceof PyCallableWrapperJpyImpl)
+                .map(QueryScopeParam::getValue)
+                .toArray(PyCallableWrapperJpyImpl[]::new);
         if (cws.length != 1) {
             return;
         }
-        PyCallableWrapper pyCallableWrapper = cws[0];
+        final PyCallableWrapperJpyImpl pyCallableWrapper = cws[0];
 
         if (pyCallableWrapper.isVectorizable()) {
             checkReturnType(result, pyCallableWrapper.getReturnType());
@@ -245,11 +303,16 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
     }
 
     protected abstract void generateFilterCode(TableDefinition tableDefinition,
-            DateTimeUtils.Result timeConversionResult,
+            TimeLiteralReplacedExpression timeConversionResult,
             QueryLanguageParser.Result result) throws MalformedURLException, ClassNotFoundException;
 
+    @NotNull
     @Override
-    public WritableRowSet filter(RowSet selection, RowSet fullSet, Table table, boolean usePrev) {
+    public WritableRowSet filter(
+            @NotNull final RowSet selection,
+            @NotNull final RowSet fullSet,
+            @NotNull final Table table,
+            final boolean usePrev) {
         if (usePrev && params.length > 0) {
             throw new PreviousFilteringNotSupported("Previous filter with parameters not supported.");
         }
@@ -290,6 +353,7 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
             copy.usesII = usesII;
             copy.usesK = usesK;
             copy.params = params;
+            copy.formulaShiftColPair = formulaShiftColPair;
         }
     }
 
@@ -301,6 +365,23 @@ public abstract class AbstractConditionFilter extends WhereFilterImpl {
     @Override
     public boolean isSimpleFilter() {
         return false;
+    }
+
+    /**
+     * @return true if the formula expression of the filter has Array Access that conforms to "i +/- &lt;constant&gt;"
+     *         or "ii +/- &lt;constant&gt;".
+     */
+    public boolean hasConstantArrayAccess() {
+        return getFormulaShiftColPair() != null;
+    }
+
+    /**
+     * @return a Pair object, consisting of formula string and shift to column MatchPairs, if the filter formula or
+     *         expression has Array Access that conforms to "i +/- &lt;constant&gt;" or "ii +/- &lt;constant&gt;". If
+     *         there is a parsing error for the expression null is returned.
+     */
+    public Pair<String, Map<Long, List<MatchPair>>> getFormulaShiftColPair() {
+        return formulaShiftColPair;
     }
 
     public abstract AbstractConditionFilter renameFilter(Map<String, String> renames);

@@ -1,287 +1,604 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 import unittest
 from time import sleep
+import datetime
+import pandas as pd
+import numpy as np
 
-from deephaven.constants import NULL_LONG, NULL_INT
 from deephaven.time import *
 from tests.testbase import BaseTestCase
 
+_JDateTimeUtils = jpy.get_type("io.deephaven.time.DateTimeUtils")
 
 class TimeTestCase(BaseTestCase):
+
+    # region: CLock
+
+    def test_dh_now(self):
+        for system in [True, False]:
+            for resolution in ['ns', 'ms']:
+                dt = dh_now(system=system, resolution=resolution)
+                sleep(1)
+                dt1 = dh_now(system=system, resolution=resolution)
+                self.assertGreaterEqual(_JDateTimeUtils.diffNanos(dt, dt1), 100000000)
+
+    def test_dh_today(self):
+        tz = _JDateTimeUtils.timeZone("UTC")
+        td = dh_today(tz)
+        target = datetime.datetime.utcnow().date().strftime('%Y-%m-%d')
+        self.assertEqual(td, target)
+
+    def test_dh_time_zone(self):
+        tz = dh_time_zone()
+        self.assertEqual(str(tz), "Etc/UTC")
+
+    # endregion
+    
+    # region: Time Zone
+
+    def test_time_zone_alias_add_rm(self):
+        alias = "TestAlias"
+        tz_str = "Etc/UTC"
+
+        with self.assertRaises(DHError) as cm:
+            to_j_time_zone(alias)
+
+        self.assertFalse(time_zone_alias_rm(alias))
+        time_zone_alias_add(alias, tz_str)
+        tz = to_j_time_zone(alias)
+        self.assertEqual(str(tz), tz_str)
+        self.assertTrue(time_zone_alias_rm(alias))
+
+        with self.assertRaises(DHError) as cm:
+            to_j_time_zone(alias)
+
+
+    # endregion
+
+    # region Conversions: Python To Java
+
+    def test_to_j_time_zone(self):
+        tz = to_j_time_zone("America/New_York")
+        self.assertEqual(str(tz), "America/New_York")
+
+        tz = to_j_time_zone("CT")
+        self.assertEqual(str(tz), "America/Chicago")
+
+        pytz = datetime.datetime.now().astimezone().tzinfo
+        tz = to_j_time_zone(pytz)
+        self.assertEqual(str(tz), "UTC")
+
+        pytz = datetime.datetime.now()
+        tz = to_j_time_zone(pytz)
+        self.assertEqual(str(tz), "UTC")
+
+        pytz = datetime.datetime.now().astimezone()
+        tz = to_j_time_zone(pytz)
+        self.assertEqual(str(tz), "UTC")
+
+        pytz = pd.Timestamp("2021-12-10T14:21:17.123456Z")
+        tz = to_j_time_zone(pytz)
+        self.assertEqual(str(tz), "UTC")
+
+        tz = to_j_time_zone(None)
+        self.assertEqual(tz, None)
+
+        tz = to_j_time_zone(pd.Timestamp("NaT"))
+        self.assertEqual(tz, None)
+
+        tz1 = to_j_time_zone("CT")
+        tz2 = to_j_time_zone(tz1)
+        self.assertEqual(tz1, tz2)
+
+        with self.assertRaises(TypeError):
+            to_j_time_zone(False)
+            self.fail("Expected TypeError")
+
+
+    def test_to_j_local_date(self):
+        ld = to_j_local_date("2021-12-10")
+        self.assertEqual(str(ld), "2021-12-10")
+
+        d = datetime.date(2021, 12, 10)
+        ld = to_j_local_date(d)
+        self.assertEqual(str(ld), "2021-12-10")
+
+        d = datetime.datetime(2021, 12, 10, 14, 21, 17, 123456)
+        ld = to_j_local_date(d)
+        self.assertEqual(str(ld), "2021-12-10")
+
+        d = np.datetime64("2021-12-10")
+        ld = to_j_local_date(d)
+        self.assertEqual(str(ld), "2021-12-10")
+
+        d = pd.Timestamp("2021-12-10T14:21:17.123456Z")
+        ld = to_j_local_date(d)
+        self.assertEqual(str(ld), "2021-12-10")
+
+        ld = to_j_local_date(None)
+        self.assertEqual(ld, None)
+
+        ld = to_j_local_date(pd.Timestamp("NaT"))
+        self.assertEqual(ld, None)
+
+        ld1 = to_j_local_date("2021-12-10")
+        ld2 = to_j_local_date(ld1)
+        self.assertEqual(ld1, ld2)
+
+        with self.assertRaises(TypeError):
+            to_j_local_date(False)
+            self.fail("Expected TypeError")
+
+
+    def test_to_j_local_time(self):
+        lt = to_j_local_time("14:21:17.123456")
+        self.assertEqual(str(lt), "14:21:17.123456")
+
+        ltn = lt.toNanoOfDay()
+        lt = to_j_local_time(ltn)
+        self.assertEqual(str(lt), "14:21:17.123456")
+
+        t = datetime.time(14, 21, 17, 123456)
+        lt = to_j_local_time(t)
+        self.assertEqual(str(lt), "14:21:17.123456")
+
+        t = datetime.datetime(2021, 12, 10, 14, 21, 17, 123456)
+        lt = to_j_local_time(t)
+        self.assertEqual(str(lt), "14:21:17.123456")
+
+        t = np.datetime64(t)
+        lt = to_j_local_time(t)
+        self.assertEqual(str(lt), "14:21:17.123456")
+
+        t = pd.Timestamp("2021-12-10T14:21:17.123456789Z")
+        lt = to_j_local_time(t)
+        self.assertEqual(str(lt), "14:21:17.123456789")
+
+        lt = to_j_local_time(None)
+        self.assertEqual(lt, None)
+
+        lt = to_j_local_time(np.datetime64("NaT"))
+        self.assertEqual(lt, None)
+
+        lt = to_j_local_time(pd.Timestamp("NaT"))
+        self.assertEqual(lt, None)
+
+        lt1 = to_j_local_time("14:21:17.123456")
+        lt2 = to_j_local_time(lt1)
+        self.assertEqual(lt1, lt2)
+
+        with self.assertRaises(TypeError):
+            to_j_local_time(False)
+            self.fail("Expected TypeError")
+
+    def test_to_j_instant(self):
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T19:21:17.123456Z")
+
+        dt = to_j_instant("2021-12-10T14:21:17.123456 ET")
+        self.assertEqual(str(target), str(dt))
+
+        dtn = _JDateTimeUtils.epochNanos(dt)
+        dt = to_j_instant(dtn)
+        self.assertEqual(str(target), str(dt))
+
+        # 1 ns is a rounding error
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T19:21:17.123456001Z")
+        x = datetime.datetime(2021, 12, 10, 19, 21, 17, 123456, tzinfo=datetime.timezone.utc)
+        dt = to_j_instant(x)
+        self.assertEqual(str(target), str(dt))
+
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T19:21:17.123456Z")
+        x = np.datetime64(x)
+        dt = to_j_instant(x)
+        self.assertEqual(str(target), str(dt))
+
+        # 1 ns is a rounding error
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T19:21:17.123456001Z")
+        x = pd.Timestamp(x)
+        dt = to_j_instant(x)
+        self.assertEqual(str(target), str(dt))
+
+        dt = to_j_instant(None)
+        self.assertEqual(dt, None)
+
+        dt = to_j_instant(pd.NaT)
+        self.assertEqual(dt, None)
+
+        dt = to_j_instant(np.datetime64("NaT"))
+        self.assertEqual(dt, None)
+
+        dt1 = target.toInstant()
+        dt2 = to_j_instant(dt1)
+        self.assertEqual(dt1, dt2)
+
+        with self.assertRaises(TypeError):
+            to_j_instant(False)
+            self.fail("Expected TypeError")
+
+
+    def test_to_j_zdt(self):
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456-05:00[America/New_York]")
+
+        dt = to_j_zdt("2021-12-10T14:21:17.123456 ET")
+        self.assertEqual(str(target), str(dt))
+
+        # 1 ns is a rounding error
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456001Z[Etc/UTC]")
+        x = datetime.datetime(2021, 12, 10, 14, 21, 17, 123456)
+        dt = to_j_zdt(x)
+        self.assertEqual(str(target), str(dt))
+
+        # 1 ns is a rounding error
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456001Z[Etc/UTC]")
+        x = pd.Timestamp(x)
+        dt = to_j_zdt(x)
+        self.assertEqual(str(target), str(dt))
+
+        target = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456Z[Etc/UTC]")
+        x = np.datetime64(x)
+        dt = to_j_zdt(x)
+        self.assertEqual(str(target), str(dt))
+
+        dt = to_j_zdt(None)
+        self.assertEqual(dt, None)
+
+        dt = to_j_zdt(np.datetime64("NaT"))
+        self.assertEqual(dt, None)
+
+        dt = to_j_zdt(pd.Timestamp("NaT"))
+        self.assertEqual(dt, None)
+
+        dt = to_j_zdt(target)
+        self.assertEqual(dt, target)
+
+        with self.assertRaises(TypeError):
+            to_j_zdt(False)
+            self.fail("Expected TypeError")
+
+
+    def test_to_j_duration(self):
+        d = to_j_duration("PT1H")
+        self.assertEqual(str(d), "PT1H")
+
+        d = to_j_duration(2)
+        self.assertEqual(str(d), "PT0.000000002S")
+
+        x = datetime.timedelta(hours=1, minutes=2, seconds=3, milliseconds=4, microseconds=5)
+        dt = to_j_duration(x)
+        self.assertEqual(dt, _JDateTimeUtils.parseDuration("PT1H2M3.004005S"))
+
+        x = np.timedelta64(x)
+        dt = to_j_duration(x)
+        self.assertEqual(dt, _JDateTimeUtils.parseDuration("PT1H2M3.004005S"))
+
+        x = pd.Timedelta(x)
+        dt = to_j_duration(x)
+        self.assertEqual(dt, _JDateTimeUtils.parseDuration("PT1H2M3.004005S"))
+
+        d = to_j_duration(None)
+        self.assertEqual(d, None)
+
+        d = to_j_duration(np.timedelta64("NaT"))
+        self.assertEqual(d, None)
+
+        d = to_j_duration(pd.Timedelta("NaT"))
+        self.assertEqual(d, None)
+
+        d1 = to_j_duration("PT1H")
+        d2 = to_j_duration(d1)
+        self.assertEqual(d1, d2)
+
+        with self.assertRaises(TypeError):
+            to_j_duration(False)
+            self.fail("Expected TypeError")
+
+
+    def test_to_j_period(self):
+        p = to_j_period("P2W")
+        self.assertEqual(str(p), "P14D")
+
+        x = datetime.timedelta(days=2)
+        p = to_j_period(x)
+        self.assertEqual(str(p), "P2D")
+
+        x = pd.Timedelta(days=2)
+        p = to_j_period(x)
+        self.assertEqual(str(p), "P2D")
+
+        x = np.timedelta64(2, 'D')
+        p = to_j_period(x)
+        self.assertEqual(str(p), "P2D")
+
+        x = np.timedelta64(2, 'W')
+        p = to_j_period(x)
+        self.assertEqual(str(p), "P14D")
+
+        x = np.timedelta64(2, 'M')
+        p = to_j_period(x)
+        self.assertEqual(str(p), "P2M")
+
+        x = np.timedelta64(2, 'Y')
+        p = to_j_period(x)
+        self.assertEqual(str(p), "P2Y")
+
+        p = to_j_period(None)
+        self.assertEqual(p, None)
+
+        d = to_j_period(np.timedelta64("NaT"))
+        self.assertEqual(d, None)
+
+        d = to_j_period(pd.Timedelta("NaT"))
+        self.assertEqual(d, None)
+
+        p1 = to_j_period("P2W")
+        p2 = to_j_period(p1)
+        self.assertEqual(p1, p2)
+
+        with self.assertRaises(TypeError):
+            to_j_period(False)
+            self.fail("Expected TypeError")
+
+        with self.assertRaises(ValueError):
+            x = datetime.timedelta(days=2, seconds=1)
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+        with self.assertRaises(ValueError):
+            x = datetime.timedelta(days=2, microseconds=1)
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+        with self.assertRaises(ValueError):
+            x = datetime.timedelta(days=2.3)
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+        with self.assertRaises(ValueError):
+            x = pd.Timedelta(days=2, seconds=1)
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+        with self.assertRaises(ValueError):
+            x = pd.Timedelta(days=2, microseconds=1)
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+        with self.assertRaises(ValueError):
+            x = pd.Timedelta(days=2, nanoseconds=1)
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+        with self.assertRaises(ValueError):
+            x = pd.Timedelta(days=2.3)
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+        with self.assertRaises(ValueError):
+            x = np.timedelta64(2, 'h')
+            to_j_period(x)
+            self.fail("Expected ValueError")
+
+
+    # endregion
+
+
+    # region Conversions: Java To Python
+
+    def test_to_date(self):
+        target = datetime.date(2021, 12, 10)
+
+        ld = _JDateTimeUtils.parseLocalDate("2021-12-10")
+        dt = to_date(ld)
+        self.assertEqual(dt, target)
+
+        lt = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456 ET")
+        dt = to_date(lt)
+        self.assertEqual(dt, target)
+
+        dt = to_date(None)
+        self.assertEqual(dt, None)
+
+        with self.assertRaises(TypeError):
+            to_date(False)
+            self.fail("Expected TypeError")
+
+    def test_to_time(self):
+        target = datetime.time(14, 21, 17, 123456)
+
+        lt = _JDateTimeUtils.parseLocalTime("14:21:17.123456")
+        dt = to_time(lt)
+        self.assertEqual(dt, target)
+
+        lt = _JDateTimeUtils.parseZonedDateTime("2023-07-11T14:21:17.123456 ET")
+        dt = to_time(lt)
+        self.assertEqual(dt, target)
+
+        dt = to_time(None)
+        self.assertEqual(dt, None)
+
+        with self.assertRaises(TypeError):
+            to_time(False)
+            self.fail("Expected TypeError")
+
     def test_to_datetime(self):
-        datetime_str = "2021-12-10T23:59:59"
-        timezone_str = "NY"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertTrue(str(dt).startswith(datetime_str))
+        target = datetime.datetime(2021, 12, 10, 14, 21, 17, 123456)
 
-        with self.assertRaises(DHError) as cm:
-            datetime_str = "2021-12-10T23:59:59"
-            timezone_str = "--"
-            dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertIn("RuntimeException", str(cm.exception))
+        dt = _JDateTimeUtils.parseInstant("2021-12-10T14:21:17.123456Z")
+        dt = to_datetime(dt)
+        self.assertEqual(dt, target)
 
-    def test_to_period(self):
-        period_str = "1W"
-        period = to_period(period_str)
-        self.assertEqual(str(period).upper(), period_str)
+        dt = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456Z")
+        dt = to_datetime(dt)
+        self.assertEqual(dt, target)
 
-        period_str = "T1M"
-        period = to_period(period_str)
-        self.assertEqual(str(period).upper(), period_str)
+        dt = to_datetime(None)
+        self.assertEqual(dt, None)
 
-        with self.assertRaises(DHError) as cm:
-            period_str = "T1Y"
-            period = to_period(period_str)
-        self.assertIn("RuntimeException", str(cm.exception))
+        with self.assertRaises(TypeError):
+            to_datetime(False)
+            self.fail("Expected TypeError")
 
-    def test_to_nanos(self):
-        time_str = "530000:59:39.123456789"
-        in_nanos = to_nanos(time_str)
-        self.assertEqual(str(in_nanos), "1908003579123456789")
+    def test_to_pd_timestamp(self):
+        target = pd.Timestamp(year=2021, month=12, day=10, hour=14, minute=21, second=17, microsecond=123456, nanosecond=789)
 
-        with self.assertRaises(DHError) as cm:
-            time_str = "530000:59:39.X"
-            in_nanos = to_nanos(time_str)
-        self.assertIn("RuntimeException", str(cm.exception))
+        dt = _JDateTimeUtils.parseInstant("2021-12-10T14:21:17.123456789Z")
+        dt = to_pd_timestamp(dt)
+        self.assertEqual(dt, target)
 
-        time_str = "00:59:39.X"
-        in_nanos = to_nanos(time_str, quiet=True)
-        self.assertEqual(in_nanos, NULL_LONG)
+        dt = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456789Z")
+        dt = to_pd_timestamp(dt)
+        self.assertEqual(dt, target)
 
-        time_str = "1:02:03"
-        in_nanos = to_nanos(time_str)
-        time_str2 = format_nanos(in_nanos)
-        self.assertEqual(time_str2, time_str)
+        dt = to_pd_timestamp(None)
+        self.assertEqual(dt, None)
 
-    def test_current_time_and_diff(self):
-        dt = now()
-        sleep(1)
-        dt1 = now()
-        self.assertGreaterEqual(diff_nanos(dt, dt1), 100000000)
+        with self.assertRaises(TypeError):
+            to_pd_timestamp(False)
 
-    def test_datetime_at_midnight(self):
-        datetime_str = "2021-12-10T02:59:59"
-        timezone_str = "NY"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        mid_night_time_ny = datetime_at_midnight(dt, TimeZone.NY)
-        mid_night_time_pt = datetime_at_midnight(dt, TimeZone.PT)
-        self.assertEqual(
-            diff_nanos(mid_night_time_ny, mid_night_time_pt) // 10 ** 9, -21 * 60 * 60
-        )
+    def test_to_np_datetime64(self):
+        target = np.datetime64("2021-12-10T14:21:17.123456Z")
 
-        # DST ended in NY but not in PT
-        datetime_str = "2021-11-08T02:59:59"
-        timezone_str = "NY"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        mid_night_time_ny = datetime_at_midnight(dt, TimeZone.NY)
-        mid_night_time_pt = datetime_at_midnight(dt, TimeZone.PT)
-        self.assertEqual(
-            diff_nanos(mid_night_time_ny, mid_night_time_pt) // 10 ** 9, -22 * 60 * 60
-        )
+        dt = _JDateTimeUtils.parseInstant("2021-12-10T14:21:17.123456Z")
+        dt = to_np_datetime64(dt)
+        self.assertEqual(dt, target)
 
-    def test_day_of_month(self):
-        dt = now()
-        self.assertIn(day_of_month(dt, TimeZone.MT), range(1, 32))
-        datetime_str = "2021-12-01T00:01:05"
-        timezone_str = "HI"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(day_of_month(dt, TimeZone.HI), 1)
-        self.assertEqual(day_of_month(None, TimeZone.HI), NULL_INT)
+        dt = _JDateTimeUtils.parseZonedDateTime("2021-12-10T14:21:17.123456Z")
+        dt = to_np_datetime64(dt)
+        self.assertEqual(dt, target)
 
-    def test_day_of_week(self):
-        dt = now()
-        self.assertIn(day_of_week(dt, TimeZone.MT), range(1, 8))
-        self.assertEqual(day_of_week(None, TimeZone.MT), NULL_INT)
+        dt = to_np_datetime64(None)
+        self.assertEqual(dt, None)
 
-    def test_day_of_year(self):
-        dt = now()
-        self.assertIn(day_of_year(dt, TimeZone.MT), range(1, 366))
-        self.assertEqual(day_of_year(None, TimeZone.MT), NULL_INT)
+        with self.assertRaises(TypeError):
+            to_np_datetime64(False)
+            self.fail("Expected TypeError")
 
-    def test_format_datetime(self):
-        dt = now()
-        self.assertIn(TimeZone.SYD.name, format_datetime(dt, TimeZone.SYD))
+    def test_to_timedelta(self):
+        target = datetime.timedelta(hours=1, minutes=2, seconds=3, milliseconds=4, microseconds=5)
 
-    def test_format_nanos(self):
-        dt = now()
-        ns = nanos(dt)
-        ns_str1 = format_nanos(ns).split(".")[-1]
-        ns_str2 = format_datetime(dt, TimeZone.UTC).split(".")[-1]
-        self.assertTrue(ns_str2.startswith(ns_str1))
+        d = _JDateTimeUtils.parseDuration("PT1H2M3.004005S")
+        dt = to_timedelta(d)
+        self.assertEqual(dt, target)
 
-    def test_format_date(self):
-        dt = now()
-        self.assertEqual(3, len(format_date(dt, TimeZone.MOS).split("-")))
+        target = datetime.timedelta(days=2)
+        d = _JDateTimeUtils.parsePeriod("P2D")
+        dt = to_timedelta(d)
+        self.assertEqual(dt, target)
 
-    def test_hour_of_day(self):
-        dt = now()
-        self.assertIn(hour_of_day(dt, TimeZone.AL), range(0, 24))
-        self.assertEqual(hour_of_day(None, TimeZone.AL), NULL_INT)
+        target = datetime.timedelta(days=14)
+        d = _JDateTimeUtils.parsePeriod("P2W")
+        dt = to_timedelta(d)
+        self.assertEqual(dt, target)
 
-    def test_is_after(self):
-        dt1 = now()
-        sleep(0.001)
-        dt2 = now()
-        self.assertTrue(is_after(dt2, dt1))
-        self.assertFalse(is_after(None, dt1))
+        d = to_timedelta(None)
+        self.assertEqual(d, None)
 
-    def test_is_before(self):
-        dt1 = now()
-        sleep(0.001)
-        dt2 = now()
-        self.assertFalse(is_before(dt2, dt1))
-        self.assertFalse(is_after(None, dt1))
+        d = _JDateTimeUtils.parsePeriod("P1Y")
+        with self.assertRaises(ValueError):
+            to_timedelta(d)
+            self.fail("Expected ValueError")
 
-    def test_lower_bin(self):
-        dt = now()
-        self.assertGreaterEqual(diff_nanos(lower_bin(dt, 1000000, MINUTE), dt), 0)
+        d = _JDateTimeUtils.parsePeriod("P1M")
+        with self.assertRaises(ValueError):
+            to_timedelta(d)
+            self.fail("Expected ValueError")
 
-    def test_millis(self):
-        dt = now()
-        self.assertGreaterEqual(nanos(dt), millis(dt) * 10 ** 6)
-        self.assertEqual(millis(None), NULL_LONG)
+        with self.assertRaises(TypeError):
+            to_timedelta(False)
+            self.fail("Expected TypeError")
 
-    def test_millis_of_second(self):
-        dt = now()
-        self.assertGreaterEqual(millis_of_second(dt, TimeZone.AT), 0)
-        self.assertEqual(millis_of_second(None, TimeZone.AT), NULL_INT)
+    def test_to_pd_timedelta(self):
+        target = pd.Timedelta(hours=1, minutes=2, seconds=3, milliseconds=4, microseconds=5)
 
-    def test_millis_to_nanos(self):
-        dt = now()
-        ms = millis(dt)
-        self.assertEqual(ms * 10 ** 6, millis_to_nanos(ms))
-        self.assertEqual(NULL_LONG, millis_to_nanos(NULL_LONG))
+        d = _JDateTimeUtils.parseDuration("PT1H2M3.004005S")
+        dt = to_pd_timedelta(d)
+        self.assertEqual(dt, target)
 
-    def test_minus(self):
-        dt1 = now()
-        dt2 = now()
-        self.assertGreaterEqual(0, minus(dt1, dt2))
-        self.assertEqual(NULL_LONG, minus(None, dt2))
+        target = datetime.timedelta(days=2)
+        d = _JDateTimeUtils.parsePeriod("P2D")
+        dt = to_pd_timedelta(d)
+        self.assertEqual(dt, target)
 
-    def test_minus_nanos(self):
-        dt = now()
-        dt1 = minus_nanos(dt, 1)
-        self.assertEqual(1, diff_nanos(dt1, dt))
+        target = datetime.timedelta(days=14)
+        d = _JDateTimeUtils.parsePeriod("P2W")
+        dt = to_pd_timedelta(d)
+        self.assertEqual(dt, target)
 
-    def test_minus_period(self):
-        period_str = "T1H"
-        period = to_period(period_str)
+        d = to_pd_timedelta(None)
+        self.assertEqual(d, None)
 
-        dt = now()
-        dt1 = minus_period(dt, period)
-        self.assertEqual(diff_nanos(dt1, dt), 60 * 60 * 10 ** 9)
+        d = _JDateTimeUtils.parsePeriod("P1Y")
+        with self.assertRaises(ValueError):
+            to_pd_timedelta(d)
+            self.fail("Expected ValueError")
 
-    def test_minute_of_day(self):
-        datetime_str = "2021-12-10T00:59:59"
-        timezone_str = "BT"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(59, minute_of_day(dt, TimeZone.BT))
-        self.assertEqual(NULL_INT, minute_of_day(None, TimeZone.BT))
+        d = _JDateTimeUtils.parsePeriod("P1M")
+        with self.assertRaises(ValueError):
+            to_pd_timedelta(d)
+            self.fail("Expected ValueError")
 
-    def test_minute_of_hour(self):
-        datetime_str = "2021-12-10T23:59:59"
-        timezone_str = "CE"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(59, minute_of_hour(dt, TimeZone.CE))
-        self.assertEqual(NULL_INT, minute_of_hour(None, TimeZone.CE))
+        with self.assertRaises(TypeError):
+            to_pd_timedelta(False)
+            self.fail("Expected TypeError")
 
-    def test_month_of_year(self):
-        datetime_str = "2021-08-10T23:59:59"
-        timezone_str = "CH"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(8, month_of_year(dt, TimeZone.CH))
-        self.assertEqual(NULL_INT, month_of_year(None, TimeZone.CH))
+    def test_to_np_timedelta64(self):
+        target = np.timedelta64(1, 'h') + np.timedelta64(2, 'm') + np.timedelta64(3, 's') + np.timedelta64(4, 'ms') + np.timedelta64(5, 'us')
 
-    def test_nanos_of_day(self):
-        datetime_str = "2021-12-10T00:00:01"
-        timezone_str = "CT"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(10 ** 9, nanos_of_day(dt, TimeZone.CT))
-        self.assertEqual(NULL_LONG, nanos_of_day(None, TimeZone.CT))
+        d = _JDateTimeUtils.parseDuration("PT1H2M3.004005S")
+        dt = to_np_timedelta64(d)
+        self.assertEqual(dt, target)
 
-    def test_nanos_of_second(self):
-        datetime_str = "2021-12-10T00:00:01.000000123"
-        timezone_str = "ET"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(123, nanos_of_second(dt, TimeZone.ET))
-        self.assertEqual(NULL_LONG, nanos_of_second(None, TimeZone.ET))
+        target = np.timedelta64(2, 'D')
+        d = _JDateTimeUtils.parsePeriod("P2D")
+        dt = to_np_timedelta64(d)
+        self.assertEqual(dt, target)
 
-    def test_nanos_to_millis(self):
-        dt = now()
-        ns = nanos(dt)
-        self.assertEqual(ns // 10 ** 6, nanos_to_millis(ns))
-        self.assertEqual(NULL_LONG, nanos_to_millis(NULL_LONG))
+        target = np.timedelta64(14, 'D')
+        d = _JDateTimeUtils.parsePeriod("P2W")
+        dt = to_np_timedelta64(d)
+        self.assertEqual(dt, target)
 
-    def test_nanos_to_time(self):
-        dt = now()
-        ns = nanos(dt)
-        dt1 = nanos_to_datetime(ns)
-        self.assertEqual(dt, dt1)
-        self.assertEqual(None, nanos_to_datetime(NULL_LONG))
+        d = to_np_timedelta64(None)
+        self.assertEqual(d, None)
 
-    def test_plus_period(self):
-        period_str = "T1H"
-        period = to_period(period_str)
+        target = np.timedelta64(2, 'Y')
+        d = _JDateTimeUtils.parsePeriod("P2Y")
+        dt = to_np_timedelta64(d)
+        self.assertEqual(dt, target)
 
-        dt = now()
-        dt1 = plus_period(dt, period)
-        self.assertEqual(diff_nanos(dt, dt1), 60 * 60 * 10 ** 9)
+        target = np.timedelta64(2, 'M')
+        d = _JDateTimeUtils.parsePeriod("P2M")
+        dt = to_np_timedelta64(d)
+        self.assertEqual(dt, target)
 
-        period_str = "1WT1H"
-        period = to_period(period_str)
-        dt2 = plus_period(dt, period)
-        self.assertEqual(diff_nanos(dt, dt2), (7 * 24 + 1) * 60 * 60 * 10 ** 9)
+        target = np.timedelta64(0, 'D')
+        d = _JDateTimeUtils.parsePeriod("P0M")
+        dt = to_np_timedelta64(d)
+        self.assertEqual(dt, target)
 
-    def test_plus_nanos(self):
-        dt = now()
-        dt1 = plus_nanos(dt, 1)
-        self.assertEqual(1, diff_nanos(dt, dt1))
-        self.assertEqual(None, plus_nanos(None, 1))
+        d = _JDateTimeUtils.parsePeriod("P1Y1M")
+        with self.assertRaises(ValueError):
+            to_np_timedelta64(d)
+            self.fail("Expected ValueError")
 
-    def test_second_of_day(self):
-        datetime_str = "2021-12-10T00:01:05"
-        timezone_str = "HI"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(65, second_of_day(dt, TimeZone.HI))
-        self.assertEqual(NULL_INT, second_of_day(None, TimeZone.HI))
+        d = _JDateTimeUtils.parsePeriod("P1Y1D")
+        with self.assertRaises(ValueError):
+            to_np_timedelta64(d)
+            self.fail("Expected ValueError")
 
-    def test_second_of_minute(self):
-        datetime_str = "2021-12-10T00:01:05"
-        timezone_str = "HK"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(5, second_of_minute(dt, TimeZone.HK))
-        self.assertEqual(NULL_INT, second_of_minute(None, TimeZone.HK))
+        d = _JDateTimeUtils.parsePeriod("P1M1D")
+        with self.assertRaises(ValueError):
+            to_np_timedelta64(d)
+            self.fail("Expected ValueError")
 
-    def test_upper_bin(self):
-        dt = now()
-        self.assertGreaterEqual(diff_nanos(dt, upper_bin(dt, 1000000, MINUTE)), 0)
+        with self.assertRaises(TypeError):
+            to_np_timedelta64(False)
+            self.fail("Expected TypeError")
 
-    def test_year(self):
-        datetime_str = "2021-12-10T00:01:05"
-        timezone_str = "IN"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(2021, year(dt, TimeZone.IN))
-        self.assertEqual(NULL_INT, year(None, TimeZone.IN))
-
-    def test_year_of_century(self):
-        datetime_str = "2021-12-10T00:01:05"
-        timezone_str = "JP"
-        dt = to_datetime(f"{datetime_str} {timezone_str}")
-        self.assertEqual(21, year_of_century(dt, TimeZone.JP))
-        self.assertEqual(NULL_INT, year_of_century(None, TimeZone.JP))
-
-    def test_timezone(self):
-        default_tz = TimeZone.get_default_timezone()
-        TimeZone.set_default_timezone(TimeZone.UTC)
-        tz1 = TimeZone.get_default_timezone()
-        self.assertEqual(TimeZone.UTC, tz1)
-        TimeZone.set_default_timezone(TimeZone.JP)
-        tz2 = TimeZone.get_default_timezone()
-        self.assertEqual(TimeZone.JP, tz2)
-        TimeZone.set_default_timezone(default_tz)
+    # endregion
 
 
 if __name__ == "__main__":

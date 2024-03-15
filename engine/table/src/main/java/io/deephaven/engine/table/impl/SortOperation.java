@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Assert;
@@ -8,6 +8,8 @@ import io.deephaven.base.verify.Require;
 import io.deephaven.engine.rowset.*;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.*;
+import io.deephaven.engine.table.impl.sources.ReinterpretUtils;
+import io.deephaven.engine.table.iterators.ChunkedLongColumnIterator;
 import io.deephaven.engine.table.iterators.LongColumnIterator;
 import io.deephaven.util.datastructures.hash.HashMapK4V4;
 import io.deephaven.util.datastructures.hash.HashMapLockFreeK4V4;
@@ -51,8 +53,8 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
 
         for (int ii = 0; ii < sortColumnNames.length; ++ii) {
             // noinspection unchecked
-            sortColumns[ii] = (ColumnSource<Comparable<?>>) QueryTable
-                    .maybeTransformToPrimitive(parent.getColumnSource(sortColumnNames[ii]));
+            sortColumns[ii] = (ColumnSource<Comparable<?>>) ReinterpretUtils
+                    .maybeConvertToPrimitive(parent.getColumnSource(sortColumnNames[ii]));
 
             Require.requirement(
                     Comparable.class.isAssignableFrom(sortColumns[ii].getType())
@@ -80,11 +82,13 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
     }
 
     @Override
-    public SwapListener newSwapListener(QueryTable queryTable) {
-        return new SwapListener(queryTable) {
+    public OperationSnapshotControl newSnapshotControl(QueryTable queryTable) {
+        return new OperationSnapshotControl(queryTable) {
             @Override
-            public synchronized boolean end(long clockCycle) {
-                final boolean success = super.end(clockCycle);
+            public synchronized boolean snapshotCompletedConsistently(
+                    final long afterClockValue,
+                    final boolean usedPreviousValues) {
+                final boolean success = super.snapshotCompletedConsistently(afterClockValue, usedPreviousValues);
                 if (success) {
                     QueryTable.startTrackingPrev(resultTable.getColumnSources());
                     if (sortMapping.isWritable()) {
@@ -127,7 +131,7 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
     }
 
     @NotNull
-    private Result<QueryTable> streamSort(@NotNull final SortHelpers.SortMapping initialSortedKeys) {
+    private Result<QueryTable> blinkTableSort(@NotNull final SortHelpers.SortMapping initialSortedKeys) {
         final LongChunkColumnSource initialInnerRedirectionSource = new LongChunkColumnSource();
         if (initialSortedKeys.size() > 0) {
             initialInnerRedirectionSource
@@ -169,7 +173,7 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
                         }
 
                         final SortHelpers.SortMapping updateSortedKeys =
-                                SortHelpers.getSortedKeys(sortOrder, sortColumns, upstream.added(), false);
+                                SortHelpers.getSortedKeys(sortOrder, sortColumns, upstream.added(), false, false);
                         final LongChunkColumnSource recycled = recycledInnerRedirectionSource.getValue();
                         recycledInnerRedirectionSource.setValue(null);
                         final LongChunkColumnSource updateInnerRedirectSource =
@@ -211,12 +215,12 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
                     SortHelpers.getSortedKeys(sortOrder, sortColumns, parent.getRowSet(), false);
             return new Result<>(historicalSort(sortedKeys));
         }
-        if (parent.isStream()) {
+        if (parent.isBlink()) {
             try (final RowSet prevIndex = usePrev ? parent.getRowSet().copyPrev() : null) {
                 final RowSet indexToUse = usePrev ? prevIndex : parent.getRowSet();
                 final SortHelpers.SortMapping sortedKeys =
                         SortHelpers.getSortedKeys(sortOrder, sortColumns, indexToUse, usePrev);
-                return streamSort(sortedKeys);
+                return blinkTableSort(sortedKeys);
             }
         }
 
@@ -266,8 +270,8 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
             // source
             for (int ii = 0; ii < sortedColumnsToSortBy.length; ++ii) {
                 // noinspection unchecked
-                sortedColumnsToSortBy[ii] =
-                        (ColumnSource<Comparable<?>>) QueryTable.maybeTransformToPrimitive(sortedColumnsToSortBy[ii]);
+                sortedColumnsToSortBy[ii] = (ColumnSource<Comparable<?>>) ReinterpretUtils
+                        .maybeConvertToPrimitive(sortedColumnsToSortBy[ii]);
             }
 
             resultTable = new QueryTable(resultRowSet, resultMap);
@@ -309,7 +313,7 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
      * the {@link RowSequence#NULL_ROW_KEY null row key}. This is effectively the reverse of the mapping provided by the
      * sort's {@link RowRedirection}.
      * <p>
-     * Unsupported if the sort result's parent was a {@link BaseTable#isStream() stream table}.
+     * Unsupported if the sort result's parent was a {@link BaseTable#isBlink() blink table}.
      * <p>
      * For refreshing tables, using the reverse lookup concurrently requires careful consideration. The mappings are
      * always against "current" data. It is only safe to use before the parent table notifies on a given cycle, or after
@@ -322,8 +326,8 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
      * @return The reverse lookup
      */
     public static LongUnaryOperator getReverseLookup(@NotNull final Table parent, @NotNull final Table sortResult) {
-        if (StreamTableTools.isStream(parent)) {
-            throw new UnsupportedOperationException("Stream tables do not support sort reverse lookup");
+        if (BlinkTableTools.isBlink(parent)) {
+            throw new UnsupportedOperationException("Blink tables do not support sort reverse lookup");
         }
         final Object value = sortResult.getAttribute(SORT_REVERSE_LOOKUP_ATTRIBUTE);
         if (sortResult.isRefreshing()) {
@@ -339,7 +343,8 @@ public class SortOperation implements QueryTable.MemoizableOperation<QueryTable>
             return LongUnaryOperator.identity();
         }
         final HashMapK4V4 reverseLookup = new HashMapLockFreeK4V4(sortResult.intSize(), .75f, RowSequence.NULL_ROW_KEY);
-        try (final LongColumnIterator innerRowKeys = new LongColumnIterator(sortRedirection, sortResult.getRowSet());
+        try (final LongColumnIterator innerRowKeys =
+                new ChunkedLongColumnIterator(sortRedirection, sortResult.getRowSet());
                 final RowSet.Iterator outerRowKeys = sortResult.getRowSet().iterator()) {
             while (outerRowKeys.hasNext()) {
                 reverseLookup.put(innerRowKeys.nextLong(), outerRowKeys.nextLong());

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.base.verify.Assert;
@@ -35,6 +35,11 @@ abstract class RegionedColumnSourceBase<DATA_TYPE, ATTR extends Values, REGION_T
 
     RegionedColumnSourceBase(@NotNull final Class<DATA_TYPE> type) {
         this(type, null);
+    }
+
+    @Override
+    public void invalidateRegion(final int regionIndex) {
+        getRegion(regionIndex).invalidate();
     }
 
     @Override

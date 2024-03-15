@@ -1,15 +1,18 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.ring;
 
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableUpdate;
 import io.deephaven.engine.table.impl.BaseTable;
-import io.deephaven.engine.table.impl.SwapListener;
+import io.deephaven.engine.table.impl.BlinkTableTools;
+import io.deephaven.engine.table.impl.OperationSnapshotControl;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.remote.ConstructSnapshot.SnapshotFunction;
 import io.deephaven.engine.table.impl.sources.ring.AddsToRingsListener.Init;
+import io.deephaven.util.SafeCloseable;
 
 import java.util.Objects;
 
@@ -31,9 +34,8 @@ public class RingTableTools {
      * Constructs a "ring" table, whereby the latest {@code capacity} rows from the {@code parent} are retained and
      * re-indexed by the resulting ring table. Latest is determined solely by the {@link TableUpdate#added()} updates,
      * {@link TableUpdate#removed()} are ignored; and {@link TableUpdate#modified()} / {@link TableUpdate#shifted()} are
-     * not expected. In particular, this is a useful construction with
-     * {@link io.deephaven.engine.table.impl.StreamTableTools#isStream(Table) stream tables} which do not retain their
-     * own data for more than an update cycle.
+     * not expected. In particular, this is a useful construction with {@link BlinkTableTools#isBlink(Table) blink
+     * tables} which do not retain their own data for more than an update cycle.
      *
      * @param parent the parent
      * @param capacity the capacity
@@ -42,9 +44,10 @@ public class RingTableTools {
      */
     public static Table of(Table parent, int capacity, boolean initialize) {
         return QueryPerformanceRecorder.withNugget("RingTableTools.of", () -> {
-            final BaseTable baseTable = (BaseTable) parent.coalesce();
-            final SwapListener swapListener = baseTable.createSwapListenerIfRefreshing(SwapListener::new);
-            return new RingTableSnapshotFunction(baseTable, capacity, initialize, swapListener).constructResults();
+            final BaseTable<?> baseTable = (BaseTable<?>) parent.coalesce();
+            final OperationSnapshotControl snapshotControl =
+                    baseTable.createSnapshotControlIfRefreshing(OperationSnapshotControl::new);
+            return new RingTableSnapshotFunction(baseTable, capacity, initialize, snapshotControl).constructResults();
         });
     }
 
@@ -68,10 +71,11 @@ public class RingTableTools {
         return QueryPerformanceRecorder.withNugget("RingTableTools.of2", () -> {
             // todo: there is probably a better way to do this
             final int capacityPowerOf2 = capacity == 1 ? 1 : Integer.highestOneBit(capacity - 1) << 1;
-            final BaseTable baseTable = (BaseTable) parent.coalesce();
-            final SwapListener swapListener = baseTable.createSwapListenerIfRefreshing(SwapListener::new);
+            final BaseTable<?> baseTable = (BaseTable<?>) parent.coalesce();
+            final OperationSnapshotControl snapshotControl =
+                    baseTable.createSnapshotControlIfRefreshing(OperationSnapshotControl::new);
             final Table tablePowerOf2 =
-                    new RingTableSnapshotFunction(baseTable, capacityPowerOf2, initialize, swapListener)
+                    new RingTableSnapshotFunction(baseTable, capacityPowerOf2, initialize, snapshotControl)
                             .constructResults();
             return capacityPowerOf2 == capacity ? tablePowerOf2 : tablePowerOf2.tail(capacity);
         });
@@ -81,26 +85,31 @@ public class RingTableTools {
         private final Table parent;
         private final int capacity;
         private final boolean initialize;
-        private final SwapListener swapListener;
+        private final OperationSnapshotControl snapshotControl;
 
         private Table results;
 
-        public RingTableSnapshotFunction(Table parent, int capacity, boolean initialize, SwapListener swapListener) {
+        public RingTableSnapshotFunction(
+                Table parent, int capacity, boolean initialize, OperationSnapshotControl snapshotControl) {
             this.parent = Objects.requireNonNull(parent);
             this.capacity = capacity;
             this.initialize = initialize;
-            this.swapListener = swapListener;
+            this.snapshotControl = snapshotControl;
         }
 
         public Table constructResults() {
-            BaseTable.initializeWithSnapshot(RingTableSnapshotFunction.class.getSimpleName(), swapListener, this);
+            try (final SafeCloseable ignored =
+                    ExecutionContext.getContext().withUpdateGraph(parent.getUpdateGraph()).open()) {
+                BaseTable.initializeWithSnapshot(
+                        RingTableSnapshotFunction.class.getSimpleName(), snapshotControl, this);
+            }
             return Objects.requireNonNull(results);
         }
 
         @Override
         public boolean call(boolean usePrev, long beforeClockValue) {
             final Init init = !initialize ? Init.NONE : usePrev ? Init.FROM_PREVIOUS : Init.FROM_CURRENT;
-            results = AddsToRingsListener.of(swapListener, parent, capacity, init);
+            results = AddsToRingsListener.of(snapshotControl, parent, capacity, init);
             return true;
         }
     }

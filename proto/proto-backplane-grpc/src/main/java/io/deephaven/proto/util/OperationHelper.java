@@ -1,10 +1,11 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.proto.util;
 
 import io.deephaven.proto.backplane.grpc.BatchTableRequest.Operation;
 import io.deephaven.proto.backplane.grpc.BatchTableRequest.Operation.OpCase;
+import io.deephaven.proto.backplane.grpc.MultiJoinInput;
 import io.deephaven.proto.backplane.grpc.TableReference;
 
 import java.util.stream.Stream;
@@ -62,6 +63,10 @@ public class OperationHelper {
                 return Stream.of(op.getLeftJoin().getLeftId(), op.getLeftJoin().getRightId());
             case AS_OF_JOIN:
                 return Stream.of(op.getAsOfJoin().getLeftId(), op.getAsOfJoin().getRightId());
+            case AJ:
+                return Stream.of(op.getAj().getLeftId(), op.getAj().getRightId());
+            case RAJ:
+                return Stream.of(op.getRaj().getLeftId(), op.getRaj().getRightId());
             case COMBO_AGGREGATE:
                 return Stream.of(op.getComboAggregate().getSourceId());
             case AGGREGATE_ALL:
@@ -76,6 +81,8 @@ public class OperationHelper {
                 return Stream.of(op.getSnapshotWhen().getBaseId(), op.getSnapshotWhen().getTriggerId());
             case FLATTEN:
                 return Stream.of(op.getFlatten().getSourceId());
+            case META_TABLE:
+                return Stream.of(op.getMetaTable().getSourceId());
             case RUN_CHART_DOWNSAMPLE:
                 return Stream.of(op.getRunChartDownsample().getSourceId());
             case FETCH_TABLE:
@@ -90,6 +97,12 @@ public class OperationHelper {
                 return Stream.of(op.getUpdateBy().getSourceId());
             case WHERE_IN:
                 return Stream.of(op.getWhereIn().getLeftId(), op.getWhereIn().getRightId());
+            case RANGE_JOIN:
+                return Stream.of(op.getRangeJoin().getLeftId(), op.getRangeJoin().getRightId());
+            case COLUMN_STATISTICS:
+                return Stream.of(op.getColumnStatistics().getSourceId());
+            case MULTI_JOIN:
+                return op.getMultiJoin().getMultiJoinInputsList().stream().map(MultiJoinInput::getSourceId);
             case OP_NOT_SET:
                 throw new IllegalStateException("Operation id not set");
             default:

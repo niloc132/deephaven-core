@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.datasets.multiseries;
 
 import io.deephaven.plot.AxesImpl;
@@ -83,9 +83,30 @@ public class MultiOHLCSeries extends AbstractPartitionedTableHandleMultiSeries<O
                 timeCol, openCol, highCol, lowCol, closeCol);
     }
 
+    public String getTimeCol() {
+        return timeCol;
+    }
+
+    public String getOpenCol() {
+        return openCol;
+    }
+
+    public String getHighCol() {
+        return highCol;
+    }
+
+    public String getLowCol() {
+        return lowCol;
+    }
+
+    public String getCloseCol() {
+        return closeCol;
+    }
+
     ////////////////////////////// CODE BELOW HERE IS GENERATED -- DO NOT EDIT BY HAND //////////////////////////////
     ////////////////////////////// TO REGENERATE RUN GenerateMultiSeries //////////////////////////////
     ////////////////////////////// AND THEN RUN GenerateFigureImmutable //////////////////////////////
+// @formatter:off
 
     @Override public void initializeSeries(OHLCDataSeriesInternal series) {
         $$initializeSeries$$(series);

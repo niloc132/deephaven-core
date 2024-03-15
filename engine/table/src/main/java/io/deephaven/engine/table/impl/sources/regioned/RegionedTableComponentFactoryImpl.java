@@ -1,15 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.engine.table.ColumnDefinition;
-import io.deephaven.time.DateTime;
+import io.deephaven.engine.table.impl.locations.TableDataException;
 import io.deephaven.engine.table.impl.ColumnSourceManager;
 import io.deephaven.engine.table.impl.ColumnToCodecMappings;
 import io.deephaven.util.type.TypeUtils;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,7 @@ public class RegionedTableComponentFactoryImpl implements RegionedTableComponent
         typeToSupplier.put(Long.class, RegionedColumnSourceLong.AsValues::new);
         typeToSupplier.put(Short.class, RegionedColumnSourceShort.AsValues::new);
         typeToSupplier.put(Boolean.class, RegionedColumnSourceBoolean::new);
-        typeToSupplier.put(DateTime.class, RegionedColumnSourceDateTime::new);
+        typeToSupplier.put(Instant.class, RegionedColumnSourceInstant::new);
         SIMPLE_DATA_TYPE_TO_REGIONED_COLUMN_SOURCE_SUPPLIER = Collections.unmodifiableMap(typeToSupplier);
     }
 
@@ -80,7 +81,7 @@ public class RegionedTableComponentFactoryImpl implements RegionedTableComponent
                 return new RegionedColumnSourceObject.AsValues<>(dataType, columnDefinition.getComponentType());
             }
         } catch (IllegalArgumentException except) {
-            throw new UnsupportedOperationException(
+            throw new TableDataException(
                     "Can't create column for " + dataType + " in column definition " + columnDefinition, except);
         }
     }

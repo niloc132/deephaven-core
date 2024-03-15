@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.figure;
 
 import io.deephaven.api.Selectable;
+import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
 import io.deephaven.gui.shape.JShapes;
@@ -23,6 +24,7 @@ import io.deephaven.plot.datasets.category.CategoryDataSeriesMap;
 import io.deephaven.plot.datasets.category.CategoryTreemapDataSeriesTableMap;
 import io.deephaven.plot.datasets.category.CategoryDataSeriesPartitionedTable;
 import io.deephaven.plot.datasets.category.CategoryDataSeriesSwappablePartitionedTable;
+import io.deephaven.plot.datasets.categoryerrorbar.CategoryErrorBarDataSeriesPartitionedTable;
 import io.deephaven.plot.datasets.data.IndexableNumericData;
 import io.deephaven.plot.datasets.data.IndexableNumericDataSwappableTable;
 import io.deephaven.plot.datasets.data.IndexableNumericDataTable;
@@ -30,6 +32,8 @@ import io.deephaven.plot.datasets.interval.IntervalXYDataSeriesArray;
 import io.deephaven.plot.datasets.multiseries.AbstractMultiSeries;
 import io.deephaven.plot.datasets.multiseries.AbstractPartitionedTableHandleMultiSeries;
 import io.deephaven.plot.datasets.multiseries.MultiCatSeries;
+import io.deephaven.plot.datasets.multiseries.MultiOHLCSeries;
+import io.deephaven.plot.datasets.multiseries.MultiXYErrorBarSeries;
 import io.deephaven.plot.datasets.multiseries.MultiXYSeries;
 import io.deephaven.plot.datasets.ohlc.OHLCDataSeriesArray;
 import io.deephaven.plot.datasets.xy.AbstractXYDataSeries;
@@ -38,8 +42,8 @@ import io.deephaven.plot.datasets.xyerrorbar.XYErrorBarDataSeriesArray;
 import io.deephaven.plot.util.PlotUtils;
 import io.deephaven.plot.util.tables.*;
 import io.deephaven.plot.util.tables.PartitionedTableHandle;
-import io.deephaven.plugin.type.ObjectType.Exporter;
-import io.deephaven.plugin.type.ObjectType.Exporter.Reference;
+import io.deephaven.plugin.type.Exporter;
+import io.deephaven.plugin.type.Exporter.Reference;
 import io.deephaven.proto.backplane.script.grpc.FigureDescriptor;
 import io.deephaven.proto.backplane.script.grpc.FigureDescriptor.AxisDescriptor;
 import io.deephaven.proto.backplane.script.grpc.FigureDescriptor.BoolMapWithDefault;
@@ -58,8 +62,7 @@ import io.deephaven.proto.backplane.script.grpc.FigureDescriptor.SourceType;
 import io.deephaven.proto.backplane.script.grpc.FigureDescriptor.StringMapWithDefault;
 import io.deephaven.time.calendar.BusinessCalendar;
 import org.jetbrains.annotations.NotNull;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatter;
 
 import java.awt.*;
 import java.time.DayOfWeek;
@@ -79,7 +82,7 @@ import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
 public class FigureWidgetTranslator {
-    private static final DateTimeFormatter HOLIDAY_TIME_FORMAT = DateTimeFormat.forPattern("HH:mm");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final List<String> errorList = new ArrayList<>();
     private final Map<TableHandle, Integer> tablePositionMap = new HashMap<>();
@@ -109,7 +112,7 @@ public class FigureWidgetTranslator {
             i++;
 
             // noinspection unused
-            final Reference reference = exporter.reference(table, false, true).orElseThrow();
+            final Reference reference = exporter.reference(table);
             // relying on FetchObjectResponse.export_id for communicating exported tables to the client
         }
 
@@ -129,7 +132,7 @@ public class FigureWidgetTranslator {
             }
             i++;
 
-            exporter.reference(partitionedTable, false, true).orElseThrow();
+            exporter.reference(partitionedTable);
         }
 
         assignOptionalField(figure.getTitle(), clientFigure::setTitle, clientFigure::clearTitle);
@@ -153,6 +156,14 @@ public class FigureWidgetTranslator {
         return clientFigure.build();
     }
 
+    private static void assignOptionalStringField(Object value, Consumer<String> setter, Runnable clear) {
+        if (value != null) {
+            setter.accept(value.toString());
+        } else {
+            clear.run();
+        }
+    }
+
     private static <T> void assignOptionalField(T value, Consumer<T> setter, Runnable clear) {
         if (value != null) {
             setter.accept(value);
@@ -162,7 +173,7 @@ public class FigureWidgetTranslator {
     }
 
     private FigureDescriptor.ChartDescriptor translate(ChartImpl chart) {
-        assert chart.dimension() == 2 : "Only dim=2 supported";
+        Assert.eq(chart.dimension(), "chart.dimensions()", 2);
         FigureDescriptor.ChartDescriptor.Builder clientChart = FigureDescriptor.ChartDescriptor.newBuilder();
 
         boolean swappedPositions = chart.getPlotOrientation() != ChartImpl.PlotOrientation.VERTICAL;
@@ -180,7 +191,7 @@ public class FigureWidgetTranslator {
             if ((i == 0 && !swappedPositions) || (i == 1 && swappedPositions)) {
                 type = AxisDescriptor.AxisType.X;
             } else {
-                assert i == 0 || i == 1;
+                Assert.eqTrue(i == 0 || i == 1, "i == 0 || i == 1");
                 type = AxisDescriptor.AxisType.Y;
             }
             List<AxisImpl> currentPositionAxes = chart.getAxis()[i];
@@ -256,11 +267,11 @@ public class FigureWidgetTranslator {
             final AxisDescriptor catAxis;
             final AxisDescriptor numAxis;
             if (xAxis.getFormatType() == AxisDescriptor.AxisFormatType.CATEGORY) {
-                assert yAxis.getFormatType() == AxisDescriptor.AxisFormatType.NUMBER;
+                Assert.eq(yAxis.getFormatType(), "yAxis.getFormatType()", AxisDescriptor.AxisFormatType.NUMBER);
                 catAxis = xAxis;
                 numAxis = yAxis;
             } else if (yAxis.getFormatType() == AxisDescriptor.AxisFormatType.CATEGORY) {
-                assert xAxis.getFormatType() == AxisDescriptor.AxisFormatType.NUMBER;
+                Assert.eq(xAxis.getFormatType(), "xAxis.getFormatType()", AxisDescriptor.AxisFormatType.NUMBER);
                 catAxis = yAxis;
                 numAxis = xAxis;
             } else {
@@ -289,6 +300,8 @@ public class FigureWidgetTranslator {
                             assignOptionalField(toCssColorString(s.getLineColor()), clientSeries::setLineColor,
                                     clientSeries::clearLineColor);
                             // clientSeries.setLineStyle(s.getLineStyle().toString());
+                            assignOptionalField(toCssColorString(s.getSeriesColor()), clientSeries::setShapeColor,
+                                    clientSeries::clearShapeColor);
                             assignOptionalField(s.getPointLabelFormat(), clientSeries::setPointLabelFormat,
                                     clientSeries::clearPointLabelFormat);
                             assignOptionalField(s.getXToolTipPattern(), clientSeries::setXToolTipPattern,
@@ -300,6 +313,16 @@ public class FigureWidgetTranslator {
                             // with the x and y we have so far mapped to this
 
                             if (s instanceof AbstractXYDataSeries) {
+                                // TODO #3293: Individual point shapes/sizes/labels
+                                // Right now just gets one set for the whole series
+                                AbstractXYDataSeries abstractSeries = (AbstractXYDataSeries) s;
+                                assignOptionalStringField(abstractSeries.getPointShape(), clientSeries::setShape,
+                                        clientSeries::clearShape);
+                                assignOptionalField(abstractSeries.getPointSize(), clientSeries::setShapeSize,
+                                        clientSeries::clearShapeSize);
+                                assignOptionalField(abstractSeries.getPointLabel(), clientSeries::setShapeLabel,
+                                        clientSeries::clearShapeLabel);
+
                                 if (s instanceof IntervalXYDataSeriesArray) {
                                     // interval (aka histogram)
                                     IntervalXYDataSeriesArray series = (IntervalXYDataSeriesArray) s;
@@ -334,9 +357,17 @@ public class FigureWidgetTranslator {
                                     // warn about other unsupported series types
                                     errorList.add("OpenAPI presently does not support series of type " + s.getClass());
                                 }
-
-                                // TODO color label size shape
                             } else if (s instanceof AbstractCategoryDataSeries) {
+                                // TODO #3293: Individual point shapes/sizes/labels
+                                // Right now just gets one set for the whole series
+                                AbstractCategoryDataSeries abstractSeries = (AbstractCategoryDataSeries) s;
+                                assignOptionalStringField(abstractSeries.getPointShape(), clientSeries::setShape,
+                                        clientSeries::clearShape);
+                                assignOptionalField(abstractSeries.getPointSize(), clientSeries::setShapeSize,
+                                        clientSeries::clearShapeSize);
+                                assignOptionalField(abstractSeries.getLabel(), clientSeries::setShapeLabel,
+                                        clientSeries::clearShapeLabel);
+
                                 if (s instanceof CategoryDataSeriesPartitionedTable) {// bar and pie from a table
                                     CategoryDataSeriesPartitionedTable series = (CategoryDataSeriesPartitionedTable) s;
                                     clientAxes
@@ -379,10 +410,24 @@ public class FigureWidgetTranslator {
                                         clientAxes.add(makeSourceDescriptor(series.getTableHandle(),
                                                 series.getHoverTextColumn(), SourceType.HOVER_TEXT, null));
                                     }
+                                } else if (s instanceof CategoryErrorBarDataSeriesPartitionedTable) {
+                                    CategoryErrorBarDataSeriesPartitionedTable series =
+                                            (CategoryErrorBarDataSeriesPartitionedTable) s;
+                                    clientAxes.add(
+                                            makeSourceDescriptor(series.getTableHandle(), series.getCategoryColumn(),
+                                                    catAxis == xAxis ? SourceType.X : SourceType.Y, catAxis));
+                                    clientAxes
+                                            .add(makeSourceDescriptor(series.getTableHandle(), series.getValueColumn(),
+                                                    numAxis == xAxis ? SourceType.X : SourceType.Y, numAxis));
+                                    clientAxes.add(
+                                            makeSourceDescriptor(series.getTableHandle(), series.getErrorBarLowColumn(),
+                                                    numAxis == xAxis ? SourceType.X_LOW : SourceType.Y_LOW, numAxis));
+                                    clientAxes.add(makeSourceDescriptor(series.getTableHandle(),
+                                            series.getErrorBarHighColumn(),
+                                            numAxis == xAxis ? SourceType.X_HIGH : SourceType.Y_HIGH, numAxis));
                                 } else if (s instanceof CategoryDataSeriesMap) {// bar and plot from constant data
                                     errorList.add("OpenAPI presently does not support series of type " + s.getClass());
                                 }
-                                // TODO color label size shape
                             }
 
                             clientSeries.addAllDataSources(clientAxes.build().collect(Collectors.toList()));
@@ -475,6 +520,119 @@ public class FigureWidgetTranslator {
                                     clientSeries.setPointShape(stringMapWithDefault(mergeShapes(
                                             multiCatSeries.pointShapeSeriesNameToStringMap(),
                                             multiCatSeries.pointShapeSeriesNameToShapeMap())));
+                                } else if (partitionedTableMultiSeries instanceof MultiXYErrorBarSeries) {
+                                    MultiXYErrorBarSeries multiXYErrorBarSeries =
+                                            (MultiXYErrorBarSeries) partitionedTableMultiSeries;
+
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiXYErrorBarSeries.getX(), SourceType.X, xAxis));
+                                    if (multiXYErrorBarSeries.getDrawXError()) {
+                                        clientAxes.add(makePartitionedTableSourceDescriptor(
+                                                plotHandle, multiXYErrorBarSeries.getXLow(), SourceType.X_LOW, xAxis));
+                                        clientAxes.add(makePartitionedTableSourceDescriptor(
+                                                plotHandle, multiXYErrorBarSeries.getXHigh(), SourceType.X_HIGH,
+                                                xAxis));
+                                    }
+
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiXYErrorBarSeries.getY(), SourceType.Y, yAxis));
+                                    if (multiXYErrorBarSeries.getDrawYError()) {
+                                        clientAxes.add(makePartitionedTableSourceDescriptor(
+                                                plotHandle, multiXYErrorBarSeries.getYLow(), SourceType.Y_LOW, yAxis));
+                                        clientAxes.add(makePartitionedTableSourceDescriptor(
+                                                plotHandle, multiXYErrorBarSeries.getYHigh(), SourceType.Y_HIGH,
+                                                yAxis));
+                                    }
+
+                                    clientSeries.setLineColor(stringMapWithDefault(mergeColors(
+                                            multiXYErrorBarSeries.lineColorSeriesNameTointMap(),
+                                            multiXYErrorBarSeries.lineColorSeriesNameToStringMap(),
+                                            multiXYErrorBarSeries.lineColorSeriesNameToPaintMap())));
+                                    clientSeries.setPointColor(stringMapWithDefault(mergeColors(
+                                            multiXYErrorBarSeries.pointColorSeriesNameTointMap(),
+                                            multiXYErrorBarSeries.pointColorSeriesNameToStringMap(),
+                                            multiXYErrorBarSeries.pointColorSeriesNameToPaintMap())));
+                                    clientSeries.setLinesVisible(
+                                            boolMapWithDefault(
+                                                    multiXYErrorBarSeries.linesVisibleSeriesNameToBooleanMap()));
+                                    clientSeries.setPointsVisible(
+                                            boolMapWithDefault(
+                                                    multiXYErrorBarSeries.pointsVisibleSeriesNameToBooleanMap()));
+                                    clientSeries.setGradientVisible(
+                                            boolMapWithDefault(
+                                                    multiXYErrorBarSeries.gradientVisibleSeriesNameTobooleanMap()));
+                                    clientSeries.setPointLabelFormat(stringMapWithDefault(
+                                            multiXYErrorBarSeries.pointLabelFormatSeriesNameToStringMap()));
+                                    clientSeries.setXToolTipPattern(
+                                            stringMapWithDefault(
+                                                    multiXYErrorBarSeries.xToolTipPatternSeriesNameToStringMap()));
+                                    clientSeries.setYToolTipPattern(
+                                            stringMapWithDefault(
+                                                    multiXYErrorBarSeries.yToolTipPatternSeriesNameToStringMap()));
+                                    clientSeries.setPointLabel(stringMapWithDefault(
+                                            multiXYErrorBarSeries.pointLabelSeriesNameToObjectMap(),
+                                            Objects::toString));
+                                    clientSeries.setPointSize(doubleMapWithDefault(
+                                            multiXYErrorBarSeries.pointSizeSeriesNameToNumberMap(),
+                                            number -> number == null ? null : number.doubleValue()));
+
+                                    clientSeries.setPointShape(stringMapWithDefault(mergeShapes(
+                                            multiXYErrorBarSeries.pointShapeSeriesNameToStringMap(),
+                                            multiXYErrorBarSeries.pointShapeSeriesNameToShapeMap())));
+                                } else if (partitionedTableMultiSeries instanceof MultiOHLCSeries) {
+                                    MultiOHLCSeries multiOHLCSeries =
+                                            (MultiOHLCSeries) partitionedTableMultiSeries;
+
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiOHLCSeries.getTimeCol(), SourceType.TIME, xAxis));
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiOHLCSeries.getOpenCol(), SourceType.OPEN, yAxis));
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiOHLCSeries.getCloseCol(), SourceType.CLOSE, yAxis));
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiOHLCSeries.getHighCol(), SourceType.HIGH, yAxis));
+                                    clientAxes.add(makePartitionedTableSourceDescriptor(
+                                            plotHandle, multiOHLCSeries.getLowCol(), SourceType.LOW, yAxis));
+
+                                    clientSeries.setLineColor(stringMapWithDefault(mergeColors(
+                                            multiOHLCSeries.lineColorSeriesNameTointMap(),
+                                            multiOHLCSeries.lineColorSeriesNameToStringMap(),
+                                            multiOHLCSeries.lineColorSeriesNameToPaintMap())));
+                                    clientSeries.setPointColor(stringMapWithDefault(mergeColors(
+                                            multiOHLCSeries.pointColorSeriesNameTointMap(),
+                                            multiOHLCSeries.pointColorSeriesNameToStringMap(),
+                                            multiOHLCSeries.pointColorSeriesNameToPaintMap())));
+                                    clientSeries.setLinesVisible(
+                                            boolMapWithDefault(
+                                                    multiOHLCSeries.linesVisibleSeriesNameToBooleanMap()));
+                                    clientSeries.setPointsVisible(
+                                            boolMapWithDefault(
+                                                    multiOHLCSeries.pointsVisibleSeriesNameToBooleanMap()));
+                                    clientSeries.setGradientVisible(
+                                            boolMapWithDefault(
+                                                    multiOHLCSeries.gradientVisibleSeriesNameTobooleanMap()));
+                                    clientSeries.setPointLabelFormat(stringMapWithDefault(
+                                            multiOHLCSeries.pointLabelFormatSeriesNameToStringMap()));
+                                    clientSeries.setXToolTipPattern(
+                                            stringMapWithDefault(
+                                                    multiOHLCSeries.xToolTipPatternSeriesNameToStringMap()));
+                                    clientSeries.setYToolTipPattern(
+                                            stringMapWithDefault(
+                                                    multiOHLCSeries.yToolTipPatternSeriesNameToStringMap()));
+                                    clientSeries.setPointLabel(stringMapWithDefault(
+                                            multiOHLCSeries.pointLabelSeriesNameToObjectMap(),
+                                            Objects::toString));
+                                    clientSeries.setPointSize(doubleMapWithDefault(
+                                            multiOHLCSeries.pointSizeSeriesNameToNumberMap(),
+                                            number -> number == null ? null : number.doubleValue()));
+
+                                    clientSeries.setPointShape(stringMapWithDefault(mergeShapes(
+                                            multiOHLCSeries.pointShapeSeriesNameToStringMap(),
+                                            multiOHLCSeries.pointShapeSeriesNameToShapeMap())));
+                                } else {
+                                    errorList.add(
+                                            "OpenAPI presently does not support series of type "
+                                                    + partitionedTableMultiSeries.getClass());
                                 }
                             } else {
                                 errorList.add(
@@ -487,7 +645,6 @@ public class FigureWidgetTranslator {
                         } else {
                             errorList.add(
                                     "OpenAPI presently does not support series of type " + seriesInternal.getClass());
-                            // TODO handle multi-series, possibly transformed case?
                         }
                     });
         });
@@ -517,7 +674,7 @@ public class FigureWidgetTranslator {
         final BusinessCalendar businessCalendar = axisTransform.getBusinessCalendar();
         final BusinessCalendarDescriptor.Builder businessCalendarDescriptor = BusinessCalendarDescriptor.newBuilder();
         businessCalendarDescriptor.setName(businessCalendar.name());
-        businessCalendarDescriptor.setTimeZone(businessCalendar.timeZone().getTimeZone().getID());
+        businessCalendarDescriptor.setTimeZone(businessCalendar.timeZone().getId());
         Arrays.stream(BusinessCalendarDescriptor.DayOfWeek.values()).filter(dayOfWeek -> {
             if (dayOfWeek == BusinessCalendarDescriptor.DayOfWeek.UNRECOGNIZED) {
                 return false;
@@ -525,26 +682,33 @@ public class FigureWidgetTranslator {
             final DayOfWeek day = DayOfWeek.valueOf(dayOfWeek.name());
             return businessCalendar.isBusinessDay(day);
         }).forEach(businessCalendarDescriptor::addBusinessDays);
-        businessCalendar.getDefaultBusinessPeriods().stream().map(period -> {
-            final String[] array = period.split(",");
+        businessCalendar.standardBusinessDay().businessTimeRanges().stream().map(period -> {
+            // noinspection ConstantConditions
+            final String open = TIME_FORMATTER.withZone(businessCalendar.timeZone())
+                    .format(period.start());
+            // noinspection ConstantConditions
+            final String close = TIME_FORMATTER.withZone(businessCalendar.timeZone())
+                    .format(period.end());
             final BusinessPeriod.Builder businessPeriod = BusinessPeriod.newBuilder();
-            businessPeriod.setOpen(array[0]);
-            businessPeriod.setClose(array[1]);
+            businessPeriod.setOpen(open);
+            businessPeriod.setClose(close);
             return businessPeriod;
         }).forEach(businessCalendarDescriptor::addBusinessPeriods);
 
-        businessCalendar.getHolidays().entrySet().stream().sorted(Comparator.comparing(Map.Entry::getKey))
+        businessCalendar.holidays().entrySet().stream().sorted(Comparator.comparing(Map.Entry::getKey))
                 .map(entry -> {
                     final LocalDate.Builder localDate = LocalDate.newBuilder();
                     localDate.setYear(entry.getKey().getYear());
                     localDate.setMonth(entry.getKey().getMonthValue());
                     localDate.setDay(entry.getKey().getDayOfMonth());
                     final Holiday.Builder holiday = Holiday.newBuilder();
-                    Arrays.stream(entry.getValue().getBusinessPeriods()).map(bp -> {
-                        final String open = HOLIDAY_TIME_FORMAT.withZone(businessCalendar.timeZone().getTimeZone())
-                                .print(bp.getStartTime().getMillis());
-                        final String close = HOLIDAY_TIME_FORMAT.withZone(businessCalendar.timeZone().getTimeZone())
-                                .print(bp.getEndTime().getMillis());
+                    entry.getValue().businessTimeRanges().stream().map(bp -> {
+                        // noinspection ConstantConditions
+                        final String open = TIME_FORMATTER.withZone(businessCalendar.timeZone())
+                                .format(bp.start());
+                        // noinspection ConstantConditions
+                        final String close = TIME_FORMATTER.withZone(businessCalendar.timeZone())
+                                .format(bp.end());
                         final BusinessPeriod.Builder businessPeriod = BusinessPeriod.newBuilder();
                         businessPeriod.setOpen(open);
                         businessPeriod.setClose(close);

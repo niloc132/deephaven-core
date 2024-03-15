@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.parquet.base;
 
 import io.deephaven.base.Pair;
@@ -162,6 +162,11 @@ class LevelsController {
 
         @Override
         public void addValues(int valuesCount) {
+            if (rangeCap.position() == 0) {
+                throw new IllegalStateException("Cannot add more values to this repeating level. It's possible that a "
+                        + "single row is getting split across pages, which is not supported.");
+                // TODO(deephaven-core:#4628) - Support this case
+            }
             rangeCap.put(rangeCap.position() - 1, childValueCount += valuesCount);
         }
 

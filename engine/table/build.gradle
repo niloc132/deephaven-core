@@ -1,27 +1,10 @@
 plugins {
     id 'java-library'
     id 'io.deephaven.project.register'
-    id 'me.champeau.jmh' version '0.6.7'
+    id 'me.champeau.jmh' version '0.7.2'
 }
 
 description 'Engine Table: Implementation and closely-coupled utilities'
-
-sourceSets {
-    main {
-        resources {
-            srcDir 'groovy'
-            include 'core/*.groovy'
-        }
-        resources {
-            srcDir 'python'
-            include 'core/*.py'
-        }
-        resources {
-            srcDir 'src/main/resources'
-            include '**'
-        }
-    }
-}
 
 configurations {
     // Ensure jmh picks up the same dependencies as tests
@@ -45,13 +28,13 @@ dependencies {
     implementation project(':Configuration')
     implementation project(':log-factory')
     implementation project(':Stats')
-    implementation project(':Net')
-    implementation project(':FishUtil')
 
     implementation 'com.github.f4b6a3:uuid-creator:5.2.0'
     // TODO(deephaven-core#3204): t-digest 3.3 appears to have higher errors than 3.2
     implementation 'com.tdunning:t-digest:3.2'
     implementation 'com.squareup:javapoet:1.13.0'
+    implementation 'io.github.classgraph:classgraph:4.8.165'
+    implementation 'it.unimi.dsi:fastutil:8.5.13'
 
     implementation project(':plugin')
     implementation depCommonsLang3
@@ -72,8 +55,10 @@ dependencies {
 
     testImplementation TestTools.projectDependency(project, 'Util')
     testImplementation TestTools.projectDependency(project, 'engine-chunk')
+    testImplementation TestTools.projectDependency(project, 'engine-vector')
     testImplementation TestTools.projectDependency(project, 'Numerics')
     testImplementation TestTools.projectDependency(project, 'engine-context')
+    testImplementation TestTools.projectDependency(project, 'engine-time')
     testImplementation project(':base-test-utils')
     testImplementation project(':engine-rowset-test-utils')
     testImplementation project(':engine-test-utils')
@@ -81,7 +66,9 @@ dependencies {
     testImplementation project(':BenchmarkSupport')
     testImplementation project(':extensions-csv')
     testImplementation project(':extensions-parquet-table')
+    testImplementation project(':extensions-source-support')
     testImplementation project(':Numerics')
+    testImplementation project(':extensions-suanshu')
 
     Classpaths.inheritJUnitClassic(project, 'testImplementation')
 
@@ -96,38 +83,13 @@ dependencies {
 
 spotless {
     java {
-        targetExclude(
-                '**/generated/**',
-                '**/*Boolean*.java',
-                '**/*Byte*.java',
-                '**/*Char*.java',
-                '**/*Short*.java',
-                '**/*Int*.java',
-                '**/*Long*.java',
-                '**/*Float*.java',
-                '**/*Double*.java',
-                '**/*Object*.java',
-                '**/*StateManager.java',
-                '**/incagg/gen/*.java',
-                '**/incopenagg/gen/*.java',
-                '**/staticagg/gen/*.java',
-                '**/staticopenagg/gen/*.java',
-                '**/naturaljoin/typed/staticopen/gen/*.java',
-                '**/naturaljoin/typed/incopen/gen/*.java',
-                '**/naturaljoin/typed/rightincopen/gen/*.java',
-                '**/asofjoin/typed/rightincopen/gen/*.java',
-                '**/asofjoin/typed/staticopen/gen/*.java',
-                '**/updateby/hashing/typed/open/gen/*.java',
-                'src/main/java/io/deephaven/engine/table/impl/SymbolTableCombiner.java',
-                'src/main/java/io/deephaven/libs/GroovyStaticImports.java',
-                'src/test/java/**/*Sample.java'
-        )
+        // Exclude these codegen sample files from here so we don't even need a comment to disable formatting
+        targetExclude 'src/test/java/io/deephaven/engine/table/impl/select/FilterKernel*Sample.java',
+                'src/test/java/io/deephaven/engine/table/impl/select/Formula*Sample.java'
     }
 }
 
 test {
-    maxParallelForks = Integer.parseInt(findProperty('maxParallelForks') as String ?: '1')
-    forkEvery = Integer.parseInt(findProperty('forkEvery') as String ?: '1')
     //  For now, if you apply @Category(ParallelTest.class) to tests which are not huge CPU/RAM hogs, you can get parallelism
     //  If you have CPU/RAM-heavy tasks that you don't want gumming up :engine-table:test runs, apply @Category(SerialTest.class) instead
     //  (note that the above only works for junit 4 tests; see the documentation on SerialTest class and others for porting instructions)
@@ -145,6 +107,7 @@ TestTools.addEngineParallelTest(project)
 TestTools.addEngineSerialTest(project)
 TestTools.addEngineOutOfBandTest(project)
 
+// If changing, be sure to update .github/scripts/print-gradle-workers-max.sh
 def maxHeapSize = findProperty('maxHeapSize') as String ?: '6g'
 
 tasks.testParallel.maxHeapSize = maxHeapSize

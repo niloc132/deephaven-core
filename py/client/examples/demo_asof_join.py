@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 """ Demo a as-of join on two time tables."""
@@ -18,7 +18,7 @@ def demo_asof_join(dh_session: Session):
 def main():
     with Session(host="localhost", port=10000) as dh_session:
         joined_table = demo_asof_join(dh_session)
-        df = joined_table.snapshot().to_pandas()
+        df = joined_table.to_arrow().to_pandas()
         print(df)
 
 

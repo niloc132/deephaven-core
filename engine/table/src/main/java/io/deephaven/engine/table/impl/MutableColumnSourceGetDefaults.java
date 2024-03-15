@@ -1,12 +1,14 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.table.ColumnSource;
-import io.deephaven.time.DateTime;
+import io.deephaven.time.DateTimeUtils;
+import org.jetbrains.annotations.Nullable;
 
-import static io.deephaven.time.DateTimeUtils.nanosToTime;
+import java.time.Instant;
+
 import static io.deephaven.util.type.TypeUtils.box;
 
 /**
@@ -391,13 +393,13 @@ public final class MutableColumnSourceGetDefaults {
     }
 
     /**
-     * Default interface for mutable {@link DateTime} {@link ColumnSource} implementations.
+     * Default interface for mutable {@link Instant} {@link ColumnSource} implementations.
      */
-    public interface ForLongAsDateTime extends ColumnSourceGetDefaults.ForLongAsDateTime, LongBacked<DateTime> {
-
+    public interface ForLongAsInstant extends ColumnSourceGetDefaults.ForLongAsInstant, LongBacked<Instant> {
+        @Nullable
         @Override
-        default DateTime getPrev(final long rowKey) {
-            return nanosToTime(getPrevLong(rowKey));
+        default Instant getPrev(long rowKey) {
+            return DateTimeUtils.epochNanosToInstant(getPrevLong(rowKey));
         }
     }
 

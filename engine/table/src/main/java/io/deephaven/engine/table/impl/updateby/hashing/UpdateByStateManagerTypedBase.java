@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.updateby.hashing;
 
 import io.deephaven.base.verify.Assert;
@@ -23,10 +26,10 @@ import static io.deephaven.engine.table.impl.util.TypedHasherUtil.getKeyChunks;
 import static io.deephaven.engine.table.impl.util.TypedHasherUtil.getPrevKeyChunks;
 
 public abstract class UpdateByStateManagerTypedBase extends UpdateByStateManager {
-    public static final int CHUNK_SIZE = 4096;
+    private static final int CHUNK_SIZE = 4096;
     private static final long MAX_TABLE_SIZE = 1 << 30; // maximum array size
 
-    public static final int EMPTY_RIGHT_VALUE = QueryConstants.NULL_INT;
+    protected static final int EMPTY_RIGHT_VALUE = QueryConstants.NULL_INT;
 
     // the number of slots in our table
     protected int tableSize;

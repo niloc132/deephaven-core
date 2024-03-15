@@ -1,25 +1,65 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api;
 
+import com.vertispan.tsdefs.annotations.TsName;
+import com.vertispan.tsdefs.annotations.TsTypeRef;
+import com.vertispan.tsdefs.annotations.TsUnion;
+import com.vertispan.tsdefs.annotations.TsUnionMember;
 import elemental2.core.JsArray;
 import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsOverlay;
+import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 import jsinterop.base.Any;
 import jsinterop.base.Js;
 
+/**
+ * Common interface for various ways of accessing table data and formatting.
+ *
+ * Java note: this interface contains some extra overloads that aren't available in JS. Implementations are expected to
+ * implement only abstract methods, and default methods present in this interface will dispatch accordingly.
+ */
+@TsName(namespace = "dh")
 public interface TableData {
+    @TsUnion
+    @JsType(name = "?", namespace = JsPackage.GLOBAL, isNative = true)
+    interface RowPositionUnion {
+        @JsOverlay
+        default boolean isLongWrapper() {
+            return this instanceof LongWrapper;
+        }
+
+        @JsOverlay
+        default boolean isInt() {
+            return (Object) this instanceof Double;
+        }
+
+        @JsOverlay
+        @TsUnionMember
+        default LongWrapper asLongWrapper() {
+            return Js.cast(this);
+        }
+
+        @JsOverlay
+        @TsUnionMember
+        default int asInt() {
+            return Js.asInt(this);
+        }
+    }
+
     @JsProperty
     JsArray<Column> getColumns();
 
     @JsProperty
-    JsArray<? extends Row> getRows();
+    JsArray<@TsTypeRef(Row.class) ? extends Row> getRows();
 
     @JsMethod
-    default Row get(Object index) {
-        if (index instanceof LongWrapper) {
-            return get(((LongWrapper) index).getWrapped());
+    default Row get(RowPositionUnion index) {
+        if (index.isLongWrapper()) {
+            return get((index.asLongWrapper()).getWrapped());
         }
         return get(Js.coerceToInt(index));
     }
@@ -29,11 +69,11 @@ public interface TableData {
     Row get(int index);
 
     @JsMethod
-    default Any getData(Object index, Column column) {
-        if (index instanceof LongWrapper) {
-            return getData(((LongWrapper) index).getWrapped(), column);
+    default Any getData(RowPositionUnion index, Column column) {
+        if (index.isLongWrapper()) {
+            return getData(index.asLongWrapper().getWrapped(), column);
         }
-        return getData(Js.coerceToInt(index), column);
+        return getData(index.asInt(), column);
     }
 
     Any getData(int index, Column column);
@@ -41,17 +81,18 @@ public interface TableData {
     Any getData(long index, Column column);
 
     @JsMethod
-    default Format getFormat(Object index, Column column) {
-        if (index instanceof LongWrapper) {
-            return getFormat(((LongWrapper) index).getWrapped(), column);
+    default Format getFormat(RowPositionUnion index, Column column) {
+        if (index.isLongWrapper()) {
+            return getFormat(index.asLongWrapper().getWrapped(), column);
         }
-        return getFormat(Js.coerceToInt(index), column);
+        return getFormat(index.asInt(), column);
     }
 
     Format getFormat(int index, Column column);
 
     Format getFormat(long index, Column column);
 
+    @TsName(namespace = "dh")
     public interface Row {
         @JsProperty
         LongWrapper getIndex();

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.chunk.attributes.Any;
@@ -19,7 +19,7 @@ public interface FillUnordered<ATTR extends Any> {
      * 
      * <pre>
      * destination.setSize(keys.size());
-     * for (int ii = 0; ii < keys.size(); ++ii) {
+     * for (int ii = 0; ii &lt; keys.size(); ++ii) {
      *     destination.set(ii, get(keys.get(ii)));
      * }
      * </pre>
@@ -41,7 +41,7 @@ public interface FillUnordered<ATTR extends Any> {
      * 
      * <pre>
      * destination.setSize(keys.size());
-     * for (int ii = 0; ii < keys.size(); ++ii) {
+     * for (int ii = 0; ii &lt; keys.size(); ++ii) {
      *     destination.set(ii, getPrev(keys.get(ii)));
      * }
      * </pre>

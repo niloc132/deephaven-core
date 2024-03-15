@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 import unittest
@@ -16,7 +16,7 @@ def vectorized_func(x, y):
     return x % 3 + y
 
 
-class TestNumbaVectorizedColumnClass(BaseTestCase):
+class NumbaVectorizedColumnTestCase(BaseTestCase):
 
     def test_part_of_expr(self):
         with self.assertRaises(Exception):

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 """ This module implements the AxisFormat class that can be applied to format axis tick labels on a plot. """
@@ -30,8 +30,8 @@ class AxisFormat(JObjectWrapper):
     def set_pattern(self, pattern: str) -> None:
         """ Set the pattern used for formatting values.
 
-        For details on the supported patterns see the javadoc for DateTimeFormatter
-        "https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html"
+        For details on the supported patterns see the javadoc for 
+        `DateTimeFormatter <https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html>`_.
 
         Args:
             pattern (str): pattern string indicating how values should be formatted.
@@ -42,8 +42,8 @@ class AxisFormat(JObjectWrapper):
 class DecimalAxisFormat(AxisFormat):
     """ A formatter for converting decimals into formatted strings.
 
-    For details on the supported patterns see the javadoc for DecimalFormat
-    "https://docs.oracle.com/javase/7/docs/api/java/text/DecimalFormat.html"
+    For details on the supported patterns see the javadoc for 
+    `DecimalFormat <https://docs.oracle.com/javase/7/docs/api/java/text/DecimalFormat.html>`_.
     """
 
     def __init__(self):
@@ -62,4 +62,4 @@ class NanosAxisFormat(AxisFormat):
         if not tz:
             self.j_axis_format = _JNanosAxisFormat()
         else:
-            self.j_axis_format = _JNanosAxisFormat(tz.value)
+            self.j_axis_format = _JNanosAxisFormat(tz)

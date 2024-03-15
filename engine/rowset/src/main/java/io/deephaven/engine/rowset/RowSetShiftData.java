@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.rowset;
 
 import gnu.trove.list.TIntList;
@@ -305,10 +305,12 @@ public final class RowSetShiftData implements Serializable, LogOutputAppendable 
                     break;
                 }
 
-                // TODO: This loop is unfortunate, we will iterate the entire Index shift data; even if we have an input
-                // index that is only a small subset. For the ending condition we solve that with the advance breaking
-                // out of the loop, but for the starting condition, we can do better by binary searching the shift data
-                // for the beginning of the index if the end of that range is less than the data.
+                // TODO #3341: This loop is unfortunate, we will iterate the entire RowSetShiftData; even if we have an
+                // input rowSet that is only a small subset. For the ending condition we solve that with the advance
+                // breaking out of the loop, but for the starting condition, we can do better by binary searching the
+                // shift data for the beginning of the index if the end of that range is less than the data. We can
+                // binary search for the next relevant shifted range anytime we attempt a shift that does not effect the
+                // rowSet.
                 if (endRange < rsIt.peekNextKey()) {
                     continue;
                 }
@@ -326,6 +328,26 @@ public final class RowSetShiftData implements Serializable, LogOutputAppendable 
 
             return remove.isNonempty() || insert.isNonempty();
         }
+    }
+
+    /**
+     * Apply all shifts to {@code keyToShift}. Moves the single row key from pre-shift keyspace to post-shift keyspace.
+     *
+     * @param keyToShift The single row key to shift
+     * @return the key in post-shift space
+     */
+    public long apply(final long keyToShift) {
+        for (int shiftIdx = 0; shiftIdx < size(); shiftIdx++) {
+            if (getBeginRange(shiftIdx) > keyToShift) {
+                // no shift applies so we are already in post-shift space
+                return keyToShift;
+            }
+            if (getEndRange(shiftIdx) >= keyToShift) {
+                // this shift applies, add the delta to get post-shift
+                return keyToShift + getShiftDelta(shiftIdx);
+            }
+        }
+        return keyToShift;
     }
 
     /**

@@ -1,27 +1,27 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.Pair;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.datastructures.util.CollectionUtil;
-import io.deephaven.engine.rowset.RowSetFactory;
-import io.deephaven.engine.table.*;
 import io.deephaven.engine.rowset.*;
+import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.impl.by.typed.TypedHasherFactory;
 import io.deephaven.engine.table.impl.join.JoinListenerRecorder;
 import io.deephaven.engine.table.impl.naturaljoin.*;
 import io.deephaven.engine.table.impl.sources.*;
-import io.deephaven.chunk.attributes.Values;
-import io.deephaven.chunk.*;
 import io.deephaven.engine.table.impl.util.*;
 import io.deephaven.util.annotations.VisibleForTesting;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 class NaturalJoinHelper {
 
@@ -39,11 +39,21 @@ class NaturalJoinHelper {
                 naturalJoinInternal(leftTable, rightTable, columnsToMatch, columnsToAdd, exactMatch, control);
         leftTable.maybeCopyColumnDescriptions(result, rightTable, columnsToMatch, columnsToAdd);
         leftTable.copyAttributes(result, BaseTable.CopyAttributeOperation.Join);
+        // note in exact match we require that the right table can match as soon as a row is added to the left
+        boolean rightDoesNotGenerateModifies = !rightTable.isRefreshing() || (exactMatch && rightTable.isAddOnly());
+        if (leftTable.isAddOnly() && rightDoesNotGenerateModifies) {
+            result.setAttribute(Table.ADD_ONLY_TABLE_ATTRIBUTE, true);
+        }
+        if (leftTable.isAppendOnly() && rightDoesNotGenerateModifies) {
+            result.setAttribute(Table.APPEND_ONLY_TABLE_ATTRIBUTE, true);
+        }
         return result;
     }
 
     private static QueryTable naturalJoinInternal(QueryTable leftTable, QueryTable rightTable,
             MatchPair[] columnsToMatch, MatchPair[] columnsToAdd, boolean exactMatch, JoinControl control) {
+        QueryTable.checkInitiateBinaryOperation(leftTable, rightTable);
+
         try (final BucketingContext bucketingContext =
                 new BucketingContext("naturalJoin", leftTable, rightTable, columnsToMatch, columnsToAdd, control)) {
 
@@ -458,70 +468,6 @@ class NaturalJoinHelper {
         return new QueryTable(leftTable.getRowSet(), columnSourceMap);
     }
 
-    /**
-     * This column source is used as a wrapper for the original table's symbol sources.
-     *
-     * The symbol sources are reinterpreted to longs, and then the SymbolCombiner produces an IntegerSparseArraySource
-     * for each side. To convert from the symbol table value, we simply look it up in the symbolLookup source and use
-     * that as our chunked result.
-     */
-    static class SymbolTableToUniqueIdSource extends AbstractColumnSource<Integer>
-            implements ImmutableColumnSourceGetDefaults.ForInt {
-        private final ColumnSource<Long> symbolSource;
-        private final IntegerSparseArraySource symbolLookup;
-
-        SymbolTableToUniqueIdSource(ColumnSource<Long> symbolSource, IntegerSparseArraySource symbolLookup) {
-            super(int.class);
-            this.symbolSource = symbolSource;
-            this.symbolLookup = symbolLookup;
-        }
-
-        @Override
-        public int getInt(long rowKey) {
-            final long symbolId = symbolSource.getLong(rowKey);
-            return symbolLookup.getInt(symbolId);
-        }
-
-        private class LongToIntFillContext implements ColumnSource.FillContext {
-            final WritableLongChunk<Values> longChunk;
-            final FillContext innerFillContext;
-
-            LongToIntFillContext(final int chunkCapacity, final SharedContext sharedState) {
-                longChunk = WritableLongChunk.makeWritableChunk(chunkCapacity);
-                innerFillContext = symbolSource.makeFillContext(chunkCapacity, sharedState);
-            }
-
-            @Override
-            public void close() {
-                longChunk.close();
-                innerFillContext.close();
-            }
-        }
-
-        @Override
-        public FillContext makeFillContext(final int chunkCapacity, final SharedContext sharedContext) {
-            return new LongToIntFillContext(chunkCapacity, sharedContext);
-        }
-
-        @Override
-        public void fillChunk(@NotNull final FillContext context,
-                @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
-            final WritableIntChunk<? super Values> destAsInt = destination.asWritableIntChunk();
-            final LongToIntFillContext longToIntContext = (LongToIntFillContext) context;
-            final WritableLongChunk<Values> longChunk = longToIntContext.longChunk;
-            symbolSource.fillChunk(longToIntContext.innerFillContext, longChunk, rowSequence);
-            for (int ii = 0; ii < longChunk.size(); ++ii) {
-                destAsInt.set(ii, symbolLookup.getInt(longChunk.get(ii)));
-            }
-            destination.setSize(longChunk.size());
-        }
-
-        @Override
-        public boolean isStateless() {
-            return symbolSource.isStateless();
-        }
-    }
-
     private static class LeftTickingListener extends BaseTable.ListenerImpl {
         final LongArraySource newLeftRedirections;
         private final QueryTable result;
@@ -553,7 +499,7 @@ class NaturalJoinHelper {
         @Override
         public void onUpdate(final TableUpdate upstream) {
             final TableUpdateImpl downstream = TableUpdateImpl.copy(upstream);
-            upstream.removed().forAllRowKeys(rowRedirection::removeVoid);
+            rowRedirection.removeAll(upstream.removed());
 
             try (final RowSet prevRowSet = leftTable.getRowSet().copyPrev()) {
                 rowRedirection.applyShift(prevRowSet, upstream.shifted());
@@ -773,7 +719,7 @@ class NaturalJoinHelper {
 
             if (rightIndex == RowSequence.NULL_ROW_KEY) {
                 jsm.checkExactMatch(exactMatch, leftIndices.firstRowKey(), rightIndex);
-                leftIndices.forAllRowKeys(rowRedirection::removeVoid);
+                rowRedirection.removeAll(leftIndices);
             } else {
                 leftIndices.forAllRowKeys((long key) -> rowRedirection.putVoid(key, rightIndex));
             }
@@ -939,7 +885,7 @@ class NaturalJoinHelper {
                         probeSize == 0 ? null : jsm.makeProbeContext(leftSources, probeSize);
                         final Context bc =
                                 buildSize == 0 ? null : jsm.makeBuildContext(leftSources, buildSize)) {
-                    leftRemoved.forAllRowKeys(rowRedirection::removeVoid);
+                    rowRedirection.removeAll(leftRemoved);
                     jsm.removeLeft(pc, leftRemoved, leftSources);
 
                     final RowSet leftModifiedPreShift;
@@ -952,7 +898,7 @@ class NaturalJoinHelper {
 
                         // remove pre-shift modified
                         jsm.removeLeft(pc, leftModifiedPreShift, leftSources);
-                        leftModifiedPreShift.forAllRowKeys(rowRedirection::removeVoid);
+                        rowRedirection.removeAll(leftModifiedPreShift);
                     } else {
                         leftModifiedPreShift = null;
                     }

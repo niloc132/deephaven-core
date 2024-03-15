@@ -1,8 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.widget.plot;
 
+import com.vertispan.tsdefs.annotations.TsInterface;
+import com.vertispan.tsdefs.annotations.TsName;
 import elemental2.core.JsArray;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.SourceDescriptor;
 import io.deephaven.web.client.api.TableData;
@@ -14,6 +16,8 @@ import jsinterop.base.Any;
 
 import java.util.Arrays;
 
+@TsInterface
+@TsName(name = "FigureDataUpdatedEvent", namespace = "dh.plot")
 public class DataUpdateEvent {
 
     public static final DataUpdateEvent empty(JsSeries... series) {

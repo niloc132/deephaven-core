@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Assert;
@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 
 /**
  * A tracker for modified cross join hash table slots.
- *
+ * <p>
  * After adding an entry, you get back a cookie, which must be passed in on future modification operations for that
  * slot.
  */
@@ -148,7 +148,7 @@ class CrossJoinModifiedSlotTracker {
 
             if (keySize > 0) {
                 ensureSortKernel();
-                sortKernel.sort(WritableByteChunk.downcast(flagChunk), keyChunk);
+                sortKernel.sort(flagChunk, keyChunk);
             }
 
             rightChanged = keySize > 0;
@@ -302,7 +302,7 @@ class CrossJoinModifiedSlotTracker {
     }
 
     private final ObjectArraySource<SlotState> modifiedSlots = new ObjectArraySource<>(SlotState.class);
-    private ByteSortKernel<RowKeys, RowKeys> sortKernel;
+    private ByteSortKernel<RowKeys, Values> sortKernel;
 
     private void ensureSortKernel() {
         if (sortKernel == null) {

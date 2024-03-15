@@ -1,17 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select.codegen;
 
+import io.deephaven.api.util.NameValidator;
 import io.deephaven.datastructures.util.CollectionUtil;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.impl.lang.QueryLanguageParser;
 import io.deephaven.engine.table.impl.select.QueryScopeParamTypeUtil;
-import io.deephaven.engine.context.QueryScopeParam;
-import io.deephaven.time.DateTimeUtils;
+import io.deephaven.time.TimeLiteralReplacedExpression;
 import io.deephaven.vector.ObjectVector;
-import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.table.impl.select.DhFormulaColumn;
 import io.deephaven.engine.table.impl.select.formula.FormulaSourceDescriptor;
 import io.deephaven.engine.table.WritableColumnSource;
@@ -28,13 +27,8 @@ public class FormulaAnalyzer {
 
     public static Result analyze(final String rawFormulaString,
             final Map<String, ColumnDefinition<?>> columnDefinitionMap,
-            final DateTimeUtils.Result timeConversionResult,
+            final TimeLiteralReplacedExpression timeConversionResult,
             final QueryLanguageParser.Result queryLanguageResult) throws Exception {
-        final Map<String, QueryScopeParam<?>> possibleParams = new HashMap<>();
-        final QueryScope queryScope = ExecutionContext.getContext().getQueryScope();
-        for (QueryScopeParam<?> param : queryScope.getParams(queryScope.getParamNames())) {
-            possibleParams.put(param.getName(), param);
-        }
 
         log.debug().append("Expression (after language conversion) : ")
                 .append(queryLanguageResult.getConvertedExpression())
@@ -55,7 +49,7 @@ public class FormulaAnalyzer {
                     null != columnDefinitionMap
                             .get(bareName = variable.substring(0, variable.length() - colSuffix.length()))) {
                 usedColumnArrays.add(bareName);
-            } else if (possibleParams.containsKey(variable)) {
+            } else if (queryLanguageResult.getPossibleParams().containsKey(variable)) {
                 userParams.add(variable);
             }
         }
@@ -74,30 +68,51 @@ public class FormulaAnalyzer {
     }
 
     public static QueryLanguageParser.Result getCompiledFormula(Map<String, ColumnDefinition<?>> availableColumns,
-            DateTimeUtils.Result timeConversionResult) throws Exception {
+            TimeLiteralReplacedExpression timeConversionResult) throws Exception {
         final Map<String, Class<?>> possibleVariables = new HashMap<>();
         possibleVariables.put("i", int.class);
         possibleVariables.put("ii", long.class);
         possibleVariables.put("k", long.class);
 
+        final Set<String> columnVariables = new HashSet<>();
+        columnVariables.add("i");
+        columnVariables.add("ii");
+        columnVariables.add("k");
+
         final Map<String, Class<?>[]> possibleVariableParameterizedTypes = new HashMap<>();
 
         for (ColumnDefinition<?> columnDefinition : availableColumns.values()) {
+            // add column-vectors
             final String columnSuffix = DhFormulaColumn.COLUMN_SUFFIX;
             final Class<?> vectorType = DhFormulaColumn.getVectorType(columnDefinition.getDataType());
 
             possibleVariables.put(columnDefinition.getName() + columnSuffix, vectorType);
+            columnVariables.add(columnDefinition.getName() + columnSuffix);
 
             if (vectorType == ObjectVector.class) {
                 possibleVariableParameterizedTypes.put(columnDefinition.getName() + columnSuffix,
                         new Class[] {columnDefinition.getDataType()});
             }
+
+            // add columns
+            columnVariables.add(columnDefinition.getName());
+            possibleVariables.put(columnDefinition.getName(), columnDefinition.getDataType());
+            final Class<?> compType = columnDefinition.getComponentType();
+            if (compType != null && !compType.isPrimitive()) {
+                possibleVariableParameterizedTypes.put(columnDefinition.getName(), new Class[] {compType});
+            }
         }
 
         final ExecutionContext context = ExecutionContext.getContext();
-        final QueryScope queryScope = context.getQueryScope();
-        for (QueryScopeParam<?> param : queryScope.getParams(queryScope.getParamNames())) {
-            possibleVariables.put(param.getName(), QueryScopeParamTypeUtil.getDeclaredClass(param.getValue()));
+        final Map<String, Object> queryScopeVariables = context.getQueryScope().toMap(
+                (name, value) -> NameValidator.isValidQueryParameterName(name));
+        for (Map.Entry<String, Object> param : queryScopeVariables.entrySet()) {
+            if (possibleVariables.containsKey(param.getKey())) {
+                // skip any existing matches
+                continue;
+            }
+
+            possibleVariables.put(param.getKey(), QueryScopeParamTypeUtil.getDeclaredClass(param.getValue()));
 
             Type declaredType = QueryScopeParamTypeUtil.getDeclaredType(param.getValue());
             if (declaredType instanceof ParameterizedType) {
@@ -105,15 +120,7 @@ public class FormulaAnalyzer {
                 Class<?>[] paramTypes = Arrays.stream(pt.getActualTypeArguments())
                         .map(QueryScopeParamTypeUtil::classFromType)
                         .toArray(Class<?>[]::new);
-                possibleVariableParameterizedTypes.put(param.getName(), paramTypes);
-            }
-        }
-
-        for (ColumnDefinition<?> columnDefinition : availableColumns.values()) {
-            possibleVariables.put(columnDefinition.getName(), columnDefinition.getDataType());
-            final Class<?> compType = columnDefinition.getComponentType();
-            if (compType != null && !compType.isPrimitive()) {
-                possibleVariableParameterizedTypes.put(columnDefinition.getName(), new Class[] {compType});
+                possibleVariableParameterizedTypes.put(param.getKey(), paramTypes);
             }
         }
 
@@ -131,8 +138,8 @@ public class FormulaAnalyzer {
         return new QueryLanguageParser(timeConversionResult.getConvertedFormula(),
                 context.getQueryLibrary().getPackageImports(),
                 classImports, context.getQueryLibrary().getStaticImports(), possibleVariables,
-                possibleVariableParameterizedTypes)
-                        .getResult();
+                possibleVariableParameterizedTypes, queryScopeVariables, columnVariables)
+                .getResult();
     }
 
     public static class Result {

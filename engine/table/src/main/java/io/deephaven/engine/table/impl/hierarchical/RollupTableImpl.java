@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.hierarchical;
 
 import io.deephaven.api.ColumnName;
@@ -160,7 +163,7 @@ public class RollupTableImpl extends HierarchicalTableImpl<RollupTable, RollupTa
 
     @Override
     public String getDescription() {
-        return String.format("RollupTable(%s, %s)", source.getDescription(), Strings.of(groupByColumns));
+        return String.format("RollupTable(%s, %s)", source.getDescription(), Strings.ofColumnNames(groupByColumns));
     }
 
     @Override
@@ -227,14 +230,14 @@ public class RollupTableImpl extends HierarchicalTableImpl<RollupTable, RollupTa
     }
 
     @Override
-    public RollupTable withFilters(@NotNull final Collection<? extends Filter> filters) {
-        if (filters.isEmpty()) {
+    public RollupTable withFilter(@NotNull final Filter filter) {
+        final WhereFilter[] filters = WhereFilter.fromInternal(filter);
+        if (filters.length == 0) {
             return noopResult();
         }
-
-        final WhereFilter[] whereFilters = initializeAndValidateFilters(source, groupByColumns, filters,
+        final WhereFilter[] whereFilters = initializeAndValidateFilters(source, groupByColumns, Arrays.asList(filters),
                 IllegalArgumentException::new);
-        final QueryTable filteredBaseLevel = (QueryTable) levelTables[numLevels - 1].where(whereFilters);
+        final QueryTable filteredBaseLevel = (QueryTable) levelTables[numLevels - 1].where(Filter.and(whereFilters));
         final AggregationRowLookup baseLevelRowLookup = levelRowLookups[numLevels - 1];
         final RowSet filteredBaseLevelRowSet = filteredBaseLevel.getRowSet();
         final AggregationRowLookup filteredBaseLevelRowLookup = nodeKey -> {
@@ -465,7 +468,7 @@ public class RollupTableImpl extends HierarchicalTableImpl<RollupTable, RollupTa
                 source.getAttributes(ak -> shouldCopyAttribute(ak, CopyAttributeOperation.Rollup)),
                 source, aggregations, includeConstituents, groupByColumns,
                 levelTables, levelRowLookups, levelNodeTableSources, null, null, null, null, null);
-        source.copySortableColumns(result, baseLevel.getDefinition().getColumnNameMap()::containsKey);
+        source.copySortableColumns(result, baseLevel.getDefinition().getColumnNameSet()::contains);
         result.setColumnDescriptions(AggregationDescriptions.of(aggregations));
         return result;
     }

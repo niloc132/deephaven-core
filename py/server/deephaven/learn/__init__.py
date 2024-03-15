@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 """ Deephaven's learn module provides utilities for efficient data transfer between Deephaven tables and Python objects,
@@ -26,7 +26,7 @@ class Input:
         """  Initializes an Input object with the given arguments.
 
         Args:
-            col_names (str|list) : column name or list of column names from which to gather input.
+            col_names (Union[str, List[str]]) : column name or list of column names from which to gather input.
             gather_func (Callable): function that determines how input gets transformed into an object.
         """
         self.input = _JLearnInput(col_names, gather_func)
@@ -153,11 +153,14 @@ def learn(table: Table = None, model_func: Callable = None, inputs: List[Input] 
 
         result = _create_non_conflicting_col_name(table, "__Result")
 
+        # calling __computer.clear() in a separate update ensures calculations are complete before computer is cleared
         return (table
                 .update(formulas=[
                     f"{future_offset} = __computer.compute(k)",
-                    f"{result} = {future_offset}.getFuture().get()",
-                    f"{clean} = __computer.clear()",
+                    f"{result} = {future_offset}.getFuture().get()"
+                ])
+                .update(formulas=[
+                    f"{clean} = __computer.clear()"
                 ])
                 .drop_columns(cols=[
                     f"{future_offset}",

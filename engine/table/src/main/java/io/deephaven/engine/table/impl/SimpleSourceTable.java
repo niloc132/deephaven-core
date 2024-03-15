@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.table.Table;
@@ -8,9 +8,6 @@ import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.updategraph.UpdateSourceRegistrar;
 import io.deephaven.engine.table.impl.locations.TableLocationProvider;
 import io.deephaven.engine.table.impl.select.SelectColumn;
-
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Simple source table with no partitioning support.
@@ -61,10 +58,8 @@ public class SimpleSourceTable extends SourceTable<SimpleSourceTable> {
 
     @Override
     protected final Table redefine(TableDefinition newDefinitionExternal, TableDefinition newDefinitionInternal,
-            SelectColumn[] viewColumns, Map<String, Set<String>> columnDependency) {
-        DeferredViewTable deferredViewTable = new DeferredViewTable(newDefinitionExternal, description + "-redefined",
+            SelectColumn[] viewColumns) {
+        return new DeferredViewTable(newDefinitionExternal, description + "-redefined",
                 new QueryTableReference(redefine(newDefinitionInternal)), new String[0], viewColumns, null);
-        deferredViewTable.setRefreshing(isRefreshing());
-        return deferredViewTable;
     }
 }

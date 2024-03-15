@@ -1,27 +1,25 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
-
 """ This module provides utilities for listening to table changes. """
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from functools import wraps
 from inspect import signature
-from typing import Callable, Union, List, Generator, Dict, Optional
+from typing import Callable, Union, List, Generator, Dict, Optional, Literal
 
 import jpy
 import numpy
 
 from deephaven import DHError
-from deephaven import ugp
+from deephaven import update_graph
 from deephaven._wrapper import JObjectWrapper
 from deephaven.column import Column
 from deephaven.jcompat import to_sequence
 from deephaven.numpy import column_to_numpy_array
 from deephaven.table import Table
+from deephaven.update_graph import UpdateGraph
 
-_JPythonListenerAdapter = jpy.get_type("io.deephaven.integrations.python.PythonListenerAdapter")
 _JPythonReplayListenerAdapter = jpy.get_type("io.deephaven.integrations.python.PythonReplayListenerAdapter")
 _JTableUpdate = jpy.get_type("io.deephaven.engine.table.TableUpdate")
 _JTableUpdateDataReader = jpy.get_type("io.deephaven.integrations.python.PythonListenerTableUpdateDataReader")
@@ -100,7 +98,7 @@ class TableUpdate(JObjectWrapper):
 
         Args:
             chunk_size (int): the size of the chunk
-            cols (Union[str, List[str]]: the columns(s) for which to return the added rows
+            cols (Union[str, List[str]]): the columns(s) for which to return the added rows
 
         Returns:
             a generator
@@ -138,7 +136,7 @@ class TableUpdate(JObjectWrapper):
 
         Args:
             chunk_size (int): the size of the chunk
-            cols (Union[str, List[str]]: the columns(s) for which to return the added rows
+            cols (Union[str, List[str]]): the columns(s) for which to return the added rows
 
         Returns:
             a generator
@@ -176,7 +174,7 @@ class TableUpdate(JObjectWrapper):
 
         Args:
             chunk_size (int): the size of the chunk
-            cols (Union[str, List[str]]: the columns(s) for which to return the added rows
+            cols (Union[str, List[str]]): the columns(s) for which to return the added rows
 
         Returns:
             a generator
@@ -214,7 +212,7 @@ class TableUpdate(JObjectWrapper):
 
         Args:
             chunk_size (int): the size of the chunk
-            cols (Union[str, List[str]]: the columns(s) for which to return the added rows
+            cols (Union[str, List[str]]): the columns(s) for which to return the added rows
 
         Returns:
             a generator
@@ -237,25 +235,30 @@ class TableUpdate(JObjectWrapper):
         return list(cols) if cols else []
 
 
-def _do_locked(f: Callable, lock_type="shared") -> None:
-    """Executes a function while holding the UpdateGraphProcessor (UGP) lock.  Holding the UGP lock
+def _do_locked(ug: Union[UpdateGraph, Table], f: Callable, lock_type: Literal["shared","exclusive"] = "shared") -> \
+        None:
+    """Executes a function while holding the UpdateGraph (UG) lock.  Holding the UG lock
     ensures that the contents of a table will not change during a computation, but holding
     the lock also prevents table updates from happening.  The lock should be held for as little
     time as possible.
 
     Args:
-        f (Callable): callable to execute while holding the UGP lock, could be function or an object with an 'apply'
+        ug (Union[UpdateGraph, Table]): The Update Graph (UG) or a table-like object.
+        f (Callable): callable to execute while holding the UG lock, could be function or an object with an 'apply'
             attribute which is callable
-        lock_type (str): UGP lock type, valid values are "exclusive" and "shared".  "exclusive" allows only a single
+        lock_type (str): UG lock type, valid values are "exclusive" and "shared".  "exclusive" allows only a single
             reader or writer to hold the lock.  "shared" allows multiple readers or a single writer to hold the lock.
     Raises:
         ValueError
     """
+    if isinstance(ug, Table):
+        ug = ug.update_graph
+
     if lock_type == "exclusive":
-        with ugp.exclusive_lock():
+        with update_graph.exclusive_lock(ug):
             f()
     elif lock_type == "shared":
-        with ugp.shared_lock():
+        with update_graph.shared_lock(ug):
             f()
     else:
         raise ValueError(f"Unsupported lock type: lock_type={lock_type}")
@@ -304,7 +307,7 @@ def _wrap_listener_obj(t: Table, listener: TableListener):
 
 
 def listen(t: Table, listener: Union[Callable, TableListener], description: str = None, do_replay: bool = False,
-           replay_lock: str = "shared"):
+           replay_lock: Literal["shared", "exclusive"] = "shared"):
     """This is a convenience function that creates a TableListenerHandle object and immediately starts it to listen
     for table updates.
 
@@ -330,8 +333,9 @@ def listen(t: Table, listener: Union[Callable, TableListener], description: str 
     return table_listener_handle
 
 
-class TableListenerHandle:
+class TableListenerHandle(JObjectWrapper):
     """A handle to manage a table listener's lifecycle."""
+    j_object_type = _JPythonReplayListenerAdapter
 
     def __init__(self, t: Table, listener: Union[Callable, TableListener], description: str = None):
         """Creates a new table listener handle.
@@ -344,7 +348,7 @@ class TableListenerHandle:
         * (update: TableUpdate, is_replay: bool): support replaying the initial table snapshot and normal table updates
         The 'update' parameter is an object that describes the table update;
         The 'is_replay' parameter is used only by replay listeners, it is set to 'true' when replaying the initial
-            snapshot and 'false' during normal updates.
+        snapshot and 'false' during normal updates.
 
         Args:
             t (Table): table to listen to
@@ -367,7 +371,7 @@ class TableListenerHandle:
 
         self.started = False
 
-    def start(self, do_replay: bool = False, replay_lock: str = "shared") -> None:
+    def start(self, do_replay: bool = False, replay_lock: Literal["shared", "exclusive"] = "shared") -> None:
         """Start the listener by registering it with the table and listening for updates.
 
         Args:
@@ -388,7 +392,7 @@ class TableListenerHandle:
                 self.t.j_table.addUpdateListener(self.listener)
 
             if do_replay:
-                _do_locked(_start, lock_type=replay_lock)
+                _do_locked(self.t, _start, lock_type=replay_lock)
             else:
                 _start()
         except Exception as e:
@@ -403,3 +407,7 @@ class TableListenerHandle:
             return
         self.t.j_table.removeUpdateListener(self.listener)
         self.started = False
+
+    @property
+    def j_object(self) -> jpy.JType:
+        return self.listener

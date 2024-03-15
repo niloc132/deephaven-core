@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Assert;
@@ -29,7 +29,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
 
-import static io.deephaven.engine.table.MatchPair.matchString;
+import static io.deephaven.engine.table.impl.MatchPair.matchString;
 
 /**
  * Implementation for chunk-oriented joins that produce multiple RHS rows per-LHS row, including {@link Table#join}
@@ -136,8 +136,7 @@ public class CrossJoinHelper {
             int numRightBitsToReserve,
             final JoinControl control,
             final boolean leftOuterJoin) {
-        QueryTable.checkInitiateOperation(leftTable);
-        QueryTable.checkInitiateOperation(rightTable);
+        QueryTable.checkInitiateBinaryOperation(leftTable, rightTable);
 
         try (final BucketingContext bucketingContext =
                 new BucketingContext("join", leftTable, rightTable, columnsToMatch, columnsToAdd, control)) {
@@ -196,7 +195,7 @@ public class CrossJoinHelper {
                 jsm.startTrackingPrevValues();
                 final ModifiedColumnSet.Transformer leftTransformer = leftTable.newModifiedColumnSetTransformer(
                         resultTable,
-                        leftTable.getColumnSourceMap().keySet().toArray(CollectionUtil.ZERO_LENGTH_STRING_ARRAY));
+                        leftTable.getDefinition().getColumnNamesArray());
 
                 leftTable.addUpdateListener(new BaseTable.ListenerImpl(bucketingContext.listenerDescription,
                         leftTable, resultTable) {

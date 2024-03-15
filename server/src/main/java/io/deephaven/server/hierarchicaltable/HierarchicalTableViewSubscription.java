@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.hierarchicaltable;
 
 import com.google.rpc.Code;
@@ -22,8 +25,9 @@ import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.extensions.barrage.util.HierarchicalTableSchemaUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
+import io.deephaven.proto.util.Exceptions;
+import io.deephaven.server.session.SessionService;
 import io.deephaven.server.util.Scheduler;
-import io.deephaven.time.DateTime;
 import io.deephaven.util.SafeCloseable;
 import io.grpc.stub.StreamObserver;
 import org.HdrHistogram.Histogram;
@@ -31,6 +35,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -58,6 +63,7 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
     private static final Logger log = LoggerFactory.getLogger(HierarchicalTableViewSubscription.class);
 
     private final Scheduler scheduler;
+    private final SessionService.ErrorTransformer errorTransformer;
     private final BarrageStreamGenerator.Factory<BarrageStreamGeneratorImpl.View> streamGeneratorFactory;
 
     private final HierarchicalTableView view;
@@ -99,12 +105,14 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
     @AssistedInject
     public HierarchicalTableViewSubscription(
             @NotNull final Scheduler scheduler,
+            @NotNull final SessionService.ErrorTransformer errorTransformer,
             @NotNull final BarrageStreamGenerator.Factory<BarrageStreamGeneratorImpl.View> streamGeneratorFactory,
             @Assisted @NotNull final HierarchicalTableView view,
             @Assisted @NotNull final StreamObserver<BarrageStreamGeneratorImpl.View> listener,
             @Assisted @NotNull final BarrageSubscriptionOptions subscriptionOptions,
             @Assisted final long intervalDurationMillis) {
         this.scheduler = scheduler;
+        this.errorTransformer = errorTransformer;
         this.streamGeneratorFactory = streamGeneratorFactory;
         this.view = view;
         this.listener = listener;
@@ -271,14 +279,14 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
                 }
             }
             if (sendError) {
-                GrpcUtil.safelyError(listener, GrpcUtil.securelyWrapError(log, upstreamFailure, Code.DATA_LOSS));
+                GrpcUtil.safelyError(listener, errorTransformer.transform(upstreamFailure));
                 return;
             }
             try {
                 lastExpandedSize = buildAndSendSnapshot(streamGeneratorFactory, listener, subscriptionOptions, view,
                         this::recordSnapshotNanos, this::recordWriteMetrics, columns, rows, lastExpandedSize);
             } catch (Exception e) {
-                GrpcUtil.safelyError(listener, GrpcUtil.securelyWrapError(log, e, Code.DATA_LOSS));
+                GrpcUtil.safelyError(listener, errorTransformer.transform(e));
                 state = State.Done;
             }
         }
@@ -371,7 +379,7 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
 
         if (viewportColumns != null) {
             if (viewportColumns.length() > view.getHierarchicalTable().getAvailableColumnDefinitions().size()) {
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, String.format(
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT, String.format(
                         "Requested columns out of range: length=%d, available length=%d",
                         viewportColumns.length(),
                         view.getHierarchicalTable().getAvailableColumnDefinitions().size()));
@@ -379,17 +387,17 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
         }
         if (viewportRows != null) {
             if (!viewportRows.isContiguous()) {
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                         "HierarchicalTableView subscriptions only support contiguous viewports");
             }
             if (viewportRows.size() > LARGEST_POOLED_CHUNK_CAPACITY) {
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, String.format(
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT, String.format(
                         "HierarchicalTableView subscriptions only support viewport size up to %d rows, requested %d rows",
                         LARGEST_POOLED_CHUNK_CAPACITY, viewportRows.size()));
             }
         }
         if (reverseViewport) {
-            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+            throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                     "HierarchicalTableView subscriptions do not support reverse viewports");
         }
 
@@ -465,41 +473,28 @@ public class HierarchicalTableViewSubscription extends LivenessArtifact {
                 return;
             }
 
-            final DateTime now = DateTime.ofMillis(scheduler);
+            final Instant now = scheduler.instantMillis();
             scheduler.runAfterDelay(BarragePerformanceLog.CYCLE_DURATION_MILLIS, this);
 
             final BarrageSubscriptionPerformanceLogger logger =
                     BarragePerformanceLog.getInstance().getSubscriptionLogger();
-            try {
-                // noinspection SynchronizationOnLocalVariableOrMethodParameter
-                synchronized (logger) {
-                    flush(now, logger, snapshotNanos, "SnapshotMillis");
-                    flush(now, logger, writeNanos, "WriteMillis");
-                    flush(now, logger, writeBits, "WriteMegabits");
-                }
-            } catch (IOException ioe) {
-                log.error().append("HierarchicalTableViewSubscription-").append(statsId)
-                        .append(": Unexpected exception while flushing barrage stats: ")
-                        .append(ioe).endl();
+            // noinspection SynchronizationOnLocalVariableOrMethodParameter
+            synchronized (logger) {
+                flush(now, logger, snapshotNanos, "SnapshotMillis");
+                flush(now, logger, writeNanos, "WriteMillis");
+                flush(now, logger, writeBits, "WriteMegabits");
             }
         }
 
         private void flush(
-                @NotNull final DateTime now,
+                @NotNull final Instant now,
                 @NotNull final BarrageSubscriptionPerformanceLogger logger,
                 @NotNull final Histogram hist,
-                @NotNull final String statType) throws IOException {
+                @NotNull final String statType) {
             if (hist.getTotalCount() == 0) {
                 return;
             }
-            logger.log(statsId, statsKey, statType, now,
-                    hist.getTotalCount(),
-                    hist.getValueAtPercentile(50) / 1e6,
-                    hist.getValueAtPercentile(75) / 1e6,
-                    hist.getValueAtPercentile(90) / 1e6,
-                    hist.getValueAtPercentile(95) / 1e6,
-                    hist.getValueAtPercentile(99) / 1e6,
-                    hist.getMaxValue() / 1e6);
+            logger.log(statsId, statsKey, statType, now, hist);
             hist.reset();
         }
     }

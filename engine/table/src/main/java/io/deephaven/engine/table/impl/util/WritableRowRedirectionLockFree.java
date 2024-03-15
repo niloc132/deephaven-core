@@ -1,11 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.util;
 
 import gnu.trove.iterator.TLongLongIterator;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.table.ChunkSink;
 import io.deephaven.engine.updategraph.UpdateCommitter;
@@ -219,12 +220,12 @@ public class WritableRowRedirectionLockFree implements WritableRowRedirection {
     }
 
     @Override
-    public void removeAll(final RowSequence outerRowKeys) {
+    public void removeAll(final RowSequence rowSequence) {
         if (updateCommitter != null) {
             updateCommitter.maybeActivate();
         }
 
-        outerRowKeys.forAllRowKeys(key -> updates.put(key, BASELINE_KEY_NOT_FOUND));
+        rowSequence.forAllRowKeys(key -> updates.put(key, BASELINE_KEY_NOT_FOUND));
     }
 
     @Override
@@ -242,7 +243,8 @@ public class WritableRowRedirectionLockFree implements WritableRowRedirection {
         Assert.eqNull(updateCommitter, "updateCommitter");
         Assert.eq(baseline, "baseline", updates, "updates");
         updates = createUpdateMap();
-        updateCommitter = new UpdateCommitter<>(this, WritableRowRedirectionLockFree::commitUpdates);
+        updateCommitter = new UpdateCommitter<>(this, ExecutionContext.getContext().getUpdateGraph(),
+                WritableRowRedirectionLockFree::commitUpdates);
     }
 
     /**

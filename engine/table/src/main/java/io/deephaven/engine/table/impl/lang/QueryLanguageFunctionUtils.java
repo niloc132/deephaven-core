@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.lang;
 
 import io.deephaven.configuration.Configuration;
@@ -38,6 +38,10 @@ public final class QueryLanguageFunctionUtils {
         }
 
         return obj1.compareTo(obj2);
+    }
+
+    public static boolean not(boolean a) {
+        return !a;
     }
 
     public static Boolean not(Boolean a) {
@@ -19274,6 +19278,8 @@ public final class QueryLanguageFunctionUtils {
     }
 
     public static int intCast(Object a) {
+        // TODO: #3262 this change is not included in QueryLanguageFunctionGenerator.
+        // TODO: #3264 change 8900c427 causes `intCast(NULL_DOUBLE)` provides an incorrect value instead of throwing.
         return a == null ? QueryConstants.NULL_INT : ((Number) a).intValue();
     }
 

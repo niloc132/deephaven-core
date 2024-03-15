@@ -1,14 +1,21 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.updateby;
 
 import io.deephaven.api.updateby.UpdateByControl;
 import io.deephaven.api.updateby.UpdateByOperation;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
+import io.deephaven.engine.table.impl.DataAccessHelpers;
 import io.deephaven.engine.table.impl.*;
+import io.deephaven.engine.testutil.ControlledUpdateGraph;
 import io.deephaven.engine.testutil.GenerateTableUpdates;
 import io.deephaven.engine.testutil.EvalNugget;
 import io.deephaven.engine.testutil.TstUtils;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.engine.testutil.generator.CharGenerator;
+import io.deephaven.engine.testutil.generator.TestDataGenerator;
 import io.deephaven.function.Numeric;
 import io.deephaven.test.types.OutOfBandTest;
 import org.jetbrains.annotations.NotNull;
@@ -38,12 +45,14 @@ public class TestCumSum extends BaseUpdateByTest {
     @Test
     public void testStaticZeroKey() {
         final QueryTable t = createTestTable(100000, false, false, false, 0x31313131).t;
+
         t.setRefreshing(false);
 
         final Table summed = t.updateBy(UpdateByOperation.CumSum());
         for (String col : t.getDefinition().getColumnNamesArray()) {
-            assertWithCumSum(t.getColumn(col).getDirect(), summed.getColumn(col).getDirect(),
-                    summed.getColumn(col).getType());
+            assertWithCumSum(DataAccessHelpers.getColumn(t, col).getDirect(),
+                    DataAccessHelpers.getColumn(summed, col).getDirect(),
+                    DataAccessHelpers.getColumn(summed, col).getType());
         }
     }
 
@@ -99,8 +108,9 @@ public class TestCumSum extends BaseUpdateByTest {
 
         preOp.partitionedTransform(postOp, (source, actual) -> {
             Arrays.stream(columns).forEach(col -> {
-                assertWithCumSum(source.getColumn(col).getDirect(), actual.getColumn(col).getDirect(),
-                        actual.getColumn(col).getType());
+                assertWithCumSum(DataAccessHelpers.getColumn(source, col).getDirect(),
+                        DataAccessHelpers.getColumn(actual, col).getDirect(),
+                        DataAccessHelpers.getColumn(actual, col).getType());
             });
             return source;
         });
@@ -121,7 +131,9 @@ public class TestCumSum extends BaseUpdateByTest {
     }
 
     private void doTestAppendOnly(boolean bucketed) {
-        final CreateResult result = createTestTable(10000, bucketed, false, true, 0x31313131);
+        final CreateResult result = createTestTable(10000, bucketed, false, true, 0x31313131,
+                new String[] {"charCol"},
+                new TestDataGenerator[] {new CharGenerator('A', 'z', 0.1)});
         final QueryTable t = result.t;
         t.setAttribute(Table.ADD_ONLY_TABLE_ATTRIBUTE, Boolean.TRUE);
 
@@ -137,14 +149,17 @@ public class TestCumSum extends BaseUpdateByTest {
 
         final Random billy = new Random(0xB177B177);
         for (int ii = 0; ii < 100; ii++) {
-            UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> generateAppends(100, billy, t, result.infos));
+            ExecutionContext.getContext().getUpdateGraph().<ControlledUpdateGraph>cast().runWithinUnitTestCycle(
+                    () -> generateAppends(100, billy, t, result.infos));
             TstUtils.validate("Table", nuggets);
         }
     }
 
     @Test
     public void testZeroKeyGeneralTicking() {
-        final CreateResult result = createTestTable(10000, false, false, true, 0x31313131);
+        final CreateResult result = createTestTable(100, false, false, true, 0x31313131,
+                new String[] {"charCol"},
+                new TestDataGenerator[] {new CharGenerator('A', 'z', 0.1)});
         final QueryTable t = result.t;
 
         final EvalNugget[] nuggets = new EvalNugget[] {
@@ -158,7 +173,7 @@ public class TestCumSum extends BaseUpdateByTest {
 
         final Random billy = new Random(0xB177B177);
         for (int ii = 0; ii < 100; ii++) {
-            UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(
+            ExecutionContext.getContext().getUpdateGraph().<ControlledUpdateGraph>cast().runWithinUnitTestCycle(
                     () -> GenerateTableUpdates.generateTableUpdates(100, billy, t, result.infos));
             TstUtils.validate("Table - step " + ii, nuggets);
         }
@@ -166,7 +181,9 @@ public class TestCumSum extends BaseUpdateByTest {
 
     @Test
     public void testBucketedGeneralTicking() {
-        final CreateResult result = createTestTable(10000, true, false, true, 0x31313131);
+        final CreateResult result = createTestTable(100, true, false, true, 0x31313131,
+                new String[] {"charCol"},
+                new TestDataGenerator[] {new CharGenerator('A', 'z', 0.1)});
         final QueryTable t = result.t;
 
         final EvalNugget[] nuggets = new EvalNugget[] {
@@ -334,7 +351,7 @@ public class TestCumSum extends BaseUpdateByTest {
         return result;
     }
 
-    final void assertWithCumSum(final @NotNull Object expected, final @NotNull Object actual, Class type) {
+    final void assertWithCumSum(@NotNull final Object expected, @NotNull final Object actual, Class type) {
         if (expected instanceof byte[]) {
             assertArrayEquals(cumsum((byte[]) expected), (long[]) actual);
         } else if (expected instanceof short[]) {

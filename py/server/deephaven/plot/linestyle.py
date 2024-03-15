@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 """ The module implements the LineStyle class that can be used to define the line style of a plot. """
@@ -68,7 +68,7 @@ class LineStyle(JObjectWrapper):
         Args:
             width (float): the width of the line, default is 1.0
             end_style (LineEndStyle): the end style of the line, default is LineEndStyle.ROUND
-            join_style (LineJoinStyle: the join style of the line, default is LineJoinStyle.ROUND
+            join_style (LineJoinStyle): the join style of the line, default is LineJoinStyle.ROUND
             dash_pattern (List[Number]): a list of number specifying the dash pattern of the line
 
         Raises:

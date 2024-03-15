@@ -1,10 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.benchmark.engine.util;
 
 import io.deephaven.engine.rowset.RowSet;
-import io.deephaven.engine.rowset.impl.TrackingWritableRowSetImpl;
+import io.deephaven.engine.rowset.impl.WritableRowSetImpl;
 import io.deephaven.engine.rowset.impl.rsp.RspBitmap;
 import io.deephaven.engine.rowset.impl.rsp.RspIterator;
 import gnu.trove.iterator.TLongIterator;
@@ -52,7 +52,7 @@ public class RowSetIterationBench {
             prev = v;
         }
         rb.finishMutationsAndOptimize();
-        ix = new TrackingWritableRowSetImpl(rb);
+        ix = new WritableRowSetImpl(rb);
         tset = new TLongHashSet(values);
     }
 

@@ -1,16 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/****************************************************************************************************************************
- ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - Run GenerateFigureImmutable or "./gradlew :Generators:generateFigureImmutable" to regenerate
- ****************************************************************************************************************************/
-
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Run GenerateFigureImmutable or "./gradlew :Generators:generateFigureImmutable" to regenerate
+//
+// @formatter:off
 package io.deephaven.plot;
 
 
 /** An interface for constructing plots.  A Figure is immutable, and all function calls return a new immutable Figure instance.*/
-@SuppressWarnings({"unused", "RedundantCast", "SameParameterValue"})
-public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigure, io.deephaven.plot.Chart, io.deephaven.plot.Axes, io.deephaven.plot.Axis, io.deephaven.plot.datasets.DataSeries, io.deephaven.plot.datasets.category.CategoryDataSeries, io.deephaven.plot.datasets.interval.IntervalXYDataSeries, io.deephaven.plot.datasets.ohlc.OHLCDataSeries, io.deephaven.plot.datasets.xy.XYDataSeries, io.deephaven.plot.datasets.multiseries.MultiSeries, io.deephaven.plot.datasets.xy.XYDataSeriesFunction, io.deephaven.plot.datasets.xyerrorbar.XYErrorBarDataSeries, io.deephaven.plot.datasets.categoryerrorbar.CategoryErrorBarDataSeries {
+@SuppressWarnings({"unused", "RedundantCast", "SameParameterValue", "rawtypes"})
+public interface Figure extends io.deephaven.plot.BaseFigure, io.deephaven.plot.Chart, io.deephaven.plot.Axes, io.deephaven.plot.Axis, io.deephaven.plot.datasets.DataSeries, io.deephaven.plot.datasets.category.CategoryDataSeries, io.deephaven.plot.datasets.interval.IntervalXYDataSeries, io.deephaven.plot.datasets.ohlc.OHLCDataSeries, io.deephaven.plot.datasets.xy.XYDataSeries, io.deephaven.plot.datasets.multiseries.MultiSeries, io.deephaven.plot.datasets.xy.XYDataSeriesFunction, io.deephaven.plot.datasets.xyerrorbar.XYErrorBarDataSeries, io.deephaven.plot.datasets.categoryerrorbar.CategoryErrorBarDataSeries {
 
 
     /**
@@ -69,7 +69,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Comparable> Figure catErrorBar( java.lang.Comparable seriesName, T0[] categories, long[] y, long[] yLow, long[] yHigh );
 
-    @Override <T0 extends java.lang.Comparable> Figure catErrorBar( java.lang.Comparable seriesName, T0[] categories, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override <T0 extends java.lang.Comparable> Figure catErrorBar( java.lang.Comparable seriesName, T0[] categories, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override <T0 extends java.lang.Comparable> Figure catErrorBar( java.lang.Comparable seriesName, T0[] categories, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
@@ -125,7 +125,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, T0[] categories, long[] y );
 
-    @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, T0[] categories, io.deephaven.time.DateTime[] y );
+    @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, T0[] categories, java.time.Instant[] y );
 
     @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, T0[] categories, java.util.Date[] y );
 
@@ -145,7 +145,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, java.util.List<T0> categories, long[] y );
 
-    @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, java.util.List<T0> categories, io.deephaven.time.DateTime[] y );
+    @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, java.util.List<T0> categories, java.time.Instant[] y );
 
     @Override <T0 extends java.lang.Comparable> Figure catPlot( java.lang.Comparable seriesName, java.util.List<T0> categories, java.util.Date[] y );
 
@@ -193,49 +193,49 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, T3[] y );
 
-    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, io.deephaven.time.DateTime[] y );
+    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, java.time.Instant[] y );
 
     @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, java.util.Date[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, double[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, io.deephaven.time.DateTime[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, java.time.Instant[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, java.util.Date[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, float[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, io.deephaven.time.DateTime[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, java.time.Instant[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, java.util.Date[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, int[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, io.deephaven.time.DateTime[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, java.time.Instant[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, java.util.Date[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, long[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, io.deephaven.time.DateTime[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, java.time.Instant[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, java.util.Date[] y );
 
-    @Override <T3 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, T3[] y );
+    @Override <T3 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, T3[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, double[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, double[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, float[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, float[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, int[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, int[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, long[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, long[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, io.deephaven.time.DateTime[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, java.time.Instant[] y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, short[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, short[] y );
 
-    @Override <T3 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, java.util.List<T3> y );
+    @Override <T3 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, java.util.List<T3> y );
 
     @Override <T3 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, java.util.Date[] x, java.util.Date[] xLow, java.util.Date[] xHigh, T3[] y );
 
@@ -253,13 +253,13 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T3 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, java.util.Date[] x, java.util.Date[] xLow, java.util.Date[] xHigh, java.util.List<T3> y );
 
-    @Override  Figure errorBarX( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, io.deephaven.time.DateTime[] y );
+    @Override  Figure errorBarX( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, java.time.Instant[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, java.util.Date[] y );
 
     @Override  Figure errorBarX( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, short[] y );
 
-    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.List<T1> xLow, java.util.List<T2> xHigh, io.deephaven.time.DateTime[] y );
+    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.List<T1> xLow, java.util.List<T2> xHigh, java.time.Instant[] y );
 
     @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarX( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.List<T1> xLow, java.util.List<T2> xHigh, java.util.Date[] y );
 
@@ -275,49 +275,49 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number,T4 extends java.lang.Number,T5 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, T3[] y, T4[] yLow, T5[] yHigh );
 
-    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, T0[] x, T1[] xLow, T2[] xHigh, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, double[] y, double[] yLow, double[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, double[] x, double[] xLow, double[] xHigh, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, float[] y, float[] yLow, float[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, float[] x, float[] xLow, float[] xHigh, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, int[] y, int[] yLow, int[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, int[] x, int[] xLow, int[] xHigh, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, long[] y, long[] yLow, long[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, long[] x, long[] xLow, long[] xHigh, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
-    @Override <T3 extends java.lang.Number,T4 extends java.lang.Number,T5 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, T3[] y, T4[] yLow, T5[] yHigh );
+    @Override <T3 extends java.lang.Number,T4 extends java.lang.Number,T5 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, T3[] y, T4[] yLow, T5[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, double[] y, double[] yLow, double[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, double[] y, double[] yLow, double[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, float[] y, float[] yLow, float[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, float[] y, float[] yLow, float[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, int[] y, int[] yLow, int[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, int[] y, int[] yLow, int[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, long[] y, long[] yLow, long[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, long[] y, long[] yLow, long[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, short[] y, short[] yLow, short[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, short[] y, short[] yLow, short[] yHigh );
 
-    @Override <T3 extends java.lang.Number,T4 extends java.lang.Number,T5 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] xLow, io.deephaven.time.DateTime[] xHigh, java.util.List<T3> y, java.util.List<T4> yLow, java.util.List<T5> yHigh );
+    @Override <T3 extends java.lang.Number,T4 extends java.lang.Number,T5 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] xLow, java.time.Instant[] xHigh, java.util.List<T3> y, java.util.List<T4> yLow, java.util.List<T5> yHigh );
 
     @Override <T3 extends java.lang.Number,T4 extends java.lang.Number,T5 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, java.util.Date[] x, java.util.Date[] xLow, java.util.Date[] xHigh, T3[] y, T4[] yLow, T5[] yHigh );
 
@@ -335,13 +335,13 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T3 extends java.lang.Number,T4 extends java.lang.Number,T5 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, java.util.Date[] x, java.util.Date[] xLow, java.util.Date[] xHigh, java.util.List<T3> y, java.util.List<T4> yLow, java.util.List<T5> yHigh );
 
-    @Override  Figure errorBarXY( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarXY( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarXY( java.lang.Comparable seriesName, short[] x, short[] xLow, short[] xHigh, short[] y, short[] yLow, short[] yHigh );
 
-    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.List<T1> xLow, java.util.List<T2> xHigh, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.List<T1> xLow, java.util.List<T2> xHigh, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number> Figure errorBarXY( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.List<T1> xLow, java.util.List<T2> xHigh, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
@@ -357,49 +357,49 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Number,T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, T0[] x, T1[] y, T2[] yLow, T3[] yHigh );
 
-    @Override <T0 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, T0[] x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override <T0 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, T0[] x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override <T0 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, T0[] x, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, double[] x, double[] y, double[] yLow, double[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, double[] x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, double[] x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, double[] x, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, float[] x, float[] y, float[] yLow, float[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, float[] x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, float[] x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, float[] x, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, int[] x, int[] y, int[] yLow, int[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, int[] x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, int[] x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, int[] x, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, long[] x, long[] y, long[] yLow, long[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, long[] x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, long[] x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, long[] x, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
-    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, T1[] y, T2[] yLow, T3[] yHigh );
+    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, T1[] y, T2[] yLow, T3[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, double[] y, double[] yLow, double[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, double[] y, double[] yLow, double[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, float[] y, float[] yLow, float[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, float[] y, float[] yLow, float[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, int[] y, int[] yLow, int[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, int[] y, int[] yLow, int[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, long[] y, long[] yLow, long[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, long[] y, long[] yLow, long[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, short[] y, short[] yLow, short[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, short[] y, short[] yLow, short[] yHigh );
 
-    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, java.util.List<T1> y, java.util.List<T2> yLow, java.util.List<T3> yHigh );
+    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, java.time.Instant[] x, java.util.List<T1> y, java.util.List<T2> yLow, java.util.List<T3> yHigh );
 
     @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, java.util.Date[] x, T1[] y, T2[] yLow, T3[] yHigh );
 
@@ -417,13 +417,13 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, java.util.Date[] x, java.util.List<T1> y, java.util.List<T2> yLow, java.util.List<T3> yHigh );
 
-    @Override  Figure errorBarY( java.lang.Comparable seriesName, short[] x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override  Figure errorBarY( java.lang.Comparable seriesName, short[] x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, short[] x, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
     @Override  Figure errorBarY( java.lang.Comparable seriesName, short[] x, short[] y, short[] yLow, short[] yHigh );
 
-    @Override <T0 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, java.util.List<T0> x, io.deephaven.time.DateTime[] y, io.deephaven.time.DateTime[] yLow, io.deephaven.time.DateTime[] yHigh );
+    @Override <T0 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, java.util.List<T0> x, java.time.Instant[] y, java.time.Instant[] yLow, java.time.Instant[] yHigh );
 
     @Override <T0 extends java.lang.Number> Figure errorBarY( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.Date[] y, java.util.Date[] yLow, java.util.Date[] yHigh );
 
@@ -535,19 +535,19 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure newChart( int rowNum, int colNum );
 
-    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number,T4 extends java.lang.Number> Figure ohlcPlot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] time, T1[] open, T2[] high, T3[] low, T4[] close );
+    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number,T4 extends java.lang.Number> Figure ohlcPlot( java.lang.Comparable seriesName, java.time.Instant[] time, T1[] open, T2[] high, T3[] low, T4[] close );
 
-    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] time, double[] open, double[] high, double[] low, double[] close );
+    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, java.time.Instant[] time, double[] open, double[] high, double[] low, double[] close );
 
-    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] time, float[] open, float[] high, float[] low, float[] close );
+    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, java.time.Instant[] time, float[] open, float[] high, float[] low, float[] close );
 
-    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] time, int[] open, int[] high, int[] low, int[] close );
+    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, java.time.Instant[] time, int[] open, int[] high, int[] low, int[] close );
 
-    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] time, long[] open, long[] high, long[] low, long[] close );
+    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, java.time.Instant[] time, long[] open, long[] high, long[] low, long[] close );
 
-    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] time, short[] open, short[] high, short[] low, short[] close );
+    @Override  Figure ohlcPlot( java.lang.Comparable seriesName, java.time.Instant[] time, short[] open, short[] high, short[] low, short[] close );
 
-    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number,T4 extends java.lang.Number> Figure ohlcPlot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] time, java.util.List<T1> open, java.util.List<T2> high, java.util.List<T3> low, java.util.List<T4> close );
+    @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number,T4 extends java.lang.Number> Figure ohlcPlot( java.lang.Comparable seriesName, java.time.Instant[] time, java.util.List<T1> open, java.util.List<T2> high, java.util.List<T3> low, java.util.List<T4> close );
 
     @Override <T1 extends java.lang.Number,T2 extends java.lang.Number,T3 extends java.lang.Number,T4 extends java.lang.Number> Figure ohlcPlot( java.lang.Comparable seriesName, java.util.Date[] time, T1[] open, T2[] high, T3[] low, T4[] close );
 
@@ -621,7 +621,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, T0[] x, long[] y );
 
-    @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, T0[] x, io.deephaven.time.DateTime[] y );
+    @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, T0[] x, java.time.Instant[] y );
 
     @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, T0[] x, java.util.Date[] y );
 
@@ -639,7 +639,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure plot( java.lang.Comparable seriesName, double[] x, long[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, double[] x, io.deephaven.time.DateTime[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, double[] x, java.time.Instant[] y );
 
     @Override  Figure plot( java.lang.Comparable seriesName, double[] x, java.util.Date[] y );
 
@@ -657,7 +657,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure plot( java.lang.Comparable seriesName, float[] x, long[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, float[] x, io.deephaven.time.DateTime[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, float[] x, java.time.Instant[] y );
 
     @Override  Figure plot( java.lang.Comparable seriesName, float[] x, java.util.Date[] y );
 
@@ -675,7 +675,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure plot( java.lang.Comparable seriesName, int[] x, long[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, int[] x, io.deephaven.time.DateTime[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, int[] x, java.time.Instant[] y );
 
     @Override  Figure plot( java.lang.Comparable seriesName, int[] x, java.util.Date[] y );
 
@@ -693,7 +693,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure plot( java.lang.Comparable seriesName, long[] x, long[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, long[] x, io.deephaven.time.DateTime[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, long[] x, java.time.Instant[] y );
 
     @Override  Figure plot( java.lang.Comparable seriesName, long[] x, java.util.Date[] y );
 
@@ -701,23 +701,23 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T1 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, long[] x, java.util.List<T1> y );
 
-    @Override <T1 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, T1[] y );
+    @Override <T1 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, T1[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, double[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, double[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, float[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, float[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, int[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, int[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, long[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, long[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, io.deephaven.time.DateTime[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, java.time.Instant[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, java.util.Date[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, java.util.Date[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, short[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, short[] y );
 
-    @Override <T1 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, io.deephaven.time.DateTime[] x, java.util.List<T1> y );
+    @Override <T1 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, java.time.Instant[] x, java.util.List<T1> y );
 
     @Override <T1 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, java.util.Date[] x, T1[] y );
 
@@ -729,7 +729,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure plot( java.lang.Comparable seriesName, java.util.Date[] x, long[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, java.util.Date[] x, io.deephaven.time.DateTime[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, java.util.Date[] x, java.time.Instant[] y );
 
     @Override  Figure plot( java.lang.Comparable seriesName, java.util.Date[] x, java.util.Date[] y );
 
@@ -747,7 +747,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure plot( java.lang.Comparable seriesName, short[] x, long[] y );
 
-    @Override  Figure plot( java.lang.Comparable seriesName, short[] x, io.deephaven.time.DateTime[] y );
+    @Override  Figure plot( java.lang.Comparable seriesName, short[] x, java.time.Instant[] y );
 
     @Override  Figure plot( java.lang.Comparable seriesName, short[] x, java.util.Date[] y );
 
@@ -765,7 +765,7 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, java.util.List<T0> x, long[] y );
 
-    @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, java.util.List<T0> x, io.deephaven.time.DateTime[] y );
+    @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, java.util.List<T0> x, java.time.Instant[] y );
 
     @Override <T0 extends java.lang.Number> Figure plot( java.lang.Comparable seriesName, java.util.List<T0> x, java.util.Date[] y );
 
@@ -963,273 +963,229 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure errorBarColor( int errorBarColor );
 
-    @Override  Figure errorBarColor( int errorBarColor, java.lang.Object... multiSeriesKey );
-
     @Override  Figure errorBarColor( io.deephaven.gui.color.Paint errorBarColor );
-
-    @Override  Figure errorBarColor( io.deephaven.gui.color.Paint errorBarColor, java.lang.Object... multiSeriesKey );
 
     @Override  Figure errorBarColor( java.lang.String errorBarColor );
 
-    @Override  Figure errorBarColor( java.lang.String errorBarColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure funcNPoints( int npoints );
-
-    @Override  Figure funcRange( double xmin, double xmax );
-
-    @Override  Figure funcRange( double xmin, double xmax, int npoints );
-
     @Override  Figure gradientVisible( boolean gradientVisible );
-
-    @Override  Figure gradientVisible( boolean gradientVisible, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure group( int group );
-
-    @Override  Figure group( int group, java.lang.Object... multiSeriesKey );
 
     @Override  Figure lineColor( int color );
 
-    @Override  Figure lineColor( int color, java.lang.Object... multiSeriesKey );
-
     @Override  Figure lineColor( io.deephaven.gui.color.Paint color );
-
-    @Override  Figure lineColor( io.deephaven.gui.color.Paint color, java.lang.Object... multiSeriesKey );
 
     @Override  Figure lineColor( java.lang.String color );
 
-    @Override  Figure lineColor( java.lang.String color, java.lang.Object... multiSeriesKey );
-
     @Override  Figure lineStyle( io.deephaven.plot.LineStyle lineStyle );
-
-    @Override  Figure lineStyle( io.deephaven.plot.LineStyle lineStyle, java.lang.Object... multiSeriesKey );
 
     @Override  Figure linesVisible( java.lang.Boolean visible );
 
-    @Override  Figure linesVisible( java.lang.Boolean visible, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure piePercentLabelFormat( java.lang.String pieLabelFormat );
-
-    @Override  Figure piePercentLabelFormat( java.lang.String pieLabelFormat, java.lang.Object... multiSeriesKey );
-
     @Override  Figure pointColor( int pointColor );
-
-    @Override  Figure pointColor( int pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( int... pointColors );
-
-    @Override  Figure pointColor( int[] pointColors, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointColor );
-
-    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String pointColors );
-
-    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String pointColors, java.lang.Object... multiSeriesKey );
 
     @Override  Figure pointColor( io.deephaven.gui.color.Paint pointColor );
 
-    @Override  Figure pointColor( io.deephaven.gui.color.Paint pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( io.deephaven.gui.color.Paint... pointColor );
-
-    @Override  Figure pointColor( io.deephaven.gui.color.Paint[] pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointColor );
-
-    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointColors );
-
-    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointColors, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( java.lang.Comparable category, int pointColor );
-
-    @Override  Figure pointColor( java.lang.Comparable category, int pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( java.lang.Comparable category, io.deephaven.gui.color.Paint pointColor );
-
-    @Override  Figure pointColor( java.lang.Comparable category, io.deephaven.gui.color.Paint pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( java.lang.Comparable category, java.lang.String pointColor );
-
-    @Override  Figure pointColor( java.lang.Comparable category, java.lang.String pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( java.lang.Integer... pointColors );
-
-    @Override  Figure pointColor( java.lang.Integer[] pointColors, java.lang.Object... multiSeriesKey );
-
     @Override  Figure pointColor( java.lang.String pointColor );
-
-    @Override  Figure pointColor( java.lang.String pointColor, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColor( java.lang.String... pointColors );
-
-    @Override  Figure pointColor( java.lang.String[] pointColors, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointColorInteger( io.deephaven.plot.datasets.data.IndexableData<java.lang.Integer> colors );
-
-    @Override  Figure pointColorInteger( io.deephaven.plot.datasets.data.IndexableData<java.lang.Integer> colors, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointLabel );
-
-    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String pointLabel );
-
-    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointLabel( io.deephaven.plot.datasets.data.IndexableData<?> pointLabels );
-
-    @Override  Figure pointLabel( io.deephaven.plot.datasets.data.IndexableData<?> pointLabels, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointLabel );
-
-    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointLabel );
-
-    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointLabel( java.lang.Comparable category, java.lang.Object pointLabel );
-
-    @Override  Figure pointLabel( java.lang.Comparable category, java.lang.Object pointLabel, java.lang.Object... multiSeriesKey );
 
     @Override  Figure pointLabel( java.lang.Object pointLabel );
 
-    @Override  Figure pointLabel( java.lang.Object pointLabel, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointLabel( java.lang.Object... pointLabels );
-
-    @Override  Figure pointLabel( java.lang.Object[] pointLabels, java.lang.Object... multiSeriesKey );
-
     @Override  Figure pointLabelFormat( java.lang.String pointLabelFormat );
-
-    @Override  Figure pointLabelFormat( java.lang.String pointLabelFormat, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( groovy.lang.Closure<java.lang.String> pointShapes );
-
-    @Override  Figure pointShape( groovy.lang.Closure<java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointShape );
-
-    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String pointShape );
-
-    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
 
     @Override  Figure pointShape( io.deephaven.gui.shape.Shape pointShape );
 
-    @Override  Figure pointShape( io.deephaven.gui.shape.Shape pointShape, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( io.deephaven.gui.shape.Shape... pointShapes );
-
-    @Override  Figure pointShape( io.deephaven.gui.shape.Shape[] pointShapes, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( io.deephaven.plot.datasets.data.IndexableData<java.lang.String> pointShapes );
-
-    @Override  Figure pointShape( io.deephaven.plot.datasets.data.IndexableData<java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointShape );
-
-    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointShape );
-
-    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( java.lang.Comparable category, io.deephaven.gui.shape.Shape pointShape );
-
-    @Override  Figure pointShape( java.lang.Comparable category, io.deephaven.gui.shape.Shape pointShape, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( java.lang.Comparable category, java.lang.String pointShape );
-
-    @Override  Figure pointShape( java.lang.Comparable category, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
-
     @Override  Figure pointShape( java.lang.String pointShape );
-
-    @Override  Figure pointShape( java.lang.String pointShape, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( java.lang.String... pointShapes );
-
-    @Override  Figure pointShape( java.lang.String[] pointShapes, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointShape( java.util.function.Function<java.lang.Comparable, java.lang.String> pointShapes );
-
-    @Override  Figure pointShape( java.util.function.Function<java.lang.Comparable, java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
 
     @Override  Figure pointSize( double pointSize );
 
-    @Override  Figure pointSize( double... pointSizes );
-
-    @Override  Figure pointSize( double[] pointSizes, java.lang.Object... multiSeriesKey );
-
     @Override  Figure pointSize( int pointSize );
-
-    @Override  Figure pointSize( int... pointSizes );
-
-    @Override  Figure pointSize( int[] pointSizes, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointSize );
-
-    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointSize, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String pointSizes );
-
-    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String pointSizes, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( io.deephaven.plot.datasets.data.IndexableData<java.lang.Double> pointSizes );
-
-    @Override  Figure pointSize( io.deephaven.plot.datasets.data.IndexableData<java.lang.Double> pointSizes, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointSize );
-
-    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointSize, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointSize );
-
-    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointSize, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( java.lang.Comparable category, double pointSize );
-
-    @Override  Figure pointSize( java.lang.Comparable category, double pointSize, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( java.lang.Comparable category, int pointSize );
-
-    @Override  Figure pointSize( java.lang.Comparable category, int pointSize, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( java.lang.Comparable category, java.lang.Number pointSize );
-
-    @Override  Figure pointSize( java.lang.Comparable category, java.lang.Number pointSize, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure pointSize( java.lang.Comparable category, long pointSize );
-
-    @Override  Figure pointSize( java.lang.Comparable category, long pointSize, java.lang.Object... multiSeriesKey );
 
     @Override  Figure pointSize( java.lang.Number pointSize );
 
-    @Override  Figure pointSize( java.lang.Number pointSize, java.lang.Object... multiSeriesKey );
-
     @Override  Figure pointSize( long pointSize );
-
-    @Override  Figure pointSize( long... pointSizes );
-
-    @Override  Figure pointSize( long[] pointSizes, java.lang.Object... multiSeriesKey );
 
     @Override  Figure pointsVisible( java.lang.Boolean visible );
 
-    @Override  Figure pointsVisible( java.lang.Boolean visible, java.lang.Object... multiSeriesKey );
-
     @Override  Figure seriesColor( int color );
-
-    @Override  Figure seriesColor( int color, java.lang.Object... multiSeriesKey );
 
     @Override  Figure seriesColor( io.deephaven.gui.color.Paint color );
 
-    @Override  Figure seriesColor( io.deephaven.gui.color.Paint color, java.lang.Object... multiSeriesKey );
-
     @Override  Figure seriesColor( java.lang.String color );
+
+    @Override  Figure toolTipPattern( java.lang.String toolTipPattern );
+
+    @Override  Figure xToolTipPattern( java.lang.String xToolTipPattern );
+
+    @Override  Figure yToolTipPattern( java.lang.String yToolTipPattern );
+
+    @Override  Figure group( int group );
+
+    @Override  Figure piePercentLabelFormat( java.lang.String pieLabelFormat );
+
+    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointColor );
+
+    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointColor );
+
+    @Override  Figure pointColor( java.lang.Comparable category, int pointColor );
+
+    @Override  Figure pointColor( java.lang.Comparable category, io.deephaven.gui.color.Paint pointColor );
+
+    @Override  Figure pointColor( java.lang.Comparable category, java.lang.String pointColor );
+
+    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointLabel );
+
+    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointLabel );
+
+    @Override  Figure pointLabel( java.lang.Comparable category, java.lang.Object pointLabel );
+
+    @Override  Figure pointShape( groovy.lang.Closure<java.lang.String> pointShapes );
+
+    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointShape );
+
+    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointShape );
+
+    @Override  Figure pointShape( java.lang.Comparable category, io.deephaven.gui.shape.Shape pointShape );
+
+    @Override  Figure pointShape( java.lang.Comparable category, java.lang.String pointShape );
+
+    @Override  Figure pointShape( java.util.function.Function<java.lang.Comparable, java.lang.String> pointShapes );
+
+    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointSize );
+
+    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointSize );
+
+    @Override  Figure pointSize( java.lang.Comparable category, double pointSize );
+
+    @Override  Figure pointSize( java.lang.Comparable category, int pointSize );
+
+    @Override  Figure pointSize( java.lang.Comparable category, java.lang.Number pointSize );
+
+    @Override  Figure pointSize( java.lang.Comparable category, long pointSize );
+
+    @Override  Figure errorBarColor( int errorBarColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure errorBarColor( io.deephaven.gui.color.Paint errorBarColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure errorBarColor( java.lang.String errorBarColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure gradientVisible( boolean gradientVisible, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure group( int group, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure lineColor( int color, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure lineColor( io.deephaven.gui.color.Paint color, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure lineColor( java.lang.String color, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure lineStyle( io.deephaven.plot.LineStyle lineStyle, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure linesVisible( java.lang.Boolean visible, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure piePercentLabelFormat( java.lang.String pieLabelFormat, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( int pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( int[] pointColors, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String pointColors, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( io.deephaven.gui.color.Paint pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( io.deephaven.gui.color.Paint[] pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointColors, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( java.lang.Comparable category, int pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( java.lang.Comparable category, io.deephaven.gui.color.Paint pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( java.lang.Comparable category, java.lang.String pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( java.lang.Integer[] pointColors, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( java.lang.String pointColor, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( java.lang.String[] pointColors, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColorInteger( io.deephaven.plot.datasets.data.IndexableData<java.lang.Integer> colors, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( io.deephaven.plot.datasets.data.IndexableData<?> pointLabels, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointLabel, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( java.lang.Comparable category, java.lang.Object pointLabel, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( java.lang.Object pointLabel, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabel( java.lang.Object[] pointLabels, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointLabelFormat( java.lang.String pointLabelFormat, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( groovy.lang.Closure<java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( io.deephaven.gui.shape.Shape pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( io.deephaven.gui.shape.Shape[] pointShapes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( io.deephaven.plot.datasets.data.IndexableData<java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( java.lang.Comparable category, io.deephaven.gui.shape.Shape pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( java.lang.Comparable category, java.lang.String pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( java.lang.String pointShape, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( java.lang.String[] pointShapes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointShape( java.util.function.Function<java.lang.Comparable, java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( double[] pointSizes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( int[] pointSizes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String category, java.lang.String pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String pointSizes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( io.deephaven.plot.datasets.data.IndexableData<java.lang.Double> pointSizes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String category, java.lang.String pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( java.lang.Comparable category, double pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( java.lang.Comparable category, int pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( java.lang.Comparable category, java.lang.Number pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( java.lang.Comparable category, long pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( java.lang.Number pointSize, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointSize( long[] pointSizes, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointsVisible( java.lang.Boolean visible, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure seriesColor( int color, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure seriesColor( io.deephaven.gui.color.Paint color, java.lang.Object... multiSeriesKey );
 
     @Override  Figure seriesColor( java.lang.String color, java.lang.Object... multiSeriesKey );
 
@@ -1237,17 +1193,61 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override  Figure seriesNamingFunction( java.util.function.Function<java.lang.Object, java.lang.String> namingFunction );
 
-    @Override  Figure toolTipPattern( java.lang.String toolTipPattern );
-
     @Override  Figure toolTipPattern( java.lang.String toolTipPattern, java.lang.Object... multiSeriesKey );
-
-    @Override  Figure xToolTipPattern( java.lang.String xToolTipPattern );
 
     @Override  Figure xToolTipPattern( java.lang.String xToolTipPattern, java.lang.Object... multiSeriesKey );
 
-    @Override  Figure yToolTipPattern( java.lang.String yToolTipPattern );
-
     @Override  Figure yToolTipPattern( java.lang.String yToolTipPattern, java.lang.Object... multiSeriesKey );
+
+    @Override  Figure pointColor( int... pointColors );
+
+    @Override  Figure pointColor( io.deephaven.engine.table.Table t, java.lang.String pointColors );
+
+    @Override  Figure pointColor( io.deephaven.gui.color.Paint... pointColor );
+
+    @Override  Figure pointColor( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointColors );
+
+    @Override  Figure pointColor( java.lang.Integer... pointColors );
+
+    @Override  Figure pointColor( java.lang.String... pointColors );
+
+    @Override  Figure pointColorInteger( io.deephaven.plot.datasets.data.IndexableData<java.lang.Integer> colors );
+
+    @Override  Figure pointLabel( io.deephaven.engine.table.Table t, java.lang.String pointLabel );
+
+    @Override  Figure pointLabel( io.deephaven.plot.datasets.data.IndexableData<?> pointLabels );
+
+    @Override  Figure pointLabel( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointLabel );
+
+    @Override  Figure pointLabel( java.lang.Object... pointLabels );
+
+    @Override  Figure pointShape( io.deephaven.engine.table.Table t, java.lang.String pointShape );
+
+    @Override  Figure pointShape( io.deephaven.gui.shape.Shape... pointShapes );
+
+    @Override  Figure pointShape( io.deephaven.plot.datasets.data.IndexableData<java.lang.String> pointShapes );
+
+    @Override  Figure pointShape( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointShape );
+
+    @Override  Figure pointShape( java.lang.String... pointShapes );
+
+    @Override  Figure pointSize( double... pointSizes );
+
+    @Override  Figure pointSize( int... pointSizes );
+
+    @Override  Figure pointSize( io.deephaven.engine.table.Table t, java.lang.String pointSizes );
+
+    @Override  Figure pointSize( io.deephaven.plot.datasets.data.IndexableData<java.lang.Double> pointSizes );
+
+    @Override  Figure pointSize( io.deephaven.plot.filters.SelectableDataSet sds, java.lang.String pointSize );
+
+    @Override  Figure pointSize( long... pointSizes );
+
+    @Override  Figure funcNPoints( int npoints );
+
+    @Override  Figure funcRange( double xmin, double xmax );
+
+    @Override  Figure funcRange( double xmin, double xmax, int npoints );
 
     @Override <CATEGORY extends java.lang.Comparable,COLOR extends io.deephaven.gui.color.Paint> Figure pointColor( java.util.Map<CATEGORY, COLOR> pointColor );
 
@@ -1263,67 +1263,67 @@ public interface Figure extends java.io.Serializable, io.deephaven.plot.BaseFigu
 
     @Override <CATEGORY extends java.lang.Comparable,NUMBER extends java.lang.Number> Figure pointSize( CATEGORY[] categories, NUMBER[] pointSizes );
 
-    @Override <CATEGORY extends java.lang.Comparable,NUMBER extends java.lang.Number> Figure pointSize( CATEGORY[] categories, NUMBER[] pointSizes, java.lang.Object... multiSeriesKey );
-
     @Override <CATEGORY extends java.lang.Comparable,NUMBER extends java.lang.Number> Figure pointSize( java.util.Map<CATEGORY, NUMBER> pointSizes );
+
+    @Override <CATEGORY extends java.lang.Comparable,NUMBER extends java.lang.Number> Figure pointSize( CATEGORY[] categories, NUMBER[] pointSizes, java.lang.Object... multiSeriesKey );
 
     @Override <CATEGORY extends java.lang.Comparable,NUMBER extends java.lang.Number> Figure pointSize( java.util.Map<CATEGORY, NUMBER> pointSizes, java.lang.Object... multiSeriesKey );
 
     @Override <CATEGORY extends java.lang.Comparable> Figure pointShape( java.util.Map<CATEGORY, java.lang.String> pointShapes );
 
-    @Override <CATEGORY extends java.lang.Comparable> Figure pointShape( java.util.Map<CATEGORY, java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
-
     @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, double[] pointSizes );
-
-    @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, double[] pointSizes, java.lang.Object... multiSeriesKey );
 
     @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, int[] pointSizes );
 
-    @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, int[] pointSizes, java.lang.Object... multiSeriesKey );
-
     @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, long[] pointSizes );
+
+    @Override <CATEGORY extends java.lang.Comparable> Figure pointShape( java.util.Map<CATEGORY, java.lang.String> pointShapes, java.lang.Object... multiSeriesKey );
+
+    @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, double[] pointSizes, java.lang.Object... multiSeriesKey );
+
+    @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, int[] pointSizes, java.lang.Object... multiSeriesKey );
 
     @Override <CATEGORY extends java.lang.Comparable> Figure pointSize( CATEGORY[] categories, long[] pointSizes, java.lang.Object... multiSeriesKey );
 
     @Override <COLOR extends io.deephaven.gui.color.Paint> Figure pointColor( groovy.lang.Closure<COLOR> pointColor );
 
-    @Override <COLOR extends io.deephaven.gui.color.Paint> Figure pointColor( groovy.lang.Closure<COLOR> pointColor, java.lang.Object... multiSeriesKey );
-
     @Override <COLOR extends io.deephaven.gui.color.Paint> Figure pointColor( java.util.function.Function<java.lang.Comparable, COLOR> pointColor );
+
+    @Override <COLOR extends io.deephaven.gui.color.Paint> Figure pointColor( groovy.lang.Closure<COLOR> pointColor, java.lang.Object... multiSeriesKey );
 
     @Override <COLOR extends io.deephaven.gui.color.Paint> Figure pointColor( java.util.function.Function<java.lang.Comparable, COLOR> pointColor, java.lang.Object... multiSeriesKey );
 
     @Override <COLOR extends java.lang.Integer> Figure pointColorInteger( groovy.lang.Closure<COLOR> colors );
 
-    @Override <COLOR extends java.lang.Integer> Figure pointColorInteger( groovy.lang.Closure<COLOR> colors, java.lang.Object... multiSeriesKey );
-
     @Override <COLOR extends java.lang.Integer> Figure pointColorInteger( java.util.function.Function<java.lang.Comparable, COLOR> colors );
+
+    @Override <COLOR extends java.lang.Integer> Figure pointColorInteger( groovy.lang.Closure<COLOR> colors, java.lang.Object... multiSeriesKey );
 
     @Override <COLOR extends java.lang.Integer> Figure pointColorInteger( java.util.function.Function<java.lang.Comparable, COLOR> colors, java.lang.Object... multiSeriesKey );
 
     @Override <LABEL> Figure pointLabel( groovy.lang.Closure<LABEL> pointLabels );
 
-    @Override <LABEL> Figure pointLabel( groovy.lang.Closure<LABEL> pointLabels, java.lang.Object... multiSeriesKey );
-
     @Override <LABEL> Figure pointLabel( java.util.function.Function<java.lang.Comparable, LABEL> pointLabels );
+
+    @Override <LABEL> Figure pointLabel( groovy.lang.Closure<LABEL> pointLabels, java.lang.Object... multiSeriesKey );
 
     @Override <LABEL> Figure pointLabel( java.util.function.Function<java.lang.Comparable, LABEL> pointLabels, java.lang.Object... multiSeriesKey );
 
     @Override <NUMBER extends java.lang.Number> Figure pointSize( groovy.lang.Closure<NUMBER> pointSizes );
 
-    @Override <NUMBER extends java.lang.Number> Figure pointSize( groovy.lang.Closure<NUMBER> pointSizes, java.lang.Object... multiSeriesKey );
-
     @Override <NUMBER extends java.lang.Number> Figure pointSize( java.util.function.Function<java.lang.Comparable, NUMBER> pointSizes );
+
+    @Override <NUMBER extends java.lang.Number> Figure pointSize( groovy.lang.Closure<NUMBER> pointSizes, java.lang.Object... multiSeriesKey );
 
     @Override <NUMBER extends java.lang.Number> Figure pointSize( java.util.function.Function<java.lang.Comparable, NUMBER> pointSizes, java.lang.Object... multiSeriesKey );
 
-    @Override <T extends io.deephaven.gui.color.Paint> Figure pointColor( io.deephaven.plot.datasets.data.IndexableData<T> pointColor );
-
     @Override <T extends io.deephaven.gui.color.Paint> Figure pointColor( io.deephaven.plot.datasets.data.IndexableData<T> pointColor, java.lang.Object... multiSeriesKey );
 
-    @Override <T extends java.lang.Number> Figure pointSize( T[] pointSizes );
+    @Override <T extends io.deephaven.gui.color.Paint> Figure pointColor( io.deephaven.plot.datasets.data.IndexableData<T> pointColor );
 
     @Override <T extends java.lang.Number> Figure pointSize( T[] pointSizes, java.lang.Object... multiSeriesKey );
+
+    @Override <T extends java.lang.Number> Figure pointSize( T[] pointSizes );
 
 }
 

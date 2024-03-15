@@ -1,9 +1,15 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.test;
 
 import io.deephaven.auth.AuthContext;
 import io.deephaven.auth.codegen.impl.*;
 import io.deephaven.server.auth.AuthorizationProvider;
-import io.deephaven.server.session.TicketResolverBase;
+import io.deephaven.server.session.TicketResolver;
+import org.apache.arrow.flight.impl.Flight;
+
+import java.nio.ByteBuffer;
 
 public class TestAuthorizationProvider implements AuthorizationProvider {
     private final ApplicationServiceAuthWiring.TestUseOnly applicationServiceAuthWiring =
@@ -29,7 +35,7 @@ public class TestAuthorizationProvider implements AuthorizationProvider {
     private final HierarchicalTableServiceContextualAuthWiring.TestUseOnly hierarchicalTableServiceContextualAuthWiring =
             new HierarchicalTableServiceContextualAuthWiring.TestUseOnly();
 
-    public TicketResolverBase.AuthTransformation delegateTicketTransformation;
+    public TicketResolver.Authorization delegateTicketTransformation;
 
     @Override
     public ApplicationServiceAuthWiring.TestUseOnly getApplicationServiceAuthWiring() {
@@ -87,14 +93,29 @@ public class TestAuthorizationProvider implements AuthorizationProvider {
     }
 
     @Override
-    public TicketResolverBase.AuthTransformation getTicketTransformation() {
-        return new TicketResolverBase.AuthTransformation() {
+    public TicketResolver.Authorization getTicketResolverAuthorization() {
+        return new TicketResolver.Authorization() {
             @Override
-            public <T> T transform(T source) {
+            public <T> T transform(final T source) {
                 if (delegateTicketTransformation != null) {
                     return delegateTicketTransformation.transform(source);
                 }
                 return source;
+            }
+
+            @Override
+            public void authorizePublishRequest(final TicketResolver ticketResolver, final ByteBuffer ticket) {
+                if (delegateTicketTransformation != null) {
+                    delegateTicketTransformation.authorizePublishRequest(ticketResolver, ticket);
+                }
+            }
+
+            @Override
+            public void authorizePublishRequest(final TicketResolver ticketResolver,
+                    final Flight.FlightDescriptor descriptor) {
+                if (delegateTicketTransformation != null) {
+                    delegateTicketTransformation.authorizePublishRequest(ticketResolver, descriptor);
+                }
             }
         };
     }

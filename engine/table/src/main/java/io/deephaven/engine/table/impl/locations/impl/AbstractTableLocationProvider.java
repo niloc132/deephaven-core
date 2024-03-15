@@ -1,16 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.locations.impl;
 
+import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.locations.*;
 import io.deephaven.hash.KeyedObjectHashMap;
 import io.deephaven.hash.KeyedObjectKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 
 /**
  * Partial {@link TableLocationProvider} implementation for standalone use or as part of a {@link TableDataService}.
@@ -45,6 +45,7 @@ public abstract class AbstractTableLocationProvider
 
     private volatile boolean initialized;
 
+    private List<String> partitionKeys;
     private boolean locationCreatedRecorder;
 
     /**
@@ -56,6 +57,7 @@ public abstract class AbstractTableLocationProvider
     protected AbstractTableLocationProvider(@NotNull final TableKey tableKey, final boolean supportsSubscriptions) {
         super(supportsSubscriptions);
         this.tableKey = tableKey.makeImmutable();
+        this.partitionKeys = null;
     }
 
     /**
@@ -94,8 +96,10 @@ public abstract class AbstractTableLocationProvider
     protected final void handleTableLocationKey(@NotNull final TableLocationKey locationKey) {
         if (!supportsSubscriptions()) {
             tableLocations.putIfAbsent(locationKey, TableLocationKey::makeImmutable);
+            visitLocationKey(toKeyImmutable(locationKey));
             return;
         }
+
         synchronized (subscriptions) {
             // Since we're holding the lock on subscriptions, the following code is overly complicated - we could
             // certainly just deliver the notification in observeInsert. That said, I'm happier with this approach,
@@ -103,12 +107,24 @@ public abstract class AbstractTableLocationProvider
             // observeInsert out of the business of subscription processing.
             locationCreatedRecorder = false;
             final Object result = tableLocations.putIfAbsent(locationKey, this::observeInsert);
-            if (locationCreatedRecorder && subscriptions.deliverNotification(Listener::handleTableLocationKey,
-                    toKeyImmutable(result), true)) {
-                onEmpty();
+            visitLocationKey(locationKey);
+            if (locationCreatedRecorder) {
+                verifyPartitionKeys(locationKey);
+                if (subscriptions.deliverNotification(Listener::handleTableLocationKey, toKeyImmutable(result), true)) {
+                    onEmpty();
+                }
             }
         }
     }
+
+    /**
+     * Called <i>after</i> a table location has been visited by {@link #handleTableLocationKey(TableLocationKey)}, but
+     * before notifications have been delivered to any subscriptions, if applicable. The default implementation does
+     * nothing, and may be overridden to implement additional features.
+     *
+     * @param locationKey The {@link TableLocationKey} that was visited.
+     */
+    protected void visitLocationKey(@NotNull final TableLocationKey locationKey) {}
 
     @NotNull
     private Object observeInsert(@NotNull final TableLocationKey locationKey) {
@@ -197,6 +213,68 @@ public abstract class AbstractTableLocationProvider
     }
 
     /**
+     * Remove a {@link TableLocationKey} and its corresponding {@link TableLocation} (if it was created). All
+     * subscribers to this TableLocationProvider will be
+     * {@link TableLocationProvider.Listener#handleTableLocationKeyRemoved(ImmutableTableLocationKey) notified}. If the
+     * TableLocation was created, all of its subscribers will additionally be
+     * {@link TableLocation.Listener#handleUpdate() notified} that it no longer exists. This TableLocationProvider will
+     * continue to update other locations and will no longer provide or request information about the removed location.
+     *
+     * <p>
+     * In practice, there are three downstream patterns in use.
+     * <ol>
+     * <li>Intermediate TableLocationProviders, which will simply pass the removal on</li>
+     * <li>{@link io.deephaven.engine.table.impl.SourceTable SourceTables}, which will propagate a failure notification
+     * to all downstream listeners, and become {@link Table#isFailed() failed}.</li>
+     * <li>{@link io.deephaven.engine.table.impl.SourcePartitionedTable SourcePartitionedTables}, which will notify
+     * their downstream consumers of the removed constituent.</li>
+     * </ol>
+     *
+     * @apiNote <em>Use with caution!</em> Implementations that call this method must provide certain guarantees: Reads
+     *          should only succeed against removed locations if they will return complete, correct, consistent data.
+     *          Otherwise, they should fail with a meaningful error message.
+     *
+     * @param locationKey The {@link TableLocationKey} to remove
+     */
+    public void removeTableLocationKey(@NotNull final TableLocationKey locationKey) {
+        final Object removedLocation = tableLocations.remove(locationKey);
+
+        if (removedLocation != null) {
+            handleTableLocationKeyRemoved(locationKey.makeImmutable());
+            if (removedLocation instanceof AbstractTableLocation) {
+                final AbstractTableLocation abstractLocation = (AbstractTableLocation) removedLocation;
+                abstractLocation.handleUpdate(null, System.currentTimeMillis());
+                abstractLocation.clearColumnLocations();
+            }
+        }
+    }
+
+    /**
+     * Notify subscribers that {@code locationKey} was removed.
+     * 
+     * @param locationKey the TableLocation that was removed
+     */
+    protected void handleTableLocationKeyRemoved(@NotNull final ImmutableTableLocationKey locationKey) {
+        if (supportsSubscriptions()) {
+            synchronized (subscriptions) {
+                if (subscriptions.deliverNotification(Listener::handleTableLocationKeyRemoved, locationKey, true)) {
+                    onEmpty();
+                }
+            }
+        }
+    }
+
+    private void verifyPartitionKeys(@NotNull final TableLocationKey locationKey) {
+        if (partitionKeys == null) {
+            partitionKeys = new ArrayList<>(locationKey.getPartitionKeys());
+        } else if (!equals(partitionKeys, locationKey.getPartitionKeys())) {
+            throw new TableDataException(String.format(
+                    "%s has produced an inconsistent TableLocationKey with unexpected partition keys. expected=%s actual=%s.",
+                    this, partitionKeys, locationKey.getPartitionKeys()));
+        }
+    }
+
+    /**
      * Key definition for {@link TableLocation} or {@link TableLocationKey} lookup by {@link TableLocationKey}.
      */
     private static final class LocationKeyDefinition extends KeyedObjectKey.Basic<TableLocationKey, Object> {
@@ -224,5 +302,18 @@ public abstract class AbstractTableLocationProvider
 
     private static ImmutableTableLocationKey toKeyImmutable(@NotNull final Object keyOrLocation) {
         return (ImmutableTableLocationKey) toKey(keyOrLocation);
+    }
+
+    private static <T> boolean equals(Collection<T> c1, Collection<T> c2) {
+        final Iterator<T> i2 = c2.iterator();
+        for (T t1 : c1) {
+            if (!i2.hasNext()) {
+                return false;
+            }
+            if (!Objects.equals(t1, i2.next())) {
+                return false;
+            }
+        }
+        return !i2.hasNext();
     }
 }

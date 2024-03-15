@@ -1,10 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.MatchPair;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.chunk.*;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;

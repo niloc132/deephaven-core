@@ -1,8 +1,10 @@
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit FloatGenerator and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit FloatGenerator and run "./gradlew replicateSourceAndChunkTests" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.testutil.generator;
 
 import io.deephaven.base.verify.Require;
@@ -22,7 +24,7 @@ public class DoubleGenerator extends AbstractGenerator<Double> {
     private final double posInfFraction;
 
     public DoubleGenerator() {
-        this(QueryConstants.NULL_DOUBLE + 1, Double.MAX_VALUE);
+        this(Math.nextUp(-Double.MAX_VALUE), Double.MAX_VALUE);
     }
 
     public DoubleGenerator(double from, double to) {
@@ -74,7 +76,7 @@ public class DoubleGenerator extends AbstractGenerator<Double> {
                 return Double.POSITIVE_INFINITY;
             }
         }
-        return from + (random.nextDouble() * to - from);
+        return (from / 2 + (random.nextDouble() * (to / 2 - from / 2))) * 2;
     }
 
     @Override

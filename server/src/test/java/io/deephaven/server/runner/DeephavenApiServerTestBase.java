@@ -1,21 +1,31 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.runner;
 
 import dagger.BindsInstance;
 import dagger.Component;
+import io.deephaven.client.ClientDefaultsModule;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.context.TestExecutionContext;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
+import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.io.logger.LogBuffer;
 import io.deephaven.io.logger.LogBufferGlobal;
 import io.deephaven.proto.DeephavenChannel;
+import io.deephaven.proto.DeephavenChannelImpl;
 import io.deephaven.server.auth.AuthorizationProvider;
 import io.deephaven.server.auth.CommunityAuthorizationProvider;
+import io.deephaven.time.calendar.CalendarsFromConfigurationModule;
 import io.deephaven.server.config.ServerConfig;
 import io.deephaven.server.console.NoConsoleSessionModule;
 import io.deephaven.server.log.LogModule;
+import io.deephaven.server.plugin.js.JsPluginNoopConsumerModule;
+import io.deephaven.server.runner.scheduler.SchedulerDelegatingImplModule;
+import io.deephaven.server.session.ObfuscatingErrorTransformerModule;
+import io.deephaven.server.util.Scheduler;
 import io.deephaven.util.SafeCloseable;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -24,16 +34,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 
+import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.io.PrintStream;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Manages a single instance of {@link DeephavenApiServer}.
  */
 public abstract class DeephavenApiServerTestBase {
+
     @Singleton
     @Component(modules = {
             DeephavenApiServerModule.class,
@@ -42,12 +56,15 @@ public abstract class DeephavenApiServerTestBase {
             NoConsoleSessionModule.class,
             ServerBuilderInProcessModule.class,
             ExecutionContextUnitTestModule.class,
+            ClientDefaultsModule.class,
+            ObfuscatingErrorTransformerModule.class,
+            JsPluginNoopConsumerModule.class,
+            SchedulerDelegatingImplModule.class,
+            CalendarsFromConfigurationModule.class
     })
     public interface TestComponent {
 
-        DeephavenApiServer getServer();
-
-        ManagedChannelBuilder<?> channelBuilder();
+        void injectFields(DeephavenApiServerTestBase instance);
 
         @Component.Builder
         interface Builder {
@@ -71,17 +88,33 @@ public abstract class DeephavenApiServerTestBase {
     @Rule
     public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
-    private TestComponent serverComponent;
+    @Inject
+    ExecutionContext executionContext;
+    private SafeCloseable executionContextCloseable;
+
     private LogBuffer logBuffer;
-    private DeephavenApiServer server;
     private SafeCloseable scopeCloseable;
+
+    @Inject
+    DeephavenApiServer server;
+
+    @Inject
+    Scheduler.DelegatingImpl scheduler;
+
+    @Inject
+    Provider<ScriptSession> scriptSessionProvider;
+
+    @Inject
+    Provider<ManagedChannelBuilder<?>> managedChannelBuilderProvider;
 
     @Before
     public void setUp() throws Exception {
-        UpdateGraphProcessor.DEFAULT.enableUnitTestMode();
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(false);
-
         logBuffer = new LogBuffer(128);
+        {
+            // Prevent previous failures from cascading
+            final Optional<LogBuffer> maybeOldLogBuffer = LogBufferGlobal.getInstance();
+            maybeOldLogBuffer.ifPresent(LogBufferGlobal::clear);
+        }
         LogBufferGlobal.setInstance(logBuffer);
 
         final DeephavenApiServerTestConfig config = DeephavenApiServerTestConfig.builder()
@@ -90,14 +123,21 @@ public abstract class DeephavenApiServerTestBase {
                 .port(-1)
                 .build();
 
-        serverComponent = DaggerDeephavenApiServerTestBase_TestComponent.builder()
+        DaggerDeephavenApiServerTestBase_TestComponent.builder()
                 .withServerConfig(config)
                 .withAuthorizationProvider(new CommunityAuthorizationProvider())
                 .withOut(System.out)
                 .withErr(System.err)
-                .build();
+                .build()
+                .injectFields(this);
 
-        server = serverComponent.getServer();
+        final PeriodicUpdateGraph updateGraph = server.getUpdateGraph().cast();
+        executionContextCloseable = executionContext.open();
+        if (updateGraph.isUnitTestModeAllowed()) {
+            updateGraph.enableUnitTestMode();
+            updateGraph.resetForUnitTests(false);
+        }
+
         server.startForUnitTests();
 
         scopeCloseable = LivenessScopeStack.open(new LivenessScope(true), true);
@@ -113,10 +153,30 @@ public abstract class DeephavenApiServerTestBase {
         } finally {
             LogBufferGlobal.clear(logBuffer);
         }
+
+        final PeriodicUpdateGraph updateGraph = server.getUpdateGraph().cast();
+        if (updateGraph.isUnitTestModeAllowed()) {
+            updateGraph.resetForUnitTests(true);
+        }
+        executionContextCloseable.close();
+
+        scheduler.shutdown();
     }
 
     public DeephavenApiServer server() {
         return server;
+    }
+
+    public LogBuffer logBuffer() {
+        return logBuffer;
+    }
+
+    public ScriptSession getScriptSession() {
+        return scriptSessionProvider.get();
+    }
+
+    public ExecutionContext getExecutionContext() {
+        return executionContext;
     }
 
     /**
@@ -131,7 +191,7 @@ public abstract class DeephavenApiServerTestBase {
     }
 
     public ManagedChannelBuilder<?> channelBuilder() {
-        return serverComponent.channelBuilder();
+        return managedChannelBuilderProvider.get();
     }
 
     public void register(ManagedChannel managedChannel) {
@@ -141,6 +201,6 @@ public abstract class DeephavenApiServerTestBase {
     public DeephavenChannel createChannel() {
         ManagedChannel channel = channelBuilder().build();
         register(channel);
-        return new DeephavenChannel(channel);
+        return new DeephavenChannelImpl(channel);
     }
 }

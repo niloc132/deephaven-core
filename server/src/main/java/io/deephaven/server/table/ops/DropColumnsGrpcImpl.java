@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.table.ops;
 
 import io.deephaven.auth.codegen.impl.TableServiceContextualAuthWiring;
@@ -27,6 +27,7 @@ public class DropColumnsGrpcImpl extends GrpcTableOperation<DropColumnsRequest> 
     public Table create(final DropColumnsRequest request,
             final List<SessionState.ExportObject<Table>> sourceTables) {
         Assert.eq(sourceTables.size(), "sourceTables.size()", 1);
-        return sourceTables.get(0).get().dropColumns(request.getColumnNamesList());
+        final Table source = sourceTables.get(0).get();
+        return source.dropColumns(request.getColumnNamesList());
     }
 }

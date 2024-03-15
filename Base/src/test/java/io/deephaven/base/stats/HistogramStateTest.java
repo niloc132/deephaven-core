@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.base.stats;
 
 import junit.framework.TestCase;
@@ -23,7 +23,7 @@ public class HistogramStateTest extends TestCase {
         // This should print 10 invocations every time
 
         Stats.update(new ItemUpdateListener() {
-            public void handleItemUpdated(Item item, long now, long appNow, int intervalIndex, long intervalMillis,
+            public void handleItemUpdated(Item<?> item, long now, long appNow, int intervalIndex, long intervalMillis,
                     String intervalName) {
                 Value v = item.getValue();
                 History history = v.getHistory();

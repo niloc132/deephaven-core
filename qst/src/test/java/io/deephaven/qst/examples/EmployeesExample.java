@@ -1,9 +1,8 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.qst.examples;
 
-import io.deephaven.qst.table.JoinTable;
 import io.deephaven.qst.table.NewTable;
 import io.deephaven.qst.column.header.ColumnHeader;
 import io.deephaven.qst.table.TableSpec;
@@ -28,7 +27,7 @@ public class EmployeesExample {
                 .newTable();
     }
 
-    public static JoinTable joined() {
+    public static TableSpec joined() {
         return employees().join(departments(), "DeptId", "DeptName,DeptTelephone=Telephone");
     }
 }

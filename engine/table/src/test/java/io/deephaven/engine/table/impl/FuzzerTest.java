@@ -1,31 +1,32 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.FileUtils;
 import io.deephaven.base.clock.Clock;
 import io.deephaven.chunk.util.pools.ChunkPoolReleaseTracking;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.liveness.LivenessScopeStack;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.table.impl.util.RuntimeMemory;
+import io.deephaven.engine.testutil.ControlledUpdateGraph;
 import io.deephaven.engine.testutil.TstUtils;
+import io.deephaven.engine.testutil.junit4.EngineCleanup;
 import io.deephaven.engine.util.TestClock;
 import io.deephaven.plugin.type.ObjectTypeLookup.NoOp;
 import io.deephaven.time.DateTimeUtils;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
-import io.deephaven.time.DateTime;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.util.GroovyDeephavenSession;
-import io.deephaven.engine.util.GroovyDeephavenSession.RunScripts;
-import io.deephaven.engine.liveness.LivenessScopeStack;
-import io.deephaven.engine.table.impl.util.RuntimeMemory;
-import io.deephaven.engine.testutil.junit4.EngineCleanup;
 import io.deephaven.test.types.SerialTest;
+import io.deephaven.time.calendar.CalendarInit;
 import io.deephaven.util.SafeCloseable;
+import io.deephaven.util.thread.ThreadInitializationFactory;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -33,6 +34,7 @@ import org.junit.experimental.categories.Category;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -74,9 +76,18 @@ public class FuzzerTest {
     }
 
     private GroovyDeephavenSession getGroovySession(@Nullable Clock clock) throws IOException {
-        final GroovyDeephavenSession session = new GroovyDeephavenSession(NoOp.INSTANCE, RunScripts.serviceLoader());
+        final GroovyDeephavenSession session = new GroovyDeephavenSession(
+                ExecutionContext.getContext().getUpdateGraph(),
+                ExecutionContext.getContext().getOperationInitializer(),
+                NoOp.INSTANCE,
+                GroovyDeephavenSession.RunScripts.serviceLoader());
         session.getExecutionContext().open();
         return session;
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        CalendarInit.init();
     }
 
     @Test
@@ -92,14 +103,15 @@ public class FuzzerTest {
             groovyString = FileUtils.readTextFile(in);
         }
 
-        final DateTime fakeStart = DateTimeUtils.convertDateTime("2020-03-17T13:53:25.123456 NY");
-        final TestClock clock = realtime ? null : new TestClock(fakeStart.getNanos());
+        final Instant fakeStart = DateTimeUtils.parseInstant("2020-03-17T13:53:25.123456 NY");
+        final TestClock clock;
+        clock = realtime ? null : new TestClock(DateTimeUtils.epochNanos(fakeStart));
 
         final GroovyDeephavenSession session = getGroovySession(clock);
 
         System.out.println(groovyString);
 
-        session.evaluateScript(groovyString);
+        session.evaluateScript(groovyString).throwIfError();
 
         final Map<String, Object> hardReferences = new ConcurrentHashMap<>();
 
@@ -112,13 +124,14 @@ public class FuzzerTest {
             clock.now += DateTimeUtils.SECOND / 10 * timeRandom.nextInt(20);
         }
 
-        final TimeTable timeTable = (TimeTable) session.getVariable("tt");
+        final TimeTable timeTable = session.getQueryScope().readParamValue("tt");
 
         final int steps = TstUtils.SHORT_TESTS ? 20 : 100;
 
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
         for (int step = 0; step < steps; ++step) {
             final int fstep = step;
-            UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+            updateGraph.runWithinUnitTestCycle(() -> {
                 System.out.println("Step = " + fstep);
                 timeTable.run();
             });
@@ -142,18 +155,19 @@ public class FuzzerTest {
 
             System.out.println("Running test=======================\n TableSeed: " + fuzzDescriptor.tableSeed
                     + " QuerySeed: " + fuzzDescriptor.tableSeed);
-            System.out.println(query.toString());
+            System.out.println(query);
 
-            session.evaluateScript(query.toString());
+            session.evaluateScript(query.toString()).throwIfError();
 
             annotateBinding(session);
             final Map<String, Object> hardReferences = new ConcurrentHashMap<>();
             validateBindingTables(session, hardReferences);
 
-            final TimeTable timeTable = (TimeTable) session.getVariable("tt");
+            final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+            final TimeTable timeTable = session.getQueryScope().readParamValue("tt");
             for (int step = 0; step < fuzzDescriptor.steps; ++step) {
                 final int fstep = step;
-                UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+                updateGraph.runWithinUnitTestCycle(() -> {
                     System.out.println("Step = " + fstep);
                     timeTable.run();
                 });
@@ -166,7 +180,7 @@ public class FuzzerTest {
     // public void testLargeFuzzerSeed() throws IOException, InterruptedException {
     // final int segmentSize = 50;
     // for (int firstRun = 0; firstRun < 100; firstRun += segmentSize) {
-    // UpdateGraphProcessor.DEFAULT.resetForUnitTests(false);
+    // ExecutionContext.getContext().updateGraph().resetForUnitTests(false);
     // final int lastRun = firstRun + segmentSize - 1;
     // System.out.println("Performing runs " + firstRun + " to " + lastRun);
     //// runLargeFuzzerSetWithSeed(1583849877513833000L, firstRun, lastRun);
@@ -185,10 +199,11 @@ public class FuzzerTest {
     public void testLargeSetOfFuzzerQueriesSimTime() throws IOException, InterruptedException {
         final long seed1 = Clock.system().currentTimeNanos();
         final int iterations = TstUtils.SHORT_TESTS ? 1 : 5;
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
         for (long iteration = 0; iteration < iterations; ++iteration) {
             for (int segment = 0; segment < 10; segment++) {
                 ChunkPoolReleaseTracking.enableStrict();
-                UpdateGraphProcessor.DEFAULT.resetForUnitTests(false);
+                updateGraph.resetForUnitTests(false);
                 try (final SafeCloseable ignored = LivenessScopeStack.open()) {
                     System.out.println("// Segment: " + segment);
                     final int firstRun = segment * 10;
@@ -211,8 +226,8 @@ public class FuzzerTest {
         final Random sourceRandom = new Random(mainTestSeed);
         final Random timeRandom = new Random(mainTestSeed + 1);
 
-        final DateTime fakeStart = DateTimeUtils.convertDateTime("2020-03-17T13:53:25.123456 NY");
-        final TestClock clock = new TestClock(fakeStart.getNanos());
+        final Instant fakeStart = DateTimeUtils.parseInstant("2020-03-17T13:53:25.123456 NY");
+        final TestClock clock = new TestClock(DateTimeUtils.epochNanos(fakeStart));
 
         final long start = System.currentTimeMillis();
 
@@ -220,7 +235,7 @@ public class FuzzerTest {
 
         System.out.println(tableQuery);
 
-        session.evaluateScript(tableQuery);
+        session.evaluateScript(tableQuery).throwIfError();
 
         for (int runNum = 0; runNum <= lastRun; ++runNum) {
             final long currentSeed = sourceRandom.nextLong();
@@ -231,8 +246,8 @@ public class FuzzerTest {
                 final StringBuilder sb = new StringBuilder("//========================================\n");
                 sb.append("// Seed: ").append(currentSeed).append("L\n\n");
                 sb.append(query).append("\n");
-                System.out.println(sb.toString());
-                session.evaluateScript(query);
+                System.out.println(sb);
+                session.evaluateScript(query).throwIfError();
             }
 
         }
@@ -247,11 +262,12 @@ public class FuzzerTest {
         final long startTime = System.currentTimeMillis();
 
         final long loopStart = System.currentTimeMillis();
-        final TimeTable timeTable = (TimeTable) session.getVariable("tt");
+        final TimeTable timeTable = session.getQueryScope().readParamValue("tt");
         final RuntimeMemory.Sample sample = new RuntimeMemory.Sample();
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
         for (int step = 0; step < stepsToRun; ++step) {
             final int fstep = step;
-            UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(timeTable::run);
+            updateGraph.runWithinUnitTestCycle(timeTable::run);
 
             RuntimeMemory.getInstance().read(sample);
             final long totalMemory = sample.totalMemory;
@@ -279,8 +295,10 @@ public class FuzzerTest {
 
         final long loopEnd = System.currentTimeMillis();
         System.out.println("Elapsed time: " + (loopEnd - start) + "ms, loop: " + (loopEnd - loopStart) + "ms"
-                + (realtime ? ""
-                        : (", sim: " + (double) (clock.now - fakeStart.getNanos()) / DateTimeUtils.SECOND))
+                + (realtime
+                        ? ""
+                        : (", sim: "
+                                + (double) (clock.now - DateTimeUtils.epochNanos(fakeStart)) / DateTimeUtils.SECOND))
                 + ", ttSize: " + timeTable.size());
     }
 
@@ -298,7 +316,7 @@ public class FuzzerTest {
 
     private void addPrintListener(
             GroovyDeephavenSession session, final String variable, Map<String, Object> hardReferences) {
-        final Table table = (Table) session.getVariable(variable);
+        final Table table = session.getQueryScope().readParamValue(variable);
         System.out.println(variable);
         TableTools.showWithRowSet(table);
         System.out.println();

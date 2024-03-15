@@ -1,15 +1,15 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.preview;
 
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.vector.Vector;
 import io.deephaven.engine.table.impl.BaseTable;
 import io.deephaven.engine.table.impl.select.FunctionalColumn;
 import io.deephaven.engine.table.impl.select.SelectColumn;
-import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.util.type.TypeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jpy.PyListWrapper;
@@ -73,11 +73,11 @@ public class ColumnPreviewManager {
     public static Table applyPreview(final Table table) {
         BaseTable<?> result = (BaseTable<?>) table;
         final List<SelectColumn> selectColumns = new ArrayList<>();
-        final Map<String, ? extends ColumnSource<?>> columns = table.getColumnSourceMap();
+        final Map<String, ColumnDefinition<?>> columns = table.getDefinition().getColumnNameMap();
         final Map<String, String> originalTypes = new HashMap<>();
         for (String name : columns.keySet()) {
-            final ColumnSource<?> columnSource = columns.get(name);
-            final Class<?> type = columnSource.getType();
+            final ColumnDefinition<?> columnSource = columns.get(name);
+            final Class<?> type = columnSource.getDataType();
             String typeName = type.getCanonicalName();
             if (typeName == null) {
                 typeName = type.getName();
@@ -98,8 +98,7 @@ public class ColumnPreviewManager {
                 // Always wrap arrays
                 selectColumns.add(arrayPreviewFactory.makeColumn(name));
                 originalTypes.put(name, typeName);
-            } else if (!isColumnTypeDisplayable(type)
-                    || !io.deephaven.util.type.TypeUtils.isPrimitiveOrSerializable(type)) {
+            } else if (!isColumnTypeDisplayable(type)) {
                 // Always wrap non-displayable and non-serializable types
                 selectColumns.add(nonDisplayableFactory.makeColumn(name));
                 originalTypes.put(name, typeName);
@@ -152,10 +151,12 @@ public class ColumnPreviewManager {
         // Boxed Types
         // String
         // BigInt, BigDecimal
-        // DateTime
-        return type.isPrimitive() || io.deephaven.util.type.TypeUtils.isBoxedType(type)
+        // Instant/ZonedDateTime/etc
+        return type.isPrimitive()
+                || io.deephaven.util.type.TypeUtils.isBoxedType(type)
                 || io.deephaven.util.type.TypeUtils.isString(type)
-                || io.deephaven.util.type.TypeUtils.isBigNumeric(type) || TypeUtils.isDateTime(type)
+                || io.deephaven.util.type.TypeUtils.isBigNumeric(type)
+                || TypeUtils.isDateTime(type)
                 || isOnWhiteList(type);
     }
 

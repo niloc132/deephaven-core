@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.rowset.impl.rsp;
 
 import io.deephaven.base.verify.Assert;
@@ -54,8 +54,8 @@ import static io.deephaven.engine.rowset.impl.RowSetUtils.Comparator;
  *
  * <ul>
  * <li>A "block" is a particular interval [n*2^16, (n+1)*2^16 - 1] of the long domain.</li>
- * <li>A "span" is a partition of the domain consisting of one or more consecutive blocks;</li> a span is a subset of
- * the domain represented by an interval [n*2^16, (n+m)*2^16 - 1], m >= 1.
+ * <li>A "span" is a partition of the domain consisting of one or more consecutive blocks; a span is a subset of the
+ * domain represented by an interval [n*2^16, (n+m)*2^16 - 1], m &gt;= 1.
  * <li>Full blocks are blocks whose domain are fully contained in the set, ie, the set contains every possible value in
  * the block's interval (as a bitmap, it would be "all ones").</li>
  * <li>Spans of full blocks are represented by a single "full blocks span" object (just a Long) which knows how many
@@ -89,8 +89,8 @@ import static io.deephaven.engine.rowset.impl.RowSetUtils.Comparator;
  * </p>
  *
  * <p>
- * There are two basic cases for a span: it is either a full blocks span, containing a >=1 number of full blocks, or it
- * is a container, containing individual values in the particular 2^16 block corresponding to the span's key.
+ * There are two basic cases for a span: it is either a full blocks span, containing a &gt;=1 number of full blocks, or
+ * it is a container, containing individual values in the particular 2^16 block corresponding to the span's key.
  * </p>
  *
  * <p>
@@ -716,6 +716,52 @@ public abstract class RspArray<T extends RspArray> extends RefCountedCow<T> {
 
     public RspArray(
             final RspArray src,
+            final int startIdx,
+            final int endIdx) {
+        size = endIdx - startIdx + 1;
+        spanInfos = new long[size];
+        spans = new Object[size];
+        long srcAccBeforeStart = -1;
+        if (size > accNullThreshold) {
+            acc = new long[size];
+            if (src.acc == null) {
+                cardData = -1;
+            } else {
+                srcAccBeforeStart = (startIdx == 0) ? 0 : src.acc[startIdx - 1];
+                cardData = size - 1;
+            }
+        } else {
+            acc = null;
+        }
+
+        for (int i = 0; i < size; ++i) {
+            final int isrc = startIdx + i;
+            if (srcAccBeforeStart != -1) {
+                acc[i] = src.acc[isrc] - srcAccBeforeStart;
+            }
+            spanInfos[i] = src.spanInfos[isrc];
+            final Object span = src.spans[isrc];
+            spans[i] = span;
+            if (span == null || span == FULL_BLOCK_SPAN_MARKER) {
+                continue;
+            }
+            if (span instanceof short[]) {
+                spanInfos[i] |= SPANINFO_ARRAYCONTAINER_SHARED_BITMASK;
+                continue;
+            }
+            // span instanceof Container
+            ((Container) span).setCopyOnWrite();
+        }
+        if (acc == null) {
+            ensureCardData(false);
+        } else if (src.acc == null) {
+            ensureCardinalityCache(false);
+        }
+        ifDebugValidate();
+    }
+
+    public RspArray(
+            final RspArray src,
             final int startIdx, final long startOffset,
             final int endIdx, final long endOffset) {
         // an initial full block span that needs to be split may result in a sequence of spans as follows,
@@ -1117,7 +1163,7 @@ public abstract class RspArray<T extends RspArray> extends RefCountedCow<T> {
 
         /**
          * Advances the pointer forward to the last span in the sequence whose interval range has a value v such that
-         * comp.directionToTargetFrom(v) >= 0.
+         * comp.directionToTargetFrom(v) &gt;= 0.
          *
          * This operation is O(log(cardinality)).
          *
@@ -1527,6 +1573,19 @@ public abstract class RspArray<T extends RspArray> extends RefCountedCow<T> {
         return ref;
     }
 
+    void ensureCardData(final boolean optimizeContainers) {
+        acc = null;
+        long c = 0;
+        for (int i = 0; i < size; ++i) {
+            c += getSpanCardinalityAtIndex(i, optimizeContainers);
+            if (c > Integer.MAX_VALUE) {
+                cardData = -1;
+                return;
+            }
+        }
+        cardData = (int) c;
+    }
+
     void ensureCardinalityCache(final boolean optimizeContainers) {
         if (size == 0) {
             acc = null;
@@ -1535,16 +1594,7 @@ public abstract class RspArray<T extends RspArray> extends RefCountedCow<T> {
             return;
         }
         if (size <= accNullThreshold) {
-            acc = null;
-            long c = 0;
-            for (int i = 0; i < size; ++i) {
-                c += getSpanCardinalityAtIndex(i, optimizeContainers);
-                if (c > Integer.MAX_VALUE) {
-                    cardData = -1;
-                    return;
-                }
-            }
-            cardData = (int) c;
+            ensureCardData(optimizeContainers);
             return;
         }
         if (acc == null) {

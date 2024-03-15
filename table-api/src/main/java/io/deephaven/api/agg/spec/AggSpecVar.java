@@ -1,20 +1,23 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.agg.spec;
 
-import io.deephaven.annotations.SimpleStyle;
+import io.deephaven.annotations.SingletonStyle;
 import io.deephaven.api.TableOperations;
 import org.immutables.value.Value.Immutable;
 
 /**
- * Specifies an aggregation that outputs the variance of the input column values for each group. Only works for numeric
- * input types.
+ * Specifies an aggregation that outputs the sample variance of the input column values for each group. Only works for
+ * numeric input types.
+ *
+ * Sample variance is computed using Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction), which
+ * ensures that the sample variance will be an unbiased estimator of population variance.
  *
  * @see TableOperations#varBy
  */
 @Immutable
-@SimpleStyle
+@SingletonStyle
 public abstract class AggSpecVar extends AggSpecEmptyBase {
 
     public static AggSpecVar of() {

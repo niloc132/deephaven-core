@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.table.TableDefinition;
@@ -25,7 +25,7 @@ public abstract class ComposedFilter extends WhereFilterLivenessArtifactImpl imp
         this.componentFilters = componentFilters;
 
         for (WhereFilter f : this.componentFilters) {
-            if (f instanceof LivenessArtifact) {
+            if (f instanceof LivenessArtifact && f.isRefreshing()) {
                 manage((LivenessArtifact) f);
             }
         }
@@ -121,5 +121,10 @@ public abstract class ComposedFilter extends WhereFilterLivenessArtifactImpl imp
     @Override
     public int hashCode() {
         return Arrays.hashCode(componentFilters);
+    }
+
+    @Override
+    public boolean permitParallelization() {
+        return Arrays.stream(componentFilters).allMatch(WhereFilter::permitParallelization);
     }
 }

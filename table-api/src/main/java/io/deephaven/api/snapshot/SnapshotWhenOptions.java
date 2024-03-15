@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.snapshot;
 
 import io.deephaven.annotations.BuildableStyle;
@@ -9,7 +12,6 @@ import org.immutables.value.Value.Immutable;
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * The options for creating a snapshotting table with respect to the {@code base} and {@code trigger} tables of
@@ -140,7 +142,7 @@ public abstract class SnapshotWhenOptions {
                 has(Flag.INITIAL),
                 has(Flag.INCREMENTAL),
                 has(Flag.HISTORY),
-                Strings.of(stampColumns()));
+                Strings.ofJoinAdditions(stampColumns()));
     }
 
     @Check

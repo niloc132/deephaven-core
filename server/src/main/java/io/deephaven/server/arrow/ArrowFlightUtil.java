@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.arrow;
 
 import com.google.rpc.Code;
@@ -13,12 +13,16 @@ import io.deephaven.barrage.flatbuf.BarrageSnapshotRequest;
 import io.deephaven.barrage.flatbuf.BarrageSubscriptionRequest;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.SingletonLivenessManager;
 import io.deephaven.engine.rowset.*;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.BaseTable;
 import io.deephaven.engine.table.impl.QueryTable;
+import io.deephaven.engine.table.impl.perf.QueryPerformanceNugget;
+import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.util.BarrageMessage;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.extensions.barrage.BarragePerformanceLog;
 import io.deephaven.extensions.barrage.BarrageSnapshotOptions;
 import io.deephaven.extensions.barrage.BarrageStreamGenerator;
@@ -31,13 +35,16 @@ import io.deephaven.extensions.barrage.util.BarrageUtil;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
+import io.deephaven.proto.util.Exceptions;
 import io.deephaven.proto.util.ExportTicketHelper;
 import io.deephaven.server.barrage.BarrageMessageProducer;
 import io.deephaven.extensions.barrage.BarrageStreamGeneratorImpl;
 import io.deephaven.server.hierarchicaltable.HierarchicalTableView;
 import io.deephaven.server.hierarchicaltable.HierarchicalTableViewSubscription;
+import io.deephaven.server.session.SessionService;
 import io.deephaven.server.session.SessionState;
 import io.deephaven.server.session.TicketRouter;
+import io.deephaven.util.SafeCloseable;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.apache.arrow.flatbuf.MessageHeader;
@@ -48,9 +55,8 @@ import org.jetbrains.annotations.NotNull;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.deephaven.extensions.barrage.util.BarrageUtil.DEFAULT_SNAPSHOT_DESER_OPTIONS;
 
@@ -67,37 +73,44 @@ public class ArrowFlightUtil {
             final Flight.Ticket request,
             final StreamObserver<InputStream> observer) {
 
-        final SessionState.ExportObject<BaseTable> export =
-                ticketRouter.resolve(session, request, "request");
+        final String description = "FlightService#DoGet(table=" + ticketRouter.getLogNameFor(request, "table") + ")";
+        final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
 
-        final BarragePerformanceLog.SnapshotMetricsHelper metrics =
-                new BarragePerformanceLog.SnapshotMetricsHelper();
+        try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
+            final SessionState.ExportObject<BaseTable<?>> tableExport =
+                    ticketRouter.resolve(session, request, "table");
 
-        final long queueStartTm = System.nanoTime();
-        session.nonExport()
-                .require(export)
-                .onError(observer)
-                .submit(() -> {
-                    metrics.queueNanos = System.nanoTime() - queueStartTm;
-                    final BaseTable<?> table = export.get();
-                    metrics.tableId = Integer.toHexString(System.identityHashCode(table));
-                    metrics.tableKey = BarragePerformanceLog.getKeyFor(table);
+            final BarragePerformanceLog.SnapshotMetricsHelper metrics =
+                    new BarragePerformanceLog.SnapshotMetricsHelper();
 
-                    // create an adapter for the response observer
-                    final StreamObserver<BarrageStreamGeneratorImpl.View> listener =
-                            ArrowModule.provideListenerAdapter().adapt(observer);
+            final long queueStartTm = System.nanoTime();
+            session.nonExport()
+                    .queryPerformanceRecorder(queryPerformanceRecorder)
+                    .require(tableExport)
+                    .onError(observer)
+                    .submit(() -> {
+                        metrics.queueNanos = System.nanoTime() - queueStartTm;
+                        final BaseTable<?> table = tableExport.get();
+                        metrics.tableId = Integer.toHexString(System.identityHashCode(table));
+                        metrics.tableKey = BarragePerformanceLog.getKeyFor(table);
 
-                    // push the schema to the listener
-                    listener.onNext(streamGeneratorFactory.getSchemaView(
-                            fbb -> BarrageUtil.makeTableSchemaPayload(fbb,
-                                    table.getDefinition(), table.getAttributes())));
+                        // create an adapter for the response observer
+                        final StreamObserver<BarrageStreamGeneratorImpl.View> listener =
+                                ArrowModule.provideListenerAdapter().adapt(observer);
 
-                    // shared code between `DoGet` and `BarrageSnapshotRequest`
-                    BarrageUtil.createAndSendSnapshot(streamGeneratorFactory, table, null, null, false,
-                            DEFAULT_SNAPSHOT_DESER_OPTIONS, listener, metrics);
+                        // push the schema to the listener
+                        listener.onNext(streamGeneratorFactory.getSchemaView(
+                                fbb -> BarrageUtil.makeTableSchemaPayload(fbb, DEFAULT_SNAPSHOT_DESER_OPTIONS,
+                                        table.getDefinition(), table.getAttributes(), table.isFlat())));
 
-                    listener.onCompleted();
-                });
+                        // shared code between `DoGet` and `BarrageSnapshotRequest`
+                        BarrageUtil.createAndSendSnapshot(streamGeneratorFactory, table, null, null, false,
+                                DEFAULT_SNAPSHOT_DESER_OPTIONS, listener, metrics);
+
+                        listener.onCompleted();
+                    });
+        }
     }
 
     /**
@@ -107,6 +120,7 @@ public class ArrowFlightUtil {
 
         private final SessionState session;
         private final TicketRouter ticketRouter;
+        private final SessionService.ErrorTransformer errorTransformer;
         private final StreamObserver<Flight.PutResult> observer;
 
         private SessionState.ExportBuilder<Table> resultExportBuilder;
@@ -115,9 +129,11 @@ public class ArrowFlightUtil {
         public DoPutObserver(
                 final SessionState session,
                 final TicketRouter ticketRouter,
+                final SessionService.ErrorTransformer errorTransformer,
                 final StreamObserver<Flight.PutResult> observer) {
             this.session = session;
             this.ticketRouter = ticketRouter;
+            this.errorTransformer = errorTransformer;
             this.observer = observer;
 
             this.session.addOnCloseCallback(this);
@@ -129,53 +145,58 @@ public class ArrowFlightUtil {
         // this is the entry point for client-streams
         @Override
         public void onNext(final InputStream request) {
-            GrpcUtil.rpcWrapper(log, observer, () -> {
-                final MessageInfo mi = BarrageProtoUtil.parseProtoMessage(request);
-                if (mi.descriptor != null) {
-                    if (flightDescriptor != null) {
-                        if (!flightDescriptor.equals(mi.descriptor)) {
-                            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                                    "additional flight descriptor sent does not match original descriptor");
-                        }
-                    } else {
-                        flightDescriptor = mi.descriptor;
-                        resultExportBuilder = ticketRouter
-                                .<Table>publish(session, mi.descriptor, "Flight.Descriptor")
-                                .onError(observer);
+            final MessageInfo mi;
+            try {
+                mi = BarrageProtoUtil.parseProtoMessage(request);
+            } catch (final IOException err) {
+                throw errorTransformer.transform(err);
+            }
+
+            if (mi.descriptor != null) {
+                if (flightDescriptor != null) {
+                    if (!flightDescriptor.equals(mi.descriptor)) {
+                        throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                                "additional flight descriptor sent does not match original descriptor");
                     }
+                } else {
+                    flightDescriptor = mi.descriptor;
+                    resultExportBuilder = ticketRouter
+                            .<Table>publish(session, mi.descriptor, "Flight.Descriptor", null)
+                            .onError(observer);
                 }
+            }
 
-                if (mi.app_metadata != null
-                        && mi.app_metadata.msgType() == BarrageMessageType.BarrageSerializationOptions) {
-                    options = BarrageSubscriptionOptions.of(BarrageSubscriptionRequest
-                            .getRootAsBarrageSubscriptionRequest(mi.app_metadata.msgPayloadAsByteBuffer()));
-                }
+            if (mi.app_metadata != null
+                    && mi.app_metadata.msgType() == BarrageMessageType.BarrageSerializationOptions) {
+                options = BarrageSubscriptionOptions.of(BarrageSubscriptionRequest
+                        .getRootAsBarrageSubscriptionRequest(mi.app_metadata.msgPayloadAsByteBuffer()));
+            }
 
-                if (mi.header == null) {
-                    return; // nothing to do!
-                }
+            if (mi.header == null) {
+                return; // nothing to do!
+            }
 
-                if (mi.header.headerType() == MessageHeader.Schema) {
-                    parseSchema((Schema) mi.header.header(new Schema()));
-                    return;
-                }
+            if (mi.header.headerType() == MessageHeader.Schema) {
+                parseSchema((Schema) mi.header.header(new Schema()));
+                return;
+            }
 
-                if (mi.header.headerType() != MessageHeader.RecordBatch) {
-                    throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                            "Only schema/record-batch messages supported");
-                }
+            if (mi.header.headerType() != MessageHeader.RecordBatch) {
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                        "Only schema/record-batch messages supported, instead got "
+                                + MessageHeader.name(mi.header.headerType()));
+            }
 
-                final int numColumns = resultTable.getColumnSources().size();
-                final BarrageMessage msg = createBarrageMessage(mi, numColumns);
-                msg.rowsAdded = RowSetFactory.fromRange(totalRowsRead, totalRowsRead + msg.length - 1);
-                msg.rowsIncluded = msg.rowsAdded.copy();
-                msg.modColumnData = BarrageMessage.ZERO_MOD_COLUMNS;
-                totalRowsRead += msg.length;
-                resultTable.handleBarrageMessage(msg);
+            final int numColumns = resultTable.getColumnSources().size();
+            final BarrageMessage msg = createBarrageMessage(mi, numColumns);
+            msg.rowsAdded = RowSetFactory.fromRange(totalRowsRead, totalRowsRead + msg.length - 1);
+            msg.rowsIncluded = msg.rowsAdded.copy();
+            msg.modColumnData = BarrageMessage.ZERO_MOD_COLUMNS;
+            totalRowsRead += msg.length;
+            resultTable.handleBarrageMessage(msg);
 
-                // no app_metadata to report; but ack the processing
-                GrpcUtil.safelyOnNext(observer, Flight.PutResult.getDefaultInstance());
-            });
+            // no app_metadata to report; but ack the processing
+            GrpcUtil.safelyOnNext(observer, Flight.PutResult.getDefaultInstance());
         }
 
         private void onCancel() {
@@ -186,7 +207,7 @@ public class ArrowFlightUtil {
             if (resultExportBuilder != null) {
                 // this thrown error propagates to observer
                 resultExportBuilder.submit(() -> {
-                    throw GrpcUtil.statusRuntimeException(Code.CANCELLED, "cancelled");
+                    throw Exceptions.statusRuntimeException(Code.CANCELLED, "cancelled");
                 });
                 resultExportBuilder = null;
             }
@@ -214,41 +235,36 @@ public class ArrowFlightUtil {
 
         @Override
         public void onCompleted() {
-            GrpcUtil.rpcWrapper(log, observer, () -> {
-                if (resultExportBuilder == null) {
-                    throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                            "Result flight descriptor never provided");
-                }
-                if (resultTable == null) {
-                    throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Result flight schema never provided");
-                }
+            if (resultExportBuilder == null) {
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                        "Result flight descriptor never provided");
+            }
+            if (resultTable == null) {
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                        "Result flight schema never provided");
+            }
 
-                final BarrageTable localResultTable = resultTable;
-                resultTable = null;
-                final SessionState.ExportBuilder<Table> localExportBuilder = resultExportBuilder;
-                resultExportBuilder = null;
+            final BarrageTable localResultTable = resultTable;
+            resultTable = null;
+            final SessionState.ExportBuilder<Table> localExportBuilder = resultExportBuilder;
+            resultExportBuilder = null;
 
-
-                // gRPC is about to remove its hard reference to this observer. We must keep the result table hard
-                // referenced until the export is complete, so that the export can properly be satisfied. ExportObject's
-                // LivenessManager enforces strong reachability.
-                if (!localExportBuilder.getExport().tryManage(localResultTable)) {
-                    GrpcUtil.safelyError(observer, Code.DATA_LOSS, "Result export already destroyed");
-                    localResultTable.dropReference();
-                    session.removeOnCloseCallback(this);
-                    return;
-                }
+            // gRPC is about to remove its hard reference to this observer. We must keep the result table hard
+            // referenced until the export is complete, so that the export can properly be satisfied. ExportObject's
+            // LivenessManager enforces strong reachability.
+            if (!localExportBuilder.getExport().tryManage(localResultTable)) {
+                GrpcUtil.safelyError(observer, Code.DATA_LOSS, "Result export already destroyed");
                 localResultTable.dropReference();
+                session.removeOnCloseCallback(this);
+                return;
+            }
+            localResultTable.dropReference();
 
-                // no more changes allowed; this is officially static content
-                localResultTable.sealTable(() -> localExportBuilder.submit(() -> {
-                    GrpcUtil.safelyComplete(observer);
-                    session.removeOnCloseCallback(this);
-                    return localResultTable;
-                }), () -> {
-                    GrpcUtil.safelyError(observer, Code.DATA_LOSS, "Do put could not be sealed");
-                    session.removeOnCloseCallback(this);
-                });
+            // let's finally export the table to our listener
+            localExportBuilder.submit(() -> {
+                GrpcUtil.safelyComplete(observer);
+                session.removeOnCloseCallback(this);
+                return localResultTable;
             });
         }
 
@@ -257,6 +273,31 @@ public class ArrowFlightUtil {
             // close() is intended to be invoked only though session expiration
             GrpcUtil.safelyError(observer, Code.UNAUTHENTICATED, "Session expired");
         }
+    }
+
+    /**
+     * Represents states for a DoExchange stream where the server must not close until the client has half closed.
+     */
+    enum HalfClosedState {
+        /**
+         * Client has not half-closed, server should not half close until the client has done so.
+         */
+        DONT_CLOSE,
+        /**
+         * Indicates that the client has half-closed, and the server should half close immediately after finishing
+         * sending data.
+         */
+        CLIENT_HALF_CLOSED,
+
+        /**
+         * The server has no more data to send, but client hasn't half-closed.
+         */
+        FINISHED_SENDING,
+
+        /**
+         * Streaming finished and client half-closed.
+         */
+        CLOSED
     }
 
     /**
@@ -288,6 +329,7 @@ public class ArrowFlightUtil {
         private final HierarchicalTableViewSubscription.Factory htvsFactory;
         private final BarrageMessageProducer.Adapter<BarrageSubscriptionRequest, BarrageSubscriptionOptions> subscriptionOptAdapter;
         private final BarrageMessageProducer.Adapter<BarrageSnapshotRequest, BarrageSnapshotOptions> snapshotOptAdapter;
+        private final SessionService.ErrorTransformer errorTransformer;
 
         /**
          * Interface for the individual handlers for the DoExchange.
@@ -307,6 +349,7 @@ public class ArrowFlightUtil {
                 final BarrageMessageProducer.Adapter<StreamObserver<InputStream>, StreamObserver<BarrageStreamGeneratorImpl.View>> listenerAdapter,
                 final BarrageMessageProducer.Adapter<BarrageSubscriptionRequest, BarrageSubscriptionOptions> subscriptionOptAdapter,
                 final BarrageMessageProducer.Adapter<BarrageSnapshotRequest, BarrageSnapshotOptions> snapshotOptAdapter,
+                final SessionService.ErrorTransformer errorTransformer,
                 @Assisted final SessionState session,
                 @Assisted final StreamObserver<InputStream> responseObserver) {
 
@@ -319,6 +362,7 @@ public class ArrowFlightUtil {
             this.snapshotOptAdapter = snapshotOptAdapter;
             this.session = session;
             this.listener = listenerAdapter.adapt(responseObserver);
+            this.errorTransformer = errorTransformer;
 
             this.session.addOnCloseCallback(this);
             if (responseObserver instanceof ServerCallStreamObserver) {
@@ -329,67 +373,51 @@ public class ArrowFlightUtil {
         // this entry is used for client-streaming requests
         @Override
         public void onNext(final InputStream request) {
-            GrpcUtil.rpcWrapper(log, listener, () -> {
-                MessageInfo message = BarrageProtoUtil.parseProtoMessage(request);
-                synchronized (this) {
+            MessageInfo message;
+            try {
+                message = BarrageProtoUtil.parseProtoMessage(request);
+            } catch (final IOException err) {
+                throw errorTransformer.transform(err);
+            }
+            synchronized (this) {
 
-                    // `FlightData` messages from Barrage clients will provide app_metadata describing the request but
-                    // official Flight implementations may force a NULL metadata field in the first message. In that
-                    // case, identify a valid Barrage connection by verifying the `FlightDescriptor.CMD` field contains
-                    // the `Barrage` magic bytes
+                // `FlightData` messages from Barrage clients will provide app_metadata describing the request but
+                // official Flight implementations may force a NULL metadata field in the first message. In that
+                // case, identify a valid Barrage connection by verifying the `FlightDescriptor.CMD` field contains
+                // the `Barrage` magic bytes
 
-                    if (requestHandler != null) {
-                        // rely on the handler to verify message type
-                        requestHandler.handleMessage(message);
-                        return;
-                    }
-
-                    if (message.app_metadata != null) {
-                        // handle the different message types that can come over DoExchange
-                        switch (message.app_metadata.msgType()) {
-                            case BarrageMessageType.BarrageSubscriptionRequest:
-                                requestHandler = new SubscriptionRequestHandler();
-                                break;
-                            case BarrageMessageType.BarrageSnapshotRequest:
-                                requestHandler = new SnapshotRequestHandler();
-                                break;
-                            default:
-                                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                                        myPrefix + "received a message with unhandled BarrageMessageType");
-                        }
-                        requestHandler.handleMessage(message);
-                        return;
-                    }
-
-                    // handle the possible error cases
-                    if (!isFirstMsg) {
-                        // only the first messages is allowed to have null metadata
-                        throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                                myPrefix + "failed to receive Barrage request metadata");
-                    }
-
-                    isFirstMsg = false;
-
-                    // The magic value is '0x6E687064'. It is the numerical representation of the ASCII "dphn".
-                    int size = message.descriptor.getCmd().size();
-                    if (size == 4) {
-                        ByteBuffer bb = message.descriptor.getCmd().asReadOnlyByteBuffer();
-
-                        // set the order to little-endian (FlatBuffers default)
-                        bb.order(ByteOrder.LITTLE_ENDIAN);
-
-                        // read and compare the value to the "magic" bytes
-                        long value = (long) bb.getInt(0) & 0xFFFFFFFFL;
-                        if (value != BarrageUtil.FLATBUFFER_MAGIC) {
-                            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                                    myPrefix + "expected BarrageMessageWrapper magic bytes in FlightDescriptor.cmd");
-                        }
-                    } else {
-                        throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                                myPrefix + "expected BarrageMessageWrapper magic bytes in FlightDescriptor.cmd");
-                    }
+                if (requestHandler != null) {
+                    // rely on the handler to verify message type
+                    requestHandler.handleMessage(message);
+                    return;
                 }
-            });
+
+                if (message.app_metadata != null) {
+                    // handle the different message types that can come over DoExchange
+                    switch (message.app_metadata.msgType()) {
+                        case BarrageMessageType.BarrageSubscriptionRequest:
+                            requestHandler = new SubscriptionRequestHandler();
+                            break;
+                        case BarrageMessageType.BarrageSnapshotRequest:
+                            requestHandler = new SnapshotRequestHandler();
+                            break;
+                        default:
+                            throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                                    myPrefix + "received a message with unhandled BarrageMessageType");
+                    }
+                    requestHandler.handleMessage(message);
+                    return;
+                }
+
+                // handle the possible error cases
+                if (!isFirstMsg) {
+                    // only the first messages is allowed to have null metadata
+                    throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                            myPrefix + "failed to receive Barrage request metadata");
+                }
+
+                isFirstMsg = false;
+            }
         }
 
         public void onCancel() {
@@ -399,7 +427,7 @@ public class ArrowFlightUtil {
 
         @Override
         public void onError(final Throwable t) {
-            GrpcUtil.safelyError(listener, GrpcUtil.securelyWrapError(log, t));
+            GrpcUtil.safelyError(listener, errorTransformer.transform(t));
             tryClose();
         }
 
@@ -423,8 +451,8 @@ public class ArrowFlightUtil {
                 if (requestHandler != null) {
                     requestHandler.close();
                 }
-            } catch (IOException ioException) {
-                throw new UncheckedDeephavenException("IOException closing handler", ioException);
+            } catch (final IOException err) {
+                throw errorTransformer.transform(err);
             }
 
             release();
@@ -441,6 +469,8 @@ public class ArrowFlightUtil {
          */
         private class SnapshotRequestHandler
                 implements Handler {
+            private final AtomicReference<HalfClosedState> halfClosedState =
+                    new AtomicReference<>(HalfClosedState.DONT_CLOSE);
 
             public SnapshotRequestHandler() {}
 
@@ -448,7 +478,7 @@ public class ArrowFlightUtil {
             public void handleMessage(@NotNull final BarrageProtoUtil.MessageInfo message) {
                 // verify this is the correct type of message for this handler
                 if (message.app_metadata.msgType() != BarrageMessageType.BarrageSnapshotRequest) {
-                    throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                    throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                             "Request type cannot be changed after initialization, expected BarrageSnapshotRequest metadata");
                 }
 
@@ -457,51 +487,103 @@ public class ArrowFlightUtil {
                     final BarrageSnapshotRequest snapshotRequest = BarrageSnapshotRequest
                             .getRootAsBarrageSnapshotRequest(message.app_metadata.msgPayloadAsByteBuffer());
 
-                    final SessionState.ExportObject<BaseTable<?>> parent =
-                            ticketRouter.resolve(session, snapshotRequest.ticketAsByteBuffer(), "ticket");
+                    final String description = "FlightService#DoExchange(snapshot, table="
+                            + ticketRouter.getLogNameFor(snapshotRequest.ticketAsByteBuffer(), "table") + ")";
+                    final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                            description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
 
-                    final BarragePerformanceLog.SnapshotMetricsHelper metrics =
-                            new BarragePerformanceLog.SnapshotMetricsHelper();
+                    try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
+                        final SessionState.ExportObject<BaseTable<?>> tableExport =
+                                ticketRouter.resolve(session, snapshotRequest.ticketAsByteBuffer(), "table");
 
-                    final long queueStartTm = System.nanoTime();
-                    session.nonExport()
-                            .require(parent)
-                            .onError(listener)
-                            .submit(() -> {
-                                metrics.queueNanos = System.nanoTime() - queueStartTm;
-                                final BaseTable<?> table = parent.get();
-                                metrics.tableId = Integer.toHexString(System.identityHashCode(table));
-                                metrics.tableKey = BarragePerformanceLog.getKeyFor(table);
+                        final BarragePerformanceLog.SnapshotMetricsHelper metrics =
+                                new BarragePerformanceLog.SnapshotMetricsHelper();
 
-                                // push the schema to the listener
-                                listener.onNext(streamGeneratorFactory.getSchemaView(
-                                        fbb -> BarrageUtil.makeTableSchemaPayload(fbb,
-                                                table.getDefinition(), table.getAttributes())));
+                        final long queueStartTm = System.nanoTime();
+                        session.nonExport()
+                                .queryPerformanceRecorder(queryPerformanceRecorder)
+                                .require(tableExport)
+                                .onError(listener)
+                                .submit(() -> {
+                                    metrics.queueNanos = System.nanoTime() - queueStartTm;
+                                    final BaseTable<?> table = tableExport.get();
+                                    metrics.tableId = Integer.toHexString(System.identityHashCode(table));
+                                    metrics.tableKey = BarragePerformanceLog.getKeyFor(table);
 
-                                // collect the viewport and columnsets (if provided)
-                                final boolean hasColumns = snapshotRequest.columnsVector() != null;
-                                final BitSet columns =
-                                        hasColumns ? BitSet.valueOf(snapshotRequest.columnsAsByteBuffer()) : null;
+                                    if (table.isFailed()) {
+                                        throw Exceptions.statusRuntimeException(Code.FAILED_PRECONDITION,
+                                                "Table is already failed");
+                                    }
 
-                                final boolean hasViewport = snapshotRequest.viewportVector() != null;
-                                RowSet viewport =
-                                        hasViewport
-                                                ? BarrageProtoUtil.toRowSet(snapshotRequest.viewportAsByteBuffer())
-                                                : null;
+                                    // push the schema to the listener
+                                    listener.onNext(streamGeneratorFactory.getSchemaView(
+                                            fbb -> BarrageUtil.makeTableSchemaPayload(fbb,
+                                                    snapshotOptAdapter.adapt(snapshotRequest),
+                                                    table.getDefinition(), table.getAttributes(), table.isFlat())));
 
-                                final boolean reverseViewport = snapshotRequest.reverseViewport();
+                                    // collect the viewport and columnsets (if provided)
+                                    final boolean hasColumns = snapshotRequest.columnsVector() != null;
+                                    final BitSet columns =
+                                            hasColumns ? BitSet.valueOf(snapshotRequest.columnsAsByteBuffer()) : null;
 
-                                // leverage common code for `DoGet` and `BarrageSnapshotOptions`
-                                BarrageUtil.createAndSendSnapshot(streamGeneratorFactory, table, columns, viewport,
-                                        reverseViewport, snapshotOptAdapter.adapt(snapshotRequest), listener, metrics);
-                                listener.onCompleted();
-                            });
+                                    final boolean hasViewport = snapshotRequest.viewportVector() != null;
+                                    RowSet viewport =
+                                            hasViewport
+                                                    ? BarrageProtoUtil.toRowSet(snapshotRequest.viewportAsByteBuffer())
+                                                    : null;
+
+                                    final boolean reverseViewport = snapshotRequest.reverseViewport();
+
+                                    // leverage common code for `DoGet` and `BarrageSnapshotOptions`
+                                    BarrageUtil.createAndSendSnapshot(streamGeneratorFactory, table, columns, viewport,
+                                            reverseViewport, snapshotOptAdapter.adapt(snapshotRequest), listener,
+                                            metrics);
+                                    HalfClosedState newState = halfClosedState.updateAndGet(current -> {
+                                        switch (current) {
+                                            case DONT_CLOSE:
+                                                // record that we have finished sending
+                                                return HalfClosedState.FINISHED_SENDING;
+                                            case CLIENT_HALF_CLOSED:
+                                                // since streaming has now finished, and client already half-closed,
+                                                // time to half close from server
+                                                return HalfClosedState.CLOSED;
+                                            case FINISHED_SENDING:
+                                            case CLOSED:
+                                                throw new IllegalStateException("Can't finish streaming twice");
+                                            default:
+                                                throw new IllegalStateException("Unknown state " + current);
+                                        }
+                                    });
+                                    if (newState == HalfClosedState.CLOSED) {
+                                        listener.onCompleted();
+                                    }
+                                });
+                    }
                 }
             }
 
             @Override
             public void close() {
                 // no work to do for DoGetRequest close
+                // possibly safely complete if finished sending data
+                HalfClosedState newState = halfClosedState.updateAndGet(current -> {
+                    switch (current) {
+                        case DONT_CLOSE:
+                            // record that we have half closed
+                            return HalfClosedState.CLIENT_HALF_CLOSED;
+                        case FINISHED_SENDING:
+                            // since client has now half closed, and we're done sending, time to half-close from server
+                            return HalfClosedState.CLOSED;
+                        case CLIENT_HALF_CLOSED:
+                        case CLOSED:
+                            throw new IllegalStateException("Can't close twice");
+                        default:
+                            throw new IllegalStateException("Unknown state " + current);
+                    }
+                });
+                if (newState == HalfClosedState.CLOSED) {
+                    listener.onCompleted();
+                }
             }
         }
 
@@ -523,13 +605,12 @@ public class ArrowFlightUtil {
             public void handleMessage(@NotNull final MessageInfo message) {
                 // verify this is the correct type of message for this handler
                 if (message.app_metadata.msgType() != BarrageMessageType.BarrageSubscriptionRequest) {
-                    throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                    throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                             "Request type cannot be changed after initialization, expected BarrageSubscriptionRequest metadata");
                 }
 
                 if (message.app_metadata.msgPayloadVector() == null) {
-                    throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                            "Subscription request not supplied");
+                    throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT, "Subscription request not supplied");
                 }
 
                 // ensure synchronization with parent class functions
@@ -560,14 +641,23 @@ public class ArrowFlightUtil {
 
                     preExportSubscriptions = new ArrayDeque<>();
                     preExportSubscriptions.add(subscriptionRequest);
-                    final SessionState.ExportObject<Object> parent =
-                            ticketRouter.resolve(session, subscriptionRequest.ticketAsByteBuffer(), "ticket");
 
-                    synchronized (this) {
-                        onExportResolvedContinuation = session.nonExport()
-                                .require(parent)
-                                .onErrorHandler(DoExchangeMarshaller.this::onError)
-                                .submit(() -> onExportResolved(parent));
+                    final String description = "FlightService#DoExchange(subscription, table="
+                            + ticketRouter.getLogNameFor(subscriptionRequest.ticketAsByteBuffer(), "table") + ")";
+                    final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                            description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
+
+                    try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
+                        final SessionState.ExportObject<Object> table =
+                                ticketRouter.resolve(session, subscriptionRequest.ticketAsByteBuffer(), "table");
+
+                        synchronized (this) {
+                            onExportResolvedContinuation = session.nonExport()
+                                    .queryPerformanceRecorder(queryPerformanceRecorder)
+                                    .require(table)
+                                    .onErrorHandler(DoExchangeMarshaller.this::onError)
+                                    .submit(() -> onExportResolved(table));
+                        }
                     }
                 }
             }
@@ -585,24 +675,38 @@ public class ArrowFlightUtil {
 
                 final io.deephaven.barrage.flatbuf.BarrageSubscriptionOptions options =
                         subscriptionRequest.subscriptionOptions();
-                long minUpdateIntervalMs = options == null ? 0 : options.minUpdateIntervalMs();
-                if (minUpdateIntervalMs == 0) {
+                final long minUpdateIntervalMs;
+                if (options == null || options.minUpdateIntervalMs() == 0) {
                     minUpdateIntervalMs = DEFAULT_MIN_UPDATE_INTERVAL_MS;
+                } else {
+                    minUpdateIntervalMs = options.minUpdateIntervalMs();
                 }
 
                 final Object export = parent.get();
                 if (export instanceof QueryTable) {
                     final QueryTable table = (QueryTable) export;
-                    bmp = table.getResult(bmpOperationFactory.create(table, minUpdateIntervalMs));
-                    if (bmp.isRefreshing()) {
-                        manage(bmp);
+
+                    if (table.isFailed()) {
+                        throw Exceptions.statusRuntimeException(Code.FAILED_PRECONDITION,
+                                "Table is already failed");
+                    }
+
+                    final UpdateGraph ug = table.getUpdateGraph();
+                    try (final SafeCloseable ignored = ExecutionContext.getContext().withUpdateGraph(ug).open()) {
+                        bmp = table.getResult(bmpOperationFactory.create(table, minUpdateIntervalMs));
+                        if (bmp.isRefreshing()) {
+                            manage(bmp);
+                        }
                     }
                 } else if (export instanceof HierarchicalTableView) {
                     final HierarchicalTableView hierarchicalTableView = (HierarchicalTableView) export;
-                    htvs = htvsFactory.create(hierarchicalTableView, listener,
-                            subscriptionOptAdapter.adapt(subscriptionRequest), minUpdateIntervalMs);
-                    if (hierarchicalTableView.getHierarchicalTable().getSource().isRefreshing()) {
-                        manage(htvs);
+                    final UpdateGraph ug = hierarchicalTableView.getHierarchicalTable().getSource().getUpdateGraph();
+                    try (final SafeCloseable ignored = ExecutionContext.getContext().withUpdateGraph(ug).open()) {
+                        htvs = htvsFactory.create(hierarchicalTableView, listener,
+                                subscriptionOptAdapter.adapt(subscriptionRequest), minUpdateIntervalMs);
+                        if (hierarchicalTableView.getHierarchicalTable().getSource().isRefreshing()) {
+                            manage(htvs);
+                        }
                     }
                 } else {
                     GrpcUtil.safelyError(listener, Code.FAILED_PRECONDITION, "Ticket ("
@@ -668,7 +772,7 @@ public class ArrowFlightUtil {
                 }
 
                 if (!subscriptionFound) {
-                    throw GrpcUtil.statusRuntimeException(Code.NOT_FOUND, "Subscription was not found.");
+                    throw Exceptions.statusRuntimeException(Code.NOT_FOUND, "Subscription was not found.");
                 }
             }
 

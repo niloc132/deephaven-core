@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.updateby.spec;
 
 import io.deephaven.annotations.SimpleStyle;
@@ -20,13 +23,8 @@ public abstract class CumMinMaxSpec extends UpdateBySpecBase {
     @Override
     public final boolean applicableTo(Class<?> inputType) {
         return
-        // is primitive numeric?
-        inputType.equals(double.class) || inputType.equals(float.class)
-                || inputType.equals(int.class) || inputType.equals(long.class) || inputType.equals(short.class)
-                || inputType.equals(byte.class)
-
-                // is boxed numeric?
-                || Number.class.isAssignableFrom(inputType)
+        // is primitive or boxed numeric?
+        applicableToNumeric(inputType)
 
                 // is comparable?
                 || (Comparable.class.isAssignableFrom(inputType) && inputType != Boolean.class);

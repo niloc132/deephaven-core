@@ -1,10 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.extensions.barrage.chunk;
 
 import com.google.common.base.Charsets;
-import gnu.trove.iterator.TLongIterator;
 import io.deephaven.chunk.ObjectChunk;
 import io.deephaven.chunk.WritableChunk;
 import io.deephaven.chunk.WritableLongChunk;
@@ -14,7 +13,6 @@ import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.extensions.barrage.ColumnConversionMode;
 import io.deephaven.extensions.barrage.util.DefensiveDrainable;
 import io.deephaven.extensions.barrage.util.StreamReaderOptions;
-import io.deephaven.time.DateTime;
 import io.deephaven.time.DateTimeUtils;
 import io.deephaven.util.datastructures.LongSizedDataStructure;
 import io.deephaven.chunk.Chunk;
@@ -28,7 +26,11 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.PrimitiveIterator;
 
 public interface ChunkInputStreamGenerator extends SafeCloseable {
 
@@ -61,10 +63,15 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
                 return new DoubleChunkInputStreamGenerator(chunk.asDoubleChunk(), Double.BYTES, rowOffset);
             case Object:
                 if (type.isArray()) {
-                    return new VarListChunkInputStreamGenerator<>(type, chunk.asObjectChunk(), rowOffset);
+                    if (componentType == byte.class) {
+                        return new VarBinaryChunkInputStreamGenerator<>(chunk.asObjectChunk(), rowOffset,
+                                (out, item) -> out.write((byte[]) item));
+                    } else {
+                        return new VarListChunkInputStreamGenerator<>(type, chunk.asObjectChunk(), rowOffset);
+                    }
                 }
                 if (Vector.class.isAssignableFrom(type)) {
-                    //noinspection unchecked
+                    // noinspection unchecked
                     return new VectorChunkInputStreamGenerator(
                             (Class<Vector<?>>) type, componentType, chunk.asObjectChunk(), rowOffset);
                 }
@@ -89,12 +96,24 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
                                 out.write(normal.unscaledValue().toByteArray());
                             });
                 }
-                if (type == DateTime.class) {
-                    // This code path is utilized for arrays and vectors of DateTimes, which cannot be reinterpreted.
-                    ObjectChunk<DateTime, Values> objChunk = chunk.asObjectChunk();
+                if (type == Instant.class) {
+                    // This code path is utilized for arrays and vectors of Instant, which cannot be reinterpreted.
+                    ObjectChunk<Instant, Values> objChunk = chunk.asObjectChunk();
                     WritableLongChunk<Values> outChunk = WritableLongChunk.makeWritableChunk(objChunk.size());
                     for (int i = 0; i < objChunk.size(); ++i) {
-                        outChunk.set(i, DateTimeUtils.nanos(objChunk.get(i)));
+                        outChunk.set(i, DateTimeUtils.epochNanos(objChunk.get(i)));
+                    }
+                    if (chunk instanceof PoolableChunk) {
+                        ((PoolableChunk) chunk).close();
+                    }
+                    return new LongChunkInputStreamGenerator(outChunk, Long.BYTES, rowOffset);
+                }
+                if (type == ZonedDateTime.class) {
+                    // This code path is utilized for arrays and vectors of Instant, which cannot be reinterpreted.
+                    ObjectChunk<ZonedDateTime, Values> objChunk = chunk.asObjectChunk();
+                    WritableLongChunk<Values> outChunk = WritableLongChunk.makeWritableChunk(objChunk.size());
+                    for (int i = 0; i < objChunk.size(); ++i) {
+                        outChunk.set(i, DateTimeUtils.epochNanos(objChunk.get(i)));
                     }
                     if (chunk instanceof PoolableChunk) {
                         ((PoolableChunk) chunk).close();
@@ -138,10 +157,11 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
             final StreamReaderOptions options,
             final ChunkType chunkType, final Class<?> type, final Class<?> componentType,
             final Iterator<FieldNodeInfo> fieldNodeIter,
-            final TLongIterator bufferInfoIter,
+            final PrimitiveIterator.OfLong bufferInfoIter,
             final DataInput is,
             final WritableChunk<Values> outChunk, final int offset, final int totalRows) throws IOException {
-        return extractChunkFromInputStream(options, 1, chunkType, type, componentType, fieldNodeIter, bufferInfoIter, is,
+        return extractChunkFromInputStream(options, 1, chunkType, type, componentType, fieldNodeIter, bufferInfoIter,
+                is,
                 outChunk, offset, totalRows);
     }
 
@@ -150,7 +170,7 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
             final int factor,
             final ChunkType chunkType, final Class<?> type, final Class<?> componentType,
             final Iterator<FieldNodeInfo> fieldNodeIter,
-            final TLongIterator bufferInfoIter,
+            final PrimitiveIterator.OfLong bufferInfoIter,
             final DataInput is,
             final WritableChunk<Values> outChunk, final int outOffset, final int totalRows) throws IOException {
         switch (chunkType) {
@@ -180,23 +200,32 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
                 }
                 return LongChunkInputStreamGenerator.extractChunkFromInputStreamWithConversion(
                         Long.BYTES, options,
-                        (long v) -> (v*factor),
+                        (long v) -> (v * factor),
                         fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
             case Float:
                 return FloatChunkInputStreamGenerator.extractChunkFromInputStream(
                         Float.BYTES, options, fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
             case Double:
                 return DoubleChunkInputStreamGenerator.extractChunkFromInputStream(
-                        Double.BYTES, options,fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
+                        Double.BYTES, options, fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
             case Object:
                 if (type.isArray()) {
-                   return VarListChunkInputStreamGenerator.extractChunkFromInputStream(
-                           options, type, fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
+                    if (componentType == byte.class) {
+                        return VarBinaryChunkInputStreamGenerator.extractChunkFromInputStream(
+                                is,
+                                fieldNodeIter,
+                                bufferInfoIter,
+                                (buf, off, len) -> Arrays.copyOfRange(buf, off, off + len),
+                                outChunk, outOffset, totalRows);
+                    } else {
+                        return VarListChunkInputStreamGenerator.extractChunkFromInputStream(
+                                options, type, fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
+                    }
                 }
                 if (Vector.class.isAssignableFrom(type)) {
-                    //noinspection unchecked
+                    // noinspection unchecked
                     return VectorChunkInputStreamGenerator.extractChunkFromInputStream(
-                            options, (Class<Vector<?>>)type, componentType, fieldNodeIter, bufferInfoIter, is,
+                            options, (Class<Vector<?>>) type, componentType, fieldNodeIter, bufferInfoIter, is,
                             outChunk, outOffset, totalRows);
                 }
                 if (type == BigInteger.class) {
@@ -205,8 +234,7 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
                             fieldNodeIter,
                             bufferInfoIter,
                             BigInteger::new,
-                            outChunk, outOffset, totalRows
-                    );
+                            outChunk, outOffset, totalRows);
                 }
                 if (type == BigDecimal.class) {
                     return VarBinaryChunkInputStreamGenerator.extractChunkFromInputStream(
@@ -222,63 +250,63 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
                                 final int scale = b4 << 24 | (b3 & 0xFF) << 16 | (b2 & 0xFF) << 8 | (b1 & 0xFF);
                                 return new BigDecimal(new BigInteger(buf, offset + 4, length - 4), scale);
                             },
-                            outChunk, outOffset, totalRows
-                    );
+                            outChunk, outOffset, totalRows);
                 }
-                if (type == DateTime.class) {
+                if (type == Instant.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
-                            Long.BYTES, options, io -> DateTimeUtils.nanosToTime(io.readLong()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            Long.BYTES, options, io -> DateTimeUtils.epochNanosToInstant(io.readLong()),
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
+                }
+                if (type == ZonedDateTime.class) {
+                    return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
+                            Long.BYTES, options,
+                            io -> DateTimeUtils.epochNanosToZonedDateTime(io.readLong(), DateTimeUtils.timeZone()),
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == Byte.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
                             Byte.BYTES, options, io -> TypeUtils.box(io.readByte()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == Character.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
                             Character.BYTES, options, io -> TypeUtils.box(io.readChar()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == Double.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
                             Double.BYTES, options, io -> TypeUtils.box(io.readDouble()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == Float.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
                             Float.BYTES, options, io -> TypeUtils.box(io.readFloat()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == Integer.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
                             Integer.BYTES, options, io -> TypeUtils.box(io.readInt()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == Long.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
                             Long.BYTES, options, io -> TypeUtils.box(io.readLong()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == Short.class) {
                     return FixedWidthChunkInputStreamGenerator.extractChunkFromInputStreamWithTypeConversion(
                             Short.BYTES, options, io -> TypeUtils.box(io.readShort()),
-                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows
-                    );
+                            fieldNodeIter, bufferInfoIter, is, outChunk, outOffset, totalRows);
                 }
                 if (type == String.class ||
                         options.columnConversionMode().equals(ColumnConversionMode.Stringify)) {
-                    return VarBinaryChunkInputStreamGenerator.extractChunkFromInputStream(is, fieldNodeIter, bufferInfoIter,
-                            (buf, off, len) -> new String(buf, off, len, Charsets.UTF_8), outChunk, outOffset, totalRows);
+                    return VarBinaryChunkInputStreamGenerator.extractChunkFromInputStream(is, fieldNodeIter,
+                            bufferInfoIter,
+                            (buf, off, len) -> new String(buf, off, len, Charsets.UTF_8), outChunk, outOffset,
+                            totalRows);
                 }
-                throw new UnsupportedOperationException("Do not yet support column conversion mode: " + options.columnConversionMode());
+                throw new UnsupportedOperationException(
+                        "Do not yet support column conversion mode: " + options.columnConversionMode());
             default:
                 throw new UnsupportedOperationException();
         }
@@ -339,19 +367,24 @@ public interface ChunkInputStreamGenerator extends SafeCloseable {
     abstract class DrainableColumn extends DefensiveDrainable {
         /**
          * Append the field nde to the flatbuffer payload via the supplied listener.
+         * 
          * @param listener the listener to notify for each logical field node in this payload
          */
         public abstract void visitFieldNodes(final FieldNodeListener listener);
 
         /**
          * Append the buffer boundaries to the flatbuffer payload via the supplied listener.
+         * 
          * @param listener the listener to notify for each sub-buffer in this payload
          */
         public abstract void visitBuffers(final BufferListener listener);
 
         /**
-         * Count the number of null elements in the outer-most layer of this column (i.e. does not count nested nulls inside of arrays)
-         * @return the number of null elements -- 'useDeephavenNulls' counts are always 0 so that we may omit the validity buffer
+         * Count the number of null elements in the outer-most layer of this column (i.e. does not count nested nulls
+         * inside of arrays)
+         * 
+         * @return the number of null elements -- 'useDeephavenNulls' counts are always 0 so that we may omit the
+         *         validity buffer
          */
         public abstract int nullCount();
     }

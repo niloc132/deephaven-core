@@ -1,11 +1,10 @@
-/**
- * Copyright (c) 2016-2023 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit ImmutableConstantCharSource and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit ImmutableConstantCharSource and run "./gradlew replicateSourcesAndChunks" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.sources.immutable;
 
 import io.deephaven.engine.table.ColumnSource;
@@ -34,7 +33,7 @@ import static io.deephaven.util.QueryConstants.NULL_BYTE;
 public class ImmutableConstantByteSource
         extends AbstractColumnSource<Byte>
         implements ImmutableColumnSourceGetDefaults.ForByte, ShiftData.ShiftCallback, InMemoryColumnSource,
-        RowKeyAgnosticChunkSource<Values> {
+        RowKeyAgnosticChunkSource<Values> /* MIXIN_IMPLS */ {
 
     private final byte value;
 
@@ -74,20 +73,6 @@ public class ImmutableConstantByteSource
     @Override
     public final void shift(final long start, final long end, final long offset) {}
 
-    // region reinterpret
-    @Override
-    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(
-            @NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {
-        return alternateDataType == Boolean.class;
-    }
-
-    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(
-               @NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
-         //noinspection unchecked
-         return (ColumnSource<ALTERNATE_DATA_TYPE>) new ByteAsBooleanColumnSource(this);
-    }
-    // endregion reinterpret
-
     @Override
     public void fillChunkUnordered(
             @NotNull FillContext context,
@@ -105,11 +90,25 @@ public class ImmutableConstantByteSource
             @NotNull FillContext context,
             @NotNull WritableChunk<? super Values> dest,
             @NotNull LongChunk<? extends RowKeys> keys) {
-        fillChunkUnordered(context , dest, keys);
+        fillChunkUnordered(context, dest, keys);
     }
 
     @Override
     public boolean providesFillUnordered() {
         return true;
     }
+
+    // region reinterpretation
+    @Override
+    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(
+            @NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {
+        return alternateDataType == Boolean.class;
+    }
+
+    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(
+               @NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
+         //noinspection unchecked
+         return (ColumnSource<ALTERNATE_DATA_TYPE>) new ByteAsBooleanColumnSource(this);
+    }
+    // endregion reinterpretation
 }

@@ -1,30 +1,34 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Assert;
+import io.deephaven.chunk.Chunk;
+import io.deephaven.chunk.WritableBooleanChunk;
+import io.deephaven.chunk.WritableObjectChunk;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.chunk.util.hashing.ChunkEquals;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.datastructures.util.CollectionUtil;
-import io.deephaven.engine.rowset.*;
-import io.deephaven.engine.rowset.RowSetFactory;
+import io.deephaven.engine.rowset.RowSequence;
+import io.deephaven.engine.rowset.RowSet;
+import io.deephaven.engine.rowset.RowSetShiftData;
+import io.deephaven.engine.rowset.TrackingWritableRowSet;
 import io.deephaven.engine.table.*;
-import io.deephaven.vector.*;
-import io.deephaven.chunk.util.hashing.ChunkEquals;
 import io.deephaven.engine.table.impl.sources.SparseArrayColumnSource;
-import io.deephaven.chunk.*;
-import io.deephaven.engine.table.impl.util.*;
+import io.deephaven.engine.table.impl.util.ChunkUtils;
+import io.deephaven.engine.table.impl.util.ShiftData;
 import io.deephaven.util.SafeCloseable;
 import io.deephaven.util.SafeCloseableList;
+import io.deephaven.vector.*;
 import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.function.Supplier;
 
-public class TableUpdateValidator implements QueryTable.Operation {
+public class TableUpdateValidator implements QueryTable.Operation<QueryTable> {
     private static final boolean useSharedContext = Configuration.getInstance()
             .getBooleanForClassWithDefault(TableUpdateValidator.class, "useSharedContext", true);
     private static final boolean aggressiveUpdateValidation = Configuration.getInstance()
@@ -48,7 +52,7 @@ public class TableUpdateValidator implements QueryTable.Operation {
     private final ModifiedColumnSet validationMCS;
     private ColumnInfo[] columnInfos;
 
-    private WritableRowSet rowSet;
+    private TrackingWritableRowSet rowSet;
     private QueryTable resultTable;
     private SharedContext sharedContext;
     private final String description;
@@ -57,11 +61,13 @@ public class TableUpdateValidator implements QueryTable.Operation {
         this.description = description == null ? tableToValidate.getDescription() : description;
         this.tableToValidate = tableToValidate;
         this.validationMCS = tableToValidate.newModifiedColumnSet(
-                tableToValidate.getColumnSourceMap().keySet().toArray(CollectionUtil.ZERO_LENGTH_STRING_ARRAY));
+                tableToValidate.getDefinition().getColumnNamesArray());
         Assert.neq(validationMCS, "validationMCS", ModifiedColumnSet.ALL, "ModifiedColumnSet.ALL");
         Assert.neq(validationMCS, "validationMCS", ModifiedColumnSet.EMPTY, "ModifiedColumnSet.EMPTY");
 
-        columnInfos = tableToValidate.getColumnSourceMap().keySet().stream()
+        columnInfos = tableToValidate.getDefinition()
+                .getColumnStream()
+                .map(ColumnDefinition::getName)
                 .map((name) -> new ColumnInfo(tableToValidate, name))
                 .toArray(ColumnInfo[]::new);
     }
@@ -96,12 +102,10 @@ public class TableUpdateValidator implements QueryTable.Operation {
     }
 
     @Override
-    public Result initialize(boolean usePrev, long beforeClock) {
-        rowSet = usePrev ? tableToValidate.getRowSet().copyPrev() : tableToValidate.getRowSet().copy();
+    public Result<QueryTable> initialize(boolean usePrev, long beforeClock) {
+        rowSet = (usePrev ? tableToValidate.getRowSet().prev() : tableToValidate.getRowSet()).copy().toTracking();
 
-        resultTable = new QueryTable(RowSetFactory.empty().toTracking(),
-                Collections.emptyMap());
-        resultTable.setFlat();
+        resultTable = new QueryTable(rowSet, tableToValidate.getColumnSourceMap());
 
         final TableUpdateListener listener;
         try (final SafeCloseable ignored1 = maybeOpenSharedContext();
@@ -146,7 +150,7 @@ public class TableUpdateValidator implements QueryTable.Operation {
     }
 
     private void onUpdate(final TableUpdate upstream) {
-        if (resultTable.size() >= MAX_ISSUES) {
+        if (issues.size() >= MAX_ISSUES) {
             return;
         }
 
@@ -212,7 +216,11 @@ public class TableUpdateValidator implements QueryTable.Operation {
                 }
                 result.append("\n");
                 resultTable.notifyListenersOnError(new RuntimeException(result.toString()), null);
+                return;
             }
+
+            final TableUpdateImpl downstream = TableUpdateImpl.copy(upstream);
+            resultTable.notifyListeners(downstream);
         }
     }
 
@@ -240,6 +248,15 @@ public class TableUpdateValidator implements QueryTable.Operation {
         if (issues.size() < MAX_ISSUES) {
             issues.add(issue.get());
         }
+    }
+
+    /**
+     * Has an update validation failed on this table?
+     * 
+     * @return true if an update validation has failed on this table.
+     */
+    public boolean hasFailed() {
+        return !issues.isEmpty();
     }
 
     private void validateValues(final String what, final ModifiedColumnSet columnsToCheck, final RowSet toValidate,
@@ -316,7 +333,7 @@ public class TableUpdateValidator implements QueryTable.Operation {
         final ModifiedColumnSet modifiedColumnSet;
 
         final ColumnSource<?> source;
-        final SparseArrayColumnSource<?> expectedSource;
+        final WritableColumnSource<?> expectedSource;
 
         final ChunkEquals chunkEquals;
 
@@ -336,6 +353,8 @@ public class TableUpdateValidator implements QueryTable.Operation {
             this.isPrimitive = source.getType().isPrimitive();
             this.expectedSource =
                     SparseArrayColumnSource.getSparseMemoryColumnSource(source.getType(), source.getComponentType());
+            Assert.eqTrue(this.expectedSource instanceof ShiftData.RowSetShiftCallback,
+                    "expectedSource instanceof ShiftData.RowSetShiftCallback");
 
             this.chunkEquals = ChunkEquals.makeEqual(source.getChunkType());
         }
@@ -384,11 +403,12 @@ public class TableUpdateValidator implements QueryTable.Operation {
 
         @Override
         public void shift(final long beginRange, final long endRange, final long shiftDelta) {
-            expectedSource.shift(rowSet.subSetByKeyRange(beginRange, endRange), shiftDelta);
+            ((ShiftData.RowSetShiftCallback) expectedSource).shift(
+                    rowSet.subSetByKeyRange(beginRange, endRange), shiftDelta);
         }
 
         public void remove(final RowSet toRemove) {
-            expectedSource.remove(toRemove);
+            expectedSource.setNull(toRemove);
         }
 
         private void updateValues(final RowSequence toUpdate, final boolean usePrev) {
@@ -420,11 +440,12 @@ public class TableUpdateValidator implements QueryTable.Operation {
             final Chunk<? extends Values> expected =
                     expectedSource.getChunk(expectedGetContext(), toValidate);
             final Chunk<? extends Values> actual = getSourceChunk(toValidate, usePrev);
+            Assert.eq(expected.size(), "expected.size()", actual.size(), "actual.size()");
             chunkEquals.equal(expected, actual, equalValuesDest());
             MutableInt off = new MutableInt();
             toValidate.forAllRowKeys((i) -> {
-                off.increment();
-                if (equalValuesDest().get(off.intValue() - 1)) {
+                final int rowOffset = off.getAndIncrement();
+                if (equalValuesDest().get(rowOffset)) {
                     return;
                 }
 
@@ -432,9 +453,8 @@ public class TableUpdateValidator implements QueryTable.Operation {
                     Object eValue = expectedSource.get(i);
                     Object aValue = usePrev ? source.getPrev(i) : source.get(i);
                     String chunkEValue = ChunkUtils.extractKeyStringFromChunk(expectedSource.getChunkType(), expected,
-                            off.intValue() - 1);
-                    String chunkAValue =
-                            ChunkUtils.extractKeyStringFromChunk(source.getChunkType(), actual, off.intValue() - 1);
+                            rowOffset);
+                    String chunkAValue = ChunkUtils.extractKeyStringFromChunk(source.getChunkType(), actual, rowOffset);
                     return what + (usePrev ? " (previous)" : "") +
                             " columnName=" + name + " k=" + i +
                             " (from source) expected=" + eValue + " actual=" + aValue +

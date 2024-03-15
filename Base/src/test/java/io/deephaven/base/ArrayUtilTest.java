@@ -1,9 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.base;
 
 import junit.framework.TestCase;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class ArrayUtilTest extends TestCase {
 
@@ -290,20 +293,20 @@ public class ArrayUtilTest extends TestCase {
             }
         }
 
-        public static class NullaryFactory implements Function.Nullary<StringWrapper> {
+        public static class NullaryFactory implements Supplier<StringWrapper> {
             String s;
 
             NullaryFactory(String s) {
                 this.s = s;
             }
 
-            public StringWrapper call() {
+            public StringWrapper get() {
                 return new StringWrapper(s);
             }
         }
 
-        public static class UnaryFactory implements Function.Unary<StringWrapper, String> {
-            public StringWrapper call(String s) {
+        public static class UnaryFactory implements Function<String, StringWrapper> {
+            public StringWrapper apply(String s) {
                 return new StringWrapper(s);
             }
         }

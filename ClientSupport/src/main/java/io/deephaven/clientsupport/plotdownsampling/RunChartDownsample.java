@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.clientsupport.plotdownsampling;
 
 import io.deephaven.chunk.attributes.Values;
@@ -12,7 +12,6 @@ import io.deephaven.engine.table.impl.TableUpdateImpl;
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeys;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.function.Numeric;
-import io.deephaven.time.DateTime;
 import io.deephaven.hash.KeyedLongObjectHash;
 import io.deephaven.hash.KeyedLongObjectHashMap;
 import io.deephaven.hash.KeyedLongObjectKey;
@@ -30,6 +29,7 @@ import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -109,12 +109,12 @@ public class RunChartDownsample implements Function<Table, Table> {
         // TODO restore this to support non-QueryTable types
         // if (wholeTable instanceof BaseTable) {
         // BaseTable baseTable = (BaseTable) wholeTable;
-        // final SwapListener swapListener =
-        // baseTable.createSwapListenerIfRefreshing(SwapListener::new);
+        // final OperationSnapshotControl snapshotControl =
+        // baseTable.createSnapshotControlIfRefreshing(OperationSnapshotControl::new);
         //
         // final Mutable<QueryTable> result = new MutableObject<>();
         //
-        // baseTable.initializeWithSnapshot("downsample", swapListener, (prevRequested, beforeClock) -> {
+        // baseTable.initializeWithSnapshot("downsample", snapshotControl, (prevRequested, beforeClock) -> {
         // final boolean usePrev = prevRequested && baseTable.isRefreshing();
         // final WritableRowSet rowSetToUse = usePrev ? baseTable.build().copyPrev() : baseTable.build();
         //
@@ -136,20 +136,20 @@ public class RunChartDownsample implements Function<Table, Table> {
     }
 
     private static Table makeDownsampledQueryTable(final QueryTable wholeQueryTable, final DownsampleKey memoKey) {
-        final SwapListener swapListener =
-                wholeQueryTable.createSwapListenerIfRefreshing(SwapListener::new);
+        final OperationSnapshotControl snapshotControl =
+                wholeQueryTable.createSnapshotControlIfRefreshing(OperationSnapshotControl::new);
 
         final Mutable<Table> result = new MutableObject<>();
 
-        BaseTable.initializeWithSnapshot("downsample", swapListener, (prevRequested, beforeClock) -> {
+        BaseTable.initializeWithSnapshot("downsample", snapshotControl, (prevRequested, beforeClock) -> {
             final boolean usePrev = prevRequested && wholeQueryTable.isRefreshing();
 
             final DownsamplerListener downsampleListener = DownsamplerListener.of(wholeQueryTable, memoKey);
             downsampleListener.init(usePrev);
             result.setValue(downsampleListener.resultTable);
 
-            if (swapListener != null) {
-                swapListener.setListenerAndResult(downsampleListener, downsampleListener.resultTable);
+            if (snapshotControl != null) {
+                snapshotControl.setListenerAndResult(downsampleListener, downsampleListener.resultTable);
                 downsampleListener.resultTable.addParentReference(downsampleListener);
             }
 
@@ -275,7 +275,9 @@ public class RunChartDownsample implements Function<Table, Table> {
                     }
                 };
 
-        private DownsamplerListener(final QueryTable sourceTable, final QueryTable resultTable,
+        private DownsamplerListener(
+                final QueryTable sourceTable,
+                final QueryTable resultTable,
                 final DownsampleKey key) {
             super("downsample listener", sourceTable, resultTable);
             this.sourceTable = sourceTable;
@@ -284,14 +286,14 @@ public class RunChartDownsample implements Function<Table, Table> {
             this.key = key;
 
             final ColumnSource xSource = sourceTable.getColumnSource(key.xColumnName);
-            if (xSource.getType() == DateTime.class) {
-                this.xColumnSource = ReinterpretUtils.dateTimeToLongSource(xSource);
+            if (xSource.getType() == Instant.class) {
+                this.xColumnSource = ReinterpretUtils.instantToLongSource(xSource);
             } else if (xSource.allowsReinterpret(long.class)) {
                 // noinspection unchecked
                 this.xColumnSource = xSource.reinterpret(long.class);
             } else {
                 throw new IllegalArgumentException(
-                        "Cannot use non-DateTime, non-long x column " + key.xColumnName + " in downsample");
+                        "Cannot use non-Instant, non-long x column " + key.xColumnName + " in downsample");
             }
 
             this.valueColumnSources = Arrays.stream(this.key.yColumnNames)
@@ -692,7 +694,7 @@ public class RunChartDownsample implements Function<Table, Table> {
         /**
          * Indicates that a change has probably happened and we should notify the result table. The contents of the
          * change will be our state map (i.e. there is
-         * 
+         *
          * @param upstream the change that happened upstream
          * @param lastRowSet the base rowSet to use when considering what items to tell the result table changed. if
          *        this.rowSet, then update it normally, otherwise this.rowSet must be empty and this.rowSet should be

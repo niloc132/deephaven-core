@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.locations.impl;
 
 import io.deephaven.base.log.LogOutput;
@@ -94,7 +94,7 @@ public abstract class PartitionedTableLocationKey implements ImmutableTableLocat
                 } else if (partitionValue instanceof LogOutputAppendable) {
                     logOutput.append((LogOutputAppendable) partitionValue);
                 } else {
-                    // Boolean, DateTime, or some other arbitrary object we haven't considered
+                    // Boolean, Instant, or some other arbitrary object we haven't considered
                     logOutput.append(partitionValue.toString());
                 }
 

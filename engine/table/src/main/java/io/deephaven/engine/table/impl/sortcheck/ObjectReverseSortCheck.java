@@ -1,11 +1,11 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharSortCheck and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit ObjectReverseSortCheck and run "./gradlew replicateSortCheck" to regenerate
+//
+// @formatter:off
+
 package io.deephaven.engine.table.impl.sortcheck;
 
 import java.util.Objects;
@@ -50,7 +50,7 @@ public class ObjectReverseSortCheck implements SortCheck {
         if (rhs == null) {
             return -1;
         }
-        //noinspection unchecked
+        //noinspection unchecked,rawtypes
         return ((Comparable)rhs).compareTo(lhs);
     }
     // endregion comparison functions

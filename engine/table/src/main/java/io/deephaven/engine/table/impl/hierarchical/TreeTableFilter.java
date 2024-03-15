@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.hierarchical;
 
 import io.deephaven.api.ColumnName;
@@ -12,6 +12,7 @@ import io.deephaven.chunk.Chunk;
 import io.deephaven.chunk.ObjectChunk;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.*;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.*;
@@ -156,20 +157,23 @@ public class TreeTableFilter {
         parentIdSource = source.getColumnSource(tree.getParentIdentifierColumn().name());
 
         if (source.isRefreshing()) {
-            final SwapListenerEx swapListener = new SwapListenerEx(source, sourceRowLookup);
-            source.addUpdateListener(swapListener);
-            ConstructSnapshot.callDataSnapshotFunction(System.identityHashCode(source) + ": ",
-                    swapListener.makeSnapshotControl(),
-                    (usePrev, beforeClockValue) -> {
-                        doInitialFilter(swapListener, usePrev);
-                        return true;
-                    });
+            try (final SafeCloseable ignored = ExecutionContext.getContext().withUpdateGraph(
+                    source.getUpdateGraph()).open()) {
+                final OperationSnapshotControlEx snapshotControl =
+                        new OperationSnapshotControlEx(source, sourceRowLookup);
+                ConstructSnapshot.callDataSnapshotFunction(System.identityHashCode(source) + ": ",
+                        snapshotControl,
+                        (usePrev, beforeClockValue) -> {
+                            doInitialFilter(snapshotControl, usePrev);
+                            return true;
+                        });
+            }
         } else {
             doInitialFilter(null, false);
         }
     }
 
-    private void doInitialFilter(@Nullable final SwapListener swapListener, final boolean usePrev) {
+    private void doInitialFilter(@Nullable final OperationSnapshotControl snapshotControl, final boolean usePrev) {
         try (final RowSet sourcePrevRows = usePrev ? source.getRowSet().copyPrev() : null) {
             final RowSet sourceRows = usePrev ? sourcePrevRows : source.getRowSet();
 
@@ -182,9 +186,9 @@ public class TreeTableFilter {
         }
 
         result = source.getSubTable(resultRows);
-        if (swapListener != null) {
+        if (snapshotControl != null) {
             sourceListener = new Listener();
-            swapListener.setListenerAndResult(sourceListener, result);
+            snapshotControl.setListenerAndResult(sourceListener, result);
             result.addParentReference(sourceListener);
         }
     }

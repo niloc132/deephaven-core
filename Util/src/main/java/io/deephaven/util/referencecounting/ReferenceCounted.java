@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.util.referencecounting;
 
 import io.deephaven.base.log.LogOutput;
@@ -10,16 +10,13 @@ import io.deephaven.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ObjectInputStream;
-import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * Implements a recurring reference counting pattern - a concurrent reference count that should refuse to go below zero,
  * and invokes {@link #onReferenceCountAtZero()} exactly once when the count returns to zero.
  */
-public abstract class ReferenceCounted implements LogOutputAppendable, Serializable {
-
-    private static final long serialVersionUID = 1L;
+public abstract class ReferenceCounted implements LogOutputAppendable {
 
     /**
      * Field updater for referenceCount, so we can avoid creating an {@link java.util.concurrent.atomic.AtomicInteger}
@@ -93,6 +90,12 @@ public abstract class ReferenceCounted implements LogOutputAppendable, Serializa
             throw new IllegalArgumentException("Invalid initial reference count " + initialValue);
         }
         referenceCount = initialValue == 0 ? INITIAL_ZERO_VALUE : initialValue;
+    }
+
+    public static String getReferenceCountDebug(Object maybeReferenceCounted) {
+        return maybeReferenceCounted instanceof ReferenceCounted
+                ? Integer.toString(((ReferenceCounted) maybeReferenceCounted).getCurrentReferenceCount())
+                : "not reference counted";
     }
 
     private int getCurrentReferenceCount() {
@@ -184,14 +187,20 @@ public abstract class ReferenceCounted implements LogOutputAppendable, Serializa
      * normally, but subsequent invocations of {@link #decrementReferenceCount()} and
      * {@link #tryDecrementReferenceCount()} will act as if the reference count was successfully decremented until
      * {@link #resetReferenceCount()} is invoked.
+     *
+     * @return Whether this invocation actually forced the reference count to zero (and invoked
+     *         {@link #onReferenceCountAtZero()}. {@code false} means that this ReferenceCounted reached a zero through
+     *         other means.
      */
-    public final void forceReferenceCountToZero() {
+    public final boolean forceReferenceCountToZero() {
         int currentReferenceCount;
         while (!isZero(currentReferenceCount = getCurrentReferenceCount())) {
             if (tryUpdateReferenceCount(currentReferenceCount, FORCED_TERMINAL_ZERO_VALUE)) {
                 onReferenceCountAtZero();
+                return true;
             }
         }
+        return false;
     }
 
     /**

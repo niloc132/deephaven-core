@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.io.log.impl;
 
 import io.deephaven.base.log.LogOutput;
@@ -72,18 +72,16 @@ public class LogEntryImpl extends LogOutputCsvImpl implements LogEntry {
     }
 
     @Override
-    public LogEntry end() {
+    public void end() {
         close();
         sink.write(this);
         ends.getAndIncrement();
-        return this;
     }
 
     @Override
-    public LogEntry endl() {
+    public void endl() {
         nl();
         end();
-        return this;
     }
 
     // ------------------------------------------------------------------------------------------------

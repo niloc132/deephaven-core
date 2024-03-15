@@ -1,14 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
 import java.util.ServiceLoader;
-import java.util.function.BinaryOperator;
-import java.util.function.UnaryOperator;
 
 /**
  * Factory for producing Deephaven engine {@link PartitionedTable} instances.
@@ -73,9 +71,9 @@ public class PartitionedTableFactory {
      * @param table The "raw" {@link Table table} of {@link Table tables}. Should be {@link Table#isRefreshing()
      *        refreshing} if any constituents are.
      * @param keyColumnNames The "key" column names from {@code table}. Key columns are used in
-     *        {@link PartitionedTable#transform(UnaryOperator)} to validate the safety and correctness of join
-     *        operations and in {@link PartitionedTable#partitionedTransform(PartitionedTable, BinaryOperator)} to
-     *        correlate tables that should be transformed together. Passing an ordered set is highly recommended.
+     *        {@link PartitionedTable#transform transform} to validate the safety and correctness of join operations and
+     *        in {@link PartitionedTable#partitionedTransform partitionedTransform} to correlate tables that should be
+     *        transformed together. Passing an ordered set is highly recommended.
      * @param uniqueKeys Whether the keys (key column values for a row considered as a tuple) in {@code table} are
      *        guaranteed to be unique
      * @param constituentColumnName The "constituent" column name from {@code table}. The constituent column contains
@@ -84,7 +82,7 @@ public class PartitionedTableFactory {
      *        {@link TableDefinition#checkMutualCompatibility(TableDefinition) mutually compatible} with all values in
      *        the "constituent" column of {@code table}
      * @param constituentChangesPermitted Whether {@code table} is permitted to report changes that impact the
-     *        constituent column
+     *        constituent column; ignored (and treated as {@code false}) if {@code !table.isRefreshing()}
      * @return A new PartitionedTable as described
      */
     public static PartitionedTable of(

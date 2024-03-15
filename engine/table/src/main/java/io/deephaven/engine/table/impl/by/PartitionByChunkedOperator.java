@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.api.agg.Partition;
@@ -34,14 +34,14 @@ import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.TableUpdateImpl;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.sources.ObjectArraySource;
-import io.deephaven.engine.table.iterators.ColumnIterator;
-import io.deephaven.engine.table.iterators.ObjectColumnIterator;
+import io.deephaven.engine.table.iterators.ChunkedObjectColumnIterator;
 import io.deephaven.engine.updategraph.NotificationQueue;
 import io.deephaven.util.SafeCloseable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -168,11 +168,10 @@ public final class PartitionByChunkedOperator implements IterativeChunkedAggrega
             shiftDataBuilders = new ObjectArraySource<>(RowSetShiftData.SmartCoalescingBuilder.class);
 
             final Set<String> keyColumnNameSet = Arrays.stream(keyColumnNames).collect(Collectors.toSet());
-            final Set<String> unadjustedParentColumnNameSet =
-                    new LinkedHashSet<>(unadjustedParentTable.getDefinition().getColumnNames());
+            final Set<String> unadjustedParentColumnNameSet = unadjustedParentTable.getDefinition().getColumnNameSet();
             final String[] retainedResultColumnNames = parentTable.getDefinition().getColumnStream()
                     .map(ColumnDefinition::getName)
-                    .filter(cn -> !keyColumnNameSet.contains(cn))
+                    .filter(Predicate.not(keyColumnNameSet::contains))
                     .filter(unadjustedParentColumnNameSet::contains)
                     .toArray(String[]::new);
             final ModifiedColumnSet[] retainedResultModifiedColumnSets = Arrays.stream(retainedResultColumnNames)
@@ -601,7 +600,8 @@ public final class PartitionByChunkedOperator implements IterativeChunkedAggrega
         ConstituentDependency.install(resultTable, (NotificationQueue.Dependency) aggregationUpdateListener);
 
         // Link constituents
-        new ObjectColumnIterator<Table>(tables, resultTable.getRowSet()).forEachRemaining(this::linkTableReferences);
+        new ChunkedObjectColumnIterator<Table>(tables, resultTable.getRowSet())
+                .forEachRemaining(this::linkTableReferences);
 
         // This operator never reports modifications
         return ignored -> ModifiedColumnSet.EMPTY;
@@ -1004,7 +1004,7 @@ public final class PartitionByChunkedOperator implements IterativeChunkedAggrega
 
     @Override
     public void propagateFailure(@NotNull final Throwable originalException, @NotNull TableListener.Entry sourceEntry) {
-        new ObjectColumnIterator<QueryTable>(tables, resultTable.getRowSet(), ColumnIterator.DEFAULT_CHUNK_SIZE)
+        new ChunkedObjectColumnIterator<QueryTable>(tables, resultTable.getRowSet())
                 .forEachRemaining(st -> st.notifyListenersOnError(originalException, sourceEntry));
     }
 

@@ -1,11 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-
-/*
- * Copyright (c) 2016-2021 Deephaven Data Labs and Patent Pending
- */
-
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.clock.Clock;
@@ -17,25 +12,34 @@ import io.deephaven.engine.rowset.RowSetBuilderSequential;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.updategraph.NotificationQueue;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.time.DateTimeUtils;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
-import io.deephaven.time.DateTime;
 import io.deephaven.engine.table.ColumnSource;
+import org.jetbrains.annotations.NotNull;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * This will filter a table for the most recent N nanoseconds (must be on a date time column).
+ * This will filter a table for the most recent N nanoseconds (must be on an {@link Instant} column).
+ *
+ * <p>
+ * Note, this filter rescans the source table. You should prefer to use {@link io.deephaven.engine.util.WindowCheck}
+ * instead.
+ * </p>
  */
-public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements Runnable {
+public class TimeSeriesFilter
+        extends WhereFilterLivenessArtifactImpl
+        implements Runnable, NotificationQueue.Dependency {
     protected final String columnName;
     protected final long nanos;
     private RecomputeListener listener;
 
     @SuppressWarnings("UnusedDeclaration")
     public TimeSeriesFilter(String columnName, String period) {
-        this(columnName, DateTimeUtils.expressionToNanos(period));
+        this(columnName, DateTimeUtils.parseDurationNanos(period));
     }
 
     public TimeSeriesFilter(String columnName, long nanos) {
@@ -57,16 +61,20 @@ public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements
     @Override
     public void init(TableDefinition tableDefinition) {}
 
+    @NotNull
     @Override
-    public WritableRowSet filter(RowSet selection, RowSet fullSet, Table table, boolean usePrev) {
+    public WritableRowSet filter(
+            @NotNull final RowSet selection,
+            @NotNull final RowSet fullSet,
+            @NotNull final Table table,
+            final boolean usePrev) {
         if (usePrev) {
             throw new PreviousFilteringNotSupported();
         }
 
-        @SuppressWarnings("unchecked")
-        ColumnSource<DateTime> dateColumn = table.getColumnSource(columnName);
-        if (!DateTime.class.isAssignableFrom(dateColumn.getType())) {
-            throw new RuntimeException(columnName + " is not a DateTime column!");
+        ColumnSource<Instant> dateColumn = table.getColumnSource(columnName);
+        if (!Instant.class.isAssignableFrom(dateColumn.getType())) {
+            throw new RuntimeException(columnName + " is not an Instant column!");
         }
 
         long nanoBoundary = getNowNanos() - nanos;
@@ -74,7 +82,8 @@ public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements
         RowSetBuilderSequential indexBuilder = RowSetFactory.builderSequential();
         for (RowSet.Iterator it = selection.iterator(); it.hasNext();) {
             long row = it.nextLong();
-            long nanoValue = dateColumn.get(row).getNanos();
+            Instant instant = dateColumn.get(row);
+            long nanoValue = DateTimeUtils.epochNanos(instant);
             if (nanoValue >= nanoBoundary) {
                 indexBuilder.appendKey(row);
             }
@@ -98,7 +107,17 @@ public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements
         Assert.eqNull(this.listener, "this.listener");
         this.listener = listener;
         listener.setIsRefreshing(true);
-        UpdateGraphProcessor.DEFAULT.addSource(this);
+        updateGraph.addSource(this);
+    }
+
+    @Override
+    public boolean satisfied(long step) {
+        return updateGraph.satisfied(step);
+    }
+
+    @Override
+    public UpdateGraph getUpdateGraph() {
+        return updateGraph;
     }
 
     @Override
@@ -119,6 +138,6 @@ public class TimeSeriesFilter extends WhereFilterLivenessArtifactImpl implements
     @Override
     protected void destroy() {
         super.destroy();
-        UpdateGraphProcessor.DEFAULT.removeSource(this);
+        updateGraph.removeSource(this);
     }
 }

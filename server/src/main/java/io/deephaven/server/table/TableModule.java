@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.table;
 
 import dagger.Binds;
@@ -12,33 +12,9 @@ import dagger.multibindings.IntoSet;
 import io.deephaven.auth.codegen.impl.TableServiceContextualAuthWiring;
 import io.deephaven.proto.backplane.grpc.BatchTableRequest;
 import io.deephaven.server.auth.AuthorizationProvider;
-import io.deephaven.server.table.ops.AggregateAllGrpcImpl;
-import io.deephaven.server.table.ops.AggregateGrpcImpl;
-import io.deephaven.server.table.ops.ApplyPreviewColumnsGrpcImpl;
-import io.deephaven.server.table.ops.ComboAggregateGrpcImpl;
-import io.deephaven.server.table.ops.CreateInputTableGrpcImpl;
-import io.deephaven.server.table.ops.DropColumnsGrpcImpl;
-import io.deephaven.server.table.ops.EmptyTableGrpcImpl;
-import io.deephaven.server.table.ops.FetchTableGrpcImpl;
-import io.deephaven.server.table.ops.FilterTableGrpcImpl;
-import io.deephaven.server.table.ops.FlattenTableGrpcImpl;
-import io.deephaven.server.table.ops.GrpcTableOperation;
-import io.deephaven.server.table.ops.HeadOrTailByGrpcImpl;
-import io.deephaven.server.table.ops.HeadOrTailGrpcImpl;
-import io.deephaven.server.table.ops.JoinTablesGrpcImpl;
-import io.deephaven.server.table.ops.MergeTablesGrpcImpl;
-import io.deephaven.server.table.ops.RunChartDownsampleGrpcImpl;
-import io.deephaven.server.table.ops.SelectDistinctGrpcImpl;
-import io.deephaven.server.table.ops.SnapshotTableGrpcImpl;
-import io.deephaven.server.table.ops.SnapshotWhenTableGrpcImpl;
-import io.deephaven.server.table.ops.SortTableGrpcImpl;
-import io.deephaven.server.table.ops.TableServiceGrpcImpl;
-import io.deephaven.server.table.ops.TimeTableGrpcImpl;
-import io.deephaven.server.table.ops.UngroupGrpcImpl;
-import io.deephaven.server.table.ops.UnstructuredFilterTableGrpcImpl;
-import io.deephaven.server.table.ops.UpdateByGrpcImpl;
-import io.deephaven.server.table.ops.UpdateOrSelectGrpcImpl;
-import io.deephaven.server.table.ops.WhereInGrpcImpl;
+import io.deephaven.server.table.ops.*;
+import io.deephaven.server.table.ops.AjRajGrpcImpl.AjGrpcImpl;
+import io.deephaven.server.table.ops.AjRajGrpcImpl.RajGrpcImpl;
 import io.grpc.BindableService;
 
 @MapKey
@@ -205,6 +181,26 @@ public interface TableModule {
 
     @Binds
     @IntoMap
+    @BatchOpCode(BatchTableRequest.Operation.OpCase.AJ)
+    GrpcTableOperation<?> bindOperationAj(AjGrpcImpl op);
+
+    @Binds
+    @IntoMap
+    @BatchOpCode(BatchTableRequest.Operation.OpCase.RAJ)
+    GrpcTableOperation<?> bindOperationRaj(RajGrpcImpl op);
+
+    @Binds
+    @IntoMap
+    @BatchOpCode(BatchTableRequest.Operation.OpCase.MULTI_JOIN)
+    GrpcTableOperation<?> bindOperationMultiJoin(MultiJoinGrpcImpl op);
+
+    @Binds
+    @IntoMap
+    @BatchOpCode(BatchTableRequest.Operation.OpCase.RANGE_JOIN)
+    GrpcTableOperation<?> bindOperationRangeJoin(RangeJoinGrpcImpl op);
+
+    @Binds
+    @IntoMap
     @BatchOpCode(BatchTableRequest.Operation.OpCase.RUN_CHART_DOWNSAMPLE)
     GrpcTableOperation<?> bindOperationRunChartDownsample(RunChartDownsampleGrpcImpl op);
 
@@ -232,4 +228,15 @@ public interface TableModule {
     @IntoMap
     @BatchOpCode(BatchTableRequest.Operation.OpCase.WHERE_IN)
     GrpcTableOperation<?> bindWhereIn(WhereInGrpcImpl op);
+
+    @Binds
+    @IntoMap
+    @BatchOpCode(BatchTableRequest.Operation.OpCase.COLUMN_STATISTICS)
+    GrpcTableOperation<?> bindColumnStats(ColumnStatisticsGrpcImpl op);
+
+    @Binds
+    @IntoMap
+    @BatchOpCode(BatchTableRequest.Operation.OpCase.META_TABLE)
+    GrpcTableOperation<?> bindMeta(MetaTableGrpcImpl op);
+
 }

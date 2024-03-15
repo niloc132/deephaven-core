@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.util;
 
 import io.deephaven.base.ClassUtil;
@@ -8,16 +8,15 @@ import io.deephaven.base.Pair;
 import io.deephaven.base.clock.Clock;
 import io.deephaven.base.verify.Require;
 import io.deephaven.datastructures.util.CollectionUtil;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.exceptions.ArgumentException;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.internal.log.LoggerFactory;
-import io.deephaven.time.DateTime;
 import io.deephaven.time.DateTimeUtils;
-import io.deephaven.time.TimeZone;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.TimeTable;
 import io.deephaven.engine.table.impl.replay.Replayer;
@@ -38,6 +37,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -84,7 +85,7 @@ public class TableTools {
      * @param columns varargs of column names to display
      */
     public static void show(Table source, String... columns) {
-        show(source, 10, io.deephaven.time.TimeZone.TZ_DEFAULT, System.out, columns);
+        show(source, 10, DateTimeUtils.timeZone(), System.out, columns);
     }
 
     /**
@@ -95,7 +96,7 @@ public class TableTools {
      * @param columns varargs of column names to display
      */
     public static void showWithRowSet(Table source, String... columns) {
-        showWithRowSet(source, 10, io.deephaven.time.TimeZone.TZ_DEFAULT, System.out, columns);
+        showWithRowSet(source, 10, DateTimeUtils.timeZone(), System.out, columns);
     }
 
     /**
@@ -105,17 +106,17 @@ public class TableTools {
      * @param columns varargs of column names to display
      */
     public static void showCommaDelimited(Table source, String... columns) {
-        show(source, 10, io.deephaven.time.TimeZone.TZ_DEFAULT, ",", System.out, false, columns);
+        show(source, 10, DateTimeUtils.timeZone(), ",", System.out, false, columns);
     }
 
     /**
      * Prints the first few rows of a table to standard output.
      *
      * @param source a Deephaven table object
-     * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
+     * @param timeZone a time zone constant relative to which date time data should be adjusted
      * @param columns varargs of column names to display
      */
-    public static void show(Table source, io.deephaven.time.TimeZone timeZone, String... columns) {
+    public static void show(Table source, ZoneId timeZone, String... columns) {
         show(source, 10, timeZone, System.out, columns);
     }
 
@@ -127,7 +128,7 @@ public class TableTools {
      * @param columns varargs of column names to display
      */
     public static void show(Table source, long maxRowCount, String... columns) {
-        show(source, maxRowCount, io.deephaven.time.TimeZone.TZ_DEFAULT, System.out, columns);
+        show(source, maxRowCount, DateTimeUtils.timeZone(), System.out, columns);
     }
 
     /**
@@ -139,7 +140,7 @@ public class TableTools {
      * @param columns varargs of column names to display
      */
     public static void showWithRowSet(Table source, long maxRowCount, String... columns) {
-        showWithRowSet(source, maxRowCount, io.deephaven.time.TimeZone.TZ_DEFAULT, System.out, columns);
+        showWithRowSet(source, maxRowCount, DateTimeUtils.timeZone(), System.out, columns);
     }
 
     /**
@@ -150,7 +151,7 @@ public class TableTools {
      * @param columns varargs of column names to display
      */
     public static void showCommaDelimited(Table source, long maxRowCount, String... columns) {
-        show(source, maxRowCount, io.deephaven.time.TimeZone.TZ_DEFAULT, ",", System.out, false, columns);
+        show(source, maxRowCount, DateTimeUtils.timeZone(), ",", System.out, false, columns);
     }
 
     /**
@@ -158,10 +159,10 @@ public class TableTools {
      *
      * @param source a Deephaven table object
      * @param maxRowCount the number of rows to return
-     * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
+     * @param timeZone a time zone constant relative to which date time data should be adjusted
      * @param columns varargs of column names to display
      */
-    public static void show(Table source, long maxRowCount, io.deephaven.time.TimeZone timeZone,
+    public static void show(Table source, long maxRowCount, ZoneId timeZone,
             String... columns) {
         show(source, maxRowCount, timeZone, System.out, columns);
     }
@@ -171,11 +172,11 @@ public class TableTools {
      *
      * @param source a Deephaven table object
      * @param maxRowCount the number of rows to return
-     * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
+     * @param timeZone a time zone constant relative to which date time data should be adjusted
      * @param out a PrintStream destination to which to print the data
      * @param columns varargs of column names to display
      */
-    public static void show(Table source, long maxRowCount, io.deephaven.time.TimeZone timeZone, PrintStream out,
+    public static void show(Table source, long maxRowCount, ZoneId timeZone, PrintStream out,
             String... columns) {
         show(source, maxRowCount, timeZone, "|", out, false, columns);
     }
@@ -186,11 +187,11 @@ public class TableTools {
      *
      * @param source a Deephaven table object
      * @param maxRowCount the number of rows to return
-     * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
+     * @param timeZone a time zone constant relative to which date time data should be adjusted
      * @param out a PrintStream destination to which to print the data
      * @param columns varargs of column names to display
      */
-    public static void showWithRowSet(Table source, long maxRowCount, io.deephaven.time.TimeZone timeZone,
+    public static void showWithRowSet(Table source, long maxRowCount, ZoneId timeZone,
             PrintStream out,
             String... columns) {
         show(source, maxRowCount, timeZone, "|", out, true, columns);
@@ -207,7 +208,7 @@ public class TableTools {
      * @param columns varargs of column names to display
      */
     public static void showWithRowSet(Table source, long firstRow, long lastRow, PrintStream out, String... columns) {
-        TableShowTools.showInternal(source, firstRow, lastRow, io.deephaven.time.TimeZone.TZ_DEFAULT, "|", out,
+        TableShowTools.showInternal(source, firstRow, lastRow, DateTimeUtils.timeZone(), "|", out,
                 true, columns);
     }
 
@@ -216,13 +217,13 @@ public class TableTools {
      *
      * @param source a Deephaven table object
      * @param maxRowCount the number of rows to return
-     * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
+     * @param timeZone a time zone constant relative to which date time data should be adjusted
      * @param delimiter a String value to use between printed values
      * @param out a PrintStream destination to which to print the data
      * @param showRowSet a boolean indicating whether to also print rowSet details
      * @param columns varargs of column names to display
      */
-    public static void show(final Table source, final long maxRowCount, final TimeZone timeZone,
+    public static void show(final Table source, final long maxRowCount, final ZoneId timeZone,
             final String delimiter, final PrintStream out, final boolean showRowSet, String... columns) {
         TableShowTools.showInternal(source, 0, maxRowCount, timeZone, delimiter, out, showRowSet, columns);
     }
@@ -238,7 +239,7 @@ public class TableTools {
      */
     public static void showWithRowSet(final Table source, final long firstRow, final long lastRow,
             final String... columns) {
-        TableShowTools.showInternal(source, firstRow, lastRow, io.deephaven.time.TimeZone.TZ_DEFAULT, "|",
+        TableShowTools.showInternal(source, firstRow, lastRow, DateTimeUtils.timeZone(), "|",
                 System.out, true, columns);
     }
 
@@ -250,7 +251,7 @@ public class TableTools {
      * @return a String
      */
     public static String string(Table t, String... columns) {
-        return string(t, 10, io.deephaven.time.TimeZone.TZ_DEFAULT, columns);
+        return string(t, 10, DateTimeUtils.timeZone(), columns);
     }
 
     /**
@@ -262,18 +263,18 @@ public class TableTools {
      * @return a String
      */
     public static String string(Table t, int size, String... columns) {
-        return string(t, size, io.deephaven.time.TimeZone.TZ_DEFAULT, columns);
+        return string(t, size, DateTimeUtils.timeZone(), columns);
     }
 
     /**
      * Returns the first few rows of a table as a pipe-delimited string.
      *
      * @param t a Deephaven table object
-     * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
+     * @param timeZone a time zone constant relative to which date time data should be adjusted
      * @param columns varargs of columns to include in the result
      * @return a String
      */
-    public static String string(Table t, io.deephaven.time.TimeZone timeZone, String... columns) {
+    public static String string(Table t, ZoneId timeZone, String... columns) {
         return string(t, 10, timeZone, columns);
     }
 
@@ -282,14 +283,14 @@ public class TableTools {
      *
      * @param table a Deephaven table object
      * @param size the number of rows to return
-     * @param timeZone a TimeZone constant relative to which DateTime data should be adjusted
+     * @param timeZone a time zone constant relative to which date time data should be adjusted
      * @param columns varargs of columns to include in the result
      * @return a String
      */
     public static String string(
             @NotNull final Table table,
             final int size,
-            final io.deephaven.time.TimeZone timeZone,
+            final ZoneId timeZone,
             @NotNull final String... columns) {
         try (final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 final PrintStream printStream = new PrintStream(bytes, false, StandardCharsets.UTF_8)) {
@@ -373,7 +374,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static <T> ColumnSource<T> colSource(Class<T> clazz, Collection<T> values) {
-        ArrayBackedColumnSource<T> result = ArrayBackedColumnSource.getMemoryColumnSource(values.size(), clazz);
+        WritableColumnSource<T> result = ArrayBackedColumnSource.getMemoryColumnSource(values.size(), clazz);
         int resultIndex = 0;
         for (T value : values) {
             result.set(resultIndex++, value);
@@ -390,7 +391,7 @@ public class TableTools {
      */
     @SuppressWarnings("unchecked")
     public static <T> ColumnSource<T> objColSource(T... values) {
-        ArrayBackedColumnSource<T> result = (ArrayBackedColumnSource<T>) ArrayBackedColumnSource
+        WritableColumnSource<T> result = (WritableColumnSource<T>) ArrayBackedColumnSource
                 .getMemoryColumnSource(values.length, values.getClass().getComponentType());
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -405,7 +406,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static ColumnSource<Long> colSource(long... values) {
-        ArrayBackedColumnSource<Long> result =
+        WritableColumnSource<Long> result =
                 ArrayBackedColumnSource.getMemoryColumnSource(values.length, long.class);
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -420,7 +421,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static ColumnSource<Integer> colSource(int... values) {
-        ArrayBackedColumnSource<Integer> result =
+        WritableColumnSource<Integer> result =
                 ArrayBackedColumnSource.getMemoryColumnSource(values.length, int.class);
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -435,7 +436,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static ColumnSource<Short> colSource(short... values) {
-        ArrayBackedColumnSource<Short> result =
+        WritableColumnSource<Short> result =
                 ArrayBackedColumnSource.getMemoryColumnSource(values.length, short.class);
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -450,7 +451,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static ColumnSource<Byte> colSource(byte... values) {
-        ArrayBackedColumnSource<Byte> result =
+        WritableColumnSource<Byte> result =
                 ArrayBackedColumnSource.getMemoryColumnSource(values.length, byte.class);
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -465,7 +466,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static ColumnSource<Character> colSource(char... values) {
-        ArrayBackedColumnSource<Character> result =
+        WritableColumnSource<Character> result =
                 ArrayBackedColumnSource.getMemoryColumnSource(values.length, char.class);
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -480,7 +481,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static ColumnSource<Double> colSource(double... values) {
-        ArrayBackedColumnSource<Double> result =
+        WritableColumnSource<Double> result =
                 ArrayBackedColumnSource.getMemoryColumnSource(values.length, double.class);
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -495,7 +496,7 @@ public class TableTools {
      * @return a Deephaven ColumnSource object
      */
     public static ColumnSource<Float> colSource(float... values) {
-        ArrayBackedColumnSource<Float> result =
+        WritableColumnSource<Float> result =
                 ArrayBackedColumnSource.getMemoryColumnSource(values.length, float.class);
         for (int i = 0; i < values.length; i++) {
             result.set(i, values[i]);
@@ -553,16 +554,16 @@ public class TableTools {
     }
 
     /**
-     * Returns a ColumnHolder of type DateTime that can be used when creating in-memory tables.
+     * Returns a ColumnHolder of type Instant that can be used when creating in-memory tables.
      *
      * @param name name of the column
      * @param data a list of values for the column
      * @return a Deephaven ColumnHolder object
      */
-    public static ColumnHolder<DateTime> dateTimeCol(String name, DateTime... data) {
+    public static ColumnHolder<Instant> instantCol(String name, Instant... data) {
         // NB: IntelliJ says that we do not need to cast data, but javac warns about this statement otherwise
         // noinspection RedundantCast
-        return new ColumnHolder<>(name, DateTime.class, null, false, (DateTime[]) data);
+        return new ColumnHolder<>(name, Instant.class, null, false, (Instant[]) data);
     }
 
     /**
@@ -664,8 +665,11 @@ public class TableTools {
      * @return a Deephaven Table with no columns.
      */
     public static Table emptyTable(long size) {
-        return new QueryTable(RowSetFactory.flat(size).toTracking(),
-                Collections.emptyMap());
+        return new QueryTable(RowSetFactory.flat(size).toTracking(), Collections.emptyMap()) {
+            {
+                setFlat();
+            }
+        };
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -694,8 +698,7 @@ public class TableTools {
      */
     public static Table newTable(long size, List<String> names, List<ColumnSource<?>> columnSources) {
         // noinspection unchecked
-        return new QueryTable(RowSetFactory.flat(size).toTracking(),
-                newMapFromLists(LinkedHashMap.class, names, columnSources));
+        return newTable(size, newMapFromLists(LinkedHashMap.class, names, columnSources));
     }
 
     /**
@@ -706,7 +709,17 @@ public class TableTools {
      * @return a Deephaven Table
      */
     public static Table newTable(long size, Map<String, ColumnSource<?>> columns) {
-        return new QueryTable(RowSetFactory.flat(size).toTracking(), columns);
+        for (final Map.Entry<String, ColumnSource<?>> entry : columns.entrySet()) {
+            final String columnName = entry.getKey();
+            if (entry.getValue() == null) {
+                throw new ArgumentException("Column source for " + columnName + " is null");
+            }
+        }
+        return new QueryTable(RowSetFactory.flat(size).toTracking(), columns) {
+            {
+                setFlat();
+            }
+        };
     }
 
     /**
@@ -721,7 +734,11 @@ public class TableTools {
             columns.put(columnDefinition.getName(), ArrayBackedColumnSource.getMemoryColumnSource(0,
                     columnDefinition.getDataType(), columnDefinition.getComponentType()));
         }
-        return new QueryTable(definition, RowSetFactory.empty().toTracking(), columns);
+        return new QueryTable(definition, RowSetFactory.empty().toTracking(), columns) {
+            {
+                setFlat();
+            }
+        };
     }
 
     /**
@@ -734,14 +751,22 @@ public class TableTools {
         checkSizes(columnHolders);
         WritableRowSet rowSet = getRowSet(columnHolders);
         Map<String, ColumnSource<?>> columns = Arrays.stream(columnHolders).collect(COLUMN_HOLDER_LINKEDMAP_COLLECTOR);
-        return new QueryTable(rowSet.toTracking(), columns);
+        return new QueryTable(rowSet.toTracking(), columns) {
+            {
+                setFlat();
+            }
+        };
     }
 
     public static Table newTable(TableDefinition definition, ColumnHolder<?>... columnHolders) {
         checkSizes(columnHolders);
         WritableRowSet rowSet = getRowSet(columnHolders);
         Map<String, ColumnSource<?>> columns = Arrays.stream(columnHolders).collect(COLUMN_HOLDER_LINKEDMAP_COLLECTOR);
-        return new QueryTable(definition, rowSet.toTracking(), columns);
+        return new QueryTable(definition, rowSet.toTracking(), columns) {
+            {
+                setFlat();
+            }
+        };
     }
 
     private static void checkSizes(ColumnHolder<?>[] columnHolders) {
@@ -777,7 +802,7 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(String period, ReplayerInterface replayer) {
-        final long periodValue = DateTimeUtils.expressionToNanos(period);
+        final long periodValue = DateTimeUtils.parseDurationNanos(period);
         return timeTable(periodValue, replayer);
     }
 
@@ -788,8 +813,8 @@ public class TableTools {
      * @param period time interval between new row additions
      * @return time table
      */
-    public static Table timeTable(DateTime startTime, String period) {
-        final long periodValue = DateTimeUtils.expressionToNanos(period);
+    public static Table timeTable(Instant startTime, String period) {
+        final long periodValue = DateTimeUtils.parseDurationNanos(period);
         return timeTable(startTime, periodValue);
     }
 
@@ -801,8 +826,8 @@ public class TableTools {
      * @param replayer data replayer
      * @return time table
      */
-    public static Table timeTable(DateTime startTime, String period, ReplayerInterface replayer) {
-        final long periodValue = DateTimeUtils.expressionToNanos(period);
+    public static Table timeTable(Instant startTime, String period, ReplayerInterface replayer) {
+        final long periodValue = DateTimeUtils.parseDurationNanos(period);
         return timeTable(startTime, periodValue, replayer);
     }
 
@@ -814,7 +839,7 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(String startTime, String period) {
-        return timeTable(DateTimeUtils.convertDateTime(startTime), period);
+        return timeTable(DateTimeUtils.parseInstant(startTime), period);
     }
 
     /**
@@ -826,7 +851,7 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(String startTime, String period, ReplayerInterface replayer) {
-        return timeTable(DateTimeUtils.convertDateTime(startTime), period, replayer);
+        return timeTable(DateTimeUtils.parseInstant(startTime), period, replayer);
     }
 
     /**
@@ -847,7 +872,7 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(long periodNanos, ReplayerInterface replayer) {
-        return new TimeTable(UpdateGraphProcessor.DEFAULT, Replayer.getClock(replayer),
+        return new TimeTable(ExecutionContext.getContext().getUpdateGraph(), Replayer.getClock(replayer),
                 null, periodNanos, false);
     }
 
@@ -858,8 +883,8 @@ public class TableTools {
      * @param periodNanos time interval between new row additions in nanoseconds.
      * @return time table
      */
-    public static Table timeTable(DateTime startTime, long periodNanos) {
-        return new TimeTable(UpdateGraphProcessor.DEFAULT, DateTimeUtils.currentClock(),
+    public static Table timeTable(Instant startTime, long periodNanos) {
+        return new TimeTable(ExecutionContext.getContext().getUpdateGraph(), DateTimeUtils.currentClock(),
                 startTime, periodNanos, false);
     }
 
@@ -871,8 +896,8 @@ public class TableTools {
      * @param replayer data replayer
      * @return time table
      */
-    public static Table timeTable(DateTime startTime, long periodNanos, ReplayerInterface replayer) {
-        return new TimeTable(UpdateGraphProcessor.DEFAULT, Replayer.getClock(replayer),
+    public static Table timeTable(Instant startTime, long periodNanos, ReplayerInterface replayer) {
+        return new TimeTable(ExecutionContext.getContext().getUpdateGraph(), Replayer.getClock(replayer),
                 startTime, periodNanos, false);
     }
 
@@ -884,7 +909,7 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(String startTime, long periodNanos) {
-        return timeTable(DateTimeUtils.convertDateTime(startTime), periodNanos);
+        return timeTable(DateTimeUtils.parseInstant(startTime), periodNanos);
     }
 
     /**
@@ -896,7 +921,7 @@ public class TableTools {
      * @return time table
      */
     public static Table timeTable(String startTime, long periodNanos, ReplayerInterface replayer) {
-        return timeTable(DateTimeUtils.convertDateTime(startTime), periodNanos, replayer);
+        return timeTable(DateTimeUtils.parseInstant(startTime), periodNanos, replayer);
     }
 
     /**
@@ -907,8 +932,8 @@ public class TableTools {
      * @param periodNanos time interval between new row additions in nanoseconds.
      * @return time table
      */
-    public static Table timeTable(Clock clock, DateTime startTime, long periodNanos) {
-        return new TimeTable(UpdateGraphProcessor.DEFAULT, clock, startTime, periodNanos, false);
+    public static Table timeTable(Clock clock, Instant startTime, long periodNanos) {
+        return new TimeTable(ExecutionContext.getContext().getUpdateGraph(), clock, startTime, periodNanos, false);
     }
 
     /**
@@ -1126,7 +1151,7 @@ public class TableTools {
 
         final DataOutputStream osw = new DataOutputStream(new DigestOutputStream(new NullOutputStream(), md));
 
-        for (final ColumnSource<?> col : source.getColumnSourceMap().values()) {
+        for (final ColumnSource<?> col : source.getColumnSources()) {
             processColumnForFingerprint(source.getRowSet(), col, osw);
         }
 
@@ -1155,8 +1180,9 @@ public class TableTools {
 
     private static void processColumnForFingerprint(RowSequence ok, ColumnSource<?> col, DataOutputStream outputStream)
             throws IOException {
-        if (col.getType() == DateTime.class) {
-            col = ReinterpretUtils.dateTimeToLongSource(col);
+        if (col.getType() == Instant.class) {
+            // noinspection unchecked
+            col = ReinterpretUtils.instantToLongSource((ColumnSource<Instant>) col);
         }
 
         final int chunkSize = 1 << 16;

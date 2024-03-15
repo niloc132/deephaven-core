@@ -1,9 +1,13 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.hierarchicaltable;
 
 import com.google.rpc.Code;
 import io.deephaven.api.ColumnName;
 import io.deephaven.api.SortColumn;
 import io.deephaven.api.agg.Aggregation;
+import io.deephaven.api.filter.Filter;
 import io.deephaven.auth.codegen.impl.HierarchicalTableServiceContextualAuthWiring;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.table.Table;
@@ -14,22 +18,22 @@ import io.deephaven.engine.table.hierarchical.TreeTable;
 import io.deephaven.engine.table.impl.AbsoluteSortColumnConventions;
 import io.deephaven.engine.table.impl.BaseGridAttributes;
 import io.deephaven.engine.table.impl.hierarchical.RollupTableImpl;
+import io.deephaven.engine.table.impl.perf.QueryPerformanceNugget;
+import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.select.WhereFilter;
 import io.deephaven.extensions.barrage.util.ExportUtil;
-import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.proto.backplane.grpc.*;
+import io.deephaven.proto.util.Exceptions;
 import io.deephaven.server.auth.AuthorizationProvider;
 import io.deephaven.server.grpc.Common;
 import io.deephaven.server.grpc.GrpcErrorHelper;
-import io.deephaven.server.session.SessionService;
-import io.deephaven.server.session.SessionState;
-import io.deephaven.server.session.TicketResolverBase;
-import io.deephaven.server.session.TicketRouter;
+import io.deephaven.server.session.*;
 import io.deephaven.server.table.ops.AggregationAdapter;
 import io.deephaven.server.table.ops.FilterTableGrpcImpl;
 import io.deephaven.server.table.ops.filter.FilterFactory;
+import io.deephaven.util.SafeCloseable;
 import io.grpc.stub.StreamObserver;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,7 +55,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
     private final TicketRouter ticketRouter;
     private final SessionService sessionService;
     private final HierarchicalTableServiceContextualAuthWiring authWiring;
-    private final TicketResolverBase.AuthTransformation authTransformation;
+    private final TicketResolver.Authorization authTransformation;
 
     @Inject
     public HierarchicalTableServiceGrpcImpl(
@@ -61,22 +65,28 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
         this.ticketRouter = ticketRouter;
         this.sessionService = sessionService;
         this.authWiring = authorizationProvider.getHierarchicalTableServiceContextualAuthWiring();
-        this.authTransformation = authorizationProvider.getTicketTransformation();
+        this.authTransformation = authorizationProvider.getTicketResolverAuthorization();
     }
 
     @Override
     public void rollup(
             @NotNull final RollupRequest request,
             @NotNull final StreamObserver<RollupResponse> responseObserver) {
-        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            validate(request);
+        validate(request);
 
-            final SessionState session = sessionService.getCurrentSession();
+        final SessionState session = sessionService.getCurrentSession();
 
-            final SessionState.ExportObject<Table> sourceTableExport = ticketRouter.resolve(
-                    session, request.getSourceTableId(), "rollup.sourceTableId");
+        final String description = "HierarchicalTableService#rollup(table="
+                + ticketRouter.getLogNameFor(request.getSourceTableId(), "sourceTableId") + ")";
+        final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
 
-            session.newExport(request.getResultRollupTableId(), "rollup.resultRollupTableId")
+        try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
+            final SessionState.ExportObject<Table> sourceTableExport =
+                    ticketRouter.resolve(session, request.getSourceTableId(), "sourceTableId");
+
+            session.newExport(request.getResultRollupTableId(), "resultRollupTableId")
+                    .queryPerformanceRecorder(queryPerformanceRecorder)
                     .require(sourceTableExport)
                     .onError(responseObserver)
                     .submit(() -> {
@@ -98,7 +108,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                         safelyComplete(responseObserver, RollupResponse.getDefaultInstance());
                         return transformedResult;
                     });
-        });
+        }
     }
 
     private static void validate(@NotNull final RollupRequest request) {
@@ -114,15 +124,21 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
     public void tree(
             @NotNull final TreeRequest request,
             @NotNull final StreamObserver<TreeResponse> responseObserver) {
-        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            validate(request);
+        validate(request);
 
-            final SessionState session = sessionService.getCurrentSession();
+        final SessionState session = sessionService.getCurrentSession();
 
-            final SessionState.ExportObject<Table> sourceTableExport = ticketRouter.resolve(
-                    session, request.getSourceTableId(), "tree.sourceTableId");
+        final String description = "HierarchicalTableService#tree(table="
+                + ticketRouter.getLogNameFor(request.getSourceTableId(), "sourceTableId") + ")";
+        final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
 
-            session.newExport(request.getResultTreeTableId(), "tree.resultTreeTableId")
+        try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
+            final SessionState.ExportObject<Table> sourceTableExport =
+                    ticketRouter.resolve(session, request.getSourceTableId(), "sourceTableId");
+
+            session.newExport(request.getResultTreeTableId(), "resultTreeTableId")
+                    .queryPerformanceRecorder(queryPerformanceRecorder)
                     .require(sourceTableExport)
                     .onError(responseObserver)
                     .submit(() -> {
@@ -148,7 +164,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                         safelyComplete(responseObserver, TreeResponse.getDefaultInstance());
                         return transformedResult;
                     });
-        });
+        }
     }
 
     private static void validate(@NotNull final TreeRequest request) {
@@ -165,15 +181,21 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
     public void apply(
             @NotNull final HierarchicalTableApplyRequest request,
             @NotNull final StreamObserver<HierarchicalTableApplyResponse> responseObserver) {
-        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            validate(request);
+        validate(request);
 
-            final SessionState session = sessionService.getCurrentSession();
+        final SessionState session = sessionService.getCurrentSession();
 
-            final SessionState.ExportObject<HierarchicalTable> inputHierarchicalTableExport = ticketRouter.resolve(
-                    session, request.getInputHierarchicalTableId(), "apply.inputHierarchicalTableId");
+        final String description = "HierarchicalTableService#apply(table="
+                + ticketRouter.getLogNameFor(request.getInputHierarchicalTableId(), "inputHierarchicalTableId") + ")";
+        final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
 
-            session.newExport(request.getResultHierarchicalTableId(), "apply.resultHierarchicalTableId")
+        try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
+            final SessionState.ExportObject<HierarchicalTable<?>> inputHierarchicalTableExport =
+                    ticketRouter.resolve(session, request.getInputHierarchicalTableId(), "inputHierarchicalTableId");
+
+            session.newExport(request.getResultHierarchicalTableId(), "resultHierarchicalTableId")
+                    .queryPerformanceRecorder(queryPerformanceRecorder)
                     .require(inputHierarchicalTableExport)
                     .onError(responseObserver)
                     .submit(() -> {
@@ -183,7 +205,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                                 List.of(inputHierarchicalTable.getSource()));
 
                         if (request.getFiltersCount() == 0 && request.getSortsCount() == 0) {
-                            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "No operations specified");
+                            throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT, "No operations specified");
                         }
                         final Collection<Condition> finishedConditions = request.getFiltersCount() == 0
                                 ? null
@@ -205,8 +227,8 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                                         rollupTable.getSource(),
                                         rollupTable.getGroupByColumns(),
                                         filters,
-                                        message -> GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, message));
-                                rollupTable = rollupTable.withFilters(filters);
+                                        message -> Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT, message));
+                                rollupTable = rollupTable.withFilter(Filter.and(filters));
                             }
                             if (translatedSorts != null) {
                                 RollupTable.NodeOperationsRecorder aggregatedSorts =
@@ -225,7 +247,8 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                             TreeTable treeTable = (TreeTable) inputHierarchicalTable;
                             final TableDefinition nodeDefinition = treeTable.getNodeDefinition();
                             if (finishedConditions != null) {
-                                treeTable = treeTable.withFilters(makeWhereFilters(finishedConditions, nodeDefinition));
+                                treeTable = treeTable
+                                        .withFilter(Filter.and(makeWhereFilters(finishedConditions, nodeDefinition)));
                             }
                             if (translatedSorts != null) {
                                 TreeTable.NodeOperationsRecorder treeSorts = treeTable.makeNodeOperationsRecorder();
@@ -234,7 +257,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                             }
                             result = treeTable;
                         } else {
-                            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                            throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                                     "Input is not a supported HierarchicalTable type");
                         }
 
@@ -242,7 +265,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                         safelyComplete(responseObserver, HierarchicalTableApplyResponse.getDefaultInstance());
                         return transformedResult;
                     });
-        });
+        }
     }
 
     private static void validate(@NotNull final HierarchicalTableApplyRequest request) {
@@ -275,7 +298,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
         final Set<String> sortableColumnNames = inputHierarchicalTable.getSortableColumns();
         if (sortableColumnNames != null) {
             if (sortableColumnNames.isEmpty()) {
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                         "Sorting is not supported on this hierarchical table");
             }
             final Collection<String> unavailableSortColumnNames = translatedSorts.stream()
@@ -283,7 +306,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                     .filter(scn -> !sortableColumnNames.contains(scn))
                     .collect(Collectors.toList());
             if (!unavailableSortColumnNames.isEmpty()) {
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                         "Sorting attempted on restricted column(s): "
                                 + unavailableSortColumnNames.stream().collect(Collectors.joining(", ", "[", "]"))
                                 + ", available column(s) for sorting are: "
@@ -306,7 +329,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
             case UNKNOWN:
             case REVERSE:
             default:
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                         "Unsupported or unknown sort direction: " + sortDescriptor.getDirection());
         }
     }
@@ -315,52 +338,60 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
     public void view(
             @NotNull final HierarchicalTableViewRequest request,
             @NotNull final StreamObserver<HierarchicalTableViewResponse> responseObserver) {
-        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            validate(request);
+        validate(request);
 
-            final SessionState session = sessionService.getCurrentSession();
+        final SessionState session = sessionService.getCurrentSession();
 
+        final boolean usedExisting;
+        final Ticket targetTicket;
+        switch (request.getTargetCase()) {
+            case HIERARCHICAL_TABLE_ID:
+                usedExisting = false;
+                targetTicket = request.getHierarchicalTableId();
+                break;
+            case EXISTING_VIEW_ID:
+                usedExisting = true;
+                targetTicket = request.getExistingViewId();
+                break;
+            case TARGET_NOT_SET:
+            default:
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT, "No target specified");
+        }
+
+        final String description = "HierarchicalTableService#view(table="
+                + ticketRouter.getLogNameFor(targetTicket, "targetTableId") + ")";
+        final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
+
+        try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
             final SessionState.ExportBuilder<HierarchicalTableView> resultExportBuilder =
-                    session.newExport(request.getResultViewId(), "view.resultViewId");
+                    session.newExport(request.getResultViewId(), "resultViewId");
 
-            final boolean usedExisting;
-            final Ticket targetTicket;
-            switch (request.getTargetCase()) {
-                case HIERARCHICAL_TABLE_ID:
-                    usedExisting = false;
-                    targetTicket = request.getHierarchicalTableId();
-                    break;
-                case EXISTING_VIEW_ID:
-                    usedExisting = true;
-                    targetTicket = request.getExistingViewId();
-                    break;
-                case TARGET_NOT_SET:
-                default:
-                    throw new IllegalStateException();
-            }
-            final SessionState.ExportObject<?> targetExport = ticketRouter.resolve(
-                    session, targetTicket, "view.target");
+            final SessionState.ExportObject<?> targetExport =
+                    ticketRouter.resolve(session, targetTicket, "targetTableId");
 
             final SessionState.ExportObject<Table> keyTableExport;
             if (request.hasExpansions()) {
                 keyTableExport = ticketRouter.resolve(
-                        session, request.getExpansions().getKeyTableId(), "view.expansions.keyTableId");
+                        session, request.getExpansions().getKeyTableId(), "expansions.keyTableId");
                 resultExportBuilder.require(targetExport, keyTableExport);
             } else {
                 keyTableExport = null;
                 resultExportBuilder.require(targetExport);
             }
 
-            resultExportBuilder.onError(responseObserver)
+            resultExportBuilder
+                    .queryPerformanceRecorder(queryPerformanceRecorder)
+                    .onError(responseObserver)
                     .submit(() -> {
                         final Table keyTable = keyTableExport == null ? null : keyTableExport.get();
                         final Object target = targetExport.get();
                         final HierarchicalTableView targetExistingView = usedExisting
                                 ? (HierarchicalTableView) target
                                 : null;
-                        final HierarchicalTable targetHierarchicalTable = usedExisting
+                        final HierarchicalTable<?> targetHierarchicalTable = usedExisting
                                 ? targetExistingView.getHierarchicalTable()
-                                : (HierarchicalTable) target;
+                                : (HierarchicalTable<?>) target;
 
                         authWiring.checkPermissionView(session.getAuthContext(), request, keyTable == null
                                 ? List.of(targetHierarchicalTable.getSource())
@@ -395,7 +426,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                         safelyComplete(responseObserver, HierarchicalTableViewResponse.getDefaultInstance());
                         return transformedResult;
                     });
-        });
+        }
     }
 
     private static void validate(@NotNull final HierarchicalTableViewRequest request) {
@@ -414,9 +445,8 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                 Assert.statementNeverExecuted("No target specified, despite prior validation");
                 break;
             default:
-                throw GrpcUtil.statusRuntimeException(Code.INTERNAL,
-                        String.format("%s has unexpected target case %s",
-                                request.getDescriptorForType().getFullName(), request.getTargetCase()));
+                throw Exceptions.statusRuntimeException(Code.INTERNAL, String.format("%s has unexpected target case %s",
+                        request.getDescriptorForType().getFullName(), request.getTargetCase()));
         }
     }
 
@@ -424,15 +454,21 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
     public void exportSource(
             @NotNull final HierarchicalTableSourceExportRequest request,
             @NotNull final StreamObserver<ExportedTableCreationResponse> responseObserver) {
-        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            validate(request);
+        validate(request);
 
-            final SessionState session = sessionService.getCurrentSession();
+        final SessionState session = sessionService.getCurrentSession();
 
-            final SessionState.ExportObject<HierarchicalTable> hierarchicalTableExport = ticketRouter.resolve(
-                    session, request.getHierarchicalTableId(), "exportSource.hierarchicalTableId");
+        final String description = "HierarchicalTableService#exportSource(table="
+                + ticketRouter.getLogNameFor(request.getHierarchicalTableId(), "hierarchicalTableId") + ")";
+        final QueryPerformanceRecorder queryPerformanceRecorder = QueryPerformanceRecorder.newQuery(
+                description, session.getSessionId(), QueryPerformanceNugget.DEFAULT_FACTORY);
 
-            session.newExport(request.getResultTableId(), "exportSource.resultTableId")
+        try (final SafeCloseable ignored = queryPerformanceRecorder.startQuery()) {
+            final SessionState.ExportObject<HierarchicalTable<?>> hierarchicalTableExport =
+                    ticketRouter.resolve(session, request.getHierarchicalTableId(), "hierarchicalTableId");
+
+            session.newExport(request.getResultTableId(), "resultTableId")
+                    .queryPerformanceRecorder(queryPerformanceRecorder)
                     .require(hierarchicalTableExport)
                     .onError(responseObserver)
                     .submit(() -> {
@@ -447,7 +483,7 @@ public class HierarchicalTableServiceGrpcImpl extends HierarchicalTableServiceGr
                         safelyComplete(responseObserver, response);
                         return transformedResult;
                     });
-        });
+        }
     }
 
     private static void validate(@NotNull final HierarchicalTableSourceExportRequest request) {

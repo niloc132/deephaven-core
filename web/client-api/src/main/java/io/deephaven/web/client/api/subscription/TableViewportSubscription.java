@@ -1,13 +1,14 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.subscription;
 
+import com.vertispan.tsdefs.annotations.TsInterface;
+import com.vertispan.tsdefs.annotations.TsName;
 import elemental2.core.Uint8Array;
 import elemental2.dom.CustomEvent;
 import elemental2.dom.CustomEventInit;
 import elemental2.dom.DomGlobal;
-import elemental2.dom.Event;
 import elemental2.promise.IThenable;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.flatbuf.message_generated.org.apache.arrow.flatbuf.Message;
@@ -20,7 +21,6 @@ import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.bar
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageMessageWrapper;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageSnapshotOptions;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageSnapshotRequest;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageSubscriptionRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageUpdateMetadata;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.ColumnConversionMode;
 import io.deephaven.web.client.api.Callbacks;
@@ -35,14 +35,17 @@ import io.deephaven.web.client.api.barrage.def.ColumnDefinition;
 import io.deephaven.web.client.api.barrage.stream.BiDiStream;
 import io.deephaven.web.client.fu.JsLog;
 import io.deephaven.web.client.state.ClientTableState;
+import io.deephaven.web.shared.data.Range;
 import io.deephaven.web.shared.data.TableSnapshot;
 import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsNullable;
 import jsinterop.annotations.JsOptional;
 import jsinterop.base.Js;
 
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.Iterator;
 
 import static io.deephaven.web.client.api.barrage.WebBarrageUtils.makeUint8ArrayFromBitset;
 import static io.deephaven.web.client.api.barrage.WebBarrageUtils.serializeRanges;
@@ -66,7 +69,15 @@ import static io.deephaven.web.client.api.subscription.ViewportData.NO_ROW_FORMA
  * <p>
  * Note that if the caller does close an instance, this shuts down the JsTable's use of this (while the converse is not
  * true), providing a way to stop the server from streaming updates to the client.
+ *
+ * This object serves as a "handle" to a subscription, allowing it to be acted on directly or canceled outright. If you
+ * retain an instance of this, you have two choices - either only use it to call `close()` on it to stop the table's
+ * viewport without creating a new one, or listen directly to this object instead of the table for data events, and
+ * always call `close()` when finished. Calling any method on this object other than close() will result in it
+ * continuing to live on after `setViewport` is called on the original table, or after the table is modified.
  */
+@TsInterface
+@TsName(namespace = "dh")
 public class TableViewportSubscription extends HasEventHandling {
     /**
      * Describes the possible lifecycle of the viewport as far as anything external cares about it
@@ -124,7 +135,7 @@ public class TableViewportSubscription extends HasEventHandling {
                     batcher.setFlat(true);
                 });
                 // TODO handle updateInterval core#188
-                Column[] columnsToSub = table.isStreamTable() ? table.getColumns().asArray(new Column[0]) : columns;
+                Column[] columnsToSub = table.isBlinkTable() ? Js.uncheckedCast(table.getColumns()) : columns;
                 table.setInternalViewport(firstRow, lastRow, columnsToSub);
 
                 // Listen for events and refire them on ourselves, optionally on the original table
@@ -166,7 +177,7 @@ public class TableViewportSubscription extends HasEventHandling {
         return originalState;
     }
 
-    private void refire(Event e) {
+    private <T> void refire(CustomEvent<T> e) {
         this.fireEvent(e.type, e);
         if (originalActive && state() == original.state()) {
             // When these fail to match, it probably means that the original's state was paused, but we're still
@@ -182,9 +193,17 @@ public class TableViewportSubscription extends HasEventHandling {
         retained = true;
     }
 
+    /**
+     * Changes the rows and columns set on this viewport. This cannot be used to change the update interval.
+     * 
+     * @param firstRow
+     * @param lastRow
+     * @param columns
+     * @param updateIntervalMs
+     */
     @JsMethod
-    public void setViewport(double firstRow, double lastRow, @JsOptional Column[] columns,
-            @JsOptional Double updateIntervalMs) {
+    public void setViewport(double firstRow, double lastRow, @JsOptional @JsNullable Column[] columns,
+            @JsOptional @JsNullable Double updateIntervalMs) {
         retainForExternalUse();
         setInternalViewport(firstRow, lastRow, columns, updateIntervalMs);
     }
@@ -195,14 +214,17 @@ public class TableViewportSubscription extends HasEventHandling {
                     "Can't change refreshIntervalMs on a later call to setViewport, it must be consistent or omitted");
         }
         copy.then(table -> {
-            if (!table.isStreamTable()) {
-                // we only set stream table viewports once; and that's in the constructor
+            if (!table.isBlinkTable()) {
+                // we only set blink table viewports once; and that's in the constructor
                 table.setInternalViewport(firstRow, lastRow, columns);
             }
             return Promise.resolve(table);
         });
     }
 
+    /**
+     * Stops this viewport from running, stopping all events on itself and on the table that created it.
+     */
     @JsMethod
     public void close() {
         if (status == Status.DONE) {
@@ -217,7 +239,7 @@ public class TableViewportSubscription extends HasEventHandling {
      * forwarding events and optionally close the underlying table/subscription.
      */
     public void internalClose() {
-        // indicate that the base table shouldn't get events any more, even if it this is still retained elsewhere
+        // indicate that the base table shouldn't get events anymore, even if it is still retained elsewhere
         originalActive = false;
 
         if (retained || status == Status.DONE) {
@@ -237,6 +259,11 @@ public class TableViewportSubscription extends HasEventHandling {
         });
     }
 
+    /**
+     * Gets the data currently visible in this viewport
+     * 
+     * @return Promise of {@link TableData}.
+     */
     @JsMethod
     public Promise<TableData> getViewportData() {
         retainForExternalUse();
@@ -275,9 +302,10 @@ public class TableViewportSubscription extends HasEventHandling {
 
     @JsMethod
     public Promise<TableData> snapshot(JsRangeSet rows, Column[] columns) {
+        retainForExternalUse();
         // TODO #1039 slice rows and drop columns
         return copy.then(table -> {
-            final ClientTableState state = table.state();
+            final ClientTableState state = table.lastVisibleState();
             String[] columnTypes = Arrays.stream(state.getTableDef().getColumns())
                     .map(ColumnDefinition::getType)
                     .toArray(String[]::new);
@@ -293,14 +321,14 @@ public class TableViewportSubscription extends HasEventHandling {
                         new FlightData());
 
                 Builder doGetRequest = new Builder(1024);
-                double columnsOffset = BarrageSubscriptionRequest.createColumnsVector(doGetRequest,
+                double columnsOffset = BarrageSnapshotRequest.createColumnsVector(doGetRequest,
                         makeUint8ArrayFromBitset(columnBitset));
-                double viewportOffset = BarrageSubscriptionRequest.createViewportVector(doGetRequest, serializeRanges(
+                double viewportOffset = BarrageSnapshotRequest.createViewportVector(doGetRequest, serializeRanges(
                         Collections.singleton(rows.getRange())));
                 double serializationOptionsOffset = BarrageSnapshotOptions
                         .createBarrageSnapshotOptions(doGetRequest, ColumnConversionMode.Stringify, true, 0, 0);
                 double tableTicketOffset =
-                        BarrageSubscriptionRequest.createTicketVector(doGetRequest, state.getHandle().getTicket());
+                        BarrageSnapshotRequest.createTicketVector(doGetRequest, state.getHandle().getTicket());
                 BarrageSnapshotRequest.startBarrageSnapshotRequest(doGetRequest);
                 BarrageSnapshotRequest.addTicket(doGetRequest, tableTicketOffset);
                 BarrageSnapshotRequest.addColumns(doGetRequest, columnsOffset);
@@ -338,7 +366,24 @@ public class TableViewportSubscription extends HasEventHandling {
                             WebBarrageUtils.typedArrayToLittleEndianByteBuffer(flightData.getDataBody_asU8()), update,
                             true,
                             columnTypes);
-                    callback.onSuccess(snapshot);
+
+                    // TODO deephaven-core(#188) this check no longer makes sense
+                    Iterator<Range> rangeIterator = rows.getRange().rangeIterator();
+                    long expectedCount = 0;
+                    while (rangeIterator.hasNext()) {
+                        Range range = rangeIterator.next();
+                        if (range.getFirst() >= snapshot.getTableSize()) {
+                            break;
+                        }
+                        long end = Math.min(range.getLast(), snapshot.getTableSize());
+                        expectedCount += end - range.getFirst() + 1;
+                    }
+                    if (expectedCount != snapshot.getIncludedRows().size()) {
+                        callback.onFailure("Server did not send expected number of rows, expected " + expectedCount
+                                + ", actual " + snapshot.getIncludedRows().size());
+                    } else {
+                        callback.onSuccess(snapshot);
+                    }
                 });
                 stream.onStatus(status -> {
                     if (!status.isOk()) {

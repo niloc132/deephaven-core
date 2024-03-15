@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.chunk.attributes.Values;
@@ -9,6 +9,8 @@ import io.deephaven.engine.table.ChunkSink;
 import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.table.impl.AbstractColumnSource;
 import io.deephaven.engine.table.impl.util.ShiftData;
+
+import static io.deephaven.util.QueryConstants.NULL_BYTE;
 
 public abstract class SingleValueColumnSource<T> extends AbstractColumnSource<T>
         implements WritableColumnSource<T>, ChunkSink<Values>, ShiftData.ShiftCallback, InMemoryColumnSource,
@@ -96,8 +98,13 @@ public abstract class SingleValueColumnSource<T> extends AbstractColumnSource<T>
     }
 
     @Override
-    public final void setNull(RowSequence orderedKeys) {
-        if (!orderedKeys.isEmpty()) {
+    public final void setNull(long key) {
+        setNull();
+    }
+
+    @Override
+    public final void setNull(RowSequence rowSequence) {
+        if (!rowSequence.isEmpty()) {
             setNull();
         }
     }

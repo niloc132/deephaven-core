@@ -1,6 +1,8 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.testutil;
 
-import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.updategraph.AbstractNotification;
 import junit.framework.TestCase;
 
@@ -33,10 +35,5 @@ public class TestNotification extends AbstractNotification {
 
     public void assertNotInvoked() {
         TestCase.assertFalse(invoked);
-    }
-
-    @Override
-    public ExecutionContext getExecutionContext() {
-        return null;
     }
 }

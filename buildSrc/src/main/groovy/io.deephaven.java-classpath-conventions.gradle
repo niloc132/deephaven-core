@@ -5,8 +5,8 @@ plugins {
 
 // TODO(deephaven-core#1162): Adopt java-platform to manage versions
 ext {
-    depAnnotations = 'com.intellij:annotations:5.1'
-    depCommonsCompress = 'org.apache.commons:commons-compress:1.22'
+    depAnnotations = 'org.jetbrains:annotations:24.0.0'
+    depCommonsCompress = 'org.apache.commons:commons-compress:1.26.0'
     depCommonsLang3 = 'org.apache.commons:commons-lang3:3.12.0'
     depCommonsIo = 'commons-io:commons-io:2.11.0'
     depJdom2 = 'org.jdom:jdom2:2.0.6.1'
@@ -29,15 +29,12 @@ configurations {
     fishDataStructure.extendsFrom fishIo
     fishConfig.extendsFrom fishDataStructure
     fishDataGenerator.extendsFrom jdom
-    fishNet.extendsFrom fishIo
     fishNumerics.extendsFrom fishBase
-    fishUtil.extendsFrom fishConfig
-    fishStats.extendsFrom fishUtil
     fishBaseTest.extendsFrom junit
     fishIoTest.extendsFrom fishBaseTest
 
     dhNumerics.extendsFrom fishNumerics, jama
-    dhUtil.extendsFrom commonsIo, commonsLang3, commonsText, fishUtil, fishStats, jdom
+    dhUtil.extendsFrom commonsIo, commonsLang3, commonsText, fishConfig, fishIo, jdom
     dhPlot.extendsFrom dhUtil
     dhBenchmarkSupport.extendsFrom fishData
     dhIntegrations.extendsFrom math3
@@ -62,7 +59,7 @@ dependencies {
     // having to maintain this...
     fishBase project(':Base'),
             'net.sf.trove4j:trove4j:3.0.3',
-            'com.intellij:annotations:5.1',
+            'org.jetbrains:annotations:24.0.0',
             depCommonsCompress
 
     fishIo project(':IO')
@@ -70,11 +67,6 @@ dependencies {
     fishDataStructure project(':DataStructures')
 
     fishConfig project(':Configuration')
-
-    fishUtil project(':FishUtil')
-
-    fishStats project(':Net'),
-            project(':Stats')
 
     fishBaseTest project(path: ':Base', configuration: 'tests')
 

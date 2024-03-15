@@ -1,39 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.util;
 
-import io.deephaven.engine.context.TestExecutionContext;
-import io.deephaven.time.DateTimeUtils;
-import io.deephaven.util.SafeCloseable;
+import io.deephaven.engine.testutil.testcase.RefreshingTableTestCase;
 import junit.framework.TestCase;
 
-import java.util.Collections;
-
-public class TestCompileSimpleFunction extends TestCase {
-    private SafeCloseable executionContext;
-
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        executionContext = TestExecutionContext.createForUnitTests().open();
-    }
-
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
-        executionContext.close();
-    }
+public class TestCompileSimpleFunction extends RefreshingTableTestCase {
 
     public void testString() {
         String res = DynamicCompileUtils.compileSimpleFunction(String.class, "return \"Hello, world\"").get();
         TestCase.assertEquals("Hello, world", res);
-    }
-
-    public void testImport() {
-        String res = DynamicCompileUtils.compileSimpleFunction(String.class, "return currentDateNy()",
-                Collections.emptyList(), Collections.singleton(DateTimeUtils.class)).get();
-        TestCase.assertEquals(DateTimeUtils.currentDateNy(), res);
     }
 
     public void testNotString() {

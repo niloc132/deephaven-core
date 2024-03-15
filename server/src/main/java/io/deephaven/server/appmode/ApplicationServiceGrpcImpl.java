@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.appmode;
 
 import com.google.rpc.Code;
@@ -22,6 +22,7 @@ import io.deephaven.server.session.SessionState;
 import io.deephaven.server.util.Scheduler;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -125,27 +126,26 @@ public class ApplicationServiceGrpcImpl extends ApplicationServiceGrpc.Applicati
     }
 
     @Override
-    public synchronized void listFields(ListFieldsRequest request,
-            StreamObserver<FieldsChangeUpdate> responseObserver) {
-        GrpcUtil.rpcWrapper(log, responseObserver, () -> {
-            final SessionState session = sessionService.getCurrentSession();
-            final Subscription subscription = new Subscription(session, responseObserver);
+    public synchronized void listFields(
+            @NotNull final ListFieldsRequest request,
+            @NotNull final StreamObserver<FieldsChangeUpdate> responseObserver) {
+        final SessionState session = sessionService.getCurrentSession();
+        final Subscription subscription = new Subscription(session, responseObserver);
 
-            final FieldsChangeUpdate.Builder responseBuilder = FieldsChangeUpdate.newBuilder();
-            for (FieldInfo fieldInfo : known.values()) {
-                responseBuilder.addCreated(fieldInfo);
-            }
-            if (subscription.send(responseBuilder.build())) {
-                subscriptions.add(subscription);
-            } else {
-                subscription.onCancel();
-            }
-        });
+        final FieldsChangeUpdate.Builder responseBuilder = FieldsChangeUpdate.newBuilder();
+        for (FieldInfo fieldInfo : known.values()) {
+            responseBuilder.addCreated(fieldInfo);
+        }
+        if (subscription.send(responseBuilder.build())) {
+            subscriptions.add(subscription);
+        } else {
+            subscription.onCancel();
+        }
     }
 
     synchronized void remove(Subscription sub) {
         if (subscriptions.remove(sub)) {
-            sub.notifyObserverAborted();
+            sub.notifyObserverCancelled();
         }
     }
 
@@ -250,8 +250,8 @@ public class ApplicationServiceGrpcImpl extends ApplicationServiceGrpc.Applicati
         }
 
         // must be sync wrt parent
-        private void notifyObserverAborted() {
-            GrpcUtil.safelyError(observer, Code.ABORTED, "subscription cancelled");
+        private void notifyObserverCancelled() {
+            GrpcUtil.safelyError(observer, Code.CANCELLED, "subscription cancelled");
         }
     }
 

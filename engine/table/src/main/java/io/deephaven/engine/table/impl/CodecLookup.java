@@ -1,13 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.vector.ObjectVector;
 import io.deephaven.vector.Vector;
 import io.deephaven.stringset.StringSet;
-import io.deephaven.time.DateTime;
 import io.deephaven.util.codec.CodecCache;
 import io.deephaven.util.codec.ExternalizableCodec;
 import io.deephaven.util.codec.ObjectCodec;
@@ -18,6 +17,10 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Externalizable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 /**
  * Utility class to concentrate {@link ObjectCodec} lookups.
@@ -52,7 +55,7 @@ public class CodecLookup {
                         "Array type " + dataType + " does not match component type " + componentType);
             }
             // Arrays of primitives or basic types do not require codecs
-            return !(componentType.isPrimitive() || noCodecRequired(dataType));
+            return !(componentType.isPrimitive() || noCodecRequired(componentType));
         }
         if (Vector.class.isAssignableFrom(dataType)) {
             if (componentType == null) {
@@ -60,7 +63,7 @@ public class CodecLookup {
             }
             if (ObjectVector.class.isAssignableFrom(dataType)) {
                 // Vectors of basic types do not require codecs
-                return !noCodecRequired(dataType);
+                return !noCodecRequired(componentType);
             }
             // VectorBases of primitive types do not require codecs
             return false;
@@ -71,7 +74,10 @@ public class CodecLookup {
 
     private static boolean noCodecRequired(@NotNull final Class<?> dataType) {
         return dataType == Boolean.class ||
-                dataType == DateTime.class ||
+                dataType == Instant.class ||
+                dataType == LocalDate.class ||
+                dataType == LocalTime.class ||
+                dataType == LocalDateTime.class ||
                 dataType == String.class ||
                 // A BigDecimal column maps to a logical type of decimal, with
                 // appropriate precision and scale calculated from column data,

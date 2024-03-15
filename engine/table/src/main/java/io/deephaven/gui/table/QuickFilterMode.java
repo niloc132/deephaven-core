@@ -1,11 +1,18 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.gui.table;
 
 public enum QuickFilterMode {
-    NORMAL("Normal"), NUMERIC("Numeric Only"), MULTI("Multi-column"), AND("AND (String Only)"), OR("OR"), WILDCARD(
-            "Wildcard"), REGEX("Regex");
+    // @formatter:off
+    NORMAL("Normal"),
+    NUMERIC("Numeric Only"),
+    MULTI("Multi-column"),
+    AND("AND (String Only)"),
+    OR("OR"),
+    WILDCARD("Wildcard"),
+    REGEX("Regex");
+    // @formatter:on
 
     private final String displayName;
 

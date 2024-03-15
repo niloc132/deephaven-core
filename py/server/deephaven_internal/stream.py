@@ -1,3 +1,6 @@
+#
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+#
 import io
 
 
@@ -93,3 +96,7 @@ class TeeStream(io.TextIOBase):
     def __del__(self):
         # Do nothing, override superclass which would call close()
         pass
+
+    def set_parent(self, parent):
+        # Parent needs to be set on the original stream so that output shows in proper cell
+        self._stream.set_parent(parent)

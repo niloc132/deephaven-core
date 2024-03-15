@@ -1,16 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table;
 
 import io.deephaven.api.*;
 import io.deephaven.api.agg.Aggregation;
-import io.deephaven.api.filter.Filter;
+import io.deephaven.api.Pair;
 import io.deephaven.engine.liveness.LivenessNode;
+import io.deephaven.engine.primitive.iterator.*;
 import io.deephaven.engine.rowset.TrackingRowSet;
 import io.deephaven.engine.table.hierarchical.RollupTable;
 import io.deephaven.engine.table.hierarchical.TreeTable;
-import io.deephaven.engine.table.iterators.*;
 import io.deephaven.api.util.ConcurrentMethod;
 import io.deephaven.engine.updategraph.DynamicNode;
 import io.deephaven.engine.updategraph.NotificationQueue;
@@ -18,6 +18,7 @@ import io.deephaven.engine.util.systemicmarking.SystemicObject;
 import io.deephaven.util.datastructures.LongSizedDataStructure;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -49,7 +50,7 @@ public interface Table extends
      * @return A Table of metadata about this Table's columns.
      */
     @ConcurrentMethod
-    Table getMeta();
+    Table meta();
 
     @ConcurrentMethod
     String getDescription();
@@ -122,33 +123,53 @@ public interface Table extends
     String UNIQUE_KEYS_ATTRIBUTE = "uniqueKeys";
     String FILTERABLE_COLUMNS_ATTRIBUTE = "FilterableColumns";
     String TOTALS_TABLE_ATTRIBUTE = "TotalsTable";
+    /**
+     * If this attribute is set, we can only add new row keys, we can never shift them, modify them, or remove them.
+     */
     String ADD_ONLY_TABLE_ATTRIBUTE = "AddOnly";
     /**
+     * If this attribute is set, we can only append new row keys to the end of the table. We can never shift them,
+     * modify them, or remove them.
+     */
+    String APPEND_ONLY_TABLE_ATTRIBUTE = "AppendOnly";
+    String TEST_SOURCE_TABLE_ATTRIBUTE = "TestSource";
+    /**
+     * If this attribute is present with value {@code true}, this Table is a "blink table".
      * <p>
-     * If this attribute is present with value {@code true}, this Table is a "stream table".
+     * A blink table provides a tabular presentation of rows accumulated from a stream since the previous cycle. Rows
+     * added on a particular cycle are always removed on the following cycle. Note that this means any particular row of
+     * data (not to be confused with a row key) never exists for more than one cycle. A blink table will never deliver
+     * modifies or shifts as part of its {@link TableUpdate updates}, just adds for this cycle's new data and removes
+     * for the previous cycle's old data.
      * <p>
-     * A stream table is a sequence of additions that represent rows newly received from a stream; on the cycle after
-     * the stream table is refreshed the rows are removed. Note that this means any particular row of data (not to be
-     * confused with a row key) never exists for more than one cycle.
+     * Aggregation operations (e.g. {@link #aggBy}, {@link #aggAllBy}, {@link #countBy}, etc) on blink tables have
+     * special semantics, allowing the result to aggregate over the entire observed stream of rows from the time the
+     * operation is initiated. That means, for example, that a {@link #sumBy} on a blink table will contain the result
+     * sums for each aggregation group over all observed rows since the {@code sumBy} was applied, rather than just the
+     * sums for the current update cycle. This allows for aggregations over the full history of a stream to be performed
+     * with greatly reduced memory costs when compared to the alternative strategy of holding the entirety of the stream
+     * as an in-memory table.
      * <p>
-     * Most operations are supported as normal on stream tables, but aggregation operations are treated specially,
-     * producing aggregate results that are valid over the entire observed stream from the time the operation is
-     * initiated. These semantics necessitate a few exclusions, i.e. unsupported operations that need to keep track of
-     * all rows:
+     * All other operations on blink tables behave exactly as they do on other tables; that is, adds and removes are
+     * processed as normal. For example {@link #select select} on a blink table will have only the newly added rows on
+     * current update cycle.
+     * <p>
+     * The special aggregation semantics necessitate a few exclusions, i.e. operations that cannot be supported because
+     * they need to keep track of all rows:
      * <ol>
-     * <li>{@link #groupBy} is unsupported
-     * <li>{@link #partitionBy} is unsupported</li>
+     * <li>{@link #groupBy groupBy} is unsupported
+     * <li>{@link #partitionBy partitionBy} is unsupported</li>
      * <li>{@link #partitionedAggBy(Collection, boolean, Table, String...) partitionedAggBy} is unsupported</li>
-     * <li>{@link #aggBy} is unsupported if either of {@link io.deephaven.api.agg.spec.AggSpecGroup group} or
-     * {@link io.deephaven.api.agg.Partition partition} are used</li>
-     * <li>{@link #rollup(Collection, boolean, Collection) rollup()} is unsupported if
+     * <li>{@link #aggBy aggBy} is unsupported if either {@link io.deephaven.api.agg.spec.AggSpecGroup group} or
+     * {@link io.deephaven.api.agg.Partition partition} is used</li>
+     * <li>{@link #rollup(Collection, boolean, Collection) rollup} is unsupported if
      * {@code includeConstituents == true}</li>
-     * <li>{@link #tree(String, String) tree()} is unsupported</li>
+     * <li>{@link #tree(String, String) tree} is unsupported</li>
      * </ol>
      * <p>
-     * To disable these semantics, a {@link #dropStream() dropStream} method is offered.
+     * To disable these semantics, a {@link #removeBlink() removeBlink} method is offered.
      */
-    String STREAM_TABLE_ATTRIBUTE = "StreamTable";
+    String BLINK_TABLE_ATTRIBUTE = "BlinkTable";
     /**
      * The query engine may set or read this attribute to determine if a table is sorted by a particular column.
      */
@@ -203,74 +224,87 @@ public interface Table extends
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Retrieves a {@code ColumnSource}. It is conveniently cast to @{code ColumnSource<T>} using the type that caller
-     * expects. This differs from {@link #getColumnSource(String, Class)} which uses the provided {@link Class} object
-     * to verify that the data type is a subclass of the expected class.
+     * Retrieves a {@code ColumnSource}. It is conveniently cast to {@code ColumnSource<Object>} using the type that
+     * caller expects. This differs from {@link #getColumnSource(String, Class)} which uses the provided {@link Class}
+     * object to verify that the data type is a subclass of the expected class.
+     *
+     * <p>
+     * The success of this call is equivalent to {@code getDefinition().checkColumn(sourceName)}, which is the preferred
+     * way to check for compatibility in scenarios where the caller does not want the implementation to potentially
+     * invoke {@link #coalesce()}.
      *
      * @param sourceName The name of the column
      * @param <T> The target type, as a type parameter. Inferred from context.
      * @return The column source for {@code sourceName}, parameterized by {@code T}
+     * @see TableDefinition#checkHasColumn(String)
      */
     <T> ColumnSource<T> getColumnSource(String sourceName);
 
     /**
-     * Retrieves a {@code ColumnSource} and {@link ColumnSource#cast casts} it to the target class {@code clazz}.
+     * Retrieves a {@code ColumnSource} and {@link ColumnSource#cast(Class) casts} it to the target class {@code clazz}.
+     *
+     * <p>
+     * The success of this call is equivalent to {@code getDefinition().checkColumn(sourceName, clazz)}, which is the
+     * preferred way to check for compatibility in scenarios where the caller does not want to the implementation to
+     * potentially invoke {@link #coalesce()}.
      *
      * @param sourceName The name of the column
      * @param clazz The target type
      * @param <T> The target type, as a type parameter. Intended to be inferred from {@code clazz}.
      * @return The column source for {@code sourceName}, parameterized by {@code T}
+     * @see ColumnSource#cast(Class)
+     * @see TableDefinition#checkHasColumn(String, Class)
      */
     <T> ColumnSource<T> getColumnSource(String sourceName, Class<? extends T> clazz);
+
+    /**
+     * Retrieves a {@code ColumnSource} and {@link ColumnSource#cast(Class, Class)} casts} it to the target class
+     * {@code clazz} and {@code componentType}.
+     *
+     * <p>
+     * The success of this call is equivalent to {@code getDefinition().checkColumn(sourceName, clazz, componentType)},
+     * which is the preferred way to check for compatibility in scenarios where the caller does not want the
+     * implementation to potentially invoke {@link #coalesce()}.
+     *
+     * @param sourceName The name of the column
+     * @param clazz The target type
+     * @param componentType The target component type, may be null
+     * @param <T> The target type, as a type parameter. Intended to be inferred from {@code clazz}.
+     * @return The column source for {@code sourceName}, parameterized by {@code T}
+     * @see ColumnSource#cast(Class, Class)
+     * @see TableDefinition#checkHasColumn(String, Class, Class)
+     */
+    <T> ColumnSource<T> getColumnSource(String sourceName, Class<? extends T> clazz, @Nullable Class<?> componentType);
 
     Map<String, ? extends ColumnSource<?>> getColumnSourceMap();
 
     Collection<? extends ColumnSource<?>> getColumnSources();
 
     // -----------------------------------------------------------------------------------------------------------------
-    // DataColumns for fetching data by row position; generally much less efficient than ColumnSource
-    // -----------------------------------------------------------------------------------------------------------------
-
-    DataColumn[] getColumns();
-
-    DataColumn getColumn(int columnIndex);
-
-    DataColumn getColumn(String columnName);
-
-    // -----------------------------------------------------------------------------------------------------------------
     // Column Iterators
     // -----------------------------------------------------------------------------------------------------------------
 
-    <TYPE> Iterator<TYPE> columnIterator(@NotNull String columnName);
+    <DATA_TYPE> CloseableIterator<DATA_TYPE> columnIterator(@NotNull String columnName);
 
-    CharacterColumnIterator characterColumnIterator(@NotNull String columnName);
+    CloseablePrimitiveIteratorOfChar characterColumnIterator(@NotNull String columnName);
 
-    ByteColumnIterator byteColumnIterator(@NotNull String columnName);
+    CloseablePrimitiveIteratorOfByte byteColumnIterator(@NotNull String columnName);
 
-    ShortColumnIterator shortColumnIterator(@NotNull String columnName);
+    CloseablePrimitiveIteratorOfShort shortColumnIterator(@NotNull String columnName);
 
-    IntegerColumnIterator integerColumnIterator(@NotNull String columnName);
+    CloseablePrimitiveIteratorOfInt integerColumnIterator(@NotNull String columnName);
 
-    LongColumnIterator longColumnIterator(@NotNull String columnName);
+    CloseablePrimitiveIteratorOfLong longColumnIterator(@NotNull String columnName);
 
-    FloatColumnIterator floatColumnIterator(@NotNull String columnName);
+    CloseablePrimitiveIteratorOfFloat floatColumnIterator(@NotNull String columnName);
 
-    DoubleColumnIterator doubleColumnIterator(@NotNull String columnName);
+    CloseablePrimitiveIteratorOfDouble doubleColumnIterator(@NotNull String columnName);
 
-    <DATA_TYPE> ObjectColumnIterator<DATA_TYPE> objectColumnIterator(@NotNull String columnName);
-
-    // -----------------------------------------------------------------------------------------------------------------
-    // Convenience data fetching; highly inefficient
-    // -----------------------------------------------------------------------------------------------------------------
-
-    Object[] getRecord(long rowNo, String... columnNames);
+    <DATA_TYPE> CloseableIterator<DATA_TYPE> objectColumnIterator(@NotNull String columnName);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Filter Operations
     // -----------------------------------------------------------------------------------------------------------------
-
-    @ConcurrentMethod
-    Table where(Filter... filters);
 
     /**
      * A table operation that applies the supplied predicate to each row in the table and produces columns containing
@@ -289,35 +323,59 @@ public interface Table extends
     // Column Selection Operations
     // -----------------------------------------------------------------------------------------------------------------
 
-    Table select(Selectable... columns);
-
-    Table select();
-
-    Table update(Selectable... newColumns);
-
-    Table lazyUpdate(Selectable... newColumns);
-
-    @ConcurrentMethod
-    Table view(Selectable... columns);
-
-    @ConcurrentMethod
-    Table updateView(Selectable... newColumns);
-
-    @ConcurrentMethod
-    Table dropColumns(Collection<String> columnNames);
-
-    @ConcurrentMethod
-    Table dropColumns(String... columnNames);
-
     @ConcurrentMethod
     Table dropColumnFormats();
 
-    Table renameColumns(MatchPair... pairs);
+    /**
+     * Produce a new table with the specified columns renamed using the specified {@link Pair pairs}. The renames are
+     * simultaneous and unordered, enabling direct swaps between column names. The resulting table retains the original
+     * column ordering after applying the specified renames.
+     * <p>
+     * {@link IllegalArgumentException} will be thrown:
+     * <ul>
+     * <li>if a source column does not exist</li>
+     * <li>if a source column is used more than once</li>
+     * <li>if a destination column is used more than once</li>
+     * </ul>
+     *
+     * @param pairs The columns to rename
+     * @return The new table, with the columns renamed
+     */
+    @ConcurrentMethod
+    Table renameColumns(Collection<Pair> pairs);
 
-    Table renameColumns(Collection<String> columns);
+    /**
+     * Produce a new table with the specified columns renamed using the syntax {@code "NewColumnName=OldColumnName"}.
+     * The renames are simultaneous and unordered, enabling direct swaps between column names. The resulting table
+     * retains the original column ordering after applying the specified renames.
+     * <p>
+     * {@link IllegalArgumentException} will be thrown:
+     * <ul>
+     * <li>if a source column does not exist</li>
+     * <li>if a source column is used more than once</li>
+     * <li>if a destination column is used more than once</li>
+     * </ul>
+     *
+     * @param pairs The columns to rename
+     * @return The new table, with the columns renamed
+     */
+    @ConcurrentMethod
+    Table renameColumns(String... pairs);
 
-    Table renameColumns(String... columns);
-
+    /**
+     * Produce a new table with the specified columns renamed using the provided function. The renames are simultaneous
+     * and unordered, enabling direct swaps between column names. The resulting table retains the original column
+     * ordering after applying the specified renames.
+     * <p>
+     * {@link IllegalArgumentException} will be thrown:
+     * <ul>
+     * <li>if a destination column is used more than once</li>
+     * </ul>
+     *
+     * @param renameFunction The function to apply to each column name
+     * @return The new table, with the columns renamed
+     */
+    @ConcurrentMethod
     Table renameAllColumns(UnaryOperator<String> renameFunction);
 
     @ConcurrentMethod
@@ -331,27 +389,56 @@ public interface Table extends
 
     /**
      * Produce a new table with the specified columns moved to the leftmost position. Columns can be renamed with the
-     * usual syntax, i.e. {@code "NewColumnName=OldColumnName")}.
+     * usual syntax, i.e. {@code "NewColumnName=OldColumnName")}. The renames are simultaneous and unordered, enabling
+     * direct swaps between column names. All other columns are left in their original order.
+     * <p>
+     * {@link IllegalArgumentException} will be thrown:
+     * <ul>
+     * <li>if a source column does not exist</li>
+     * <li>if a source column is used more than once</li>
+     * <li>if a destination column is used more than once</li>
+     * </ul>
      *
      * @param columnsToMove The columns to move to the left (and, optionally, to rename)
-     * @return The new table, with the columns rearranged as explained above {@link #moveColumns(int, String...)}
+     * @return The new table, with the columns rearranged as explained above
      */
     @ConcurrentMethod
     Table moveColumnsUp(String... columnsToMove);
 
     /**
      * Produce a new table with the specified columns moved to the rightmost position. Columns can be renamed with the
-     * usual syntax, i.e. {@code "NewColumnName=OldColumnName")}.
+     * usual syntax, i.e. {@code "NewColumnName=OldColumnName")}. The renames are simultaneous and unordered, enabling
+     * direct swaps between column names. All other columns are left in their original order.
+     * <p>
+     * {@link IllegalArgumentException} will be thrown:
+     * <ul>
+     * <li>if a source column does not exist</li>
+     * <li>if a source column is used more than once</li>
+     * <li>if a destination column is used more than once</li>
+     * </ul>
      *
      * @param columnsToMove The columns to move to the right (and, optionally, to rename)
-     * @return The new table, with the columns rearranged as explained above {@link #moveColumns(int, String...)}
+     * @return The new table, with the columns rearranged as explained above
      */
     @ConcurrentMethod
     Table moveColumnsDown(String... columnsToMove);
 
     /**
      * Produce a new table with the specified columns moved to the specified {@code index}. Column indices begin at 0.
-     * Columns can be renamed with the usual syntax, i.e. {@code "NewColumnName=OldColumnName")}.
+     * Columns can be renamed with the usual syntax, i.e. {@code "NewColumnName=OldColumnName")}. The renames are
+     * simultaneous and unordered, enabling direct swaps between column names. The resulting table retains the original
+     * column ordering except for the specified columns, which are inserted at the specified index, in the order of
+     * {@code columnsToMove}, after the effects of applying any renames.
+     * <p>
+     * {@link IllegalArgumentException} will be thrown:
+     * <ul>
+     * <li>if a source column does not exist</li>
+     * <li>if a source column is used more than once</li>
+     * <li>if a destination column is used more than once</li>
+     * </ul>
+     * <p>
+     * Values of {@code index} outside the range of 0 to the number of columns in the table (exclusive) will be clamped
+     * to the nearest valid index.
      *
      * @param index The index to which the specified columns should be moved
      * @param columnsToMove The columns to move to the specified index (and, optionally, to rename)
@@ -359,31 +446,6 @@ public interface Table extends
      */
     @ConcurrentMethod
     Table moveColumns(int index, String... columnsToMove);
-
-    @ConcurrentMethod
-    Table moveColumns(int index, boolean moveToEnd, String... columnsToMove);
-
-    /**
-     * Produce a new table with the same columns as this table, but with a new column presenting the specified DateTime
-     * column as a Long column (with each DateTime represented instead as the corresponding number of nanos since the
-     * epoch).
-     * <p>
-     * NOTE: This is a really just an updateView(), and behaves accordingly for column ordering and (re)placement. This
-     * doesn't work on data that has been brought fully into memory (e.g. via select()). Use a view instead.
-     *
-     * @param dateTimeColumnName Name of date time column
-     * @param nanosColumnName Name of nanos column
-     * @return The new table, constructed as explained above.
-     */
-    @ConcurrentMethod
-    Table dateTimeColumnAsNanos(String dateTimeColumnName, String nanosColumnName);
-
-    /**
-     * @param columnName name of column to convert from DateTime to nanos
-     * @return The result of dateTimeColumnAsNanos(columnName, columnName).
-     */
-    @ConcurrentMethod
-    Table dateTimeColumnAsNanos(String columnName);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Slice Operations
@@ -405,6 +467,11 @@ public interface Table extends
      * <p>
      * If the firstPosition is negative and the lastPosition is negative, they are both counted from the end of the
      * table. For example, slice(-2, -1) returns the second to last row of the table.
+     * <p>
+     * If firstPosition is negative and lastPosition is positive, then firstPosition is counted from the end of the
+     * table, inclusively. The lastPosition is counted from the beginning of the table, exclusively. For example,
+     * slice(-3, 5) returns all rows starting from the third-last row to the fifth row of the table. If there are no
+     * rows between these positions, the function will return an empty table.
      *
      * @param firstPositionInclusive the first position to include in the result
      * @param lastPositionExclusive the last position to include in the result
@@ -414,327 +481,39 @@ public interface Table extends
     Table slice(long firstPositionInclusive, long lastPositionExclusive);
 
     /**
+     * Extracts a subset of a table by row percentages.
+     * <p>
+     * Returns a subset of table in the range [floor(startPercentInclusive * sizeOfTable), floor(endPercentExclusive *
+     * sizeOfTable)). For example, for a table of size 10, slicePct(0.1, 0.7) will return a subset from the second row
+     * to the seventh row. Similarly, slicePct(0, 1) would return the entire table (because row positions run from 0 to
+     * size-1). The percentage arguments must be in range [0,1], otherwise the function returns an error.
+     *
+     * @param startPercentInclusive the starting percentage point for rows to include in the result, range [0, 1]
+     * @param endPercentExclusive the ending percentage point for rows to include in the result, range [0, 1]
+     * @return a new Table, which is the requested subset of rows from the original table
+     */
+    @ConcurrentMethod
+    Table slicePct(double startPercentInclusive, double endPercentExclusive);
+
+    /**
      * Provides a head that selects a dynamic number of rows based on a percent.
      *
-     * @param percent the fraction of the table to return (0..1), the number of rows will be rounded up. For example if
-     *        there are 3 rows, headPct(50) returns the first two rows.
+     * @param percent the fraction of the table to return between [0, 1]. The number of rows will be rounded up. For
+     *        example if there are 3 rows, headPct(50) returns the first two rows. For percent values outside [0, 1],
+     *        the function will throw an exception.
      */
     @ConcurrentMethod
     Table headPct(double percent);
 
+    /**
+     * Provides a tail that selects a dynamic number of rows based on a percent.
+     *
+     * @param percent the fraction of the table to return between [0, 1]. The number of rows will be rounded up. For
+     *        example if there are 3 rows, tailPct(50) returns the last two rows. For percent values outside [0, 1], the
+     *        function will throw an exception.
+     */
     @ConcurrentMethod
     Table tailPct(double percent);
-
-    // -----------------------------------------------------------------------------------------------------------------
-    // Join Operations
-    // -----------------------------------------------------------------------------------------------------------------
-
-    Table exactJoin(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
-
-    /**
-     * Rules for the inexact matching performed on the final column to match by in {@link #aj} and {@link #raj}.
-     */
-    enum AsOfMatchRule {
-        LESS_THAN_EQUAL, LESS_THAN, GREATER_THAN_EQUAL, GREATER_THAN;
-
-        public static AsOfMatchRule of(AsOfJoinRule rule) {
-            switch (rule) {
-                case LESS_THAN_EQUAL:
-                    return Table.AsOfMatchRule.LESS_THAN_EQUAL;
-                case LESS_THAN:
-                    return Table.AsOfMatchRule.LESS_THAN;
-            }
-            throw new IllegalStateException("Unexpected rule " + rule);
-        }
-
-        public static AsOfMatchRule of(ReverseAsOfJoinRule rule) {
-            switch (rule) {
-                case GREATER_THAN_EQUAL:
-                    return Table.AsOfMatchRule.GREATER_THAN_EQUAL;
-                case GREATER_THAN:
-                    return Table.AsOfMatchRule.GREATER_THAN;
-            }
-            throw new IllegalStateException("Unexpected rule " + rule);
-        }
-    }
-
-    /**
-     * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
-     * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
-     * original table are returned intact, together with the columns from rightTable defined in a comma separated list
-     * "columnsToAdd"
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @param columnsToAdd A comma separated list with the columns from the left side that need to be added to the right
-     *        side as a result of the match.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table aj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd, AsOfMatchRule asOfMatchRule);
-
-    /**
-     * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
-     * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
-     * original table are returned intact, together with the columns from rightTable defined in a comma separated list
-     * "columnsToAdd"
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @param columnsToAdd A comma separated list with the columns from the left side that need to be added to the right
-     *        side as a result of the match.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table aj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
-
-    /**
-     * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
-     * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
-     * original table are returned intact, together with all the columns from rightTable.
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table aj(Table rightTable, Collection<String> columnsToMatch);
-
-    /**
-     * Just like .aj(), but the matching on the last column is in reverse order, so that you find the row after the
-     * given timestamp instead of the row before.
-     * <p>
-     * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
-     * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
-     * original table are returned intact, together with the columns from rightTable defined in a comma separated list
-     * "columnsToAdd"
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @param columnsToAdd A comma separated list with the columns from the left side that need to be added to the right
-     *        side as a result of the match.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table raj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd, AsOfMatchRule asOfMatchRule);
-
-    /**
-     * Just like .aj(), but the matching on the last column is in reverse order, so that you find the row after the
-     * given timestamp instead of the row before.
-     * <p>
-     * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
-     * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
-     * original table are returned intact, together with the columns from rightTable defined in a comma separated list
-     * "columnsToAdd"
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @param columnsToAdd A comma separated list with the columns from the left side that need to be added to the right
-     *        side as a result of the match.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table raj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
-
-    /**
-     * Just like .aj(), but the matching on the last column is in reverse order, so that you find the row after the
-     * given timestamp instead of the row before.
-     * <p>
-     * Looks up the columns in the rightTable that meet the match conditions in the columnsToMatch list. Matching is
-     * done exactly for the first n-1 columns and via a binary search for the last match pair. The columns of the
-     * original table are returned intact, together with the all columns from rightTable.
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table raj(Table rightTable, Collection<String> columnsToMatch);
-
-    Table naturalJoin(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
-
-    /**
-     * Perform a cross join with the right table.
-     * <p>
-     * Returns a table that is the cartesian product of left rows X right rows, with one column for each of the left
-     * table's columns, and one column corresponding to each of the right table's columns. The rows are ordered first by
-     * the left table then by the right table.
-     * <p>
-     * To efficiently produce updates, the bits that represent a key for a given row are split into two. Unless
-     * specified, join reserves 16 bits to represent a right row. When there are too few bits to represent all of the
-     * right rows for a given aggregation group the table will shift a bit from the left side to the right side. The
-     * default of 16 bits was carefully chosen because it results in an efficient implementation to process live
-     * updates.
-     * <p>
-     * An {@link io.deephaven.engine.exceptions.OutOfKeySpaceException} is thrown when the total number of bits needed
-     * to express the result table exceeds that needed to represent Long.MAX_VALUE. There are a few work arounds: - If
-     * the left table is sparse, consider flattening the left table. - If there are no key-columns and the right table
-     * is sparse, consider flattening the right table. - If the maximum size of a right table's group is small, you can
-     * reserve fewer bits by setting numRightBitsToReserve on initialization.
-     * <p>
-     * Note: If you can prove that a given group has at most one right-row then you should prefer using
-     * {@link #naturalJoin}.
-     *
-     * @param rightTable The right side table on the join.
-     * @return a new table joined according to the specification with zero key-columns and includes all right columns
-     */
-    Table join(Table rightTable);
-
-    /**
-     * Perform a cross join with the right table.
-     * <p>
-     * Returns a table that is the cartesian product of left rows X right rows, with one column for each of the left
-     * table's columns, and one column corresponding to each of the right table's columns. The rows are ordered first by
-     * the left table then by the right table.
-     * <p>
-     * To efficiently produce updates, the bits that represent a key for a given row are split into two. Unless
-     * specified, join reserves 16 bits to represent a right row. When there are too few bits to represent all of the
-     * right rows for a given aggregation group the table will shift a bit from the left side to the right side. The
-     * default of 16 bits was carefully chosen because it results in an efficient implementation to process live
-     * updates.
-     * <p>
-     * An {@link io.deephaven.engine.exceptions.OutOfKeySpaceException} is thrown when the total number of bits needed
-     * to express the result table exceeds that needed to represent Long.MAX_VALUE. There are a few work arounds: - If
-     * the left table is sparse, consider flattening the left table. - If there are no key-columns and the right table
-     * is sparse, consider flattening the right table. - If the maximum size of a right table's group is small, you can
-     * reserve fewer bits by setting numRightBitsToReserve on initialization.
-     * <p>
-     * Note: If you can prove that a given group has at most one right-row then you should prefer using
-     * {@link #naturalJoin}.
-     *
-     * @param rightTable The right side table on the join.
-     * @param numRightBitsToReserve The number of bits to reserve for rightTable groups.
-     * @return a new table joined according to the specification with zero key-columns and includes all right columns
-     */
-    Table join(Table rightTable, int numRightBitsToReserve);
-
-    /**
-     * Perform a cross join with the right table.
-     * <p>
-     * Returns a table that is the cartesian product of left rows X right rows, with one column for each of the left
-     * table's columns, and one column corresponding to each of the right table's columns that are not key-columns. The
-     * rows are ordered first by the left table then by the right table. If columnsToMatch is non-empty then the product
-     * is filtered by the supplied match conditions.
-     * <p>
-     * To efficiently produce updates, the bits that represent a key for a given row are split into two. Unless
-     * specified, join reserves 16 bits to represent a right row. When there are too few bits to represent all of the
-     * right rows for a given aggregation group the table will shift a bit from the left side to the right side. The
-     * default of 16 bits was carefully chosen because it results in an efficient implementation to process live
-     * updates.
-     * <p>
-     * An {@link io.deephaven.engine.exceptions.OutOfKeySpaceException} is thrown when the total number of bits needed
-     * to express the result table exceeds that needed to represent Long.MAX_VALUE. There are a few work arounds: - If
-     * the left table is sparse, consider flattening the left table. - If there are no key-columns and the right table
-     * is sparse, consider flattening the right table. - If the maximum size of a right table's group is small, you can
-     * reserve fewer bits by setting numRightBitsToReserve on initialization.
-     * <p>
-     * Note: If you can prove that a given group has at most one right-row then you should prefer using
-     * {@link #naturalJoin}.
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @param numRightBitsToReserve The number of bits to reserve for rightTable groups.
-     * @return a new table joined according to the specification in columnsToMatch and includes all non-key-columns from
-     *         the right table
-     */
-    Table join(Table rightTable, String columnsToMatch, int numRightBitsToReserve);
-
-    /**
-     * Perform a cross join with the right table.
-     * <p>
-     * Returns a table that is the cartesian product of left rows X right rows, with one column for each of the left
-     * table's columns, and one column corresponding to each of the right table's columns that are included in the
-     * columnsToAdd argument. The rows are ordered first by the left table then by the right table. If columnsToMatch is
-     * non-empty then the product is filtered by the supplied match conditions.
-     * <p>
-     * To efficiently produce updates, the bits that represent a key for a given row are split into two. Unless
-     * specified, join reserves 16 bits to represent a right row. When there are too few bits to represent all of the
-     * right rows for a given aggregation group the table will shift a bit from the left side to the right side. The
-     * default of 16 bits was carefully chosen because it results in an efficient implementation to process live
-     * updates.
-     * <p>
-     * An {@link io.deephaven.engine.exceptions.OutOfKeySpaceException} is thrown when the total number of bits needed
-     * to express the result table exceeds that needed to represent Long.MAX_VALUE. There are a few work arounds: - If
-     * the left table is sparse, consider flattening the left table. - If there are no key-columns and the right table
-     * is sparse, consider flattening the right table. - If the maximum size of a right table's group is small, you can
-     * reserve fewer bits by setting numRightBitsToReserve on initialization.
-     * <p>
-     * Note: If you can prove that a given group has at most one right-row then you should prefer using
-     * {@link #naturalJoin}.
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch A comma separated list of match conditions ("leftColumn=rightColumn" or
-     *        "columnFoundInBoth")
-     * @param columnsToAdd A comma separated list with the columns from the right side that need to be added to the left
-     *        side as a result of the match.
-     * @param numRightBitsToReserve The number of bits to reserve for rightTable groups.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table join(Table rightTable, String columnsToMatch, String columnsToAdd, int numRightBitsToReserve);
-
-    /**
-     * Perform a cross join with the right table.
-     * <p>
-     * Returns a table that is the cartesian product of left rows X right rows, with one column for each of the left
-     * table's columns, and one column corresponding to each of the right table's columns that are included in the
-     * columnsToAdd argument. The rows are ordered first by the left table then by the right table. If columnsToMatch is
-     * non-empty then the product is filtered by the supplied match conditions.
-     * <p>
-     * To efficiently produce updates, the bits that represent a key for a given row are split into two. Unless
-     * specified, join reserves 16 bits to represent a right row. When there are too few bits to represent all of the
-     * right rows for a given aggregation group the table will shift a bit from the left side to the right side. The
-     * default of 16 bits was carefully chosen because it results in an efficient implementation to process live
-     * updates.
-     * <p>
-     * An {@link io.deephaven.engine.exceptions.OutOfKeySpaceException} is thrown when the total number of bits needed
-     * to express the result table exceeds that needed to represent Long.MAX_VALUE. There are a few work arounds: - If
-     * the left table is sparse, consider flattening the left table. - If there are no key-columns and the right table
-     * is sparse, consider flattening the right table. - If the maximum size of a right table's group is small, you can
-     * reserve fewer bits by setting numRightBitsToReserve on initialization.
-     * <p>
-     * Note: If you can prove that a given group has at most one right-row then you should prefer using
-     * {@link #naturalJoin}.
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch An array of match pair conditions ("leftColumn=rightColumn" or "columnFoundInBoth")
-     * @param columnsToAdd An array of the columns from the right side that need to be added to the left side as a
-     *        result of the match.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table join(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd);
-
-    /**
-     * Perform a cross join with the right table.
-     * <p>
-     * Returns a table that is the cartesian product of left rows X right rows, with one column for each of the left
-     * table's columns, and one column corresponding to each of the right table's columns that are included in the
-     * columnsToAdd argument. The rows are ordered first by the left table then by the right table. If columnsToMatch is
-     * non-empty then the product is filtered by the supplied match conditions.
-     * <p>
-     * To efficiently produce updates, the bits that represent a key for a given row are split into two. Unless
-     * specified, join reserves 16 bits to represent a right row. When there are too few bits to represent all of the
-     * right rows for a given aggregation group the table will shift a bit from the left side to the right side. The
-     * default of 16 bits was carefully chosen because it results in an efficient implementation to process live
-     * updates.
-     * <p>
-     * An {@link io.deephaven.engine.exceptions.OutOfKeySpaceException} is thrown when the total number of bits needed
-     * to express the result table exceeds that needed to represent Long.MAX_VALUE. There are a few work arounds: - If
-     * the left table is sparse, consider flattening the left table. - If there are no key-columns and the right table
-     * is sparse, consider flattening the right table. - If the maximum size of a right table's group is small, you can
-     * reserve fewer bits by setting numRightBitsToReserve on initialization.
-     * <p>
-     * Note: If you can prove that a given group has at most one right-row then you should prefer using
-     * {@link #naturalJoin}.
-     *
-     * @param rightTable The right side table on the join.
-     * @param columnsToMatch An array of match pair conditions ("leftColumn=rightColumn" or "columnFoundInBoth")
-     * @param columnsToAdd An array of the columns from the right side that need to be added to the left side as a
-     *        result of the match.
-     * @param numRightBitsToReserve The number of bits to reserve for rightTable groups.
-     * @return a new table joined according to the specification in columnsToMatch and columnsToAdd
-     */
-    Table join(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd, int numRightBitsToReserve);
 
     // -----------------------------------------------------------------------------------------------------------------
     // Aggregation Operations
@@ -783,19 +562,13 @@ public interface Table extends
     Table applyToAllBy(String formulaColumn, String... groupByColumns);
 
     /**
-     * If this table is a stream table, i.e. it has {@link #STREAM_TABLE_ATTRIBUTE} set to {@code true}, return a child
+     * If this table is a blink table, i.e. it has {@link #BLINK_TABLE_ATTRIBUTE} set to {@code true}, return a child
      * without the attribute, restoring standard semantics for aggregation operations.
      *
-     * @return A non-stream child table, or this table if it is not a stream table
+     * @return A non-blink child table, or this table if it is not a blink table
      */
     @ConcurrentMethod
-    Table dropStream();
-
-    // -----------------------------------------------------------------------------------------------------------------
-    // Disaggregation Operations
-    // -----------------------------------------------------------------------------------------------------------------
-
-    Table ungroupAllBut(String... columnsNotToUngroup);
+    Table removeBlink();
 
     // -----------------------------------------------------------------------------------------------------------------
     // PartitionBy Operations
@@ -808,7 +581,7 @@ public interface Table extends
      * result's constituent tables.
      *
      * @param dropKeys Whether to drop key columns in the output constituent tables
-     * @param keyColumnNames The name of the key columns to partition by
+     * @param keyColumnNames The names of the key columns to partition by
      * @return A {@link PartitionedTable} keyed by {@code keyColumnNames}
      */
     @ConcurrentMethod
@@ -823,7 +596,7 @@ public interface Table extends
      * The underlying partitioned table backing the result contains each row in {@code this} table in exactly one of the
      * result's constituent tables.
      *
-     * @param keyColumnNames The name of the key columns to partition by
+     * @param keyColumnNames The names of the key columns to partition by
      * @return A {@link PartitionedTable} keyed by {@code keyColumnNames}
      */
     @ConcurrentMethod
@@ -959,36 +732,6 @@ public interface Table extends
     TreeTable tree(String idColumn, String parentColumn);
 
     // -----------------------------------------------------------------------------------------------------------------
-    // Merge Operations
-    // -----------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Merge this Table with {@code others}. All rows in this Table will appear before all rows in {@code others}. If
-     * Tables in {@code others} are the result of a prior merge operation, they <em>may</em> be expanded in an attempt
-     * to avoid deeply nested structures.
-     *
-     * @apiNote It's best to avoid many chained calls to {@link #mergeBefore(Table...)} and
-     *          {@link #mergeAfter(Table...)}, as this may result in deeply-nested data structures. See
-     *          TableTools.merge(Table...).
-     * @param others The Tables to merge with
-     * @return The merged Table
-     */
-    Table mergeBefore(Table... others);
-
-    /**
-     * Merge this Table with {@code others}. All rows in this Table will appear after all rows in {@code others}. If
-     * Tables in {@code others} are the result of a prior merge operation, they <em>may</em> be expanded in an attempt
-     * to avoid deeply nested structures.
-     *
-     * @apiNote It's best to avoid many chained calls to {@link #mergeBefore(Table...)} and
-     *          {@link #mergeAfter(Table...)}, as this may result in deeply-nested data structures. See
-     *          TableTools.merge(Table...).
-     * @param others The Tables to merge with
-     * @return The merged Table
-     */
-    Table mergeAfter(Table... others);
-
-    // -----------------------------------------------------------------------------------------------------------------
     // Miscellaneous Operations
     // -----------------------------------------------------------------------------------------------------------------
 
@@ -1004,7 +747,7 @@ public interface Table extends
     /**
      * Get a {@link Table} that contains a sub-set of the rows from {@code this}. The result will share the same
      * {@link #getColumnSources() column sources} and {@link #getDefinition() definition} as this table.
-     *
+     * <p>
      * The result will not update on its own. The caller must also establish an appropriate listener to update
      * {@code rowSet} and propagate {@link TableUpdate updates}.
      *
@@ -1083,25 +826,31 @@ public interface Table extends
 
     /**
      * <p>
-     * Wait for updates to this Table.
+     * Wait for updates to this Table. Should not be invoked from a {@link TableListener} or other
+     * {@link io.deephaven.engine.updategraph.NotificationQueue.Notification notification} on this Table's
+     * {@link #getUpdateGraph() update graph}. It may be suitable to wait from another update graph if doing so does not
+     * introduce any cycles.
      * <p>
-     * In some implementations, this call may also terminate in case of interrupt or spurious wakeup (see
-     * java.util.concurrent.locks.Condition#await()).
+     * In some implementations, this call may also terminate in case of interrupt or spurious wakeup.
      *
      * @throws InterruptedException In the event this thread is interrupted
+     * @see java.util.concurrent.locks.Condition#await()
      */
     void awaitUpdate() throws InterruptedException;
 
     /**
      * <p>
-     * Wait for updates to this Table.
+     * Wait for updates to this Table. Should not be invoked from a {@link TableListener} or other
+     * {@link io.deephaven.engine.updategraph.NotificationQueue.Notification notification} on this Table's
+     * {@link #getUpdateGraph() update graph}. It may be suitable to wait from another update graph if doing so does not
+     * introduce any cycles.
      * <p>
-     * In some implementations, this call may also terminate in case of interrupt or spurious wakeup (see
-     * java.util.concurrent.locks.Condition#await()).
+     * In some implementations, this call may also terminate in case of interrupt or spurious wakeup.
      *
      * @param timeout The maximum time to wait in milliseconds.
      * @return false if the timeout elapses without notification, true otherwise.
      * @throws InterruptedException In the event this thread is interrupted
+     * @see java.util.concurrent.locks.Condition#await()
      */
     boolean awaitUpdate(long timeout) throws InterruptedException;
 
@@ -1130,6 +879,16 @@ public interface Table extends
      * @param listener listener for updates
      */
     void addUpdateListener(TableUpdateListener listener);
+
+    /**
+     * Subscribe for updates to this table if its last notification step matches {@code requiredLastNotificationStep}.
+     * {@code listener} will be invoked via the {@link NotificationQueue} associated with this Table.
+     *
+     * @param listener listener for updates
+     * @param requiredLastNotificationStep the expected last notification step to match
+     * @return true if the listener was added, false if the last notification step requirement was not met
+     */
+    boolean addUpdateListener(final TableUpdateListener listener, final long requiredLastNotificationStep);
 
     /**
      * Unsubscribe the supplied listener.

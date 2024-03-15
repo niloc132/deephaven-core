@@ -1,16 +1,21 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.session;
 
 import com.github.f4b6a3.uuid.UuidCreator;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.protobuf.ByteString;
 import com.google.rpc.Code;
 import io.deephaven.auth.AuthenticationException;
 import io.deephaven.auth.AuthenticationRequestHandler;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
+import io.deephaven.internal.log.LoggerFactory;
+import io.deephaven.io.logger.Logger;
 import io.deephaven.proto.backplane.grpc.TerminationNotificationResponse;
+import io.deephaven.proto.util.Exceptions;
 import io.deephaven.server.util.Scheduler;
 import io.deephaven.auth.AuthContext;
 import io.deephaven.util.process.ProcessEnvironment;
@@ -20,6 +25,7 @@ import io.grpc.stub.StreamObserver;
 import org.apache.arrow.flight.auth2.Auth2Constants;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -29,6 +35,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -38,6 +45,95 @@ import java.util.stream.Collectors;
 
 @Singleton
 public class SessionService {
+    private static final Logger log = LoggerFactory.getLogger(SessionService.class);
+
+    /**
+     * Implementations of error transformer give the server one last chance to convert errors to useful messages before
+     * responding to gRPC users.
+     */
+    @FunctionalInterface
+    public interface ErrorTransformer {
+        StatusRuntimeException transform(Throwable t);
+    }
+
+    @Singleton
+    public static class ObfuscatingErrorTransformer implements ErrorTransformer {
+        @VisibleForTesting
+        static final int MAX_STACK_TRACE_CAUSAL_DEPTH = 25;
+        private static final int MAX_CACHE_BUILDER_SIZE = 1009;
+        private static final int MAX_CACHE_DURATION_MIN = 1;
+
+        private final Cache<Throwable, UUID> idCache;
+
+        @Inject
+        public ObfuscatingErrorTransformer() {
+            idCache = CacheBuilder.newBuilder()
+                    .expireAfterAccess(MAX_CACHE_DURATION_MIN, TimeUnit.MINUTES)
+                    .maximumSize(MAX_CACHE_BUILDER_SIZE)
+                    .weakKeys()
+                    .build();
+        }
+
+        @Override
+        public StatusRuntimeException transform(final Throwable err) {
+            if (err instanceof StatusRuntimeException) {
+                final StatusRuntimeException sre = (StatusRuntimeException) err;
+                if (sre.getStatus().getCode().equals(Status.UNAUTHENTICATED.getCode())) {
+                    log.debug().append("ignoring unauthenticated request").endl();
+                } else if (sre.getStatus().getCode().equals(Status.CANCELLED.getCode())) {
+                    log.debug().append("ignoring cancelled request").endl();
+                } else {
+                    log.error().append(sre).endl();
+                }
+                return sre;
+            } else if (err instanceof InterruptedException) {
+                return securelyWrapError(err, Code.UNAVAILABLE);
+            } else {
+                return securelyWrapError(err, Code.INVALID_ARGUMENT);
+            }
+        }
+
+        private StatusRuntimeException securelyWrapError(@NotNull final Throwable err, final Code statusCode) {
+            UUID errorId;
+            final boolean shouldLog;
+
+            synchronized (idCache) {
+                errorId = idCache.getIfPresent(err);
+                shouldLog = errorId == null;
+
+                int currDepth = 0;
+                // @formatter:off
+                for (Throwable causeToCheck = err.getCause();
+                     errorId == null && ++currDepth < MAX_STACK_TRACE_CAUSAL_DEPTH && causeToCheck != null;
+                     causeToCheck = causeToCheck.getCause()) {
+                    // @formatter:on
+                    errorId = idCache.getIfPresent(causeToCheck);
+                }
+
+                if (errorId == null) {
+                    errorId = UuidCreator.getRandomBased();
+                }
+
+                // @formatter:off
+                for (Throwable throwableToAdd = err;
+                     currDepth > 0;
+                     throwableToAdd = throwableToAdd.getCause(), --currDepth) {
+                    // @formatter:on
+                    if (throwableToAdd.getStackTrace().length > 0) {
+                        // Note that stackless exceptions are singletons, so it would be a bad idea to cache them
+                        idCache.put(throwableToAdd, errorId);
+                    }
+                }
+            }
+
+            if (shouldLog) {
+                // this is a new top-level error; log it, possibly using an existing errorId
+                log.error().append("Internal Error '").append(errorId.toString()).append("' ").append(err).endl();
+            }
+
+            return Exceptions.statusRuntimeException(statusCode, "Details Logged w/ID '" + errorId + "'");
+        }
+    }
 
     static final long MIN_COOKIE_EXPIRE_MS = 10_000; // 10 seconds
     private static final int MAX_STACK_TRACE_CAUSAL_DEPTH =
@@ -62,10 +158,13 @@ public class SessionService {
 
     private final Map<String, AuthenticationRequestHandler> authRequestHandlers;
 
+    private final SessionListener sessionListener;
+
     @Inject
     public SessionService(final Scheduler scheduler, final SessionState.Factory sessionFactory,
             @Named("session.tokenExpireMs") final long tokenExpireMs,
-            Map<String, AuthenticationRequestHandler> authRequestHandlers) {
+            Map<String, AuthenticationRequestHandler> authRequestHandlers,
+            Set<SessionListener> sessionListeners) {
         this.scheduler = scheduler;
         this.sessionFactory = sessionFactory;
         this.tokenExpireMs = tokenExpireMs;
@@ -87,6 +186,8 @@ public class SessionService {
         if (ProcessEnvironment.tryGet() != null) {
             ProcessEnvironment.getGlobalFatalErrorReporter().addInterceptor(this::onFatalError);
         }
+
+        this.sessionListener = new DelegatingSessionListener(sessionListeners);
     }
 
     private synchronized void onFatalError(
@@ -152,7 +253,8 @@ public class SessionService {
      */
     public SessionState newSession(final AuthContext authContext) {
         final SessionState session = sessionFactory.create(authContext);
-        refreshToken(session, true);
+        checkTokenAndRotate(session, true);
+        sessionListener.onSessionCreate(session);
         return session;
     }
 
@@ -163,11 +265,11 @@ public class SessionService {
      * @return the most recent token expiration
      */
     public TokenExpiration refreshToken(final SessionState session) {
-        return refreshToken(session, false);
+        return checkTokenAndRotate(session, false);
     }
 
     @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-    private TokenExpiration refreshToken(final SessionState session, boolean initialToken) {
+    private TokenExpiration checkTokenAndRotate(final SessionState session, boolean initialToken) {
         UUID newUUID;
         TokenExpiration expiration;
         final long nowMillis = scheduler.currentTimeMillis();
@@ -240,6 +342,7 @@ public class SessionService {
         final String payload = offset < 0 ? "" : token.substring(offset + 1);
         AuthenticationRequestHandler handler = authRequestHandlers.get(key);
         if (handler == null) {
+            log.info().append("No AuthenticationRequestHandler registered for type ").append(key).endl();
             throw new AuthenticationException();
         }
         return handler.login(payload, SessionServiceGrpcImpl::insertCallHeader)
@@ -352,11 +455,8 @@ public class SessionService {
                 // token expiration time.
                 outstandingCookies.poll();
 
-                synchronized (next.session) {
-                    final TokenExpiration tokenExpiration = next.session.getExpiration();
-                    if (tokenExpiration != null && tokenExpiration.deadlineMillis <= nowMillis) {
-                        next.session.onExpired();
-                    }
+                if (next.session.isExpired()) {
+                    next.session.onExpired();
                 }
             } while (true);
 

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.string.cache.CharSequenceUtils;
@@ -8,14 +8,15 @@ import io.deephaven.base.verify.Assert;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.chunk.Chunk;
 import io.deephaven.chunk.WritableChunk;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.*;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.ColumnSource;
-import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.table.impl.chunkfillers.ChunkFiller;
 import io.deephaven.engine.table.impl.chunkfilter.ChunkFilter;
 import io.deephaven.engine.table.impl.chunkfilter.ChunkMatchFilterFactory;
-import io.deephaven.time.DateTime;
+import io.deephaven.engine.table.impl.sources.UnboxedLongBackedColumnSource;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.vector.*;
 import io.deephaven.hash.KeyedObjectHashSet;
 import io.deephaven.hash.KeyedObjectKey;
@@ -24,6 +25,8 @@ import io.deephaven.util.type.TypeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,6 +44,8 @@ public abstract class AbstractColumnSource<T> implements
 
     protected final Class<T> type;
     protected final Class<?> componentType;
+
+    protected final UpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph();
 
     protected volatile Map<T, RowSet> groupToRange;
     protected volatile List<ColumnSource<?>> rowSetIndexerKey;
@@ -64,10 +69,7 @@ public abstract class AbstractColumnSource<T> implements
         if (type.isArray()) {
             componentType = type.getComponentType();
         } else if (Vector.class.isAssignableFrom(type)) {
-            // noinspection deprecation
-            if (BooleanVector.class.isAssignableFrom(type)) {
-                componentType = Boolean.class;
-            } else if (ByteVector.class.isAssignableFrom(type)) {
+            if (ByteVector.class.isAssignableFrom(type)) {
                 componentType = byte.class;
             } else if (CharVector.class.isAssignableFrom(type)) {
                 componentType = char.class;
@@ -132,7 +134,11 @@ public abstract class AbstractColumnSource<T> implements
     }
 
     @Override
-    public WritableRowSet match(boolean invertMatch, boolean usePrev, boolean caseInsensitive, RowSet mapper,
+    public WritableRowSet match(
+            final boolean invertMatch,
+            final boolean usePrev,
+            final boolean caseInsensitive,
+            @NotNull final RowSet mapper,
             final Object... keys) {
         final Map<T, RowSet> groupToRange = (isImmutable() || !usePrev) ? getGroupToRange(mapper) : null;
         if (groupToRange != null) {
@@ -287,11 +293,14 @@ public abstract class AbstractColumnSource<T> implements
      */
     protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(
             @NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {
-        Assert.eq(getType(), "getType()", DateTime.class);
-        Assert.eq(alternateDataType, "alternateDataType", long.class);
-        // noinspection unchecked
-        return (ColumnSource<ALTERNATE_DATA_TYPE>) new UnboxedDateTimeWritableSource(
-                (WritableColumnSource<DateTime>) this);
+        if (getType() == Instant.class || getType() == ZonedDateTime.class) {
+            Assert.eq(alternateDataType, "alternateDataType", long.class);
+            // noinspection unchecked
+            return (ColumnSource<ALTERNATE_DATA_TYPE>) new UnboxedLongBackedColumnSource<>(this);
+        }
+        throw new IllegalArgumentException("Unsupported reinterpret for " + getClass().getSimpleName()
+                + ": type=" + getType()
+                + ", alternateDataType=" + alternateDataType);
     }
 
     public static abstract class DefaultedMutable<DATA_TYPE> extends AbstractColumnSource<DATA_TYPE>

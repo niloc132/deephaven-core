@@ -1,11 +1,10 @@
-/**
- * Copyright (c) 2016-2023 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit ImmutableConstantCharSource and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit ImmutableConstantCharSource and run "./gradlew replicateSourcesAndChunks" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.sources.immutable;
 
 import io.deephaven.chunk.LongChunk;
@@ -31,7 +30,7 @@ import static io.deephaven.engine.rowset.RowSequence.NULL_ROW_KEY;
 public class ImmutableConstantObjectSource<T>
         extends AbstractColumnSource<T>
         implements ImmutableColumnSourceGetDefaults.ForObject<T>, ShiftData.ShiftCallback, InMemoryColumnSource,
-        RowKeyAgnosticChunkSource<Values> {
+        RowKeyAgnosticChunkSource<Values> /* MIXIN_IMPLS */ {
 
     private final T value;
 
@@ -71,9 +70,6 @@ public class ImmutableConstantObjectSource<T>
     @Override
     public final void shift(final long start, final long end, final long offset) {}
 
-    // region reinterpret
-    // endregion reinterpret
-
     @Override
     public void fillChunkUnordered(
             @NotNull FillContext context,
@@ -91,11 +87,14 @@ public class ImmutableConstantObjectSource<T>
             @NotNull FillContext context,
             @NotNull WritableChunk<? super Values> dest,
             @NotNull LongChunk<? extends RowKeys> keys) {
-        fillChunkUnordered(context , dest, keys);
+        fillChunkUnordered(context, dest, keys);
     }
 
     @Override
     public boolean providesFillUnordered() {
         return true;
     }
+
+    // region reinterpretation
+    // endregion reinterpretation
 }

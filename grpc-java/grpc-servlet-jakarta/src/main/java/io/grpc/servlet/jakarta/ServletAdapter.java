@@ -172,8 +172,10 @@ public final class ServletAdapter {
                 getAuthority(req),
                 logId);
 
-        transportListener.streamCreated(stream, method, headers);
-        stream.transportState().runOnTransportThread(stream.transportState()::onStreamAllocated);
+        stream.transportState().runOnTransportThread(() -> {
+            transportListener.streamCreated(stream, method, headers);
+            stream.transportState().onStreamAllocated();
+        });
 
         asyncCtx.getRequest().getInputStream()
                 .setReadListener(new GrpcReadListener(stream, asyncCtx, logId));
@@ -325,6 +327,9 @@ public final class ServletAdapter {
             logger.log(FINE, "[{0}] onAllDataRead", logId);
             if (!closed.compareAndSet(false, true)) {
                 // https://github.com/eclipse/jetty.project/issues/8405
+                // Note that while this can be mitigated by setting
+                // AbstractHTTP2ServerConnectionFactory.getStreamIdleTimeout to zero, we allow this to be customized, so
+                // this workaround is being left in place.
                 logger.log(FINE, "[{0}] onAllDataRead already called, skipping this one", logId);
                 return;
             }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 """ This module implements the Color class and provides a list of predefined colors that can be used to paint a plot.
@@ -99,7 +99,7 @@ class Color(JObjectWrapper):
     @staticmethod
     def of_hsl(h: float, s: float, l: float, alpha: float = 1.0) -> Color:
         """ Creates a Color with the specified hue, saturation, lightness, and alpha. The lower the alpha, the more
-         transparent the color.
+        transparent the color.
 
         Args:
             h (float): the hue component, as a degree on the color wheel in the range (0.0 - 360.0)

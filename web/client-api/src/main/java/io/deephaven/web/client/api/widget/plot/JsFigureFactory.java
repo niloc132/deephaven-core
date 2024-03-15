@@ -1,8 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.widget.plot;
 
+import com.vertispan.tsdefs.annotations.TsTypeRef;
 import elemental2.core.JsArray;
 import elemental2.dom.CustomEventInit;
 import elemental2.promise.Promise;
@@ -22,7 +23,7 @@ import java.util.Map;
 
 public class JsFigureFactory {
     @JsMethod(namespace = "dh.plot.Figure", name = "create")
-    public static Promise<JsFigure> create(Object config) {
+    public static Promise<JsFigure> create(@TsTypeRef(JsFigureDescriptor.class) Object config) {
         if (config instanceof JsFigureDescriptor) {
             return create((JsFigureDescriptor) config);
         } else {

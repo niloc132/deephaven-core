@@ -1,12 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.agg.spec;
 
 import io.deephaven.api.agg.Aggregation;
 import io.deephaven.api.agg.ColumnAggregation;
 import io.deephaven.api.agg.ColumnAggregations;
-import io.deephaven.api.agg.Pair;
+import io.deephaven.api.Pair;
 
 import java.util.Collection;
 

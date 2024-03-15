@@ -25,6 +25,14 @@ dependencies {
     if (!hasProperty('excludeHotspotImpl')) {
         runtimeOnly project(':hotspot-impl')
     }
+
+    if (!hasProperty('excludeSql')) {
+        runtimeOnly project(':engine-sql')
+    }
+
+    if (!hasProperty('excludeS3')) {
+        runtimeOnly project(':extensions-s3')
+    }
 }
 
 // making a dir here isn't optimal, but without it we need to make py-embedded-server be a java and a python

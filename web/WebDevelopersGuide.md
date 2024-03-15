@@ -786,13 +786,13 @@ and count of children at each level of the hierarchy, and differences in the dat
  * `boolean isIncludeConstituents` - True if this is a roll-up and will provide the original rows that make up each grouping.
 
 ###### Methods
- * `expand(Number|TreeRow)` - Expands the given node, so that its children are visible when they are in the viewport. 
- The parameter can be the row index, or the row object itself. Equivalent to `setExpanded(row, true)`.
- * `collapse(Number|TreeRow)` - Collapses the given node, so that its children and descendents are not visible in the
+ * `expand(Number|TreeRow, boolean expandDescendants = false)` - Expands the given node, so that its children are visible when they are in the viewport. 
+ The parameter can be the row index, or the row object itself. The second parameter is a boolean value, false by default, specifying if the row and all descendants should be fully expanded. Equivalent to `setExpanded(row, true)` with an optional third boolean parameter. 
+ * `collapse(Number|TreeRow)` - Collapses the given node, so that its children and descendants are not visible in the
  size or the viewport. The parameter can be the row index, or the row object itself. Equivalent to 
- `setExpanded(row, false)`.
- * `setExpanded(Number|TreeRow, boolean)` - Specifies if the given node should be expanded or collapsed. If this node has
- children, and the value is changed, the size of the table will change.
+ `setExpanded(row, false, false)`.
+ * `setExpanded(Number|TreeRow, boolean, boolean)` - Specifies if the given node should be expanded or collapsed. If this node has
+ children, and the value is changed, the size of the table will change. If node is to be expanded and the third parameter, `expandDescendants`, is true, then its children will also be expanded.
  * `isExpanded(Number|TreeRow):boolean` - Returns true if the given row is expanded, false otherwise. Equivalent to
  `TreeRow.isExpanded`, if an instance of the row is available.
  * `setViewport(Number firstRow, Number lastRow, Column[]= columns)`
@@ -992,9 +992,9 @@ This enum describes the name of each supported operation/aggregation type when c
  value is "Max".
  * `SUM` - The sum of all values in the specified column. Can only apply to numeric types. String value is "Sum".
  * `ABS_SUM` - The sum of all values, as their distance from zero, in the specified column. Can only apply to numeric types. String value is “AbsSum”.
- * `VAR` - The variance of all values in the specified column. Can only apply to numeric types. String value is "Var".
+ * `VAR` - The sample variance of all values in the specified column. Can only apply to numeric types. String value is "Var".
  * `AVG` - The average of all values in the specified column. Can only apply to numeric types. String value is "Avg".
- * `STD` - The standard deviation of all values in the specified column. Can only apply to numeric types. String value is
+ * `STD` - The sample standard deviation of all values in the specified column. Can only apply to numeric types. String value is
  "Std".
  * `FIRST` - The first value in the specified column. Can apply to any type. String value is "First".
  * `LAST` - The last value in the specified column. Can apply to any type. String value is "Last".

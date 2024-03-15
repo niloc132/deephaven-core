@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.base.cache;
 
 import io.deephaven.base.verify.Assert;
@@ -48,7 +48,7 @@ public class OpenAddressedCanonicalizationCache {
         int hashCode(@NotNull final INPUT_TYPE inputItem);
 
         /**
-         * Note: The following must be true: hashCode(inputItem) == outputItem.hashCode() && equals(inputItem,
+         * Note: The following must be true: hashCode(inputItem) == outputItem.hashCode() &amp;&amp; equals(inputItem,
          * outputItem)
          * 
          * @param inputItem The input item

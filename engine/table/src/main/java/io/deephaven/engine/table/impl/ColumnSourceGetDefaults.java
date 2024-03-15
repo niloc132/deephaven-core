@@ -1,12 +1,14 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.table.ColumnSource;
-import io.deephaven.time.DateTime;
+import org.jetbrains.annotations.Nullable;
 
-import static io.deephaven.time.DateTimeUtils.nanosToTime;
+import java.time.Instant;
+
+import static io.deephaven.time.DateTimeUtils.epochNanosToInstant;
 import static io.deephaven.util.type.TypeUtils.box;
 
 /**
@@ -381,7 +383,7 @@ public final class ColumnSourceGetDefaults {
      * Default interface for long {@link ColumnSource} implementations.
      */
     public interface ForLong extends LongBacked<Long> {
-
+        @Nullable
         @Override
         default Long get(final long rowKey) {
             return box(getLong(rowKey));
@@ -389,13 +391,13 @@ public final class ColumnSourceGetDefaults {
     }
 
     /**
-     * Default interface for {@link DateTime} {@link ColumnSource} implementations.
+     * Default interface for {@link Instant} {@link ColumnSource} implementations.
      */
-    public interface ForLongAsDateTime extends LongBacked<DateTime> {
-
+    public interface ForLongAsInstant extends LongBacked<Instant> {
+        @Nullable
         @Override
-        default DateTime get(final long rowKey) {
-            return nanosToTime(getLong(rowKey));
+        default Instant get(long rowKey) {
+            return epochNanosToInstant(getLong(rowKey));
         }
     }
 

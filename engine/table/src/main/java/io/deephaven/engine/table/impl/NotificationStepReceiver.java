@@ -1,10 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 /**
- * Used by {@link SwapListener swap listeners} to set the notification step of elements in our DAG.
+ * Used by {@link OperationSnapshotControl} to set the notification step of elements in our DAG.
  */
 public interface NotificationStepReceiver {
 

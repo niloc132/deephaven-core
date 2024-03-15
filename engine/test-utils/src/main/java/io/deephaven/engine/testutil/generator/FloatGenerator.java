@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.testutil.generator;
 
 import io.deephaven.base.verify.Require;
@@ -17,7 +20,7 @@ public class FloatGenerator extends AbstractGenerator<Float> {
     private final double posInfFraction;
 
     public FloatGenerator() {
-        this(QueryConstants.NULL_FLOAT + 1, Float.MAX_VALUE);
+        this(Math.nextUp(-Float.MAX_VALUE), Float.MAX_VALUE);
     }
 
     public FloatGenerator(float from, float to) {
@@ -69,7 +72,7 @@ public class FloatGenerator extends AbstractGenerator<Float> {
                 return Float.POSITIVE_INFINITY;
             }
         }
-        return from + (random.nextFloat() * to - from);
+        return (from / 2 + (random.nextFloat() * (to / 2 - from / 2))) * 2;
     }
 
     @Override

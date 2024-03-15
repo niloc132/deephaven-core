@@ -1,8 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.tree;
 
+import com.vertispan.tsdefs.annotations.TsTypeRef;
 import elemental2.core.JsArray;
 import elemental2.core.JsObject;
 import elemental2.core.JsString;
@@ -28,6 +29,7 @@ import io.deephaven.web.client.api.tree.enums.JsAggregationOperation;
 import io.deephaven.web.client.fu.JsLog;
 import jsinterop.annotations.JsConstructor;
 import jsinterop.annotations.JsIgnore;
+import jsinterop.annotations.JsNullable;
 import jsinterop.annotations.JsType;
 import jsinterop.base.Js;
 import jsinterop.base.JsPropertyMap;
@@ -39,17 +41,37 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
+/**
+ * Describes a grouping and aggregations for a roll-up table. Pass to the <b>Table.rollup</b> function to create a
+ * roll-up table.
+ */
 @JsType(name = "RollupConfig", namespace = "dh")
 public class JsRollupConfig {
 
+    /**
+     * Ordered list of columns to group by to form the hierarchy of the resulting roll-up table.
+     */
     public JsArray<JsString> groupingColumns = null;
-    public JsPropertyMap<JsArray<JsString>> aggregations = Js.cast(JsObject.create(null));
+    /**
+     * Mapping from each aggregation name to the ordered list of columns it should be applied to in the resulting
+     * roll-up table.
+     */
+    public JsPropertyMap<JsArray<@TsTypeRef(JsAggregationOperation.class) String>> aggregations =
+            Js.cast(JsObject.create(null));
+    /**
+     * Optional parameter indicating if an extra leaf node should be added at the bottom of the hierarchy, showing the
+     * rows in the underlying table which make up that grouping. Since these values might be a different type from the
+     * rest of the column, any client code must check if TreeRow.hasChildren = false, and if so, interpret those values
+     * as if they were Column.constituentType instead of Column.type. Defaults to false.
+     */
     public boolean includeConstituents = false;
+    @JsNullable
     public boolean includeOriginalColumns = false;
+    /**
+     * Optional parameter indicating if original column descriptions should be included. Defaults to true.
+     */
     public boolean includeDescriptions = true;
 
     @JsConstructor
@@ -239,6 +261,10 @@ public class JsRollupConfig {
                 // case JsAggregationOperation.WSUM: {
                 // // TODO #3302 support this
                 // }
+                case JsAggregationOperation.SKIP: {
+                    // cancel entirely, start the loop again
+                    return;
+                }
                 default:
                     JsLog.warn("Aggregation " + aggregationType + " not supported, ignoring");
             }

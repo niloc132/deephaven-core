@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.parquet.table;
 
 import io.deephaven.engine.rowset.RowSet;
@@ -22,7 +22,7 @@ import static io.deephaven.parquet.table.TypeInfos.getTypeInfo;
 class MappedSchema {
 
     static MappedSchema create(
-            final Map<String, Map<ParquetTableWriter.CacheTags, Object>> computedCache,
+            final Map<String, Map<ParquetCacheTags, Object>> computedCache,
             final TableDefinition definition,
             final RowSet rowSet,
             final Map<String, ? extends ColumnSource<?>> columnSourceMap,

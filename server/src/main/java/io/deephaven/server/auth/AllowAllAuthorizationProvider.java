@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.auth;
 
 import io.deephaven.auth.AuthContext;
@@ -15,7 +15,8 @@ import io.deephaven.auth.codegen.impl.PartitionedTableServiceContextualAuthWirin
 import io.deephaven.auth.codegen.impl.SessionServiceAuthWiring;
 import io.deephaven.auth.codegen.impl.StorageServiceAuthWiring;
 import io.deephaven.auth.codegen.impl.TableServiceContextualAuthWiring;
-import io.deephaven.server.session.TicketResolverBase;
+import io.deephaven.server.session.NoopTicketResolverAuthorization;
+import io.deephaven.server.session.TicketResolver;
 
 import javax.inject.Inject;
 
@@ -83,8 +84,8 @@ public class AllowAllAuthorizationProvider implements AuthorizationProvider {
     }
 
     @Override
-    public TicketResolverBase.AuthTransformation getTicketTransformation() {
-        return TicketResolverBase.identityTransformation();
+    public TicketResolver.Authorization getTicketResolverAuthorization() {
+        return new NoopTicketResolverAuthorization();
     }
 
     @Override

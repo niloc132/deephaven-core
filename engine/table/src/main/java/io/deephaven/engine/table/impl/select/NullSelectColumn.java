@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.table.*;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.impl.sources.*;
 import io.deephaven.engine.rowset.TrackingRowSet;
 import org.jetbrains.annotations.NotNull;
@@ -22,11 +23,6 @@ public class NullSelectColumn<T> implements SelectColumn {
     public NullSelectColumn(final Class<T> type, final Class<?> elementType, final String name) {
         nvcs = NullValueColumnSource.getInstance(type, elementType);
         this.name = name;
-    }
-
-    @Override
-    public List<String> initInputs(final Table table) {
-        return Collections.emptyList();
     }
 
     @Override
@@ -79,21 +75,16 @@ public class NullSelectColumn<T> implements SelectColumn {
 
     @Override
     public WritableColumnSource<?> newDestInstance(final long size) {
-        return SparseArrayColumnSource.getSparseMemoryColumnSource(size, nvcs.getType(), nvcs.getComponentType());
+        return nvcs;
     }
 
     @Override
     public WritableColumnSource<?> newFlatDestInstance(final long size) {
-        return InMemoryColumnSource.getImmutableMemoryColumnSource(size, nvcs.getType(), nvcs.getComponentType());
+        return nvcs;
     }
 
     @Override
     public boolean isRetain() {
-        return false;
-    }
-
-    @Override
-    public boolean disallowRefresh() {
         return false;
     }
 

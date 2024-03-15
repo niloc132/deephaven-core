@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Assert;
@@ -11,7 +11,6 @@ import io.deephaven.engine.rowset.RowSetShiftData;
 import io.deephaven.engine.table.ModifiedColumnSet;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableUpdate;
-import io.deephaven.engine.updategraph.LogicalClock;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,9 +60,9 @@ public class ListenerRecorder extends InstrumentedTableUpdateListener {
     @Override
     public void onUpdate(final TableUpdate upstream) {
         this.update = upstream.acquire();
-        final long currentStep = LogicalClock.DEFAULT.currentStep();
+        final long currentStep = getUpdateGraph().clock().currentStep();
         Assert.lt(this.notificationStep, "this.notificationStep", currentStep, "currentStep");
-        this.notificationStep = currentStep;
+        setNotificationStep(currentStep);
 
         // notify the downstream listener merger
         if (mergedListener == null) {
@@ -75,11 +74,15 @@ public class ListenerRecorder extends InstrumentedTableUpdateListener {
 
     @Override
     protected void onFailureInternal(@NotNull final Throwable originalException, @Nullable final Entry sourceEntry) {
-        this.notificationStep = LogicalClock.DEFAULT.currentStep();
+        setNotificationStep(getUpdateGraph().clock().currentStep());
         if (mergedListener == null) {
             throw new IllegalStateException("Merged listener not set");
         }
         mergedListener.notifyOnUpstreamError(originalException, sourceEntry);
+    }
+
+    protected void setNotificationStep(final long step) {
+        this.notificationStep = step;
     }
 
     @Override
@@ -94,7 +97,7 @@ public class ListenerRecorder extends InstrumentedTableUpdateListener {
     }
 
     public boolean recordedVariablesAreValid() {
-        return notificationStep == LogicalClock.DEFAULT.currentStep();
+        return notificationStep == getUpdateGraph().clock().currentStep();
     }
 
     public void setMergedListener(MergedListener mergedListener) {

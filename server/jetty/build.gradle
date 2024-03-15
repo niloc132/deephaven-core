@@ -20,6 +20,7 @@ dependencies {
 
     api 'jakarta.servlet:jakarta.servlet-api:5.0.0'
     implementation 'org.eclipse.jetty:jetty-servlet'
+    implementation 'org.eclipse.jetty:jetty-servlets'
     implementation 'org.eclipse.jetty:jetty-webapp'
     implementation 'org.eclipse.jetty.http2:http2-server'
     implementation 'org.eclipse.jetty:jetty-alpn-server'
@@ -40,12 +41,13 @@ dependencies {
     implementation project(':grpc-java:grpc-mtls')
 
     testImplementation project(':server-test')
-    testImplementation TestTools.projectDependency(project, ':server')
+    Classpaths.inheritJUnitClassic(project, 'testImplementation')
+    Classpaths.inheritAssertJ(project)
 
     testRuntimeOnly project(':log-to-slf4j')
     Classpaths.inheritSlf4j(project, 'slf4j-simple', 'testRuntimeOnly')
 }
 
-test.systemProperty "UpdateGraphProcessor.allowUnitTestMode", false
+test.systemProperty "PeriodicUpdateGraph.allowUnitTestMode", false
 
 apply plugin: 'io.deephaven.java-open-nio'

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.datasets.category;
 
 
@@ -166,7 +166,7 @@ public interface CategoryDataSeries extends DataSeries {
      * Sets the point color. Unspecified points use the default color.
      *
      * @param category data point
-     * @param color color
+     * @param pointColor color
      * @return this CategoryDataSeries
      */
     CategoryDataSeries pointColor(final Comparable category, final Paint pointColor);

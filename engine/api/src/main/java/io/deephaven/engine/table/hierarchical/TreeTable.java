@@ -1,8 +1,12 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.hierarchical;
 
 import io.deephaven.api.*;
 import io.deephaven.api.filter.Filter;
 import io.deephaven.engine.liveness.LivenessScopeStack;
+import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.updategraph.DynamicNode;
@@ -44,9 +48,9 @@ public interface TreeTable extends HierarchicalTable<TreeTable> {
      * Get a new TreeTable with {@code columns} designated for node-level filtering, in addition to any columns already
      * so-designated on {@code this} TreeTable.
      * <p>
-     * Filters specified via {@link #withFilters(Collection)}, typically from the UI, that only use the designated
-     * node-level filtering columns will be applied to the nodes during snapshots. If no node-filter columns are
-     * designated, no filters will be handled at node level.
+     * Filters specified via {@link #withFilter(Filter)}, typically from the UI, that only use the designated node-level
+     * filtering columns will be applied to the nodes during snapshots. If no node-filter columns are designated, no
+     * filters will be handled at node level.
      * <p>
      * Filters that include other columns are handled by filtering the source table in a ancestor-preserving manner and
      * re-applying the tree operation to the result to produce a new TreeTable. Users of orphan promotion or other
@@ -63,12 +67,12 @@ public interface TreeTable extends HierarchicalTable<TreeTable> {
     TreeTable withNodeFilterColumns(@NotNull Collection<? extends ColumnName> columns);
 
     /**
-     * Apply a set of filters to the columns of this TreeTable in order to produce a new TreeTable.
+     * Apply a filter to the columns of this TreeTable in order to produce a new TreeTable.
      *
-     * @param filters The filters to apply
+     * @param filter The filter to apply
      * @return The new TreeTable
      */
-    TreeTable withFilters(@NotNull Collection<? extends Filter> filters);
+    TreeTable withFilter(@NotNull Filter filter);
 
     /**
      * Recorder for node-level operations to be applied when gathering snapshots.
@@ -126,13 +130,19 @@ public interface TreeTable extends HierarchicalTable<TreeTable> {
         final ColumnName parent = ColumnName.of(parentColumn);
         final ColumnName identifier = ColumnName.of(idColumn);
         final ColumnName sentinel = ColumnName.of("__MATCHED_PARENT_IDENTIFIER__");
+        final Selectable[] viewColumns = source.getDefinition().getColumnStream()
+                .map(ColumnDefinition::getName)
+                .map((final String columnName) -> columnName.equals(parent.name())
+                        ? Selectable.of(parent,
+                                RawString.of("isNull(" + sentinel.name() + ") ? null : " + parent.name()))
+                        : ColumnName.of(columnName))
+                .toArray(Selectable[]::new);
         return LivenessScopeStack.computeEnclosed(
                 () -> source
                         .naturalJoin(source,
                                 List.of(JoinMatch.of(parent, identifier)),
                                 List.of(JoinAddition.of(sentinel, identifier)))
-                        .updateView(Selectable.of(parent,
-                                RawString.of("isNull(" + sentinel.name() + ") ? null : " + parent.name()))),
+                        .view(List.of(viewColumns)),
                 source::isRefreshing,
                 DynamicNode::isRefreshing);
     }

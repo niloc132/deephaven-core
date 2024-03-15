@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select.analyzers;
 
 import io.deephaven.base.log.LogOutput;
@@ -17,7 +17,8 @@ import io.deephaven.engine.table.TableUpdate;
 import io.deephaven.engine.table.impl.TableUpdateImpl;
 import io.deephaven.engine.table.impl.sources.RedirectedColumnSource;
 import io.deephaven.engine.table.impl.util.RowRedirection;
-import io.deephaven.engine.table.impl.util.WrappedRowSetWritableRowRedirection;
+import io.deephaven.engine.table.impl.util.WrappedRowSetRowRedirection;
+import io.deephaven.engine.table.impl.util.JobScheduler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.BitSet;
@@ -41,7 +42,7 @@ final public class StaticFlattenLayer extends SelectAndViewAnalyzer {
             alreadyFlattenedColumns.add(name);
         });
 
-        final RowRedirection rowRedirection = new WrappedRowSetWritableRowRedirection(parentRowSet);
+        final RowRedirection rowRedirection = new WrappedRowSetRowRedirection(parentRowSet);
         overriddenColumns = new HashMap<>();
         inner.getAllColumnSources().forEach((name, cs) -> {
             if (alreadyFlattenedColumns.contains(name)) {
@@ -99,8 +100,8 @@ final public class StaticFlattenLayer extends SelectAndViewAnalyzer {
     }
 
     @Override
-    Map<String, Set<String>> calcDependsOnRecurse() {
-        return inner.calcDependsOnRecurse();
+    Map<String, Set<String>> calcDependsOnRecurse(boolean forcePublishAllResources) {
+        return inner.calcDependsOnRecurse(forcePublishAllResources);
     }
 
     @Override
@@ -134,5 +135,17 @@ final public class StaticFlattenLayer extends SelectAndViewAnalyzer {
     @Override
     public boolean allowCrossColumnParallelization() {
         return inner.allowCrossColumnParallelization();
+    }
+
+    @Override
+    public boolean flattenedResult() {
+        // this layer performs a flatten, so the result is flattened
+        return true;
+    }
+
+    @Override
+    public boolean alreadyFlattenedSources() {
+        // this layer performs a flatten, so the sources are now flattened
+        return true;
     }
 }

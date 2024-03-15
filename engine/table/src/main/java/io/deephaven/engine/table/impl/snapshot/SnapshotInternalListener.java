@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.snapshot;
 
 import io.deephaven.chunk.attributes.Values;
@@ -10,7 +10,6 @@ import io.deephaven.engine.table.impl.BaseTable;
 import io.deephaven.engine.table.impl.LazySnapshotTable;
 import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.TableUpdateImpl;
-import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
 import io.deephaven.engine.table.impl.sources.SingleValueColumnSource;
 
 import java.util.Map;
@@ -22,7 +21,7 @@ public class SnapshotInternalListener extends BaseTable.ListenerImpl {
     private long snapshotPrevLength;
     private final QueryTable result;
     private final Map<String, SingleValueColumnSource<?>> resultTriggerColumns;
-    private final Map<String, ArrayBackedColumnSource<?>> resultBaseColumns;
+    private final Map<String, WritableColumnSource<?>> resultBaseColumns;
     private final Map<String, ? extends ColumnSource<?>> triggerStampColumns;
     private final Map<String, ChunkSource.WithPrev<? extends Values>> snapshotDataColumns;
     private final TrackingWritableRowSet resultRowSet;
@@ -32,9 +31,9 @@ public class SnapshotInternalListener extends BaseTable.ListenerImpl {
             Table snapshotTable,
             QueryTable result,
             Map<String, SingleValueColumnSource<?>> resultTriggerColumns,
-            Map<String, ArrayBackedColumnSource<?>> resultBaseColumns,
+            Map<String, WritableColumnSource<?>> resultBaseColumns,
             TrackingWritableRowSet resultRowSet) {
-        super("snapshot " + result.getColumnSourceMap().keySet(), triggerTable, result);
+        super("snapshot " + result.getDefinition().getColumnNameSet(), triggerTable, result);
         this.triggerTable = triggerTable;
         this.result = result;
         this.lazySnapshot = lazySnapshot;

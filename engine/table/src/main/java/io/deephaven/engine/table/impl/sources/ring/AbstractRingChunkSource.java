@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.ring;
 
 import io.deephaven.chunk.Chunk;
@@ -401,8 +401,10 @@ abstract class AbstractRingChunkSource<T, ARRAY, SELF extends AbstractRingChunkS
     }
 
     final void bringUpToDate(SELF current) {
-        // When we are bringing ourselves up-to-date, we know that current is a ring and uses an unbounded FillContext
-        appendUnbounded(current, RowSetFactory.fromRange(nextRingIx, current.nextRingIx - 1));
+        // When we are bringing ourselves up-to-date, we know that current is a ring and uses an unbounded FillContext.
+        // Logically copying the full range [lastKey() + 1, current.lastKey()] from current to previous even though the
+        // physical data in current may be smaller.
+        appendUnbounded(current, RowSetFactory.fromRange(nextRingIx, current.lastKey()));
         if (nextRingIx != current.nextRingIx) {
             throw new IllegalStateException();
         }

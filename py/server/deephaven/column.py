@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 """ This module implements the Column class and functions that work with Columns. """
@@ -13,11 +13,13 @@ import jpy
 import deephaven.dtypes as dtypes
 from deephaven import DHError
 from deephaven.dtypes import DType
+from deephaven.dtypes import _instant_array
 
 _JColumnHeader = jpy.get_type("io.deephaven.qst.column.header.ColumnHeader")
 _JColumn = jpy.get_type("io.deephaven.qst.column.Column")
 _JColumnDefinition = jpy.get_type("io.deephaven.engine.table.ColumnDefinition")
 _JColumnDefinitionType = jpy.get_type("io.deephaven.engine.table.ColumnDefinition$ColumnType")
+_JPrimitiveArrayConversionUtility = jpy.get_type("io.deephaven.integrations.common.PrimitiveArrayConversionUtility")
 
 
 class ColumnType(Enum):
@@ -66,11 +68,12 @@ class InputColumn(Column):
                 self.j_column = _JColumn.empty(self.j_column_header)
             else:
                 if self.data_type.is_primitive:
-                    self.j_column = _JColumn.ofUnsafe(self.name, dtypes.array(self.data_type, self.input_data))
+                    self.j_column = _JColumn.ofUnsafe(self.name, dtypes.array(self.data_type, self.input_data,
+                                                                              remap=dtypes.null_remap(self.data_type)))
                 else:
                     self.j_column = _JColumn.of(self.j_column_header, dtypes.array(self.data_type, self.input_data))
         except Exception as e:
-            raise DHError(e, "failed to create an InputColumn.") from e
+            raise DHError(e, f"failed to create an InputColumn ({self.name}).") from e
 
 
 def bool_col(name: str, data: Sequence) -> InputColumn:
@@ -161,7 +164,7 @@ def float_col(name: str, data: Sequence) -> InputColumn:
     Returns:
         a new input column
     """
-    return InputColumn(name=name, data_type=dtypes.float_, input_data=data)
+    return InputColumn(name=name, data_type=dtypes.float32, input_data=data)
 
 
 def double_col(name: str, data: Sequence) -> InputColumn:
@@ -195,16 +198,18 @@ def datetime_col(name: str, data: Sequence) -> InputColumn:
 
     Args:
         name (str): the column name
-        data (Any): a sequence of Datetime instances
+        data (Any): a sequence of Datetime instances or values that can be converted to Datetime instances
+            (e.g. Instant, int nanoseconds since the Epoch, str, datetime.datetime, numpy.datetime64, pandas.Timestamp).
 
     Returns:
         a new input column
     """
-    return InputColumn(name=name, data_type=dtypes.DateTime, input_data=data)
+    data = _instant_array(data)
+    return InputColumn(name=name, data_type=dtypes.Instant, input_data=data)
 
 
 def pyobj_col(name: str, data: Sequence) -> InputColumn:
-    """ Creates an input column containing complex, non-primitive-like Python objects.
+    """Creates an input column containing complex, non-primitive-like Python objects.
 
     Args:
         name (str): the column name

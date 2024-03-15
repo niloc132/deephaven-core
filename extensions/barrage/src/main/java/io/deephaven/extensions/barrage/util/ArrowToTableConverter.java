@@ -1,23 +1,22 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.extensions.barrage.util;
 
 import com.google.common.io.LittleEndianDataInputStream;
 import com.google.protobuf.CodedInputStream;
 import com.google.rpc.Code;
-import gnu.trove.iterator.TLongIterator;
-import gnu.trove.list.array.TLongArrayList;
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.chunk.ChunkType;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.rowset.RowSetShiftData;
 import io.deephaven.engine.table.impl.util.BarrageMessage;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.extensions.barrage.BarrageSubscriptionOptions;
 import io.deephaven.extensions.barrage.chunk.ChunkInputStreamGenerator;
 import io.deephaven.extensions.barrage.table.BarrageTable;
 import io.deephaven.io.streams.ByteBufferInputStream;
+import io.deephaven.proto.util.Exceptions;
+import io.deephaven.util.annotations.ScriptApi;
 import io.deephaven.util.datastructures.LongSizedDataStructure;
 import org.apache.arrow.flatbuf.Message;
 import org.apache.arrow.flatbuf.MessageHeader;
@@ -28,8 +27,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.locks.Condition;
+import java.util.PrimitiveIterator;
 
 import static io.deephaven.extensions.barrage.util.BarrageProtoUtil.DEFAULT_SER_OPTIONS;
 
@@ -47,12 +47,10 @@ public class ArrowToTableConverter {
     protected BarrageSubscriptionOptions options = DEFAULT_SER_OPTIONS;
 
     private volatile boolean completed = false;
-    private volatile Throwable exceptionWhileCompleting = null;
 
-    private static BarrageProtoUtil.MessageInfo parseArrowIpcMessage(final byte[] ipcMessage) throws IOException {
+    private static BarrageProtoUtil.MessageInfo parseArrowIpcMessage(final ByteBuffer bb) throws IOException {
         final BarrageProtoUtil.MessageInfo mi = new BarrageProtoUtil.MessageInfo();
 
-        final ByteBuffer bb = ByteBuffer.wrap(ipcMessage);
         bb.order(ByteOrder.LITTLE_ENDIAN);
         final int continuation = bb.getInt();
         final int metadata_size = bb.getInt();
@@ -70,7 +68,11 @@ public class ArrowToTableConverter {
         return mi;
     }
 
-    public synchronized void setSchema(final byte[] ipcMessage) {
+    @ScriptApi
+    public synchronized void setSchema(final ByteBuffer ipcMessage) {
+        // The input ByteBuffer instance (especially originated from Python) can't be assumed to be valid after the
+        // return of this method. Until https://github.com/jpy-consortium/jpy/issues/126 is resolved, we need to copy
+        // the data out of the input ByteBuffer to use after the return of this method.
         if (completed) {
             throw new IllegalStateException("Conversion is complete; cannot process additional messages");
         }
@@ -81,7 +83,21 @@ public class ArrowToTableConverter {
         parseSchema((Schema) mi.header.header(new Schema()));
     }
 
-    public synchronized void addRecordBatch(final byte[] ipcMessage) {
+    @ScriptApi
+    public synchronized void addRecordBatches(final ByteBuffer... ipcMessages) {
+        // The input ByteBuffer instance (especially originated from Python) can't be assumed to be valid after the
+        // return of this method. Until https://github.com/jpy-consortium/jpy/issues/126 is resolved, we need to copy
+        // the data out of the input ByteBuffer to use after the return of this method.
+        for (final ByteBuffer ipcMessage : ipcMessages) {
+            addRecordBatch(ipcMessage);
+        }
+    }
+
+    @ScriptApi
+    public synchronized void addRecordBatch(final ByteBuffer ipcMessage) {
+        // The input ByteBuffer instance (especially originated from Python) can't be assumed to be valid after the
+        // return of this method. Until https://github.com/jpy-consortium/jpy/issues/126 is resolved, we need to copy
+        // the data out of the input ByteBuffer to use after the return of this method.
         if (completed) {
             throw new IllegalStateException("Conversion is complete; cannot process additional messages");
         }
@@ -103,6 +119,7 @@ public class ArrowToTableConverter {
         resultTable.handleBarrageMessage(msg);
     }
 
+    @ScriptApi
     public synchronized BarrageTable getResultTable() {
         if (!completed) {
             throw new IllegalStateException("Conversion must be completed prior to requesting the result");
@@ -110,67 +127,39 @@ public class ArrowToTableConverter {
         return resultTable;
     }
 
+    @ScriptApi
     public synchronized void onCompleted() throws InterruptedException {
         if (completed) {
             throw new IllegalStateException("Conversion cannot be completed twice");
         }
-
-        final Condition completedCondition;
-        if (UpdateGraphProcessor.DEFAULT.exclusiveLock().isHeldByCurrentThread()) {
-            completedCondition = UpdateGraphProcessor.DEFAULT.exclusiveLock().newCondition();
-        } else {
-            completedCondition = null;
-        }
-
-        resultTable.sealTable(() -> {
-            completed = true;
-            signalCompletion(completedCondition);
-        }, () -> {
-            exceptionWhileCompleting = new Exception();
-            signalCompletion(completedCondition);
-        });
-
-        while (!completed && exceptionWhileCompleting == null) {
-            // handle the condition where this function may have the exclusive lock
-            if (completedCondition != null) {
-                completedCondition.await();
-            } else {
-                wait(); // ArrowToTableConverter lock
-            }
-        }
-
-        if (exceptionWhileCompleting != null) {
-            throw new UncheckedDeephavenException("Error while sealing result table:", exceptionWhileCompleting);
-        }
-    }
-
-    private void signalCompletion(final Condition completedCondition) {
-        if (completedCondition != null) {
-            UpdateGraphProcessor.DEFAULT.requestSignal(completedCondition);
-        } else {
-            synchronized (ArrowToTableConverter.this) {
-                ArrowToTableConverter.this.notifyAll();
-            }
-        }
+        completed = true;
     }
 
     protected void parseSchema(final Schema header) {
+        // The Schema instance (especially originated from Python) can't be assumed to be valid after the return
+        // of this method. Until https://github.com/jpy-consortium/jpy/issues/126 is resolved, we need to make a copy of
+        // the header to use after the return of this method.
         if (resultTable != null) {
-            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "Schema evolution not supported");
+            throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT, "Schema evolution not supported");
         }
 
         final BarrageUtil.ConvertedArrowSchema result = BarrageUtil.convertArrowSchema(header);
-        resultTable = BarrageTable.make(null, result.tableDef, result.attributes, -1);
+        resultTable = BarrageTable.make(null, result.tableDef, result.attributes, null);
+        resultTable.setFlat();
+
         columnConversionFactors = result.conversionFactors;
-        columnChunkTypes = resultTable.getWireChunkTypes();
-        columnTypes = resultTable.getWireTypes();
-        componentTypes = resultTable.getWireComponentTypes();
+        columnChunkTypes = result.computeWireChunkTypes();
+        columnTypes = result.computeWireTypes();
+        componentTypes = result.computeWireComponentTypes();
 
         // retain reference until the resultTable can be sealed
         resultTable.retainReference();
     }
 
     protected BarrageMessage createBarrageMessage(BarrageProtoUtil.MessageInfo mi, int numColumns) {
+        // The BarrageProtoUtil.MessageInfo instance (especially originated from Python) can't be assumed to be valid
+        // after the return of this method. Until https://github.com/jpy-consortium/jpy/issues/126 is resolved, we need
+        // to make a copy of it to use after the return of this method.
         final BarrageMessage msg = new BarrageMessage();
         final RecordBatch batch = (RecordBatch) mi.header.header(new RecordBatch());
 
@@ -178,7 +167,7 @@ public class ArrowToTableConverter {
                 new FlatBufferIteratorAdapter<>(batch.nodesLength(),
                         i -> new ChunkInputStreamGenerator.FieldNodeInfo(batch.nodes(i)));
 
-        final TLongArrayList bufferInfo = new TLongArrayList(batch.buffersLength());
+        final long[] bufferInfo = new long[batch.buffersLength()];
         for (int bi = 0; bi < batch.buffersLength(); ++bi) {
             int offset = LongSizedDataStructure.intSize("BufferInfo", batch.buffers(bi).offset());
             int length = LongSizedDataStructure.intSize("BufferInfo", batch.buffers(bi).length());
@@ -189,9 +178,9 @@ public class ArrowToTableConverter {
                 // our parsers handle overhanging buffers
                 length += Math.max(0, nextOffset - offset - length);
             }
-            bufferInfo.add(length);
+            bufferInfo[bi] = length;
         }
-        final TLongIterator bufferInfoIter = bufferInfo.iterator();
+        final PrimitiveIterator.OfLong bufferInfoIter = Arrays.stream(bufferInfo).iterator();
 
         msg.rowsRemoved = RowSetFactory.empty();
         msg.shifted = RowSetShiftData.EMPTY;
@@ -213,8 +202,8 @@ public class ArrowToTableConverter {
             }
 
             if (acd.data.get(0).size() != numRowsAdded) {
-                throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT,
-                        "Inconsistent num records per column: " + numRowsAdded + " != " + acd.data.size());
+                throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                        "Inconsistent num records per column: " + numRowsAdded + " != " + acd.data.get(0).size());
             }
             acd.type = columnTypes[ci];
             acd.componentType = componentTypes[ci];
@@ -224,7 +213,7 @@ public class ArrowToTableConverter {
         return msg;
     }
 
-    private BarrageProtoUtil.MessageInfo getMessageInfo(byte[] ipcMessage) {
+    private BarrageProtoUtil.MessageInfo getMessageInfo(ByteBuffer ipcMessage) {
         final BarrageProtoUtil.MessageInfo mi;
         try {
             mi = parseArrowIpcMessage(ipcMessage);
@@ -233,4 +222,6 @@ public class ArrowToTableConverter {
         }
         return mi;
     }
+
+
 }

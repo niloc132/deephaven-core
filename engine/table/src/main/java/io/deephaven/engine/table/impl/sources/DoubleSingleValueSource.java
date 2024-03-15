@@ -1,18 +1,17 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharacterSingleValueSource and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit CharacterSingleValueSource and run "./gradlew replicateSourcesAndChunks" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.chunk.WritableDoubleChunk;
 import io.deephaven.chunk.WritableChunk;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.impl.MutableColumnSourceGetDefaults;
-import io.deephaven.engine.updategraph.LogicalClock;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.chunk.DoubleChunk;
 import io.deephaven.chunk.Chunk;
@@ -31,7 +30,8 @@ import static io.deephaven.util.type.TypeUtils.unbox;
  *
  * (C-haracter is deliberately spelled that way in order to prevent Replicate from altering this very comment).
  */
-public class DoubleSingleValueSource extends SingleValueColumnSource<Double> implements MutableColumnSourceGetDefaults.ForDouble {
+public class DoubleSingleValueSource extends SingleValueColumnSource<Double>
+        implements MutableColumnSourceGetDefaults.ForDouble {
 
     private double current;
     private transient double prev;
@@ -47,7 +47,7 @@ public class DoubleSingleValueSource extends SingleValueColumnSource<Double> imp
     @Override
     public final void set(Double value) {
         if (isTrackingPrevValues) {
-            final long currentStep = LogicalClock.DEFAULT.currentStep();
+            final long currentStep = updateGraph.clock().currentStep();
             if (changeTime < currentStep) {
                 prev = current;
                 changeTime = currentStep;
@@ -60,7 +60,7 @@ public class DoubleSingleValueSource extends SingleValueColumnSource<Double> imp
     @Override
     public final void set(double value) {
         if (isTrackingPrevValues) {
-            final long currentStep = LogicalClock.DEFAULT.currentStep();
+            final long currentStep = updateGraph.clock().currentStep();
             if (changeTime < currentStep) {
                 prev = current;
                 changeTime = currentStep;
@@ -81,13 +81,6 @@ public class DoubleSingleValueSource extends SingleValueColumnSource<Double> imp
     }
 
     @Override
-    public final void setNull(long key) {
-        // region null set
-        set(NULL_DOUBLE);
-        // endregion null set
-    }
-
-    @Override
     public final double getDouble(long rowKey) {
         if (rowKey == RowSequence.NULL_ROW_KEY) {
             return NULL_DOUBLE;
@@ -100,14 +93,15 @@ public class DoubleSingleValueSource extends SingleValueColumnSource<Double> imp
         if (rowKey == RowSequence.NULL_ROW_KEY) {
             return NULL_DOUBLE;
         }
-        if (!isTrackingPrevValues || changeTime < LogicalClock.DEFAULT.currentStep()) {
+        if (!isTrackingPrevValues || changeTime < updateGraph.clock().currentStep()) {
             return current;
         }
         return prev;
     }
 
     @Override
-    public final void fillFromChunk(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src, @NotNull RowSequence rowSequence) {
+    public final void fillFromChunk(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src,
+            @NotNull RowSequence rowSequence) {
         if (rowSequence.size() == 0) {
             return;
         }
@@ -117,7 +111,8 @@ public class DoubleSingleValueSource extends SingleValueColumnSource<Double> imp
     }
 
     @Override
-    public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src, @NotNull LongChunk<RowKeys> keys) {
+    public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src,
+            @NotNull LongChunk<RowKeys> keys) {
         if (keys.size() == 0) {
             return;
         }

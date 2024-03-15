@@ -3,14 +3,13 @@ package client_test
 import (
 	"context"
 	"errors"
-	"sort"
-	"testing"
-	"time"
-
 	"github.com/apache/arrow/go/v8/arrow"
 	"github.com/apache/arrow/go/v8/arrow/array"
 	"github.com/deephaven/deephaven-core/go/internal/test_tools"
 	"github.com/deephaven/deephaven-core/go/pkg/client"
+	"slices"
+	"sort"
+	"testing"
 )
 
 type unaryTableOp func(context.Context, *client.TableHandle) (*client.TableHandle, error)
@@ -18,7 +17,7 @@ type unaryTableOp func(context.Context, *client.TableHandle) (*client.TableHandl
 func applyTableOp(input arrow.Record, t *testing.T, op unaryTableOp) arrow.Record {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	if err != nil {
 		t.Fatalf("NewClient %s", err.Error())
 	}
@@ -210,7 +209,7 @@ func TestEmptyMerge(t *testing.T) {
 func TestExactJoin(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	test_tools.CheckError(t, "NewClient", err)
 	defer c.Close()
 
@@ -258,7 +257,7 @@ func TestExactJoin(t *testing.T) {
 func TestNaturalJoin(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	test_tools.CheckError(t, "NewClient", err)
 	defer c.Close()
 
@@ -306,7 +305,7 @@ func TestNaturalJoin(t *testing.T) {
 func TestCrossJoin(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	test_tools.CheckError(t, "NewClient", err)
 	defer c.Close()
 
@@ -341,6 +340,10 @@ func TestCrossJoin(t *testing.T) {
 	test_tools.CheckError(t, "Snapshot", err)
 	defer leftRec.Release()
 
+	rightRec, err := rightTbl.Snapshot(ctx)
+	test_tools.CheckError(t, "Snapshot", err)
+	defer rightRec.Release()
+
 	resultRec1, err := resultTbl1.Snapshot(ctx)
 	test_tools.CheckError(t, "Snapshot", err)
 	defer resultRec1.Release()
@@ -349,13 +352,18 @@ func TestCrossJoin(t *testing.T) {
 	test_tools.CheckError(t, "Snapshot", err)
 	defer resultRec2.Release()
 
-	if resultRec1.NumRows() >= leftRec.NumRows() {
-		t.Error("resultRec1 was too large")
+	if resultRec1.NumRows() == 0 {
+		t.Error("resultRec1 is empty")
 		return
 	}
 
-	if resultRec2.NumRows() <= leftRec.NumRows() {
-		t.Error("resultRec2 was too small")
+	if resultRec1.NumRows() >= leftRec.NumRows()*rightRec.NumRows() {
+		t.Errorf("resultRec1 is the wrong size: %v >= %v", resultRec1.NumRows(), leftRec.NumRows()*rightRec.NumRows())
+		return
+	}
+
+	if resultRec2.NumRows() != leftRec.NumRows()*rightRec.NumRows() {
+		t.Errorf("resultRec2 is the wrong size: %v != %v", resultRec2.NumRows(), leftRec.NumRows()*rightRec.NumRows())
 		return
 	}
 }
@@ -363,58 +371,53 @@ func TestCrossJoin(t *testing.T) {
 func TestAsOfJoin(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	if err != nil {
 		t.Fatalf("NewClient %s", err.Error())
 	}
 	defer c.Close()
 
-	startTime := time.Now().Add(time.Duration(-2) * time.Second)
+	tempty, err := c.EmptyTable(ctx, 5)
+	test_tools.CheckError(t, "EmptyTable", err)
+	defer tempty.Release(ctx)
 
-	tmp1, err := c.TimeTable(ctx, 100000, startTime)
-	test_tools.CheckError(t, "TimeTable", err)
-	defer tmp1.Release(ctx)
-
-	tt1, err := tmp1.Update(ctx, "Col1 = i")
+	tleft, err := tempty.Update(ctx, "Time = i * 3", "LValue = 100 + i")
 	test_tools.CheckError(t, "Update", err)
-	defer tt1.Release(ctx)
+	defer tleft.Release(ctx)
 
-	tmp2, err := c.TimeTable(ctx, 200000, startTime)
-	test_tools.CheckError(t, "TimeTable", err)
-	defer tmp2.Release(ctx)
-
-	tt2, err := tmp2.Update(ctx, "Col1 = i")
+	tright, err := tempty.Update(ctx, "Time = i * 5", "RValue = 200 + i")
 	test_tools.CheckError(t, "Update", err)
-	defer tt2.Release(ctx)
+	defer tright.Release(ctx)
 
-	normalTbl, err := tt1.AsOfJoin(ctx, tt2, []string{"Col1", "Timestamp"}, nil, client.MatchRuleLessThanEqual)
+	taojLeq, err := tleft.AsOfJoin(ctx, tright, []string{"Time"}, nil, client.MatchRuleLessThanEqual)
 	test_tools.CheckError(t, "AsOfJoin", err)
-	defer normalTbl.Release(ctx)
+	defer taojLeq.Release(ctx)
 
-	reverseTbl, err := tt1.AsOfJoin(ctx, tt2, []string{"Col1", "Timestamp"}, nil, client.MatchRuleGreaterThanEqual)
+	taojGeq, err := tleft.AsOfJoin(ctx, tright, []string{"Time"}, nil, client.MatchRuleGreaterThanEqual)
 	test_tools.CheckError(t, "AsOfJoin", err)
-	defer reverseTbl.Release(ctx)
+	defer taojGeq.Release(ctx)
 
-	ttRec, err := tt1.Snapshot(ctx)
+	leqRec, err := taojLeq.Snapshot(ctx)
 	test_tools.CheckError(t, "Snapshot", err)
-	defer ttRec.Release()
+	defer leqRec.Release()
 
-	normalRec, err := normalTbl.Snapshot(ctx)
+	geqRec, err := taojGeq.Snapshot(ctx)
 	test_tools.CheckError(t, "Snapshot", err)
-	defer normalRec.Release()
+	defer geqRec.Release()
 
-	reverseRec, err := reverseTbl.Snapshot(ctx)
-	test_tools.CheckError(t, "Snapshot", err)
-	defer reverseRec.Release()
+	// Column 2 is the RValue column
+	actualLeqData := leqRec.Column(2).(*array.Int32).Int32Values()
+	actualGeqData := geqRec.Column(2).(*array.Int32).Int32Values()
 
-	if normalRec.NumRows() == 0 || normalRec.NumRows() > ttRec.NumRows() {
-		t.Error("record had wrong size")
-		return
+	expectedLeqData := []int32{200, 200, 201, 201, 202}
+	expectedGeqData := []int32{200, 201, 202, 202, 203}
+
+	if !slices.Equal(expectedLeqData, actualLeqData) {
+		t.Errorf("leq values different expected %v != actual %v", expectedLeqData, actualLeqData)
 	}
 
-	if reverseRec.NumRows() == 0 || reverseRec.NumRows() > ttRec.NumRows() {
-		t.Error("record had wrong size")
-		return
+	if !slices.Equal(expectedGeqData, actualGeqData) {
+		t.Errorf("geq values different: expected %v != actual %v", expectedGeqData, actualGeqData)
 	}
 }
 
@@ -534,7 +537,7 @@ func TestDedicatedAgg(t *testing.T) {
 func TestZeroTable(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	test_tools.CheckError(t, "NewClient", err)
 	defer c.Close()
 
@@ -558,7 +561,7 @@ func TestZeroTable(t *testing.T) {
 func TestReleasedTable(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	test_tools.CheckError(t, "NewClient", err)
 	defer c.Close()
 
@@ -587,11 +590,11 @@ func TestReleasedTable(t *testing.T) {
 func TestDifferentClients(t *testing.T) {
 	ctx := context.Background()
 
-	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	test_tools.CheckError(t, "NewClient", err)
 	defer client1.Close()
 
-	client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	test_tools.CheckError(t, "NewClient", err)
 	defer client2.Close()
 

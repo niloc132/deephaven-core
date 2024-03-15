@@ -1,17 +1,19 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.api.ColumnName;
 import io.deephaven.api.SortColumn;
+import io.deephaven.api.agg.Partition;
+import io.deephaven.base.FileUtils;
 import io.deephaven.base.SleepUtil;
+import io.deephaven.base.log.LogOutput;
 import io.deephaven.base.verify.Assert;
-import io.deephaven.configuration.Configuration;
 import io.deephaven.datastructures.util.CollectionUtil;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryScope;
-import io.deephaven.engine.context.TestExecutionContext;
+import io.deephaven.engine.exceptions.TableInitializationException;
 import io.deephaven.engine.liveness.LivenessScopeStack;
 import io.deephaven.engine.liveness.SingletonLivenessManager;
 import io.deephaven.engine.rowset.RowSet;
@@ -25,18 +27,22 @@ import io.deephaven.engine.testutil.generator.IntGenerator;
 import io.deephaven.engine.testutil.generator.SetGenerator;
 import io.deephaven.engine.testutil.generator.SortedLongGenerator;
 import io.deephaven.engine.testutil.testcase.RefreshingTableTestCase;
-import io.deephaven.engine.updategraph.LogicalClock;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.engine.updategraph.NotificationQueue;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.util.systemicmarking.SystemicObjectTracker;
-import io.deephaven.io.logger.StreamLoggerImpl;
+import io.deephaven.parquet.table.ParquetInstructions;
+import io.deephaven.parquet.table.ParquetTools;
 import io.deephaven.test.types.OutOfBandTest;
 import io.deephaven.util.SafeCloseable;
-import io.deephaven.util.process.ProcessEnvironment;
 import junit.framework.TestCase;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.junit.experimental.categories.Category;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -45,6 +51,8 @@ import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import static io.deephaven.api.agg.Aggregation.AggLast;
+import static io.deephaven.api.agg.Aggregation.AggSum;
 import static io.deephaven.engine.testutil.TstUtils.*;
 import static io.deephaven.engine.util.TableTools.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,10 +62,6 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
 
     @Override
     public void setUp() throws Exception {
-        if (null == ProcessEnvironment.tryGet()) {
-            ProcessEnvironment.basicServerInitialization(Configuration.getInstance(),
-                    "TestTransformablePartitionedTableThenMerge", new StreamLoggerImpl());
-        }
         super.setUp();
         setExpectError(false);
     }
@@ -81,7 +85,8 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
 
         assertTableEquals(mergedByK, withK);
 
-        UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.runWithinUnitTestCycle(() -> {
             addToTable(queryTable, i(3, 9), col("Sym", "cc", "cc"), col("intCol", 30, 90), col("doubleCol", 2.3, 2.9));
             queryTable.notifyListeners(i(3, 9), i(), i());
         });
@@ -115,7 +120,8 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
 
         assertTableEquals(mergedByK, withK);
 
-        UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.runWithinUnitTestCycle(() -> {
             addToTable(queryTable, i(3, 9), col("Sym", "cc", "cc"), col("intCol", 30, 90), col("doubleCol", 2.3, 2.9));
             queryTable.notifyListeners(i(3, 9), i(), i());
         });
@@ -219,6 +225,9 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                 rightTable.partitionedAggBy(List.of(), true, testTable(col("Sym", "aa", "bb", "cc", "dd")), "Sym");
         final PartitionedTable.Proxy rightProxy = rightPT.proxy(false, false);
 
+        final Table initialKeys = newTable(col("Sym", "cc", "dd", "aa", "bb"), intCol("intCol", 0, 2, 3, 4));
+        final PartitionedTable.Proxy initialKeysProxy = initialKeys.partitionBy("Sym").proxy();
+
         final EvalNuggetInterface[] en = new EvalNuggetInterface[] {
                 new EvalNugget() {
                     public Table e() {
@@ -236,15 +245,29 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                         leftProxy.naturalJoin(rightTable.lastBy("Sym"), "Sym").target().merge().sort("K", "Sym")),
                 new QueryTableTest.TableComparator(withK.naturalJoin(rightTable.lastBy("Sym"), "Sym").sort("K", "Sym"),
                         leftProxy.naturalJoin(rightProxy.lastBy(), "Sym").target().merge().sort("K", "Sym")),
+                new QueryTableTest.TableComparator(
+                        withK.aggBy(List.of(AggLast("K"), AggSum("doubleCol")), "Sym", "intCol").sort("Sym", "intCol"),
+                        leftProxy.aggBy(List.of(AggLast("Sym", "K"), AggSum("doubleCol")), "intCol").target().merge()
+                                .moveColumnsUp("Sym").sort("Sym", "intCol")),
+                new QueryTableTest.TableComparator(
+                        withK.aggBy(List.of(AggLast("K"), AggSum("doubleCol")), false, initialKeys,
+                                ColumnName.from("Sym", "intCol")).sort("Sym", "intCol"),
+                        leftProxy.aggBy(List.of(AggLast("K"), AggSum("doubleCol")), false, initialKeys,
+                                ColumnName.from("Sym", "intCol")).target().merge().sort("Sym", "intCol")),
+                new QueryTableTest.TableComparator(
+                        withK.aggBy(List.of(AggLast("K"), AggSum("doubleCol")), false, initialKeys,
+                                ColumnName.from("Sym", "intCol")).sort("Sym", "intCol"),
+                        leftProxy.aggBy(List.of(AggLast("K"), AggSum("doubleCol")), false, initialKeysProxy,
+                                ColumnName.from("Sym", "intCol")).target().merge().sort("Sym", "intCol")),
         };
-
         for (int i = 0; i < 100; i++) {
             simulateShiftAwareStep(size, random, table, columnInfo, en);
         }
     }
 
     public void testTransformPartitionedTableThenMerge() {
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(false, true, 0, 4, 10, 5);
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.resetForUnitTests(false, true, 0, 4, 10, 5);
 
         final QueryTable sourceTable = testRefreshingTable(i(1).toTracking(),
                 intCol("Key", 1), intCol("Sentinel", 1), col("Sym", "a"), doubleCol("DoubleCol", 1.1));
@@ -282,7 +305,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         final int iterations = SHORT_TESTS ? 40 : 100;
         for (int ii = 0; ii < iterations; ++ii) {
             final int iteration = ii + 1;
-            UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+            updateGraph.runWithinUnitTestCycle(() -> {
                 final long baseLocation = iteration * 10L;
                 final RowSet addRowSet = RowSetFactory.fromRange(baseLocation, baseLocation + 4);
                 final int[] sentinels =
@@ -365,12 +388,13 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         final Table mergedResult = result.target().merge();
         TableTools.show(mergedResult);
 
-        UpdateGraphProcessor.DEFAULT.startCycleForUnitTests();
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.startCycleForUnitTests();
         addToTable(left, i(8), col("USym", "bb"), col("Sym", "aa_1"), col("LeftSentinel", 80));
 
         allowingError(() -> {
             left.notifyListeners(i(8), i(), i());
-            UpdateGraphProcessor.DEFAULT.completeCycleForUnitTests();
+            updateGraph.completeCycleForUnitTests();
         }, throwables -> {
             // We should deliver a failure to every dependent node
             TestCase.assertTrue(getUpdateErrors().size() > 0);
@@ -392,18 +416,85 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         final Table aa2 = aa.update("S2=Sentinel * 2");
         TableTools.show(aa2);
 
-        UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(
-                () -> TestCase.assertTrue(aa2.satisfied(LogicalClock.DEFAULT.currentStep())));
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.runWithinUnitTestCycle(() -> TestCase.assertTrue(aa2.satisfied(updateGraph.clock().currentStep())));
 
-        UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+        // We need to flush one notification: one for the source table because we do not require an intermediate
+        // view table in this case
+        updateGraph.runWithinUnitTestCycle(() -> {
             addToTable(sourceTable, i(8), col("USym", "bb"), col("Sentinel", 80));
             sourceTable.notifyListeners(i(8), i(), i());
-            TestCase.assertFalse(aa2.satisfied(LogicalClock.DEFAULT.currentStep()));
+            TestCase.assertFalse(aa2.satisfied(updateGraph.clock().currentStep()));
             // We need to flush one notification: one for the source table because we do not require an intermediate
             // view table in this case
-            final boolean flushed = UpdateGraphProcessor.DEFAULT.flushOneNotificationForUnitTests();
+            final boolean flushed = updateGraph.flushOneNotificationForUnitTests();
             TestCase.assertTrue(flushed);
-            TestCase.assertTrue(aa2.satisfied(LogicalClock.DEFAULT.currentStep()));
+            TestCase.assertTrue(aa2.satisfied(updateGraph.clock().currentStep()));
+        });
+    }
+
+    public void testTransformDependencies() {
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+
+        final QueryTable sourceTable = testRefreshingTable(i(1, 2, 4, 6).toTracking(),
+                col("USym", "aa", "bb", "aa", "bb"),
+                col("Sentinel", 10, 20, 40, 60));
+
+        final QueryTable extraTable = testRefreshingTable(i(0).toTracking(),
+                col("Value", "0.2"));
+        final MutableBoolean extraParentSatisfied = new MutableBoolean(false);
+        final NotificationQueue.Dependency extraParentDependency = new NotificationQueue.Dependency() {
+            @Override
+            public boolean satisfied(long step) {
+                return extraParentSatisfied.booleanValue();
+            }
+
+            @Override
+            public UpdateGraph getUpdateGraph() {
+                return updateGraph;
+            }
+
+            @Override
+            public LogOutput append(LogOutput logOutput) {
+                return logOutput.append("extra dependency");
+            }
+        };
+        extraTable.addParentReference(extraParentDependency);
+
+        final PartitionedTable partitioned = sourceTable.partitionBy("USym");
+        final PartitionedTable transformed = partitioned.transform(t -> t.join(extraTable), extraTable);
+
+        // We need to flush one notification: one for the source table because we do not require an intermediate
+        // view table in this case
+        updateGraph.runWithinUnitTestCycle(() -> {
+            // Add "dd" to source
+            addToTable(sourceTable, i(8), col("USym", "dd"), col("Sentinel", 80));
+            sourceTable.notifyListeners(i(8), i(), i());
+            TestCase.assertTrue(updateGraph.flushOneNotificationForUnitTests());
+
+            // PartitionBy has processed "dd"
+            TestCase.assertTrue(partitioned.table().satisfied(updateGraph.clock().currentStep()));
+            TestCase.assertNotNull(partitioned.constituentFor("dd"));
+
+            // Transform has not processed "dd" yet
+            TestCase.assertFalse(transformed.table().satisfied(updateGraph.clock().currentStep()));
+            TestCase.assertNull(transformed.constituentFor("dd"));
+
+            // Flush the notification for transform's internal copy() of partitioned.table()
+            TestCase.assertTrue(updateGraph.flushOneNotificationForUnitTests());
+
+            // Add a row to extra
+            addToTable(extraTable, i(1), col("Value", "0.3"));
+            extraTable.notifyListeners(i(1), i(), i());
+            TestCase.assertFalse(updateGraph.flushOneNotificationForUnitTests(true)); // Fail to update anything
+
+            extraParentSatisfied.setTrue(); // Allow updates to propagate
+            updateGraph.flushAllNormalNotificationsForUnitTests();
+
+            TestCase.assertTrue(transformed.table().satisfied(updateGraph.clock().currentStep()));
+            final Table transformedDD = transformed.constituentFor("dd");
+            TestCase.assertTrue(transformedDD.satisfied(updateGraph.clock().currentStep()));
+            TestCase.assertEquals(2, transformedDD.size());
         });
     }
 
@@ -446,7 +537,8 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
     }
 
     public void testCrossDependencies() {
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(false, true, 0, 2, 0, 0);
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.resetForUnitTests(false, true, 0, 2, 0, 0);
 
         final QueryTable sourceTable = testRefreshingTable(i(1, 2).toTracking(),
                 col("USym", "aa", "bb"),
@@ -472,8 +564,10 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                 .captureQueryCompiler()
                 .build();
         final PartitionedTable result2 =
-                sourceTable2.update("SlowItDown=pauseHelper.pauseValue(k)").partitionBy("USym2")
-                        .transform(executionContext, t -> t.update("SlowItDown2=pauseHelper2.pauseValue(2 * k)"), true);
+                sourceTable2.update("SlowItDown=pauseHelper.pauseValue(k)").partitionBy("USym2").transform(
+                        executionContext, t -> t.withAttributes(Map.of(BaseTable.TEST_SOURCE_TABLE_ATTRIBUTE, "true"))
+                                .update("SlowItDown2=pauseHelper2.pauseValue(2 * k)"),
+                        true);
 
         // pauseHelper.pause();
         pauseHelper2.pause();
@@ -484,7 +578,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         });
         final Table merged = joined.merge();
 
-        UpdateGraphProcessor.DEFAULT.startCycleForUnitTests();
+        updateGraph.startCycleForUnitTests();
         addToTable(sourceTable, i(3), col("USym", "cc"), col("Sentinel", 30));
         addToTable(sourceTable2, i(7, 9), col("USym2", "cc", "dd"), col("Sentinel2", 70, 90));
         System.out.println("Launching Notifications");
@@ -502,7 +596,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
             System.out.println("Released.");
         }).start();
 
-        UpdateGraphProcessor.DEFAULT.completeCycleForUnitTests();
+        updateGraph.completeCycleForUnitTests();
 
         pauseHelper2.pause();
 
@@ -510,7 +604,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         TableTools.showWithRowSet(sourceTable);
         TableTools.showWithRowSet(sourceTable2);
 
-        UpdateGraphProcessor.DEFAULT.startCycleForUnitTests();
+        updateGraph.startCycleForUnitTests();
         addToTable(sourceTable, i(4, 5), col("USym", "cc", "dd"), col("Sentinel", 40, 50));
         addToTable(sourceTable2, i(8, 10), col("USym2", "cc", "dd"), col("Sentinel2", 80, 100));
         removeRows(sourceTable2, i(7, 9));
@@ -530,13 +624,14 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
             System.out.println("Released.");
         }).start();
 
-        UpdateGraphProcessor.DEFAULT.completeCycleForUnitTests();
+        updateGraph.completeCycleForUnitTests();
 
         TableTools.showWithRowSet(merged);
     }
 
     public void testCrossDependencies2() {
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(false, true, 0, 2, 0, 0);
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.resetForUnitTests(false, true, 0, 2, 0, 0);
 
         final QueryTable sourceTable = testRefreshingTable(i(1, 2).toTracking(),
                 col("USym", "aa", "bb"),
@@ -558,8 +653,10 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                 .captureQueryLibrary()
                 .captureQueryCompiler()
                 .build();
-        final PartitionedTable result2 = sourceTable2.partitionBy("USym2")
-                .transform(executionContext, t -> t.update("SlowItDown2=pauseHelper.pauseValue(2 * k)"), true);
+        final PartitionedTable result2 = sourceTable2.partitionBy("USym2").transform(executionContext,
+                t -> t.withAttributes(Map.of(BaseTable.TEST_SOURCE_TABLE_ATTRIBUTE, "true"))
+                        .update("SlowItDown2=pauseHelper.pauseValue(2 * k)"),
+                true);
 
         final PartitionedTable joined = result.partitionedTransform(result2, (l, r) -> {
             System.out.println("Doing naturalJoin");
@@ -568,7 +665,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         final Table merged = joined.merge();
 
         pauseHelper.pause();
-        UpdateGraphProcessor.DEFAULT.startCycleForUnitTests();
+        updateGraph.startCycleForUnitTests();
         addToTable(sourceTable, i(5), col("USym", "dd"), col("Sentinel", 50));
         addToTable(sourceTable2, i(10), col("USym2", "dd"), col("Sentinel2", 100));
         removeRows(sourceTable2, i(9));
@@ -587,7 +684,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
             System.out.println("Released.");
         }).start();
 
-        UpdateGraphProcessor.DEFAULT.completeCycleForUnitTests();
+        updateGraph.completeCycleForUnitTests();
 
         TableTools.showWithRowSet(merged);
     }
@@ -611,7 +708,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
 
         final SingletonLivenessManager manager = new SingletonLivenessManager(partitionedTable);
 
-        UpdateGraphProcessor.DEFAULT.exclusiveLock().doLocked(scopeCloseable::close);
+        ExecutionContext.getContext().getUpdateGraph().exclusiveLock().doLocked(scopeCloseable::close);
 
         if (refreshing) {
             org.junit.Assert.assertTrue(partitionedTable.tryRetainReference());
@@ -624,9 +721,9 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         final SafeCloseable scopeCloseable2 = LivenessScopeStack.open();
         final Table valueAgain = partitionedTable.constituentFor("A");
         assertSame(value, valueAgain);
-        UpdateGraphProcessor.DEFAULT.exclusiveLock().doLocked(scopeCloseable2::close);
+        ExecutionContext.getContext().getUpdateGraph().exclusiveLock().doLocked(scopeCloseable2::close);
 
-        UpdateGraphProcessor.DEFAULT.exclusiveLock().doLocked(manager::release);
+        ExecutionContext.getContext().getUpdateGraph().exclusiveLock().doLocked(manager::release);
 
         org.junit.Assert.assertFalse(value.tryRetainReference());
         org.junit.Assert.assertFalse(partitionedTable.tryRetainReference());
@@ -673,7 +770,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         final int seed = 0;
         final Random random = new Random(seed);
 
-        final int size = 10_000;
+        final int size = 8_000;
         final ColumnInfo<?, ?>[] columnInfo;
         final QueryTable table = getTable(size, random,
                 columnInfo = initColumnInfos(new String[] {"Sym", "IntCol", "DoubleCol"},
@@ -770,9 +867,10 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         final ModifiedColumnSet modifiedColumnSet = base.getModifiedColumnSetForUpdates();
         modifiedColumnSet.clear();
         modifiedColumnSet.setAll("II");
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
         while (step.incrementAndGet() <= 100) {
             final boolean evenStep = step.longValue() % 2 == 0;
-            UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+            updateGraph.runWithinUnitTestCycle(() -> {
                 base.notifyListeners(new TableUpdateImpl(
                         RowSetFactory.empty(),
                         RowSetFactory.empty(),
@@ -805,7 +903,8 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         refreshingTable.setRefreshing(true);
         final Table mergedTable = PartitionedTableFactory.ofTables(staticTable, refreshingTable).merge();
         assertTableEquals(mergedTable, emptyTable(200).update("II=ii"));
-        UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.runWithinUnitTestCycle(() -> {
             mergedTable.getRowSet().writableCast().removeRange(0, 1);
             ((BaseTable<?>) mergedTable).notifyListeners(i(), RowSetFactory.fromRange(0, 1), i());
         });
@@ -821,7 +920,7 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                 getRandomIntCol("e", 100, random));
         final PartitionedTable partitionedTable = testTable.partitionBy("c");
         final Proxy selfPtProxy = partitionedTable.proxy();
-        final Table triggerTable = timeTable("00:00:01");
+        final Table triggerTable = timeTable("PT00:00:01");
         final Proxy ptProxy = selfPtProxy.snapshotWhen(triggerTable);
         assertThat(ptProxy.target().constituentDefinition().numColumns()).isEqualTo(6);
         for (Table constituent : ptProxy.target().constituents()) {
@@ -830,21 +929,24 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
     }
 
     private EvalNugget newExecutionContextNugget(
-            QueryTable table, Function<PartitionedTable.Proxy, PartitionedTable.Proxy> op) {
+            String name,
+            QueryTable table,
+            Function<PartitionedTable.Proxy, PartitionedTable.Proxy> op) {
         return new EvalNugget() {
             @Override
             protected Table e() {
                 // note we cannot reuse the execution context and remove the values as the table is built each iteration
                 try (final SafeCloseable ignored = ExecutionContext.newBuilder()
+                        .newQueryScope()
                         .captureQueryCompiler()
                         .captureQueryLibrary()
-                        .newQueryScope()
                         .build().open()) {
 
                     ExecutionContext.getContext().getQueryScope().putParam("queryScopeVar", "queryScopeValue");
                     ExecutionContext.getContext().getQueryScope().putParam("queryScopeFilter", 50000);
 
-                    final PartitionedTable.Proxy proxy = table.partitionedAggBy(List.of(), true, null, "intCol")
+                    final PartitionedTable.Proxy proxy = table
+                            .partitionedAggBy(List.of(Partition.of(name + "Constituent")), true, null, "intCol")
                             .proxy(false, false);
                     final Table result = op.apply(proxy).target().merge().sort("intCol");
 
@@ -868,12 +970,14 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
                         new SortedLongGenerator(0, Long.MAX_VALUE - 1)));
 
         final EvalNuggetInterface[] en = new EvalNuggetInterface[] {
-                newExecutionContextNugget(table, src -> src.update("K = queryScopeVar")),
-                newExecutionContextNugget(table, src -> src.updateView("K = queryScopeVar")),
-                newExecutionContextNugget(table, src -> src.select("K = queryScopeVar", "indices", "intCol")),
-                newExecutionContextNugget(table, src -> src.view("K = queryScopeVar", "indices", "intCol")),
-                newExecutionContextNugget(table, src -> src.where("intCol > queryScopeFilter")),
-                newExecutionContextNugget(table, src -> src.update("X = 0", "Y = X")),
+                newExecutionContextNugget("UpdateNugget1", table, src -> src.update("K = queryScopeVar")),
+                newExecutionContextNugget("UpdateViewNugget", table, src -> src.updateView("K = queryScopeVar")),
+                newExecutionContextNugget("SelectNugget", table,
+                        src -> src.select("K = queryScopeVar", "indices", "intCol")),
+                newExecutionContextNugget("ViewNugget", table,
+                        src -> src.view("K = queryScopeVar", "indices", "intCol")),
+                newExecutionContextNugget("WhereNugget", table, src -> src.where("intCol > queryScopeFilter")),
+                newExecutionContextNugget("UpdateNugget2", table, src -> src.update("X = 0", "Y = X")),
         };
 
         for (int i = 0; i < 100; i++) {
@@ -882,7 +986,8 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
     }
 
     public void testTransformDependencyCorrectness() {
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(false, true, 0, 2, 0, 0);
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.resetForUnitTests(false, true, 0, 2, 0, 0);
 
         final Table input = emptyTable(2).update("First=ii", "Second=100*ii");
         input.setRefreshing(true);
@@ -892,7 +997,11 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         filter.getRowSet().writableCast().remove(1);
 
         final PartitionedTable partitioned = input.partitionBy("First");
-        final ExecutionContext executionContext = TestExecutionContext.createForUnitTests();
+        final ExecutionContext executionContext = ExecutionContext.newBuilder()
+                .emptyQueryScope()
+                .newQueryLibrary()
+                .captureQueryCompiler()
+                .build();
         final PartitionedTable transformed = partitioned.transform(executionContext, tableIn -> {
             final QueryTable tableOut = (QueryTable) tableIn.getSubTable(tableIn.getRowSet());
             tableIn.addUpdateListener(new BaseTable.ListenerImpl("Slow Listener", tableIn, tableOut) {
@@ -921,13 +1030,13 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
 
         TestCase.assertEquals(1, filteredTransformed.table().size());
 
-        UpdateGraphProcessor.DEFAULT.startCycleForUnitTests();
+        updateGraph.startCycleForUnitTests();
         try {
             ((BaseTable<?>) input).notifyListeners(i(), i(), i(1));
             filter.getRowSet().writableCast().insert(1);
             ((BaseTable<?>) filter).notifyListeners(i(1), i(), i());
         } finally {
-            UpdateGraphProcessor.DEFAULT.completeCycleForUnitTests();
+            updateGraph.completeCycleForUnitTests();
         }
 
         TestCase.assertEquals(2, filteredTransformed.table().size());
@@ -961,13 +1070,44 @@ public class PartitionedTableTest extends RefreshingTableTestCase {
         try {
             partitionedTable.transform(t -> t.join(refreshingInput, "c", "c2=c"));
             TestCase.fail("Expected exception");
-        } catch (IllegalStateException expected) {
+        } catch (TableInitializationException expected) {
+            Assert.eqTrue(expected.getCause().getClass() == IllegalStateException.class,
+                    "expected.getCause().getClass() instanceof IllegalStateException");
         }
 
         try {
             partitionedTable.partitionedTransform(partitionedTable, (t, u) -> t.join(refreshingInput, "c", "c2=c"));
             TestCase.fail("Expected exception");
-        } catch (IllegalStateException expected) {
+        } catch (TableInitializationException expected) {
+            Assert.eqTrue(expected.getCause().getClass() == IllegalStateException.class,
+                    "expected.getCause().getClass() instanceof IllegalStateException");
+        }
+    }
+
+    public void testPartitionedTableSort() throws IOException {
+        final File tmpDir = Files.createTempDirectory("PartitionedTableTest-").toFile();
+        try {
+            final ParquetInstructions instructions = ParquetInstructions.builder().useDictionary("I", true).build();
+            Table a = emptyTable(200).update("I = `` + (50 + (ii % 100))", "K = ii");
+            Table b = emptyTable(200).update("I = `` + (ii % 100)", "K = ii");
+            ParquetTools.writeTable(a, new java.io.File(tmpDir + "/Partition=p0/data.parquet"), instructions);
+            ParquetTools.writeTable(b, new java.io.File(tmpDir + "/Partition=p1/data.parquet"), instructions);
+            a = a.updateView("Partition = `p0`").moveColumnsUp("Partition");
+            b = b.updateView("Partition = `p1`").moveColumnsUp("Partition");
+
+            final Table fromDisk = ParquetTools.readTable(tmpDir);
+
+            // Assert non-partitioned table sorts.
+            final Table diskOuterSort = fromDisk.sort("I");
+            final Table exOuterSort = TableTools.merge(a, b).sort("I");
+            assertTableEquals(exOuterSort, diskOuterSort);
+
+            // Assert partitioned table sorts.
+            final Table diskInnerSort = fromDisk.partitionBy("Partition").proxy().sort("I").target().merge();
+            final Table exInnerSort = TableTools.merge(a.sort("I"), b.sort("I"));
+            assertTableEquals(exInnerSort, diskInnerSort);
+        } finally {
+            FileUtils.deleteRecursively(tmpDir);
         }
     }
 }

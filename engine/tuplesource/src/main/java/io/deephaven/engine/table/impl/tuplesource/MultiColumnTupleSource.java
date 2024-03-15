@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.tuplesource;
 
 import io.deephaven.chunk.attributes.Values;
@@ -14,7 +14,6 @@ import io.deephaven.util.SafeCloseable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -166,8 +165,8 @@ final class MultiColumnTupleSource implements TupleSource<ArrayTuple>, DefaultCh
 
         @Override
         public void close() {
-            SafeCloseable.closeArray(underlyingContexts);
-            SafeCloseable.closeArray(boxers);
+            SafeCloseable.closeAll(underlyingContexts);
+            SafeCloseable.closeAll(boxers);
         }
     }
 

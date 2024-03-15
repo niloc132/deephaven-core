@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.qst.table;
 
 import io.deephaven.annotations.NodeStyle;
@@ -39,8 +39,7 @@ public abstract class InMemoryKeyBackedInputTable extends InputTableBase {
     }
 
     @Override
-    public final <V extends InputTable.Visitor> V walk(V visitor) {
-        visitor.visit(this);
-        return visitor;
+    public final <R> R walk(InputTable.Visitor<R> visitor) {
+        return visitor.visit(this);
     }
 }

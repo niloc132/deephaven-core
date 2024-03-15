@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.python.server;
 
 import dagger.Component;
+import io.deephaven.client.ClientDefaultsModule;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.integrations.python.PyLogOutputStream;
@@ -12,7 +13,8 @@ import io.deephaven.io.log.LogLevel;
 import io.deephaven.io.logger.LogBuffer;
 import io.deephaven.io.logger.LogBufferOutputStream;
 import io.deephaven.server.auth.CommunityAuthorizationModule;
-import io.deephaven.server.console.SessionToExecutionStateModule;
+import io.deephaven.time.calendar.CalendarsFromConfigurationModule;
+import io.deephaven.server.console.ExecutionContextModule;
 import io.deephaven.server.console.groovy.GroovyConsoleSessionModule;
 import io.deephaven.server.console.python.PythonConsoleSessionModule;
 import io.deephaven.server.console.python.PythonGlobalScopeModule;
@@ -26,11 +28,10 @@ import io.deephaven.server.runner.DeephavenApiConfigModule;
 import io.deephaven.server.runner.DeephavenApiServer;
 import io.deephaven.server.runner.DeephavenApiServerModule;
 import io.deephaven.server.runner.MainHelper;
-import io.deephaven.server.util.Scheduler;
+import io.deephaven.server.session.ObfuscatingErrorTransformerModule;
 import org.jpy.PyModule;
 import org.jpy.PyObject;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -52,8 +53,11 @@ public class EmbeddedServer {
             HealthCheckModule.class,
             PythonConsoleSessionModule.class,
             GroovyConsoleSessionModule.class,
-            SessionToExecutionStateModule.class,
+            ExecutionContextModule.class,
             CommunityAuthorizationModule.class,
+            ClientDefaultsModule.class,
+            ObfuscatingErrorTransformerModule.class,
+            CalendarsFromConfigurationModule.class,
     })
     public interface PythonServerComponent extends JettyServerComponent {
         @Component.Builder
@@ -65,8 +69,6 @@ public class EmbeddedServer {
 
     @Inject
     DeephavenApiServer server;
-    @Inject
-    Scheduler scheduler;
     @Inject
     Provider<ScriptSession> scriptSession;
 
@@ -98,38 +100,15 @@ public class EmbeddedServer {
                 .withErr(null)
                 .build()
                 .injectFields(this);
+
+        // We need to open the systemic execution context to permanently install the contexts for this thread.
+        scriptSession.get().getExecutionContext().open();
     }
 
     public void start() throws Exception {
         server.run();
 
-        final ScriptSession scriptSession = this.scriptSession.get();
-        checkGlobals(scriptSession, null);
-        Bootstrap.printf("Server started on port %d%n", server.server().getPort());
-
-        // We need to open the systemic execution context to permanently install the contexts for this thread.
-        scriptSession.getExecutionContext().open();
-    }
-
-    private void checkGlobals(ScriptSession scriptSession, @Nullable ScriptSession.SnapshotScope lastSnapshot) {
-        // TODO deephaven-core#2453 make this more generic, ideally by pushing this in whole or part into script session
-        ScriptSession.SnapshotScope nextSnapshot;
-        try {
-            nextSnapshot = scriptSession.snapshot(lastSnapshot);
-        } catch (IllegalStateException e) {
-            if (e.getMessage().startsWith("Expected transition from=")) {
-                // We are limited in how we can track external changes, and the web IDE has made this change and
-                // already applied it.
-                // Take a fresh snapshot right away to continue polling
-                nextSnapshot = scriptSession.snapshot();
-            } else {
-                throw e;
-            }
-        }
-        ScriptSession.SnapshotScope s = nextSnapshot;
-        scheduler.runAfterDelay(100, () -> {
-            checkGlobals(scriptSession, s);
-        });
+        Bootstrap.printf("Server started on port %d%n", getPort());
     }
 
     public int getPort() {

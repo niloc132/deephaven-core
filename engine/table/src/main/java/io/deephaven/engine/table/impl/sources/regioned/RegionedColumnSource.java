@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.engine.table.ColumnDefinition;
@@ -9,7 +9,6 @@ import io.deephaven.engine.table.impl.locations.ColumnLocation;
 import io.deephaven.engine.table.impl.sources.DeferredGroupingColumnSource;
 import io.deephaven.engine.table.impl.ImmutableColumnSource;
 import io.deephaven.engine.rowset.RowSet;
-import io.deephaven.engine.rowset.TrackingWritableRowSet;
 import io.deephaven.util.annotations.VisibleForTesting;
 import org.jetbrains.annotations.NotNull;
 
@@ -111,4 +110,12 @@ public interface RegionedColumnSource<DATA_TYPE>
      */
     int addRegion(@NotNull final ColumnDefinition<?> columnDefinition,
             @NotNull final ColumnLocation columnLocation);
+
+    /**
+     * Invalidate the specified region. An invalidated region will throw an exception on any read attempt if it cannot
+     * be completed consistently and correctly.
+     *
+     * @param regionIndex the region to invalidate
+     */
+    void invalidateRegion(int regionIndex);
 }

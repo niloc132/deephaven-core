@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.io.streams;
 
 import java.nio.ByteBuffer;
@@ -10,7 +10,7 @@ public interface ByteBufferSink {
     /**
      * Dispose of the contents of the buffer b, probably by writing them to a channel, and return a new buffer in which
      * writing can continue. The returned buffer must have at least need bytes of space remaining. The return value may
-     * be the same buffer, as long as it's remaining() value has been increased to be >= need.
+     * be the same buffer, as long as it's remaining() value has been increased to be &gt;= need.
      * 
      * @param b the buffer whose contents need to be disposed of.
      * @return the buffer in which further output should be written.

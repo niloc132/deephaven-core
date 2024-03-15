@@ -1,13 +1,14 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharacterSparseArraySource and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit CharacterSparseArraySource and run "./gradlew replicateSourcesAndChunks" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.sources;
 
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.impl.DefaultGetContext;
 import io.deephaven.chunk.*;
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeyRanges;
@@ -15,15 +16,14 @@ import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeys;
 import io.deephaven.engine.rowset.RowSet;
-import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.impl.MutableColumnSourceGetDefaults;
-import io.deephaven.engine.updategraph.LogicalClock;
 import io.deephaven.engine.updategraph.UpdateCommitter;
 import io.deephaven.engine.table.impl.sources.sparse.IntOneOrN;
 import io.deephaven.engine.table.impl.sources.sparse.LongOneOrN;
 import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.util.SoftRecycler;
 import gnu.trove.list.array.TLongArrayList;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
@@ -44,7 +44,8 @@ import static io.deephaven.engine.table.impl.sources.sparse.SparseConstants.*;
  *
  * (C-haracter is deliberately spelled that way in order to prevent Replicate from altering this very comment).
  */
-public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> implements MutableColumnSourceGetDefaults.ForInt {
+public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer>
+        implements MutableColumnSourceGetDefaults.ForInt /* MIXIN_IMPLS */ {
     // region recyclers
     private static final SoftRecycler<int[]> recycler = new SoftRecycler<>(DEFAULT_RECYCLER_CAPACITY,
             () -> new int[BLOCK_SIZE], null);
@@ -64,15 +65,15 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     protected transient UpdateCommitter<IntegerSparseArraySource> prevFlusher = null;
 
     /**
-     * If ensure previous has been called, we need not check previous values when filling.
+     * If prepareForParallelPopulation has been called, we need not check previous values when filling.
      */
-    private transient long ensurePreviousClockCycle = -1;
+    private transient long prepareForParallelPopulationClockCycle = -1;
 
     /**
      * Our previous page table could be very sparse, and we do not want to read through millions of nulls to find out
-     * what blocks to recycle.  Instead we maintain a list of blocks that we have allocated (as the key shifted by
-     * BLOCK0_SHIFT).  We recycle those blocks in the PrevFlusher; and accumulate the set of blocks that must be
-     * recycled from the next level array, and so on until we recycle the top-level prevBlocks and prevInUse arrays.
+     * what blocks to recycle. Instead we maintain a list of blocks that we have allocated (as the key shifted by
+     * BLOCK0_SHIFT). We recycle those blocks in the PrevFlusher; and accumulate the set of blocks that must be recycled
+     * from the next level array, and so on until we recycle the top-level prevBlocks and prevInUse arrays.
      */
     private transient final TLongArrayList blocksToFlush = new TLongArrayList();
 
@@ -94,7 +95,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     // region setNull
     @Override
     public void setNull(long key) {
-        final int [] blocks2 = blocks.getInnermostBlockByKeyOrNull(key);
+        final int[] blocks2 = blocks.getInnermostBlockByKeyOrNull(key);
         if (blocks2 == null) {
             return;
         }
@@ -103,7 +104,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
             return;
         }
 
-        final int [] prevBlocksInner = shouldRecordPrevious(key);
+        final int[] prevBlocksInner = shouldRecordPrevious(key);
         if (prevBlocksInner != null) {
             prevBlocksInner[indexWithinBlock] = blocks2[indexWithinBlock];
         }
@@ -118,8 +119,8 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
         final int block2 = (int) (key >> BLOCK2_SHIFT) & BLOCK2_MASK;
         final int indexWithinBlock = (int) (key & INDEX_MASK);
 
-        final int [] blocksInner = ensureBlock(block0, block1, block2);
-        final int [] prevBlocksInner = shouldRecordPrevious(key);
+        final int[] blocksInner = ensureBlock(block0, block1, block2);
+        final int[] prevBlocksInner = shouldRecordPrevious(key);
         if (prevBlocksInner != null) {
             prevBlocksInner[indexWithinBlock] = blocksInner[indexWithinBlock];
         }
@@ -128,17 +129,13 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     @Override
     public void shift(final RowSet keysToShift, final long shiftDelta) {
-        final RowSet.SearchIterator it = (shiftDelta > 0) ? keysToShift.reverseIterator() : keysToShift.searchIterator();
+        final RowSet.SearchIterator it =
+                (shiftDelta > 0) ? keysToShift.reverseIterator() : keysToShift.searchIterator();
         it.forEachLong((i) -> {
             set(i + shiftDelta, getInt(i));
-            set(i, NULL_INT);
+            setNull(i);
             return true;
         });
-    }
-
-    @Override
-    public void remove(RowSet toRemove) {
-        toRemove.forEachRowKey((i) -> { set(i, NULL_INT); return true; });
     }
 
     // region boxed methods
@@ -181,18 +178,18 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     }
 
     private int getIntFromBlock(IntOneOrN.Block0 blocks, long key) {
-        final int [] blocks2 = blocks.getInnermostBlockByKeyOrNull(key);
+        final int[] blocks2 = blocks.getInnermostBlockByKeyOrNull(key);
         if (blocks2 == null) {
             return NULL_INT;
         }
-        return blocks2[(int)(key & INDEX_MASK)];
+        return blocks2[(int) (key & INDEX_MASK)];
     }
     // endregion primitive get
 
     // region allocateNullFilledBlock
     @SuppressWarnings("SameParameterValue")
-    final int [] allocateNullFilledBlock(int size) {
-        final int [] newBlock = new int[size];
+    final int[] allocateNullFilledBlock(int size) {
+        final int[] newBlock = new int[size];
         Arrays.fill(newBlock, NULL_INT);
         return newBlock;
     }
@@ -200,9 +197,10 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     /**
      * Make sure that we have an allocated block at the given point, allocating all of the required parents.
+     * 
      * @return {@code blocks.get(block0).get(block1).get(block2)}, which is non-null.
      */
-    int [] ensureBlock(final int block0, final int block1, final int block2) {
+    int[] ensureBlock(final int block0, final int block1, final int block2) {
         blocks.ensureIndex(block0, null);
         IntOneOrN.Block1 blocks0 = blocks.get(block0);
         if (blocks0 == null) {
@@ -214,7 +212,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
             blocks0.set(block1, blocks1 = new IntOneOrN.Block2());
         }
 
-        int [] result = blocks1.get(block2);
+        int[] result = blocks1.get(block2);
         if (result == null) {
             blocks1.ensureIndex(block2, null);
             // we do not use the recycler here, because the recycler need not sanitize the block (the inUse recycling
@@ -228,9 +226,10 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     /**
      * Make sure that we have an allocated previous and inuse block at the given point, allocating all of the required
      * parents.
+     * 
      * @return {@code prevBlocks.get(block0).get(block1).get(block2)}, which is non-null.
      */
-    private int [] ensurePrevBlock(final long key, final int block0, final int block1, final int block2) {
+    private int[] ensurePrevBlock(final long key, final int block0, final int block1, final int block2) {
         if (prevBlocks == null) {
             prevBlocks = new IntOneOrN.Block0();
             prevInUse = new LongOneOrN.Block0();
@@ -268,13 +267,20 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
         return result;
     }
 
+    private boolean shouldTrackPrevious() {
+        // prevFlusher == null means we are not tracking previous values yet (or maybe ever).
+        // If prepareForParallelPopulation was called on this cycle, it's assumed that all previous values have already
+        // been recorded.
+        return prevFlusher != null && prepareForParallelPopulationClockCycle != updateGraph.clock().currentStep();
+    }
+
     @Override
     public void startTrackingPrevValues() {
         if (prevFlusher != null) {
             throw new IllegalStateException("Can't call startTrackingPrevValues() twice: " +
                     this.getClass().getCanonicalName());
         }
-        prevFlusher = new UpdateCommitter<>(this, IntegerSparseArraySource::commitUpdates);
+        prevFlusher = new UpdateCommitter<>(this, updateGraph, IntegerSparseArraySource::commitUpdates);
     }
 
     private void commitUpdates() {
@@ -285,6 +291,11 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
         final IntOneOrN.Block0 localPrevBlocks = prevBlocks;
         final LongOneOrN.Block0 localPrevInUse = prevInUse;
+
+        if (localPrevBlocks == null) {
+            assert prevInUse == null;
+            return;
+        }
 
         // there is no reason to allow these to be used anymore; instead we just null them out so that any
         // getPrev calls will immediately return get().
@@ -309,7 +320,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
             final IntOneOrN.Block2 blocks1 = localPrevBlocks.get(block0).get(block1);
             final LongOneOrN.Block2 inUse1 = localPrevInUse.get(block0).get(block1);
-            final int [] pb = blocks1.get(block2);
+            final int[] pb = blocks1.get(block2);
             final long[] inuse = inUse1.get(block2);
 
             inUse1.set(block2, null);
@@ -374,18 +385,18 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     }
 
     /**
-    * Decides whether to record the previous value.
-    * @param key the row key to record
-    * @return If the caller should record the previous value, returns prev inner block, the value
-    * {@code prevBlocks.get(block0).get(block1).get(block2)}, which is non-null. Otherwise (if the caller should not
-     * record values), returns null.
-    */
-    final int [] shouldRecordPrevious(final long key) {
-        // prevFlusher == null means we are not tracking previous values yet (or maybe ever)
-        if (prevFlusher == null) {
+     * Decides whether to record the previous value.
+     * 
+     * @param key the row key to record
+     * @return If the caller should record the previous value, returns prev inner block, the value
+     *         {@code prevBlocks.get(block0).get(block1).get(block2)}, which is non-null. Otherwise (if the caller
+     *         should not record values), returns null.
+     */
+    final int[] shouldRecordPrevious(final long key) {
+        if (!shouldTrackPrevious()) {
             return null;
         }
-        // If we want to track previous values, we make sure we are registered with the UpdateGraphProcessor.
+        // If we want to track previous values, we make sure we are registered with the PeriodicUpdateGraph.
         prevFlusher.maybeActivate();
 
         final int block0 = (int) (key >> BLOCK0_SHIFT) & BLOCK0_MASK;
@@ -408,12 +419,12 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     }
 
     @Override
-    public void prepareForParallelPopulation(RowSet changedRows) {
-        final long currentStep = LogicalClock.DEFAULT.currentStep();
-        if (ensurePreviousClockCycle == currentStep) {
-            throw new IllegalStateException("May not call ensurePrevious twice on one clock cycle!");
+    public void prepareForParallelPopulation(final RowSequence changedRows) {
+        final long currentStep = updateGraph.clock().currentStep();
+        if (prepareForParallelPopulationClockCycle == currentStep) {
+            throw new IllegalStateException("May not call prepareForParallelPopulation twice on one clock cycle!");
         }
-        ensurePreviousClockCycle = currentStep;
+        prepareForParallelPopulationClockCycle = currentStep;
 
         if (changedRows.isEmpty()) {
             return;
@@ -457,10 +468,11 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     /**
      * This method supports the 'getPrev' method for its inheritors, doing some of the 'inUse' housekeeping that is
      * common to all inheritors.
+     * 
      * @return true if the inheritor should return a value from its "prev" data structure; false if it should return a
-     * value from its "current" data structure.
+     *         value from its "current" data structure.
      */
-    private boolean shouldUsePrevious(final long index) {
+    private boolean shouldUsePrevious(final long rowKey) {
         if (prevFlusher == null) {
             return false;
         }
@@ -469,12 +481,12 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
             return false;
         }
 
-        final long [] inUse = prevInUse.getInnermostBlockByKeyOrNull(index);
+        final long[] inUse = prevInUse.getInnermostBlockByKeyOrNull(rowKey);
         if (inUse == null) {
             return false;
         }
 
-        final int indexWithinBlock = (int) (index & INDEX_MASK);
+        final int indexWithinBlock = (int) (rowKey & INDEX_MASK);
         final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
         final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
 
@@ -483,8 +495,13 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     // region fillByRanges
     @Override
-    void fillByRanges(@NotNull WritableChunk<? super Values> dest, @NotNull RowSequence rowSequence) {
+    /* TYPE_MIXIN */ void fillByRanges(
+            @NotNull final WritableChunk<? super Values> dest,
+            @NotNull final RowSequence rowSequence
+    /* CONVERTER */) {
+        // region chunkDecl
         final WritableIntChunk<? super Values> chunk = dest.asWritableIntChunk();
+        // endregion chunkDecl
         final FillByContext<int[]> ctx = new FillByContext<>();
         rowSequence.forAllRowKeyRanges((long firstKey, final long lastKey) -> {
             if (firstKey > ctx.maxKeyInCurrentBlock) {
@@ -497,7 +514,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
                 if (ctx.block == null) {
                     chunk.fillWithNullValue(ctx.offset, length);
                 } else {
-                    final int sIndexWithinBlock = (int)(firstKey & INDEX_MASK);
+                    final int sIndexWithinBlock = (int) (firstKey & INDEX_MASK);
                     // for the benefit of code generation.
                     final int offset = ctx.offset;
                     final int[] block = ctx.block;
@@ -520,8 +537,13 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     // region fillByKeys
     @Override
-    void fillByKeys(@NotNull WritableChunk<? super Values> dest, @NotNull RowSequence rowSequence) {
+    /* TYPE_MIXIN */ void fillByKeys(
+            @NotNull final WritableChunk<? super Values> dest,
+            @NotNull final RowSequence rowSequence
+    /* CONVERTER */) {
+        // region chunkDecl
         final WritableIntChunk<? super Values> chunk = dest.asWritableIntChunk();
+        // endregion chunkDecl
         final FillByContext<int[]> ctx = new FillByContext<>();
         rowSequence.forEachRowKey((final long v) -> {
             if (v > ctx.maxKeyInCurrentBlock) {
@@ -531,7 +553,9 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
             if (ctx.block == null) {
                 chunk.fillWithNullValue(ctx.offset, 1);
             } else {
+                // region conversion
                 chunk.set(ctx.offset, ctx.block[(int) (v & INDEX_MASK)]);
+                // endregion conversion
             }
             ++ctx.offset;
             return true;
@@ -542,12 +566,17 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     // region fillByUnRowSequence
     @Override
-    void fillByUnRowSequence(@NotNull WritableChunk<? super Values> dest, @NotNull LongChunk<? extends RowKeys> keys) {
-        final WritableIntChunk<? super Values> intChunk = dest.asWritableIntChunk();
-        for (int ii = 0; ii < keys.size(); ) {
+    /* TYPE_MIXIN */ void fillByUnRowSequence(
+            @NotNull final WritableChunk<? super Values> dest,
+            @NotNull final LongChunk<? extends RowKeys> keys
+    /* CONVERTER */) {
+        // region chunkDecl
+        final WritableIntChunk<? super Values> chunk = dest.asWritableIntChunk();
+        // endregion chunkDecl
+        for (int ii = 0; ii < keys.size();) {
             final long firstKey = keys.get(ii);
             if (firstKey == RowSequence.NULL_ROW_KEY) {
-                intChunk.set(ii++, NULL_INT);
+                chunk.set(ii++, NULL_INT);
                 continue;
             }
             final long masked = firstKey & ~INDEX_MASK;
@@ -561,27 +590,34 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
                 }
                 lastII = nextII;
             }
-            final int [] block = blocks.getInnermostBlockByKeyOrNull(firstKey);
+            final int[] block = blocks.getInnermostBlockByKeyOrNull(firstKey);
             if (block == null) {
-                intChunk.fillWithNullValue(ii, lastII - ii + 1);
+                chunk.fillWithNullValue(ii, lastII - ii + 1);
                 ii = lastII + 1;
                 continue;
             }
             while (ii <= lastII) {
                 final int indexWithinBlock = (int) (keys.get(ii) & INDEX_MASK);
-                intChunk.set(ii++, block[indexWithinBlock]);
+                // region conversion
+                chunk.set(ii++, block[indexWithinBlock]);
+                // endregion conversion
             }
         }
         dest.setSize(keys.size());
     }
 
     @Override
-    void fillPrevByUnRowSequence(@NotNull WritableChunk<? super Values> dest, @NotNull LongChunk<? extends RowKeys> keys) {
-        final WritableIntChunk<? super Values> intChunk = dest.asWritableIntChunk();
-        for (int ii = 0; ii < keys.size(); ) {
+    /* TYPE_MIXIN */ void fillPrevByUnRowSequence(
+            @NotNull final WritableChunk<? super Values> dest,
+            @NotNull final LongChunk<? extends RowKeys> keys
+    /* CONVERTER */) {
+        // region chunkDecl
+        final WritableIntChunk<? super Values> chunk = dest.asWritableIntChunk();
+        // endregion chunkDecl
+        for (int ii = 0; ii < keys.size();) {
             final long firstKey = keys.get(ii);
             if (firstKey == RowSequence.NULL_ROW_KEY) {
-                intChunk.set(ii++, NULL_INT);
+                chunk.set(ii++, NULL_INT);
                 continue;
             }
             final long masked = firstKey & ~INDEX_MASK;
@@ -596,22 +632,26 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
                 lastII = nextII;
             }
 
-            final int [] block = blocks.getInnermostBlockByKeyOrNull(firstKey);
+            final int[] block = blocks.getInnermostBlockByKeyOrNull(firstKey);
             if (block == null) {
-                intChunk.fillWithNullValue(ii, lastII - ii + 1);
+                chunk.fillWithNullValue(ii, lastII - ii + 1);
                 ii = lastII + 1;
                 continue;
             }
 
-            final long [] prevInUse = (prevFlusher == null || this.prevInUse == null) ? null : this.prevInUse.getInnermostBlockByKeyOrNull(firstKey);
-            final int [] prevBlock = prevInUse == null ? null : prevBlocks.getInnermostBlockByKeyOrNull(firstKey);
+            final long[] prevInUse = (prevFlusher == null || this.prevInUse == null) ? null
+                    : this.prevInUse.getInnermostBlockByKeyOrNull(firstKey);
+            final int[] prevBlock = prevInUse == null ? null : prevBlocks.getInnermostBlockByKeyOrNull(firstKey);
             while (ii <= lastII) {
                 final int indexWithinBlock = (int) (keys.get(ii) & INDEX_MASK);
                 final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
                 final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
 
-                final int[] blockToUse = (prevInUse != null && (prevInUse[indexWithinInUse] & maskWithinInUse) != 0) ? prevBlock : block;
-                intChunk.set(ii++, blockToUse == null ? NULL_INT : blockToUse[indexWithinBlock]);
+                final int[] blockToUse =
+                        (prevInUse != null && (prevInUse[indexWithinInUse] & maskWithinInUse) != 0) ? prevBlock : block;
+                // region conversion
+                chunk.set(ii++, blockToUse == null ? NULL_INT : blockToUse[indexWithinBlock]);
+                // endregion conversion
             }
         }
         dest.setSize(keys.size());
@@ -620,14 +660,19 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     // region fillFromChunkByRanges
     @Override
-    void fillFromChunkByRanges(@NotNull RowSequence rowSequence, Chunk<? extends Values> src) {
-        if (rowSequence.size() == 0) {
+    /* TYPE_MIXIN */ void fillFromChunkByRanges(
+            @NotNull final RowSequence rowSequence,
+            @NotNull final Chunk<? extends Values> src
+    /* CONVERTER */) {
+        if (rowSequence.isEmpty()) {
             return;
         }
+        // region chunkDecl
         final IntChunk<? extends Values> chunk = src.asIntChunk();
+        // endregion chunkDecl
         final LongChunk<OrderedRowKeyRanges> ranges = rowSequence.asRowKeyRangesChunk();
 
-        final boolean trackPrevious = prevFlusher != null && ensurePreviousClockCycle != LogicalClock.DEFAULT.currentStep();
+        final boolean trackPrevious = shouldTrackPrevious();
 
         if (trackPrevious) {
             prevFlusher.maybeActivate();
@@ -648,7 +693,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
                 final int block0 = (int) (firstKey >> BLOCK0_SHIFT) & BLOCK0_MASK;
                 final int block1 = (int) (firstKey >> BLOCK1_SHIFT) & BLOCK1_MASK;
                 final int block2 = (int) (firstKey >> BLOCK2_SHIFT) & BLOCK2_MASK;
-                final int [] block = ensureBlock(block0, block1, block2);
+                final int[] block = ensureBlock(block0, block1, block2);
 
                 if (block != knownUnaliasedBlock && chunk.isAlias(block)) {
                     throw new UnsupportedOperationException("Source chunk is an alias for target data");
@@ -689,20 +734,25 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     // region fillFromChunkByKeys
     @Override
-    void fillFromChunkByKeys(@NotNull RowSequence rowSequence, Chunk<? extends Values> src) {
-        if (rowSequence.size() == 0) {
+    /* TYPE_MIXIN */ void fillFromChunkByKeys(
+            @NotNull final RowSequence rowSequence,
+            @NotNull final Chunk<? extends Values> src
+    /* CONVERTER */) {
+        if (rowSequence.isEmpty()) {
             return;
         }
+        // region chunkDecl
         final IntChunk<? extends Values> chunk = src.asIntChunk();
+        // endregion chunkDecl
         final LongChunk<OrderedRowKeys> keys = rowSequence.asRowKeyChunk();
 
-        final boolean trackPrevious = prevFlusher != null && ensurePreviousClockCycle != LogicalClock.DEFAULT.currentStep();;
+        final boolean trackPrevious = shouldTrackPrevious();
 
         if (trackPrevious) {
             prevFlusher.maybeActivate();
         }
 
-        for (int ii = 0; ii < keys.size(); ) {
+        for (int ii = 0; ii < keys.size();) {
             final long firstKey = keys.get(ii);
             final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
             int lastII = ii;
@@ -713,7 +763,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
             final int block0 = (int) (firstKey >> BLOCK0_SHIFT) & BLOCK0_MASK;
             final int block1 = (int) (firstKey >> BLOCK1_SHIFT) & BLOCK1_MASK;
             final int block2 = (int) (firstKey >> BLOCK2_SHIFT) & BLOCK2_MASK;
-            final int [] block = ensureBlock(block0, block1, block2);
+            final int[] block = ensureBlock(block0, block1, block2);
 
             if (chunk.isAlias(block)) {
                 throw new UnsupportedOperationException("Source chunk is an alias for target data");
@@ -738,28 +788,167 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
                         inUse[indexWithinInUse] |= maskWithinInUse;
                     }
                 }
+                // region conversion
                 block[indexWithinBlock] = chunk.get(ii);
+                // endregion conversion
                 ++ii;
             }
         }
     }
     // endregion fillFromChunkByKeys
 
+    // region nullByRanges
+    @Override
+    void nullByRanges(@NotNull final RowSequence rowSequence) {
+        if (rowSequence.isEmpty()) {
+            return;
+        }
+
+        final boolean hasPrev = prevFlusher != null;
+
+        if (hasPrev) {
+            prevFlusher.maybeActivate();
+        }
+
+        try (RowSequence.Iterator okIt = rowSequence.getRowSequenceIterator()) {
+            while (okIt.hasMore()) {
+                final long firstKey = okIt.peekNextKey();
+                final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
+                final RowSequence blockOk = okIt.getNextRowSequenceThrough(maxKeyInCurrentBlock);
+
+                final int block0 = (int) (firstKey >> BLOCK0_SHIFT) & BLOCK0_MASK;
+                final int block1 = (int) (firstKey >> BLOCK1_SHIFT) & BLOCK1_MASK;
+                final int block2 = (int) (firstKey >> BLOCK2_SHIFT) & BLOCK2_MASK;
+                final int[] block = blocks.getInnermostBlockByKeyOrNull(firstKey);
+
+                if (block == null) {
+                    continue;
+                }
+
+                blockOk.forAllRowKeyRanges((s, e) -> {
+                    final int length = (int) ((e - s) + 1);
+
+                    final int sIndexWithinBlock = (int) (s & INDEX_MASK);
+                    // This 'if' with its constant condition should be very friendly to the branch predictor.
+                    if (hasPrev) {
+                        boolean prevRequired = false;
+                        for (int jj = 0; jj < length; ++jj) {
+                            final int indexWithinBlock = sIndexWithinBlock + jj;
+                            if (block[indexWithinBlock] != NULL_INT) {
+                                prevRequired = true;
+                                break;
+                            }
+                        }
+
+                        if (prevRequired) {
+                            final int[] prevBlock = ensurePrevBlock(firstKey, block0, block1, block2);
+                            final long[] inUse = prevInUse.get(block0).get(block1).get(block2);
+
+                            assert inUse != null;
+                            assert prevBlock != null;
+
+                            for (int jj = 0; jj < length; ++jj) {
+                                final int indexWithinBlock = sIndexWithinBlock + jj;
+                                final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
+                                final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
+
+                                if ((inUse[indexWithinInUse] & maskWithinInUse) == 0) {
+                                    prevBlock[indexWithinBlock] = block[indexWithinBlock];
+                                    inUse[indexWithinInUse] |= maskWithinInUse;
+                                }
+                            }
+
+                            Arrays.fill(block, sIndexWithinBlock, sIndexWithinBlock + length, NULL_INT);
+                        }
+                    } else {
+                        Arrays.fill(block, sIndexWithinBlock, sIndexWithinBlock + length, NULL_INT);
+                    }
+                });
+            }
+        }
+    }
+    // endregion nullByRanges
+
+    // region nullByKeys
+    @Override
+    void nullByKeys(@NotNull final RowSequence rowSequence) {
+        if (rowSequence.isEmpty()) {
+            return;
+        }
+
+        final boolean hasPrev = prevFlusher != null;
+
+        if (hasPrev) {
+            prevFlusher.maybeActivate();
+        }
+
+        try (RowSequence.Iterator okIt = rowSequence.getRowSequenceIterator()) {
+            while (okIt.hasMore()) {
+                final long firstKey = okIt.peekNextKey();
+                final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
+                final RowSequence blockOk = okIt.getNextRowSequenceThrough(maxKeyInCurrentBlock);
+
+                final int block0 = (int) (firstKey >> BLOCK0_SHIFT) & BLOCK0_MASK;
+                final int block1 = (int) (firstKey >> BLOCK1_SHIFT) & BLOCK1_MASK;
+                final int block2 = (int) (firstKey >> BLOCK2_SHIFT) & BLOCK2_MASK;
+                final int[] block = blocks.getInnermostBlockByKeyOrNull(firstKey);
+                if (block == null) {
+                    continue;
+                }
+
+                MutableObject<int[]> prevBlock = new MutableObject<>();
+                MutableObject<long[]> inUse = new MutableObject<>();
+
+                blockOk.forAllRowKeys(key -> {
+
+                    final int indexWithinBlock = (int) (key & INDEX_MASK);
+                    // This 'if' with its constant condition should be very friendly to the branch predictor.
+                    if (hasPrev) {
+
+                        final int oldValue = block[indexWithinBlock];
+                        if (oldValue != NULL_INT) {
+                            if (prevBlock.getValue() == null) {
+                                prevBlock.setValue(ensurePrevBlock(firstKey, block0, block1, block2));
+                                inUse.setValue(prevInUse.get(block0).get(block1).get(block2));
+                            }
+
+                            final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
+                            final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
+
+                            if ((inUse.getValue()[indexWithinInUse] & maskWithinInUse) == 0) {
+                                prevBlock.getValue()[indexWithinBlock] = oldValue;
+                                inUse.getValue()[indexWithinInUse] |= maskWithinInUse;
+                            }
+                        }
+                    }
+                    block[indexWithinBlock] = NULL_INT;
+                });
+            }
+        }
+    }
+    // endregion nullByKeys
+
     // region fillFromChunkUnordered
     @Override
-    public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src, @NotNull LongChunk<RowKeys> keys) {
+    public /* TYPE_MIXIN */ void fillFromChunkUnordered(
+            @NotNull final FillFromContext context,
+            @NotNull final Chunk<? extends Values> src,
+            @NotNull final LongChunk<RowKeys> keys
+    /* CONVERTER */) {
         if (keys.size() == 0) {
             return;
         }
+        // region chunkDecl
         final IntChunk<? extends Values> chunk = src.asIntChunk();
+        // endregion chunkDecl
 
-        final boolean trackPrevious = prevFlusher != null && ensurePreviousClockCycle != LogicalClock.DEFAULT.currentStep();;
+        final boolean trackPrevious = shouldTrackPrevious();
 
         if (trackPrevious) {
             prevFlusher.maybeActivate();
         }
 
-        for (int ii = 0; ii < keys.size(); ) {
+        for (int ii = 0; ii < keys.size();) {
             final long firstKey = keys.get(ii);
             final long minKeyInCurrentBlock = firstKey & ~INDEX_MASK;
             final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
@@ -767,7 +956,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
             final int block0 = (int) (firstKey >> BLOCK0_SHIFT) & BLOCK0_MASK;
             final int block1 = (int) (firstKey >> BLOCK1_SHIFT) & BLOCK1_MASK;
             final int block2 = (int) (firstKey >> BLOCK2_SHIFT) & BLOCK2_MASK;
-            final int [] block = ensureBlock(block0, block1, block2);
+            final int[] block = ensureBlock(block0, block1, block2);
 
             if (chunk.isAlias(block)) {
                 throw new UnsupportedOperationException("Source chunk is an alias for target data");
@@ -792,7 +981,9 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
                         inUse[indexWithinInUse] |= maskWithinInUse;
                     }
                 }
+                // region conversion
                 block[indexWithinBlock] = chunk.get(ii);
+                // endregion conversion
                 ++ii;
             } while (ii < keys.size() && (key = keys.get(ii)) >= minKeyInCurrentBlock && key <= maxKeyInCurrentBlock);
         }
@@ -800,7 +991,10 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
     // endregion fillFromChunkUnordered
 
     @Override
-    public void fillPrevChunk(@NotNull FillContext context, @NotNull WritableChunk<? super Values> dest, @NotNull RowSequence rowSequence) {
+    public void fillPrevChunk(
+            @NotNull final FillContext context,
+            @NotNull final WritableChunk<? super Values> dest,
+            @NotNull final RowSequence rowSequence) {
         if (prevFlusher == null) {
             fillChunk(context, dest, rowSequence);
             return;
@@ -810,8 +1004,8 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     // region getChunk
     @Override
-    public IntChunk<Values> getChunk(@NotNull GetContext context, @NotNull RowSequence rowSequence) {
-        if (rowSequence.size() == 0) {
+    public IntChunk<Values> getChunk(@NotNull final GetContext context, @NotNull final RowSequence rowSequence) {
+        if (rowSequence.isEmpty()) {
             return IntChunk.getEmptyChunk();
         }
         final long firstKey = rowSequence.firstRowKey();
@@ -829,7 +1023,7 @@ public class IntegerSparseArraySource extends SparseArrayColumnSource<Integer> i
 
     // region getPrevChunk
     @Override
-    public IntChunk<Values> getPrevChunk(@NotNull GetContext context, @NotNull RowSequence rowSequence) {
+    public IntChunk<Values> getPrevChunk(@NotNull final GetContext context, @NotNull final RowSequence rowSequence) {
         if (prevFlusher == null) {
             return getChunk(context, rowSequence);
         }

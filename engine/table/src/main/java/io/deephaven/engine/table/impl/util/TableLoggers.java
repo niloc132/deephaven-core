@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.util;
 
 import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
@@ -18,7 +18,7 @@ public class TableLoggers {
      */
     @ScriptApi
     public static QueryTable updatePerformanceLog() {
-        return UpdatePerformanceTracker.getInstance().getQueryTable();
+        return UpdatePerformanceTracker.getQueryTable();
     }
 
     /**
@@ -29,7 +29,7 @@ public class TableLoggers {
      */
     @ScriptApi
     public static QueryTable queryPerformanceLog() {
-        return MemoryTableLoggers.getInstance().getQplLoggerQueryTable();
+        return EngineMetrics.getInstance().getQplLoggerQueryTable();
     }
 
     /**
@@ -39,17 +39,17 @@ public class TableLoggers {
      */
     @ScriptApi
     public static QueryTable queryOperationPerformanceLog() {
-        return MemoryTableLoggers.getInstance().getQoplLoggerQueryTable();
+        return EngineMetrics.getInstance().getQoplLoggerQueryTable();
     }
 
     /**
      * Return a table with metrics collected for the current engine process.
      *
-     * @return A table with metrics fopr the current engine process.
+     * @return A table with metrics for the current engine process.
      */
     @ScriptApi
     public static QueryTable processMetricsLog() {
-        return MemoryTableLoggers.getInstance().getProcessMetricsQueryTable();
+        return EngineMetrics.getInstance().getProcessMetricsQueryTable();
     }
 
     /**
@@ -59,7 +59,7 @@ public class TableLoggers {
      */
     @ScriptApi
     public static QueryTable processInfoLog() {
-        return MemoryTableLoggers.getInstance().getProcessInfoQueryTable();
+        return EngineMetrics.getInstance().getProcessInfoQueryTable();
     }
 
     /**

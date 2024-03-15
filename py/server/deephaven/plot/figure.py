@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 ######################################################################################################################
@@ -19,11 +19,10 @@ import jpy
 
 from deephaven import DHError, dtypes
 from deephaven._wrapper import JObjectWrapper
-from deephaven.dtypes import DateTime, PyObject
+from deephaven.dtypes import Instant, PyObject, BusinessCalendar
 from deephaven.plot import LineStyle, PlotStyle, Color, Font, AxisFormat, Shape, AxisTransform, \
     SelectableDataSet
 from deephaven.table import Table
-from deephaven.calendar import BusinessCalendar
 from deephaven.jcompat import j_function
 
 _JPlottingConvenience = jpy.get_type("io.deephaven.plot.PlottingConvenience")
@@ -71,6 +70,8 @@ def _convert_j(name: str, obj: Any, types: List) -> Any:
 
     if obj is None:
         return None
+    elif isinstance(obj, jpy.JType):
+        return obj
 
     _assert_type(name, obj, types)
 
@@ -443,6 +444,8 @@ class Figure(JObjectWrapper):
         f_called = False
         j_figure = self.j_figure
 
+        multi_series_key_used = False
+
         if {"row", "col"}.issubset(non_null_args):
             j_figure = j_figure.chart(row, col)
             non_null_args = non_null_args.difference({"row", "col"})
@@ -455,8 +458,9 @@ class Figure(JObjectWrapper):
 
         if {"pie_label_format", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.piePercentLabelFormat(pie_label_format, multi_series_key)
-            non_null_args = non_null_args.difference({"pie_label_format", "multi_series_key"})
+            non_null_args = non_null_args.difference({"pie_label_format"})
             f_called = True
+            multi_series_key_used = True
 
         if {"index"}.issubset(non_null_args):
             j_figure = j_figure.chart(index)
@@ -502,6 +506,9 @@ class Figure(JObjectWrapper):
             j_figure = j_figure.piePercentLabelFormat(pie_label_format)
             non_null_args = non_null_args.difference({"pie_label_format"})
             f_called = True
+
+        if multi_series_key_used:
+            non_null_args = non_null_args.difference({"multi_series_key"})
 
         if not f_called or non_null_args:
             raise DHError(f"unsupported parameter combination: {non_null_args}")
@@ -877,20 +884,25 @@ class Figure(JObjectWrapper):
         f_called = False
         j_figure = self.j_figure
 
+        multi_series_key_used = False
+
         if {"color", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.lineColor(color, multi_series_key)
-            non_null_args = non_null_args.difference({"color", "multi_series_key"})
+            non_null_args = non_null_args.difference({"color"})
             f_called = True
+            multi_series_key_used = True
 
         if {"style", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.lineStyle(style, multi_series_key)
-            non_null_args = non_null_args.difference({"style", "multi_series_key"})
+            non_null_args = non_null_args.difference({"style"})
             f_called = True
+            multi_series_key_used = True
 
         if {"visible", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.linesVisible(visible, multi_series_key)
-            non_null_args = non_null_args.difference({"visible", "multi_series_key"})
+            non_null_args = non_null_args.difference({"visible"})
             f_called = True
+            multi_series_key_used = True
 
         if {"color"}.issubset(non_null_args):
             j_figure = j_figure.lineColor(color)
@@ -906,6 +918,9 @@ class Figure(JObjectWrapper):
             j_figure = j_figure.linesVisible(visible)
             non_null_args = non_null_args.difference({"visible"})
             f_called = True
+
+        if multi_series_key_used:
+            non_null_args = non_null_args.difference({"multi_series_key"})
 
         if not f_called or non_null_args:
             raise DHError(f"unsupported parameter combination: {non_null_args}")
@@ -994,9 +1009,9 @@ class Figure(JObjectWrapper):
         series_name: str,
         t: Union[Table, SelectableDataSet] = None,
         category: Union[str, List[str], List[int], List[float]] = None,
-        y: Union[str, List[int], List[float], List[DateTime]] = None,
-        y_low: Union[str, List[int], List[float], List[DateTime]] = None,
-        y_high: Union[str, List[int], List[float], List[DateTime]] = None,
+        y: Union[str, List[int], List[float], List[Instant]] = None,
+        y_low: Union[str, List[int], List[float], List[Instant]] = None,
+        y_high: Union[str, List[int], List[float], List[Instant]] = None,
         by: List[str] = None,
     ) -> Figure:
         """Creates a plot with a discrete, categorical axis. Categorical data must not have duplicates.
@@ -1005,9 +1020,9 @@ class Figure(JObjectWrapper):
             series_name (str): name of the data series
             t (Union[Table, SelectableDataSet]): table or selectable data set (e.g. OneClick filterable table)
             category (Union[str, List[str], List[int], List[float]]): discrete data or column name
-            y (Union[str, List[int], List[float], List[DateTime]]): y-values or column name
-            y_low (Union[str, List[int], List[float], List[DateTime]]): lower y error bar
-            y_high (Union[str, List[int], List[float], List[DateTime]]): upper y error bar
+            y (Union[str, List[int], List[float], List[Instant]]): y-values or column name
+            y_low (Union[str, List[int], List[float], List[Instant]]): lower y error bar
+            y_high (Union[str, List[int], List[float], List[Instant]]): upper y error bar
             by (List[str]): columns that hold grouping data
 
         Returns:
@@ -1031,13 +1046,13 @@ class Figure(JObjectWrapper):
             category = _convert_j("category", category, [str, List[str], List[int], List[float]])
         if y is not None:
             non_null_args.add("y")
-            y = _convert_j("y", y, [str, List[int], List[float], List[DateTime]])
+            y = _convert_j("y", y, [str, List[int], List[float], List[Instant]])
         if y_low is not None:
             non_null_args.add("y_low")
-            y_low = _convert_j("y_low", y_low, [str, List[int], List[float], List[DateTime]])
+            y_low = _convert_j("y_low", y_low, [str, List[int], List[float], List[Instant]])
         if y_high is not None:
             non_null_args.add("y_high")
-            y_high = _convert_j("y_high", y_high, [str, List[int], List[float], List[DateTime]])
+            y_high = _convert_j("y_high", y_high, [str, List[int], List[float], List[Instant]])
         if by is not None:
             non_null_args.add("by")
             by = _no_convert_j("by", by, [List[str]])
@@ -1101,11 +1116,11 @@ class Figure(JObjectWrapper):
         self,
         series_name: str,
         t: Union[Table, SelectableDataSet] = None,
-        x: Union[str, List[DateTime]] = None,
-        open: Union[str, List[int], List[float], List[DateTime]] = None,
-        high: Union[str, List[int], List[float], List[DateTime]] = None,
-        low: Union[str, List[int], List[float], List[DateTime]] = None,
-        close: Union[str, List[int], List[float], List[DateTime]] = None,
+        x: Union[str, List[Instant]] = None,
+        open: Union[str, List[int], List[float], List[Instant]] = None,
+        high: Union[str, List[int], List[float], List[Instant]] = None,
+        low: Union[str, List[int], List[float], List[Instant]] = None,
+        close: Union[str, List[int], List[float], List[Instant]] = None,
         by: List[str] = None,
     ) -> Figure:
         """Creates an open-high-low-close plot.
@@ -1113,11 +1128,11 @@ class Figure(JObjectWrapper):
         Args:
             series_name (str): name of the data series
             t (Union[Table, SelectableDataSet]): table or selectable data set (e.g. OneClick filterable table)
-            x (Union[str, List[DateTime]]): x-values or column name
-            open (Union[str, List[int], List[float], List[DateTime]]): bar open y-values.
-            high (Union[str, List[int], List[float], List[DateTime]]): bar high y-values.
-            low (Union[str, List[int], List[float], List[DateTime]]): bar low y-values.
-            close (Union[str, List[int], List[float], List[DateTime]]): bar close y-values.
+            x (Union[str, List[Instant]]): x-values or column name
+            open (Union[str, List[int], List[float], List[Instant]]): bar open y-values.
+            high (Union[str, List[int], List[float], List[Instant]]): bar high y-values.
+            low (Union[str, List[int], List[float], List[Instant]]): bar low y-values.
+            close (Union[str, List[int], List[float], List[Instant]]): bar close y-values.
             by (List[str]): columns that hold grouping data
 
         Returns:
@@ -1138,19 +1153,19 @@ class Figure(JObjectWrapper):
             t = _convert_j("t", t, [Table, SelectableDataSet])
         if x is not None:
             non_null_args.add("x")
-            x = _convert_j("x", x, [str, List[DateTime]])
+            x = _convert_j("x", x, [str, List[Instant]])
         if open is not None:
             non_null_args.add("open")
-            open = _convert_j("open", open, [str, List[int], List[float], List[DateTime]])
+            open = _convert_j("open", open, [str, List[int], List[float], List[Instant]])
         if high is not None:
             non_null_args.add("high")
-            high = _convert_j("high", high, [str, List[int], List[float], List[DateTime]])
+            high = _convert_j("high", high, [str, List[int], List[float], List[Instant]])
         if low is not None:
             non_null_args.add("low")
-            low = _convert_j("low", low, [str, List[int], List[float], List[DateTime]])
+            low = _convert_j("low", low, [str, List[int], List[float], List[Instant]])
         if close is not None:
             non_null_args.add("close")
-            close = _convert_j("close", close, [str, List[int], List[float], List[DateTime]])
+            close = _convert_j("close", close, [str, List[int], List[float], List[Instant]])
         if by is not None:
             non_null_args.add("by")
             by = _no_convert_j("by", by, [List[str]])
@@ -1169,7 +1184,7 @@ class Figure(JObjectWrapper):
         series_name: str,
         t: Union[Table, SelectableDataSet] = None,
         category: Union[str, List[str], List[int], List[float]] = None,
-        y: Union[str, List[int], List[float], List[DateTime]] = None,
+        y: Union[str, List[int], List[float], List[Instant]] = None,
     ) -> Figure:
         """Creates a pie plot. Categorical data must not have duplicates.
 
@@ -1177,7 +1192,7 @@ class Figure(JObjectWrapper):
             series_name (str): name of the data series
             t (Union[Table, SelectableDataSet]): table or selectable data set (e.g. OneClick filterable table)
             category (Union[str, List[str], List[int], List[float]]): discrete data or column name
-            y (Union[str, List[int], List[float], List[DateTime]]): y-values or column name
+            y (Union[str, List[int], List[float], List[Instant]]): y-values or column name
 
         Returns:
             a new Figure
@@ -1200,7 +1215,7 @@ class Figure(JObjectWrapper):
             category = _convert_j("category", category, [str, List[str], List[int], List[float]])
         if y is not None:
             non_null_args.add("y")
-            y = _convert_j("y", y, [str, List[int], List[float], List[DateTime]])
+            y = _convert_j("y", y, [str, List[int], List[float], List[Instant]])
 
         if non_null_args == {"series_name", "category", "y"}:
             return Figure(j_figure=self.j_figure.piePlot(series_name, category, y))
@@ -1282,12 +1297,12 @@ class Figure(JObjectWrapper):
         self,
         series_name: str,
         t: Union[Table, SelectableDataSet] = None,
-        x: Union[str, List[int], List[float], List[DateTime]] = None,
-        x_low: Union[str, List[int], List[float], List[DateTime]] = None,
-        x_high: Union[str, List[int], List[float], List[DateTime]] = None,
-        y: Union[str, List[int], List[float], List[DateTime]] = None,
-        y_low: Union[str, List[int], List[float], List[DateTime]] = None,
-        y_high: Union[str, List[int], List[float], List[DateTime]] = None,
+        x: Union[str, List[int], List[float], List[Instant]] = None,
+        x_low: Union[str, List[int], List[float], List[Instant]] = None,
+        x_high: Union[str, List[int], List[float], List[Instant]] = None,
+        y: Union[str, List[int], List[float], List[Instant]] = None,
+        y_low: Union[str, List[int], List[float], List[Instant]] = None,
+        y_high: Union[str, List[int], List[float], List[Instant]] = None,
         function: Callable = None,
         by: List[str] = None,
         x_time_axis: bool = None,
@@ -1298,12 +1313,12 @@ class Figure(JObjectWrapper):
         Args:
             series_name (str): name of the data series
             t (Union[Table, SelectableDataSet]): table or selectable data set (e.g. OneClick filterable table)
-            x (Union[str, List[int], List[float], List[DateTime]]): x-values or column name
-            x_low (Union[str, List[int], List[float], List[DateTime]]): lower x error bar
-            x_high (Union[str, List[int], List[float], List[DateTime]]): upper x error bar
-            y (Union[str, List[int], List[float], List[DateTime]]): y-values or column name
-            y_low (Union[str, List[int], List[float], List[DateTime]]): lower y error bar
-            y_high (Union[str, List[int], List[float], List[DateTime]]): upper y error bar
+            x (Union[str, List[int], List[float], List[Instant]]): x-values or column name
+            x_low (Union[str, List[int], List[float], List[Instant]]): lower x error bar
+            x_high (Union[str, List[int], List[float], List[Instant]]): upper x error bar
+            y (Union[str, List[int], List[float], List[Instant]]): y-values or column name
+            y_low (Union[str, List[int], List[float], List[Instant]]): lower y error bar
+            y_high (Union[str, List[int], List[float], List[Instant]]): upper y error bar
             function (Callable): function
             by (List[str]): columns that hold grouping data
             x_time_axis (bool): whether to treat the x-values as times
@@ -1327,22 +1342,22 @@ class Figure(JObjectWrapper):
             t = _convert_j("t", t, [Table, SelectableDataSet])
         if x is not None:
             non_null_args.add("x")
-            x = _convert_j("x", x, [str, List[int], List[float], List[DateTime]])
+            x = _convert_j("x", x, [str, List[int], List[float], List[Instant]])
         if x_low is not None:
             non_null_args.add("x_low")
-            x_low = _convert_j("x_low", x_low, [str, List[int], List[float], List[DateTime]])
+            x_low = _convert_j("x_low", x_low, [str, List[int], List[float], List[Instant]])
         if x_high is not None:
             non_null_args.add("x_high")
-            x_high = _convert_j("x_high", x_high, [str, List[int], List[float], List[DateTime]])
+            x_high = _convert_j("x_high", x_high, [str, List[int], List[float], List[Instant]])
         if y is not None:
             non_null_args.add("y")
-            y = _convert_j("y", y, [str, List[int], List[float], List[DateTime]])
+            y = _convert_j("y", y, [str, List[int], List[float], List[Instant]])
         if y_low is not None:
             non_null_args.add("y_low")
-            y_low = _convert_j("y_low", y_low, [str, List[int], List[float], List[DateTime]])
+            y_low = _convert_j("y_low", y_low, [str, List[int], List[float], List[Instant]])
         if y_high is not None:
             non_null_args.add("y_high")
-            y_high = _convert_j("y_high", y_high, [str, List[int], List[float], List[DateTime]])
+            y_high = _convert_j("y_high", y_high, [str, List[int], List[float], List[Instant]])
         if function is not None:
             non_null_args.add("function")
             function = _convert_j("function", function, [Callable])
@@ -1391,7 +1406,7 @@ class Figure(JObjectWrapper):
         self,
         series_name: str,
         t: Union[Table, SelectableDataSet] = None,
-        x: Union[str, List[int], List[float], List[DateTime]] = None,
+        x: Union[str, List[int], List[float], List[Instant]] = None,
         xmin: float = None,
         xmax: float = None,
         nbins: int = None,
@@ -1401,7 +1416,7 @@ class Figure(JObjectWrapper):
         Args:
             series_name (str): name of the data series
             t (Union[Table, SelectableDataSet]): table or selectable data set (e.g. OneClick filterable table)
-            x (Union[str, List[int], List[float], List[DateTime]]): x-values or column name
+            x (Union[str, List[int], List[float], List[Instant]]): x-values or column name
             xmin (float): minimum x value to display
             xmax (float): maximum x value to display
             nbins (int): number of bins
@@ -1424,7 +1439,7 @@ class Figure(JObjectWrapper):
             t = _convert_j("t", t, [Table, SelectableDataSet])
         if x is not None:
             non_null_args.add("x")
-            x = _convert_j("x", x, [str, List[int], List[float], List[DateTime]])
+            x = _convert_j("x", x, [str, List[int], List[float], List[Instant]])
         if xmin is not None:
             non_null_args.add("xmin")
             xmin = _convert_j("xmin", xmin, [float])
@@ -1512,30 +1527,37 @@ class Figure(JObjectWrapper):
         f_called = False
         j_figure = self.j_figure
 
+        multi_series_key_used = False
+
         if {"t", "category", "color", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(t, category, color, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "category", "color", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "category", "color"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "category", "label", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointLabel(t, category, label, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "category", "label", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "category", "label"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "category", "shape", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointShape(t, category, shape, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "category", "shape", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "category", "shape"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "category", "size", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointSize(t, category, size, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "category", "size", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "category", "size"})
             f_called = True
+            multi_series_key_used = True
 
         if {"category", "color", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(category, color, multi_series_key)
-            non_null_args = non_null_args.difference({"category", "color", "multi_series_key"})
+            non_null_args = non_null_args.difference({"category", "color"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "category", "color"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(t, category, color)
@@ -1544,13 +1566,15 @@ class Figure(JObjectWrapper):
 
         if {"t", "color", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(t, color, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "color", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "color"})
             f_called = True
+            multi_series_key_used = True
 
         if {"category", "label", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointLabel(category, label, multi_series_key)
-            non_null_args = non_null_args.difference({"category", "label", "multi_series_key"})
+            non_null_args = non_null_args.difference({"category", "label"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "category", "label"}.issubset(non_null_args):
             j_figure = j_figure.pointLabel(t, category, label)
@@ -1559,13 +1583,15 @@ class Figure(JObjectWrapper):
 
         if {"t", "label", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointLabel(t, label, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "label", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "label"})
             f_called = True
+            multi_series_key_used = True
 
         if {"category", "shape", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointShape(category, shape, multi_series_key)
-            non_null_args = non_null_args.difference({"category", "shape", "multi_series_key"})
+            non_null_args = non_null_args.difference({"category", "shape"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "category", "shape"}.issubset(non_null_args):
             j_figure = j_figure.pointShape(t, category, shape)
@@ -1574,13 +1600,15 @@ class Figure(JObjectWrapper):
 
         if {"t", "shape", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointShape(t, shape, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "shape", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "shape"})
             f_called = True
+            multi_series_key_used = True
 
         if {"category", "size", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointSize(category, size, multi_series_key)
-            non_null_args = non_null_args.difference({"category", "size", "multi_series_key"})
+            non_null_args = non_null_args.difference({"category", "size"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "category", "size"}.issubset(non_null_args):
             j_figure = j_figure.pointSize(t, category, size)
@@ -1589,8 +1617,9 @@ class Figure(JObjectWrapper):
 
         if {"t", "size", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointSize(t, size, multi_series_key)
-            non_null_args = non_null_args.difference({"t", "size", "multi_series_key"})
+            non_null_args = non_null_args.difference({"t", "size"})
             f_called = True
+            multi_series_key_used = True
 
         if {"category", "color"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(category, color)
@@ -1599,8 +1628,9 @@ class Figure(JObjectWrapper):
 
         if {"color", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(color, multi_series_key)
-            non_null_args = non_null_args.difference({"color", "multi_series_key"})
+            non_null_args = non_null_args.difference({"color"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "color"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(t, color)
@@ -1614,8 +1644,9 @@ class Figure(JObjectWrapper):
 
         if {"label", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointLabel(label, multi_series_key)
-            non_null_args = non_null_args.difference({"label", "multi_series_key"})
+            non_null_args = non_null_args.difference({"label"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "label"}.issubset(non_null_args):
             j_figure = j_figure.pointLabel(t, label)
@@ -1624,8 +1655,9 @@ class Figure(JObjectWrapper):
 
         if {"label_format", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointLabelFormat(label_format, multi_series_key)
-            non_null_args = non_null_args.difference({"label_format", "multi_series_key"})
+            non_null_args = non_null_args.difference({"label_format"})
             f_called = True
+            multi_series_key_used = True
 
         if {"category", "shape"}.issubset(non_null_args):
             j_figure = j_figure.pointShape(category, shape)
@@ -1634,8 +1666,9 @@ class Figure(JObjectWrapper):
 
         if {"shape", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointShape(shape, multi_series_key)
-            non_null_args = non_null_args.difference({"shape", "multi_series_key"})
+            non_null_args = non_null_args.difference({"shape"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "shape"}.issubset(non_null_args):
             j_figure = j_figure.pointShape(t, shape)
@@ -1649,8 +1682,9 @@ class Figure(JObjectWrapper):
 
         if {"size", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointSize(size, multi_series_key)
-            non_null_args = non_null_args.difference({"size", "multi_series_key"})
+            non_null_args = non_null_args.difference({"size"})
             f_called = True
+            multi_series_key_used = True
 
         if {"t", "size"}.issubset(non_null_args):
             j_figure = j_figure.pointSize(t, size)
@@ -1659,8 +1693,9 @@ class Figure(JObjectWrapper):
 
         if {"visible", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.pointsVisible(visible, multi_series_key)
-            non_null_args = non_null_args.difference({"visible", "multi_series_key"})
+            non_null_args = non_null_args.difference({"visible"})
             f_called = True
+            multi_series_key_used = True
 
         if {"color"}.issubset(non_null_args):
             j_figure = j_figure.pointColor(color)
@@ -1691,6 +1726,9 @@ class Figure(JObjectWrapper):
             j_figure = j_figure.pointsVisible(visible)
             non_null_args = non_null_args.difference({"visible"})
             f_called = True
+
+        if multi_series_key_used:
+            non_null_args = non_null_args.difference({"multi_series_key"})
 
         if not f_called or non_null_args:
             raise DHError(f"unsupported parameter combination: {non_null_args}")
@@ -1826,40 +1864,49 @@ class Figure(JObjectWrapper):
         f_called = False
         j_figure = self.j_figure
 
+        multi_series_key_used = False
+
         if {"group", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.group(group, multi_series_key)
-            non_null_args = non_null_args.difference({"group", "multi_series_key"})
+            non_null_args = non_null_args.difference({"group"})
             f_called = True
+            multi_series_key_used = True
 
         if {"color", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.seriesColor(color, multi_series_key)
-            non_null_args = non_null_args.difference({"color", "multi_series_key"})
+            non_null_args = non_null_args.difference({"color"})
             f_called = True
+            multi_series_key_used = True
 
         if {"tool_tip_pattern", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.toolTipPattern(tool_tip_pattern, multi_series_key)
-            non_null_args = non_null_args.difference({"tool_tip_pattern", "multi_series_key"})
+            non_null_args = non_null_args.difference({"tool_tip_pattern"})
             f_called = True
+            multi_series_key_used = True
 
         if {"x_tool_tip_pattern", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.xToolTipPattern(x_tool_tip_pattern, multi_series_key)
-            non_null_args = non_null_args.difference({"x_tool_tip_pattern", "multi_series_key"})
+            non_null_args = non_null_args.difference({"x_tool_tip_pattern"})
             f_called = True
+            multi_series_key_used = True
 
         if {"y_tool_tip_pattern", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.yToolTipPattern(y_tool_tip_pattern, multi_series_key)
-            non_null_args = non_null_args.difference({"y_tool_tip_pattern", "multi_series_key"})
+            non_null_args = non_null_args.difference({"y_tool_tip_pattern"})
             f_called = True
+            multi_series_key_used = True
 
         if {"error_bar_color", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.errorBarColor(error_bar_color, multi_series_key)
-            non_null_args = non_null_args.difference({"error_bar_color", "multi_series_key"})
+            non_null_args = non_null_args.difference({"error_bar_color"})
             f_called = True
+            multi_series_key_used = True
 
         if {"gradient_visible", "multi_series_key"}.issubset(non_null_args):
             j_figure = j_figure.gradientVisible(gradient_visible, multi_series_key)
-            non_null_args = non_null_args.difference({"gradient_visible", "multi_series_key"})
+            non_null_args = non_null_args.difference({"gradient_visible"})
             f_called = True
+            multi_series_key_used = True
 
         if {"axes"}.issubset(non_null_args):
             j_figure = j_figure.series(axes)
@@ -1910,6 +1957,9 @@ class Figure(JObjectWrapper):
             j_figure = j_figure.seriesNamingFunction(naming_function)
             non_null_args = non_null_args.difference({"naming_function"})
             f_called = True
+
+        if multi_series_key_used:
+            non_null_args = non_null_args.difference({"multi_series_key"})
 
         if not f_called or non_null_args:
             raise DHError(f"unsupported parameter combination: {non_null_args}")

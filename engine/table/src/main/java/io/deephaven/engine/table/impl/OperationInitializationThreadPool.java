@@ -1,51 +1,77 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.chunk.util.pools.MultiChunkPool;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.updategraph.OperationInitializer;
 import io.deephaven.util.thread.NamingThreadFactory;
+import io.deephaven.util.thread.ThreadInitializationFactory;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
-public class OperationInitializationThreadPool {
+/**
+ * Implementation of OperationInitializer that delegates to a pool of threads.
+ */
+public class OperationInitializationThreadPool implements OperationInitializer {
 
+    /**
+     * The number of threads that will be used for parallel initialization in this process
+     */
     public static final int NUM_THREADS;
 
     static {
         final int numThreads =
-                Configuration.getInstance().getIntegerWithDefault("OperationInitializationThreadPool.threads", 1);
+                Configuration.getInstance().getIntegerWithDefault("OperationInitializationThreadPool.threads", -1);
         if (numThreads <= 0) {
             NUM_THREADS = Runtime.getRuntime().availableProcessors();
         } else {
             NUM_THREADS = numThreads;
         }
     }
+    private final ThreadLocal<Boolean> isInitializationThread = ThreadLocal.withInitial(() -> false);
 
-    private static final ThreadLocal<Boolean> isInitializationThread = ThreadLocal.withInitial(() -> false);
+    private final ThreadPoolExecutor executorService;
 
-    public static boolean isInitializationThread() {
-        return isInitializationThread.get();
+    public OperationInitializationThreadPool(ThreadInitializationFactory factory) {
+        final ThreadGroup threadGroup = new ThreadGroup("OperationInitializationThreadPool");
+        final ThreadFactory threadFactory = new NamingThreadFactory(
+                threadGroup, OperationInitializationThreadPool.class, "initializationExecutor", true) {
+            @Override
+            public Thread newThread(@NotNull final Runnable r) {
+                return super.newThread(factory.createInitializer(() -> {
+                    isInitializationThread.set(true);
+                    MultiChunkPool.enableDedicatedPoolForThisThread();
+                    ExecutionContext.newBuilder().setOperationInitializer(OperationInitializer.NON_PARALLELIZABLE)
+                            .build().apply(r);
+                }));
+            }
+        };
+        executorService = new ThreadPoolExecutor(
+                NUM_THREADS, NUM_THREADS, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), threadFactory);
+
+        executorService.prestartAllCoreThreads();
     }
 
-    public final static ExecutorService executorService;
-    static {
-        final ThreadGroup threadGroup = new ThreadGroup("OperationInitializationThreadPool");
-        final NamingThreadFactory threadFactory =
-                new NamingThreadFactory(threadGroup, OperationInitializationThreadPool.class, "initializationExecutor",
-                        true) {
-                    @Override
-                    public Thread newThread(@NotNull Runnable r) {
-                        return super.newThread(() -> {
-                            isInitializationThread.set(true);
-                            MultiChunkPool.enableDedicatedPoolForThisThread();
-                            r.run();
-                        });
-                    }
-                };
-        executorService = Executors.newFixedThreadPool(NUM_THREADS, threadFactory);
+    @Override
+    public boolean canParallelize() {
+        return NUM_THREADS > 1 && !isInitializationThread.get();
+    }
+
+    @Override
+    public Future<?> submit(Runnable runnable) {
+        return executorService.submit(runnable);
+    }
+
+    @Override
+    public int parallelismFactor() {
+        return NUM_THREADS;
     }
 }

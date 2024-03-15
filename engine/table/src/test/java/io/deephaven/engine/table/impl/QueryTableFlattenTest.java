@@ -1,8 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.RowSetFactory;
@@ -11,7 +12,6 @@ import io.deephaven.engine.table.*;
 import io.deephaven.engine.testutil.*;
 import io.deephaven.engine.testutil.generator.IntGenerator;
 import io.deephaven.engine.testutil.generator.SetGenerator;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import junit.framework.TestCase;
 import org.junit.Assert;
 
@@ -37,7 +37,7 @@ public class QueryTableFlattenTest extends QueryTableTestBase {
             showWithRowSet(queryTable);
         }
         final EvalNuggetInterface[] en = new EvalNuggetInterface[] {
-                new FlatChecker(queryTable.flatten()),
+                new NonFlatToFlatChecker(queryTable, queryTable.flatten()),
                 new TableComparator(queryTable, queryTable.flatten()),
                 new EvalNugget() {
                     public Table e() {
@@ -67,6 +67,12 @@ public class QueryTableFlattenTest extends QueryTableTestBase {
         for (int size : sizes) {
             testFlatten(size);
         }
+    }
+
+    public void testSemiFlat() {
+        final QueryTable semiflat = testTable(col("Sym", "cc", "dd"));
+        TstUtils.validate("semiflat",
+                new EvalNuggetInterface[] {new SemiFlatToFlatChecker(semiflat, semiflat.flatten())});
     }
 
     public void testLegacyFlatten3() {
@@ -258,7 +264,8 @@ public class QueryTableFlattenTest extends QueryTableTestBase {
                 final RowSetShiftData shifted) {
             ++updateCount;
 
-            UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(modTable::run);
+            final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+            updateGraph.runWithinUnitTestCycle(modTable::run);
             showWithRowSet(sourceTable);
 
             if (listener instanceof SimpleShiftObliviousListener) {
@@ -303,25 +310,54 @@ public class QueryTableFlattenTest extends QueryTableTestBase {
     }
 
     /**
-     * Makes sure that the row set of our table is actually contiguous.
+     * Makes sure that a non-flat table gets turned into a flattened table
      */
-    protected static class FlatChecker implements EvalNuggetInterface {
-        private final Table t1;
+    protected static class NonFlatToFlatChecker implements EvalNuggetInterface {
+        private final Table original;
+        private final Table flattened;
 
-        FlatChecker(Table t1) {
-            this.t1 = t1;
+        NonFlatToFlatChecker(Table original, Table flattened) {
+            this.original = original;
+            this.flattened = flattened;
         }
 
         @Override
         public void validate(String msg) {
-            if (t1.getRowSet().size() > 0) {
-                Assert.assertEquals(msg, t1.getRowSet().size() - 1, t1.getRowSet().lastRowKey());
-            }
+            Assert.assertFalse(original.isFlat());
+            Assert.assertTrue(flattened.isFlat());
+            Assert.assertTrue(flattened.getRowSet().isFlat());
         }
 
         @Override
         public void show() throws IOException {
-            showWithRowSet(t1);
+            showWithRowSet(flattened);
+        }
+    }
+
+    /**
+     * Makes sure that a semi-flat (row set is flat, but table not marked as flat) table gets turned into a flattened
+     * table.
+     */
+    protected static class SemiFlatToFlatChecker implements EvalNuggetInterface {
+        private final Table original;
+        private final Table flattened;
+
+        SemiFlatToFlatChecker(Table original, Table flattened) {
+            this.original = original;
+            this.flattened = flattened;
+        }
+
+        @Override
+        public void validate(String msg) {
+            Assert.assertFalse(original.isFlat());
+            Assert.assertTrue(original.getRowSet().isFlat());
+            Assert.assertTrue(flattened.isFlat());
+            Assert.assertTrue(flattened.getRowSet().isFlat());
+        }
+
+        @Override
+        public void show() throws IOException {
+            showWithRowSet(flattened);
         }
     }
 
@@ -333,7 +369,8 @@ public class QueryTableFlattenTest extends QueryTableTestBase {
         final Table expected = odds.sumBy("B");
         final Table actual = odds.flatten().sumBy("B");
         assertTableEquals(expected, actual);
-        UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> {
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.runWithinUnitTestCycle(() -> {
             addToTable(upstream, RowSetFactory.fromRange(100_001, 200_000));
             upstream.notifyListeners(RowSetFactory.fromRange(100_001, 200_000), i(),
                     RowSetFactory.fromRange(0, 100_000));

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.partitioned;
 
 import io.deephaven.chunk.ChunkType;
@@ -21,11 +21,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
 /**
- * {@link SelectColumn} implementation to wrap transformer functions for
- * {@link PartitionedTable#transform(UnaryOperator) transformations}.
+ * {@link SelectColumn} implementation to wrap transformer functions for {@link PartitionedTable#transform
+ * transformations}.
  */
 public class TableTransformationColumn extends BaseTableTransformationColumn {
 

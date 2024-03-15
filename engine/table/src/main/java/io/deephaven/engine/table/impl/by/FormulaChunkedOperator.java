@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.chunk.*;
@@ -12,6 +12,7 @@ import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.ChunkSource.GetContext;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.impl.select.FormulaUtil;
 import io.deephaven.engine.liveness.LivenessReferent;
 import io.deephaven.engine.table.ModifiedColumnSet;
@@ -385,13 +386,13 @@ class FormulaChunkedOperator implements IterativeChunkedAggregationOperator {
         }
 
         void clearObjectColumnData(@NotNull final RowSequence rowSequence) {
-            try (final RowSequence.Iterator RowSequenceIterator = rowSequence.getRowSequenceIterator();
+            try (final RowSequence.Iterator rowSequenceIterator = rowSequence.getRowSequenceIterator();
                     final WritableObjectChunk<?, Values> nullValueChunk =
                             WritableObjectChunk.makeWritableChunk(BLOCK_SIZE)) {
                 nullValueChunk.fillWithNullValue(0, BLOCK_SIZE);
-                while (RowSequenceIterator.hasMore()) {
-                    final RowSequence rowSequenceSlice = RowSequenceIterator.getNextRowSequenceThrough(
-                            calculateContainingBlockLastKey(RowSequenceIterator.peekNextKey()));
+                while (rowSequenceIterator.hasMore()) {
+                    final RowSequence rowSequenceSlice = rowSequenceIterator.getNextRowSequenceThrough(
+                            calculateContainingBlockLastKey(rowSequenceIterator.peekNextKey()));
                     nullValueChunk.setSize(rowSequenceSlice.intSize());
                     for (int ci = 0; ci < columnsToFillMask.length; ++ci) {
                         final WritableColumnSource<?> resultColumn = resultColumns[ci];
@@ -405,7 +406,7 @@ class FormulaChunkedOperator implements IterativeChunkedAggregationOperator {
 
         @Override
         public void close() {
-            SafeCloseable.closeArray(fillFromContexts);
+            SafeCloseable.closeAll(fillFromContexts);
         }
     }
 
@@ -432,10 +433,10 @@ class FormulaChunkedOperator implements IterativeChunkedAggregationOperator {
         }
 
         private void copyData(@NotNull final RowSequence rowSequence, @NotNull final boolean[] columnsMask) {
-            try (final RowSequence.Iterator RowSequenceIterator = rowSequence.getRowSequenceIterator()) {
-                while (RowSequenceIterator.hasMore()) {
-                    final RowSequence rowSequenceSlice = RowSequenceIterator.getNextRowSequenceThrough(
-                            calculateContainingBlockLastKey(RowSequenceIterator.peekNextKey()));
+            try (final RowSequence.Iterator rowSequenceIterator = rowSequence.getRowSequenceIterator()) {
+                while (rowSequenceIterator.hasMore()) {
+                    final RowSequence rowSequenceSlice = rowSequenceIterator.getNextRowSequenceThrough(
+                            calculateContainingBlockLastKey(rowSequenceIterator.peekNextKey()));
                     for (int ci = 0; ci < columnsToGetMask.length; ++ci) {
                         if (columnsMask[ci]) {
                             resultColumns[ci].fillFromChunk(fillFromContexts[ci],
@@ -451,7 +452,7 @@ class FormulaChunkedOperator implements IterativeChunkedAggregationOperator {
         public void close() {
             super.close();
             sharedContext.close();
-            SafeCloseable.closeArray(getContexts);
+            SafeCloseable.closeAll(getContexts);
         }
     }
 

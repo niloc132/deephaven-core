@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsArray;
@@ -9,21 +9,22 @@ import elemental2.dom.CustomEventInit;
 import elemental2.promise.Promise;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.FigureDescriptor;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.AxisDescriptor;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectRequest;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.object_pb.FetchObjectResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.ExportedTableCreationResponse;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.TypedTicket;
 import io.deephaven.web.client.api.Callbacks;
-import io.deephaven.web.client.api.HasEventHandling;
 import io.deephaven.web.client.api.JsPartitionedTable;
 import io.deephaven.web.client.api.JsTable;
 import io.deephaven.web.client.api.WorkerConnection;
+import io.deephaven.web.client.api.console.JsVariableType;
+import io.deephaven.web.client.api.lifecycle.HasLifecycle;
 import io.deephaven.web.client.api.widget.JsWidget;
 import io.deephaven.web.client.fu.JsLog;
 import io.deephaven.web.client.fu.LazyPromise;
 import io.deephaven.web.client.state.ClientTableState;
 import io.deephaven.web.shared.fu.JsBiConsumer;
 import jsinterop.annotations.JsIgnore;
+import jsinterop.annotations.JsNullable;
 import jsinterop.annotations.JsOptional;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
@@ -39,18 +40,78 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Provides the details for a figure.
+ *
+ * The Deephaven JS API supports automatic lossless downsampling of time-series data, when that data is plotted in one
+ * or more line series. Using a scatter plot or a X-axis of some type other than DateTime will prevent this feature from
+ * being applied to a series. To enable this feature, invoke <b>Axis.range(...)</b> to specify the length in pixels of
+ * the axis on the screen, and the range of values that are visible, and the server will use that width (and range, if
+ * any) to reduce the number of points sent to the client.
+ *
+ * Downsampling can also be controlled when calling either <b>Figure.subscribe()</b> or <b>Series.subscribe()</b> - both
+ * can be given an optional <b>dh.plot.DownsampleOptions</b> argument. Presently only two valid values exist,
+ * <b>DEFAULT</b>, and <b>DISABLE</b>, and if no argument is specified, <b>DEFAULT</b> is assumed. If there are more
+ * than 30,000 rows in a table, downsampling will be encouraged - data will not load without calling
+ * <b>subscribe(DISABLE)</b> or enabling downsampling via <b>Axis.range(...)</b>. If there are more than 200,000 rows,
+ * data will refuse to load without downsampling and <b>subscribe(DISABLE)</b> would have no effect.
+ *
+ * Downsampled data looks like normal data, except that select items have been removed if they would be redundant in the
+ * UI given the current configuration. Individual rows are intact, so that a tooltip or some other UI item is sure to be
+ * accurate and consistent, and at least the highest and lowest value for each axis will be retained as well, to ensure
+ * that the "important" values are visible.
+ *
+ * Four events exist to help with interacting with downsampled data, all fired from the <b>Figure</b> instance itself.
+ * First, <b>downsampleneeded</b> indicates that more than 30,000 rows would be fetched, and so specifying downsampling
+ * is no longer optional - it must either be enabled (calling <b>axis.range(...)</b>), or disabled. If the figure is
+ * configured for downsampling, when a change takes place that requires that the server perform some downsampling work,
+ * the <b>downsamplestarted</b> event will first be fired, which can be used to present a brief loading message,
+ * indicating to the user why data is not ready yet - when the server side process is complete,
+ * <b>downsamplefinished</b> will be fired. These events will repeat when the range changes, such as when zooming,
+ * panning, or resizing the figure. Finally, <b>downsamplefailed</b> indicates that something when wrong when
+ * downsampling, or possibly that downsampling cannot be disabled due to the number of rows in the table.
+ *
+ * At this time, not marked as a ServerObject, due to internal implementation issues which leave the door open to
+ * client-created figures.
+ */
 @JsType(name = "Figure", namespace = "dh.plot")
-public class JsFigure extends HasEventHandling {
+public class JsFigure extends HasLifecycle {
 
+    /**
+     * The data within this figure was updated. <b>event.detail</b> is <b>FigureUpdateEventData</b>
+     */
     @JsProperty(namespace = "dh.plot.Figure")
     public static final String EVENT_UPDATED = "updated",
+            /**
+             * A series used within this figure was added as part of a multi-series in a chart. The series instance is
+             * the detail for this event.
+             */
             EVENT_SERIES_ADDED = "seriesadded",
             EVENT_DISCONNECT = JsTable.EVENT_DISCONNECT,
             EVENT_RECONNECT = JsTable.EVENT_RECONNECT,
             EVENT_RECONNECTFAILED = JsTable.EVENT_RECONNECTFAILED,
+            /**
+             * The API is updating how downsampling works on this Figure, probably in response to a call to
+             * <b>Axis.range()</b> or subscribe(). The <b>event.detail</b> value is an array of <b>Series</b> instances
+             * which are affected by this.
+             */
             EVENT_DOWNSAMPLESTARTED = "downsamplestarted",
+            /**
+             * Downsampling has finished on the given <b>Series</b> instances, and data will arrive shortly. The
+             * <b>event.detail</b> value is the array of <b>Series</b> instances.
+             */
             EVENT_DOWNSAMPLEFINISHED = "downsamplefinished",
+            /**
+             * Downsampling failed for some reason on one or more series. The <b>event.detail</b> object has three
+             * properties, the <b>message</b> string describing what went wrong, the <b>size</b> number showing the full
+             * size of the table, and the <b>series</b> property, an array of <b>Series</b> instances affected.
+             */
             EVENT_DOWNSAMPLEFAILED = "downsamplefailed",
+            /**
+             * There are too many points to be drawn in the table which backs these series, and downsampling should be
+             * enabled. As an alternative, downsampling can be explicitly disabled, provided there are less than 200,000
+             * rows in the table.
+             */
             EVENT_DOWNSAMPLENEEDED = "downsampleneeded";
 
     public interface FigureFetch {
@@ -85,9 +146,9 @@ public class JsFigure extends HasEventHandling {
         Object error;
 
         @JsProperty
-        JsArray<? extends Object> errors;
+        JsArray<String> errors;
 
-        FigureFetchError(Object error, JsArray<? extends Object> errors) {
+        FigureFetchError(Object error, JsArray<String> errors) {
             this.error = error;
             this.errors = errors;
         }
@@ -104,6 +165,8 @@ public class JsFigure extends HasEventHandling {
     private FigureDescriptor descriptor;
 
     private JsChart[] charts;
+
+    private JsArray<String> errors;
 
     private JsTable[] tables;
     private Map<Integer, JsTable> plotHandlesToTables;
@@ -139,6 +202,8 @@ public class JsFigure extends HasEventHandling {
             charts = descriptor.getChartsList().asList().stream()
                     .map(chartDescriptor -> new JsChart(chartDescriptor, this)).toArray(JsChart[]::new);
             JsObject.freeze(charts);
+
+            errors = JsObject.freeze(descriptor.getErrorsList().slice());
 
             return this.tableFetch.fetch(this, response);
         }).then(tableFetchData -> {
@@ -182,7 +247,45 @@ public class JsFigure extends HasEventHandling {
         });
     }
 
+    /**
+     * Asks the figure to fire a reconnect event after its tables are ready.
+     */
+    @JsIgnore
+    public void reconnect() {
+        // For each table and partitioned table, listen for reconnect events - when all have reconnected,
+        // signal that the figure itself has disconnected. If any one table disconnects, this will be canceled.
+        Promise.all(
+                Stream.concat(
+                        Arrays.stream(tables),
+                        Arrays.stream(partitionedTables))
+                        .map(HasLifecycle::nextReconnect)
+                        .toArray(Promise[]::new))
+                .then(ignore -> {
+                    verifyTables();
+                    return null;
+                }).then(ignore -> {
+                    unsuppressEvents();
+                    fireEvent(EVENT_RECONNECT);
+                    enqueueSubscriptionCheck();
+                    return null;
+                }, failure -> {
+                    CustomEventInit<Object> init = CustomEventInit.create();
+                    init.setDetail(failure);
+                    unsuppressEvents();
+                    fireEvent(EVENT_RECONNECTFAILED, init);
+                    suppressEvents();
+                    return null;
+                });
+    }
+
+
+    /**
+     * The title of the figure.
+     * 
+     * @return String
+     */
     @JsProperty
+    @JsNullable
     public String getTitle() {
         if (descriptor.hasTitle()) {
             return descriptor.getTitle();
@@ -215,15 +318,24 @@ public class JsFigure extends HasEventHandling {
         return descriptor.getRows();
     }
 
+    /**
+     * The charts to draw.
+     * 
+     * @return dh.plot.Chart
+     */
     @JsProperty
     public JsChart[] getCharts() {
         return charts;
     }
 
-    public String[] getErrors() {
-        return Js.uncheckedCast(descriptor.getErrorsList().slice());
+    @JsProperty
+    public JsArray<String> getErrors() {
+        return errors;
     }
 
+    /**
+     * Enable updates for all series in this figure.
+     */
     @JsIgnore
     public void subscribe() {
         subscribe(null);
@@ -235,6 +347,9 @@ public class JsFigure extends HasEventHandling {
                 .forEach(s -> s.subscribe(forceDisableDownsample));
     }
 
+    /**
+     * Disable updates for all series in this figure.
+     */
     public void unsubscribe() {
         // iterate all series, mark all as unsubscribed
         Arrays.stream(charts).flatMap(c -> Arrays.stream(c.getSeries()))
@@ -390,7 +505,7 @@ public class JsFigure extends HasEventHandling {
         }
         for (int i = 0; i < s.getSources().length; i++) {
             SeriesDataSource source = s.getSources()[i];
-            if (!source.getColumnType().equals("io.deephaven.time.DateTime")) {
+            if (!source.getColumnType().equals("java.time.Instant")) {
                 continue;
             }
             DownsampledAxisDetails downsampledAxisDetails = downsampled.get(source.getAxis().getDescriptor());
@@ -523,6 +638,9 @@ public class JsFigure extends HasEventHandling {
                 });
     }
 
+    /**
+     * Close the figure, and clean up subscriptions.
+     */
     public void close() {
         // explicit unsubscribe first, since those are handled separately from the table obj itself
         unsubscribe();
@@ -645,17 +763,17 @@ public class JsFigure extends HasEventHandling {
         }
 
         @Override
-        public Promise fetch(JsFigure figure, FetchObjectResponse response) {
+        public Promise<FigureTableFetchData> fetch(JsFigure figure, FetchObjectResponse response) {
             JsTable[] tables = new JsTable[0];
             JsPartitionedTable[] partitionedTables = new JsPartitionedTable[0];
 
-            Promise<?>[] promises = new Promise[response.getTypedExportIdList().length];
+            Promise<?>[] promises = new Promise[response.getTypedExportIdsList().length];
 
             int nextTableIndex = 0;
             int nextPartitionedTableIndex = 0;
-            for (int i = 0; i < response.getTypedExportIdList().length; i++) {
-                TypedTicket ticket = response.getTypedExportIdList().getAt(i);
-                if (ticket.getType().equals("Table")) {
+            for (int i = 0; i < response.getTypedExportIdsList().length; i++) {
+                TypedTicket ticket = response.getTypedExportIdsList().getAt(i);
+                if (ticket.getType().equals(JsVariableType.TABLE)) {
                     // Note that creating a CTS like this means we can't actually refetch it, but that's okay, we can't
                     // reconnect in this way without refetching the entire figure anyway.
                     int tableIndex = nextTableIndex++;
@@ -666,26 +784,22 @@ public class JsFigure extends HasEventHandling {
                     }).then(etcr -> {
                         ClientTableState cts = connection.newStateFromUnsolicitedTable(etcr, "table for figure");
                         JsTable table = new JsTable(connection, cts);
-                        // never attempt a reconnect, since we might have a different figure schema entirely
-                        table.addEventListener(JsTable.EVENT_DISCONNECT, ignore -> table.close());
+                        // TODO(deephaven-core#3604) if using a new session don't attempt a reconnect, since we might
+                        // have a different figure schema entirely
+                        // table.addEventListener(JsTable.EVENT_DISCONNECT, ignore -> table.close());
                         tables[tableIndex] = table;
                         return Promise.resolve(table);
                     });
-                } else if (ticket.getType().equals("PartitionedTable")) {
-
+                } else if (ticket.getType().equals(JsVariableType.PARTITIONEDTABLE)) {
                     int partitionedTableIndex = nextPartitionedTableIndex++;
-                    promises[i] = Callbacks.<FetchObjectResponse, Object>grpcUnaryPromise(c -> {
-                        FetchObjectRequest partitionedTableRequest = new FetchObjectRequest();
-                        partitionedTableRequest.setSourceId(ticket);
-                        connection.objectServiceClient().fetchObject(partitionedTableRequest, connection.metadata(),
-                                c::apply);
-                    }).then(object -> {
-                        JsPartitionedTable partitionedTable =
-                                new JsPartitionedTable(connection, new JsWidget(connection,
-                                        callback -> callback.handleResponse(null, object, ticket.getTicket())));
-                        partitionedTables[partitionedTableIndex] = partitionedTable;
-                        return partitionedTable.refetch();
-                    });
+                    JsPartitionedTable partitionedTable =
+                            new JsPartitionedTable(connection, new JsWidget(connection, ticket));
+                    // TODO(deephaven-core#3604) if using a new session don't attempt a reconnect, since we might
+                    // have a different figure schema entirely
+                    // partitionedTable.addEventListener(JsPartitionedTable.EVENT_DISCONNECT, ignore ->
+                    // partitionedTable.close());
+                    partitionedTables[partitionedTableIndex] = partitionedTable;
+                    promises[i] = partitionedTable.refetch();
                 } else {
                     throw new IllegalStateException("Ticket type not recognized in a Figure: " + ticket.getType());
                 }
@@ -693,11 +807,11 @@ public class JsFigure extends HasEventHandling {
 
             return Promise.all(promises)
                     .then(ignore -> {
-                        connection.registerFigure(figure);
+                        connection.registerSimpleReconnectable(figure);
 
                         return Promise.resolve(
                                 new FigureTableFetchData(tables, partitionedTables,
-                                        f -> this.connection.releaseFigure(f)));
+                                        f -> this.connection.unregisterSimpleReconnectable(f)));
                     });
         }
     }

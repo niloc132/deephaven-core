@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.util;
 
 import gnu.trove.list.TLongList;
@@ -108,6 +108,9 @@ public class ShiftData {
         void shift(long start, long end, long offset);
     }
 
+    public interface RowSetShiftCallback {
+        void shift(RowSet rowSet, long offset);
+    }
 
     public void applyDataShift(ShiftCallback shiftCallback) {
         int startPos = 0;

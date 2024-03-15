@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.table.validation;
 
 import com.github.javaparser.JavaParser;
@@ -25,11 +25,14 @@ import io.deephaven.engine.table.impl.select.WhereFilter;
 import io.deephaven.engine.table.impl.select.WhereFilterFactory;
 import io.deephaven.engine.util.ColorUtilImpl;
 import io.deephaven.libs.GroovyStaticImports;
-import io.deephaven.time.DateTime;
 import io.deephaven.time.DateTimeUtils;
+import io.deephaven.time.TimeLiteralReplacedExpression;
+import io.deephaven.time.calendar.Calendars;
+import io.deephaven.time.calendar.StaticCalendarMethods;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,7 +58,9 @@ public class ColumnExpressionValidator extends VoidVisitorAdapter<Object> {
                         QueryLanguageFunctionUtils.class,
                         GroovyStaticImports.class,
                         DateTimeUtils.class,
-                        ColorUtilImpl.class)
+                        ColorUtilImpl.class,
+                        Calendars.class,
+                        StaticCalendarMethods.class)
                 .map(Class::getDeclaredMethods)
                 .flatMap(Arrays::stream)
                 .filter(m -> Modifier.isStatic(m.getModifiers()) && Modifier.isPublic(m.getModifiers()))
@@ -66,9 +71,7 @@ public class ColumnExpressionValidator extends VoidVisitorAdapter<Object> {
         // DateTime
         // String
         whitelistedInstanceMethods = Stream
-                .of(
-                        DateTime.class,
-                        String.class)
+                .of(Instant.class, String.class)
                 .map(Class::getDeclaredMethods)
                 .flatMap(Arrays::stream)
                 .filter(m -> !Modifier.isStatic(m.getModifiers()))
@@ -125,9 +128,9 @@ public class ColumnExpressionValidator extends VoidVisitorAdapter<Object> {
         final int indexOfEquals = originalExpression.indexOf('=');
         Assert.assertion(indexOfEquals != -1, "Expected formula expression");
         final String formulaString = originalExpression.substring(indexOfEquals + 1);
-        final DateTimeUtils.Result timeConversionResult;
+        final TimeLiteralReplacedExpression timeConversionResult;
         try {
-            timeConversionResult = DateTimeUtils.convertExpression(formulaString);
+            timeConversionResult = TimeLiteralReplacedExpression.convertExpression(formulaString);
         } catch (final Exception e) {
             // in theory not possible, since we already parsed it once
             throw new IllegalStateException("Error occurred while re-compiling formula for whitelist", e);

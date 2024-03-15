@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.asofjoin;
 
 import io.deephaven.base.verify.Assert;
@@ -129,7 +129,7 @@ public abstract class RightIncrementalAsOfJoinStateManagerTypedBase extends Righ
 
     protected void migrateCookie(long cookie, int destinationLocation) {
         if (cookie >= cookieGeneration && cookie - cookieGeneration < nextCookie) {
-            hashSlots.set(cookie, destinationLocation | mainInsertMask);
+            hashSlots.set(cookie - cookieGeneration, destinationLocation | mainInsertMask);
             mainCookieSource.set(destinationLocation, cookie);
         }
     }

@@ -1,10 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources;
 
+import gnu.trove.list.array.TIntArrayList;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.WritableColumnSource;
+import io.deephaven.engine.table.WritableSourceWithPrepareForParallelPopulation;
 import io.deephaven.engine.table.impl.AbstractColumnSource;
 import io.deephaven.engine.table.impl.MutableColumnSourceGetDefaults;
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeyRanges;
@@ -22,9 +24,11 @@ import java.util.Arrays;
 import static io.deephaven.util.BooleanUtils.NULL_BOOLEAN_AS_BYTE;
 
 /**
- * TODO: Re-implement this with better compression (only need 2 bits per value, or we can pack 5 values into 1 byte if we're feeling fancy).
+ * TODO: Re-implement this with better compression (only need 2 bits per value, or we can pack 5 values into 1 byte if
+ * we're feeling fancy).
  */
-public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> implements MutableColumnSourceGetDefaults.ForBoolean {
+public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]>
+        implements MutableColumnSourceGetDefaults.ForBoolean {
     private static final SoftRecycler<byte[]> recycler = new SoftRecycler<>(1024, () -> new byte[BLOCK_SIZE],
             null);
     private byte[][] blocks;
@@ -45,6 +49,70 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     @Override
     public void ensureCapacity(long capacity, boolean nullFill) {
         ensureCapacity(capacity, blocks, prevBlocks, nullFill);
+    }
+
+    /**
+     * This version of `prepareForParallelPopulation` will internally call {@link #ensureCapacity(long, boolean)} to
+     * make sure there is room for the incoming values.
+     *
+     * @param changedIndices indices in the dense table
+     */
+    @Override
+    public void prepareForParallelPopulation(RowSequence changedIndices) {
+        final long currentStep = updateGraph.clock().currentStep();
+        if (ensurePreviousClockCycle == currentStep) {
+            throw new IllegalStateException("May not call ensurePrevious twice on one clock cycle!");
+        }
+        ensurePreviousClockCycle = currentStep;
+
+        if (changedIndices.isEmpty()) {
+            return;
+        }
+
+        // ensure that this source will have sufficient capacity to store these indices, does not need to be
+        // null-filled as the values will be immediately written
+        ensureCapacity(changedIndices.lastRowKey() + 1, false);
+
+        if (prevFlusher != null) {
+            prevFlusher.maybeActivate();
+        } else {
+            // we are not tracking this source yet so we have nothing to do for the previous values
+            return;
+        }
+
+        try (final RowSequence.Iterator it = changedIndices.getRowSequenceIterator()) {
+            do {
+                final long firstKey = it.peekNextKey();
+
+                final int block = (int) (firstKey >> LOG_BLOCK_SIZE);
+                final int indexWithinBlock = (int) (firstKey & INDEX_MASK);
+                final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
+                final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
+
+                final long[] inUse;
+                if (prevBlocks[block] == null) {
+                    prevBlocks[block] = recycler.borrowItem();
+                    prevInUse[block] = inUse = inUseRecycler.borrowItem();
+                    if (prevAllocated == null) {
+                        prevAllocated = new TIntArrayList();
+                    }
+                    prevAllocated.add(block);
+                } else {
+                    inUse = prevInUse[block];
+                }
+                inUse[indexWithinInUse] |= maskWithinInUse;
+
+                final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
+
+                it.getNextRowSequenceThrough(maxKeyInCurrentBlock).forAllRowKeys(key -> {
+                    final int nextIndexWithinBlock = (int) (key & INDEX_MASK);
+                    final int nextIndexWithinInUse = nextIndexWithinBlock >> LOG_INUSE_BITSET_SIZE;
+                    final long nextMaskWithinInUse = 1L << (nextIndexWithinBlock & IN_USE_MASK);
+                    prevBlocks[block][nextIndexWithinBlock] = blocks[block][nextIndexWithinBlock];
+                    inUse[nextIndexWithinInUse] |= nextMaskWithinInUse;
+                });
+            } while (it.hasMore());
+        }
     }
 
     @Override
@@ -72,23 +140,23 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         return BooleanUtils.byteAsBoolean(getByte(rowKey));
     }
 
-    public Boolean getUnsafe(long index) {
-        return BooleanUtils.byteAsBoolean(getByteUnsafe(index));
+    public Boolean getUnsafe(long rowKey) {
+        return BooleanUtils.byteAsBoolean(getByteUnsafe(rowKey));
     }
 
-    public final Boolean getAndSetUnsafe(long index, Boolean newValue) {
-        return BooleanUtils.byteAsBoolean(getAndSetUnsafe(index, BooleanUtils.booleanAsByte(newValue)));
+    public final Boolean getAndSetUnsafe(long rowKey, Boolean newValue) {
+        return BooleanUtils.byteAsBoolean(getAndSetUnsafe(rowKey, BooleanUtils.booleanAsByte(newValue)));
     }
 
-    public final byte getAndSetUnsafe(long index, byte newValue) {
-        final int blockIndex = (int) (index >> LOG_BLOCK_SIZE);
-        final int indexWithinBlock = (int) (index & INDEX_MASK);
+    public final byte getAndSetUnsafe(long rowKey, byte newValue) {
+        final int blockIndex = (int) (rowKey >> LOG_BLOCK_SIZE);
+        final int indexWithinBlock = (int) (rowKey & INDEX_MASK);
         final byte oldValue = blocks[blockIndex][indexWithinBlock];
         // not a perfect comparison, but very cheap
         if (oldValue == newValue) {
             return oldValue;
         }
-        if (shouldRecordPrevious(index, prevBlocks, recycler)) {
+        if (shouldRecordPrevious(rowKey, prevBlocks, recycler)) {
             prevBlocks[blockIndex][indexWithinBlock] = oldValue;
         }
         blocks[blockIndex][indexWithinBlock] = newValue;
@@ -103,9 +171,9 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         return getByteUnsafe(rowKey);
     }
 
-    private byte getByteUnsafe(long index) {
-        final int blockIndex = (int) (index >> LOG_BLOCK_SIZE);
-        final int indexWithinBlock = (int) (index & INDEX_MASK);
+    private byte getByteUnsafe(long rowKey) {
+        final int blockIndex = (int) (rowKey >> LOG_BLOCK_SIZE);
+        final int indexWithinBlock = (int) (rowKey & INDEX_MASK);
         return blocks[blockIndex][indexWithinBlock];
     }
 
@@ -180,7 +248,8 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     }
 
     @Override
-    protected void fillSparseChunk(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final RowSequence indices) {
+    protected void fillSparseChunk(@NotNull final WritableChunk<? super Values> destGeneric,
+            @NotNull final RowSequence indices) {
         if (indices.size() == 0) {
             destGeneric.setSize(0);
             return;
@@ -189,6 +258,10 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         final FillSparseChunkContext<byte[]> ctx = new FillSparseChunkContext<>();
         indices.forAllRowKeys((final long v) -> {
             if (v >= ctx.capForCurrentBlock) {
+                if (v > maxIndex) {
+                    dest.set(ctx.offset++, null);
+                    return;
+                }
                 ctx.currentBlockNo = getBlockNo(v);
                 ctx.capForCurrentBlock = (ctx.currentBlockNo + 1L) << LOG_BLOCK_SIZE;
                 ctx.currentBlock = blocks[ctx.currentBlockNo];
@@ -199,7 +272,8 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     }
 
     @Override
-    protected void fillSparsePrevChunk(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final RowSequence indices) {
+    protected void fillSparsePrevChunk(@NotNull final WritableChunk<? super Values> destGeneric,
+            @NotNull final RowSequence indices) {
         final long sz = indices.size();
         if (sz == 0) {
             destGeneric.setSize(0);
@@ -215,6 +289,10 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         final FillSparseChunkContext<byte[]> ctx = new FillSparseChunkContext<>();
         indices.forAllRowKeys((final long v) -> {
             if (v >= ctx.capForCurrentBlock) {
+                if (v > maxIndex) {
+                    dest.set(ctx.offset++, null);
+                    return;
+                }
                 ctx.currentBlockNo = getBlockNo(v);
                 ctx.capForCurrentBlock = (ctx.currentBlockNo + 1L) << LOG_BLOCK_SIZE;
                 ctx.currentBlock = blocks[ctx.currentBlockNo];
@@ -225,15 +303,18 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
             final int indexWithinBlock = (int) (v & INDEX_MASK);
             final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
             final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
-            final boolean usePrev = ctx.prevInUseBlock != null && (ctx.prevInUseBlock[indexWithinInUse] & maskWithinInUse) != 0;
-            final byte currValue = usePrev ? ctx.currentPrevBlock[indexWithinBlock] : ctx.currentBlock[indexWithinBlock];
+            final boolean usePrev =
+                    ctx.prevInUseBlock != null && (ctx.prevInUseBlock[indexWithinInUse] & maskWithinInUse) != 0;
+            final byte currValue =
+                    usePrev ? ctx.currentPrevBlock[indexWithinBlock] : ctx.currentBlock[indexWithinBlock];
             dest.set(ctx.offset++, BooleanUtils.byteAsBoolean(currValue));
         });
         dest.setSize(ctx.offset);
     }
 
     @Override
-    protected void fillSparseChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final LongChunk<? extends RowKeys> indices) {
+    protected void fillSparseChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric,
+            @NotNull final LongChunk<? extends RowKeys> indices) {
         final WritableObjectChunk<Boolean, ? super Values> dest = destGeneric.asWritableObjectChunk();
         final int sz = indices.size();
         for (int ii = 0; ii < sz; ++ii) {
@@ -246,7 +327,7 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
             if (blockNo >= blocks.length) {
                 dest.set(ii, null);
             } else {
-                final byte [] currentBlock = blocks[blockNo];
+                final byte[] currentBlock = blocks[blockNo];
                 dest.set(ii, BooleanUtils.byteAsBoolean(currentBlock[(int) (fromIndex & INDEX_MASK)]));
             }
         }
@@ -254,7 +335,8 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     }
 
     @Override
-    protected void fillSparsePrevChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final LongChunk<? extends RowKeys> indices) {
+    protected void fillSparsePrevChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric,
+            @NotNull final LongChunk<? extends RowKeys> indices) {
         final WritableObjectChunk<Boolean, ? super Values> dest = destGeneric.asWritableObjectChunk();
         final int sz = indices.size();
         for (int ii = 0; ii < sz; ++ii) {
@@ -268,7 +350,7 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
                 dest.set(ii, null);
                 continue;
             }
-            final byte [] currentBlock = shouldUsePrevious(fromIndex) ? prevBlocks[blockNo] : blocks[blockNo];
+            final byte[] currentBlock = shouldUsePrevious(fromIndex) ? prevBlocks[blockNo] : blocks[blockNo];
             dest.set(ii, BooleanUtils.byteAsBoolean(currentBlock[(int) (fromIndex & INDEX_MASK)]));
         }
         dest.setSize(sz);
@@ -276,7 +358,8 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
 
     // the ArrayBackedColumnSource fillChunk can't handle our byte values as an Object
     @Override
-    public void fillChunk(@NotNull final ColumnSource.FillContext context, @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
+    public void fillChunk(@NotNull final ColumnSource.FillContext context,
+            @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
         fillSparseChunk(destination, rowSequence);
     }
 
@@ -298,7 +381,8 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     }
 
     @Override
-    public void fillPrevChunk(@NotNull final ColumnSource.FillContext context, @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
+    public void fillPrevChunk(@NotNull final ColumnSource.FillContext context,
+            @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
         fillSparsePrevChunk(destination, rowSequence);
     }
 
@@ -318,10 +402,12 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     }
 
     @Override
-    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(@NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
-        //noinspection unchecked
+    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(
+            @NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
+        // noinspection unchecked
         return (ColumnSource<ALTERNATE_DATA_TYPE>) new ReinterpretedAsByte();
     }
+
     @Override
     void fillFromChunkByRanges(@NotNull RowSequence rowSequence, Chunk<? extends Values> src) {
         final ObjectChunk<Boolean, ? extends Values> chunk = src.asObjectChunk();
@@ -341,9 +427,10 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     private void fillFromChunkByRanges(@NotNull RowSequence rowSequence, Chunk<? extends Values> src, Reader reader) {
         final LongChunk<OrderedRowKeyRanges> ranges = rowSequence.asRowKeyRangesChunk();
 
-        final boolean hasPrev = prevFlusher != null;
+        final boolean trackPrevious = prevFlusher != null &&
+                ensurePreviousClockCycle != updateGraph.clock().currentStep();
 
-        if (hasPrev) {
+        if (trackPrevious) {
             prevFlusher.maybeActivate();
         }
 
@@ -368,7 +455,7 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
                 }
                 knownUnaliasedBlock = inner;
 
-                if (hasPrev) {
+                if (trackPrevious) {
                     // this should be vectorized
                     for (int jj = 0; jj < length; ++jj) {
                         if (shouldRecordPrevious(firstKey + jj, prevBlocks, recycler)) {
@@ -391,13 +478,14 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     private void fillFromChunkByKeys(@NotNull RowSequence rowSequence, Chunk<? extends Values> src, Reader reader) {
         final LongChunk<OrderedRowKeys> keys = rowSequence.asRowKeyChunk();
 
-        final boolean hasPrev = prevFlusher != null;
+        final boolean trackPrevious = prevFlusher != null &&
+                ensurePreviousClockCycle != updateGraph.clock().currentStep();
 
-        if (hasPrev) {
+        if (trackPrevious) {
             prevFlusher.maybeActivate();
         }
 
-        for (int ii = 0; ii < keys.size(); ) {
+        for (int ii = 0; ii < keys.size();) {
             final long firstKey = keys.get(ii);
             final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
             int lastII = ii;
@@ -416,7 +504,7 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
                 final long key = keys.get(ii);
                 final int indexWithinBlock = (int) (key & INDEX_MASK);
 
-                if (hasPrev) {
+                if (trackPrevious) {
                     if (shouldRecordPrevious(key, prevBlocks, recycler)) {
                         prevBlocks[block][indexWithinBlock] = inner[indexWithinBlock];
                     }
@@ -428,28 +516,31 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
     }
 
     @Override
-    public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src, @NotNull LongChunk<RowKeys> keys) {
+    public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src,
+            @NotNull LongChunk<RowKeys> keys) {
         final ObjectChunk<Boolean, ? extends Values> chunk = src.asObjectChunk();
         fillFromChunkUnordered(src, keys, offset -> BooleanUtils.booleanAsByte(chunk.get(offset)));
     }
 
-    private void fillFromChunkUnordered(@NotNull Chunk<? extends Values> src, @NotNull LongChunk<RowKeys> keys, Reader reader) {
+    private void fillFromChunkUnordered(@NotNull Chunk<? extends Values> src, @NotNull LongChunk<RowKeys> keys,
+            Reader reader) {
         if (keys.size() == 0) {
             return;
         }
-        final boolean hasPrev = prevFlusher != null;
+        final boolean trackPrevious =
+                prevFlusher != null && ensurePreviousClockCycle != updateGraph.clock().currentStep();
 
-        if (hasPrev) {
+        if (trackPrevious) {
             prevFlusher.maybeActivate();
         }
 
-        for (int ii = 0; ii < keys.size(); ) {
+        for (int ii = 0; ii < keys.size();) {
             final long firstKey = keys.get(ii);
             final long minKeyInCurrentBlock = firstKey & ~INDEX_MASK;
             final long maxKeyInCurrentBlock = firstKey | INDEX_MASK;
 
             final int block = (int) (firstKey >> LOG_BLOCK_SIZE);
-            final byte [] inner = blocks[block];
+            final byte[] inner = blocks[block];
 
             if (src.isAlias(inner)) {
                 throw new UnsupportedOperationException("Source chunk is an alias for target data");
@@ -459,7 +550,7 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
             do {
                 final int indexWithinBlock = (int) (key & INDEX_MASK);
 
-                if (hasPrev) {
+                if (trackPrevious) {
                     if (shouldRecordPrevious(key, prevBlocks, recycler)) {
                         prevBlocks[block][indexWithinBlock] = inner[indexWithinBlock];
                     }
@@ -470,7 +561,9 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         }
     }
 
-    private class ReinterpretedAsByte extends AbstractColumnSource<Byte> implements MutableColumnSourceGetDefaults.ForByte, FillUnordered<Values>, WritableColumnSource<Byte> {
+    private class ReinterpretedAsByte extends AbstractColumnSource<Byte>
+            implements MutableColumnSourceGetDefaults.ForByte, FillUnordered<Values>, WritableColumnSource<Byte>,
+            WritableSourceWithPrepareForParallelPopulation {
         private ReinterpretedAsByte() {
             super(byte.class);
         }
@@ -496,12 +589,14 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         }
 
         @Override
-        protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(@NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
-            //noinspection unchecked
+        protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(
+                @NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
+            // noinspection unchecked
             return (ColumnSource<ALTERNATE_DATA_TYPE>) BooleanArraySource.this;
         }
 
-        protected void fillSparseChunk(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final RowSequence indices) {
+        protected void fillSparseChunk(@NotNull final WritableChunk<? super Values> destGeneric,
+                @NotNull final RowSequence indices) {
             if (indices.size() == 0) {
                 destGeneric.setSize(0);
                 return;
@@ -510,6 +605,10 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
             final FillSparseChunkContext<byte[]> ctx = new FillSparseChunkContext<>();
             indices.forAllRowKeys((final long v) -> {
                 if (v >= ctx.capForCurrentBlock) {
+                    if (v > maxIndex) {
+                        dest.set(ctx.offset++, NULL_BOOLEAN_AS_BYTE);
+                        return;
+                    }
                     ctx.currentBlockNo = getBlockNo(v);
                     ctx.capForCurrentBlock = (ctx.currentBlockNo + 1L) << LOG_BLOCK_SIZE;
                     ctx.currentBlock = blocks[ctx.currentBlockNo];
@@ -519,7 +618,8 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
             dest.setSize(ctx.offset);
         }
 
-        protected void fillSparsePrevChunk(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final RowSequence indices) {
+        protected void fillSparsePrevChunk(@NotNull final WritableChunk<? super Values> destGeneric,
+                @NotNull final RowSequence indices) {
             final long sz = indices.size();
             if (sz == 0) {
                 destGeneric.setSize(0);
@@ -535,6 +635,10 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
             final FillSparseChunkContext<byte[]> ctx = new FillSparseChunkContext<>();
             indices.forAllRowKeys((final long v) -> {
                 if (v >= ctx.capForCurrentBlock) {
+                    if (v > maxIndex) {
+                        dest.set(ctx.offset++, NULL_BOOLEAN_AS_BYTE);
+                        return;
+                    }
                     ctx.currentBlockNo = getBlockNo(v);
                     ctx.capForCurrentBlock = (ctx.currentBlockNo + 1L) << LOG_BLOCK_SIZE;
                     ctx.currentBlock = blocks[ctx.currentBlockNo];
@@ -545,14 +649,17 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
                 final int indexWithinBlock = (int) (v & INDEX_MASK);
                 final int indexWithinInUse = indexWithinBlock >> LOG_INUSE_BITSET_SIZE;
                 final long maskWithinInUse = 1L << (indexWithinBlock & IN_USE_MASK);
-                final boolean usePrev = ctx.prevInUseBlock != null && (ctx.prevInUseBlock[indexWithinInUse] & maskWithinInUse) != 0;
-                final byte currValue = usePrev ? ctx.currentPrevBlock[indexWithinBlock] : ctx.currentBlock[indexWithinBlock];
+                final boolean usePrev =
+                        ctx.prevInUseBlock != null && (ctx.prevInUseBlock[indexWithinInUse] & maskWithinInUse) != 0;
+                final byte currValue =
+                        usePrev ? ctx.currentPrevBlock[indexWithinBlock] : ctx.currentBlock[indexWithinBlock];
                 dest.set(ctx.offset++, currValue);
             });
             dest.setSize(ctx.offset);
         }
 
-        protected void fillSparseChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final LongChunk<? extends RowKeys> indices) {
+        protected void fillSparseChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric,
+                @NotNull final LongChunk<? extends RowKeys> indices) {
             final WritableByteChunk<? super Values> dest = destGeneric.asWritableByteChunk();
             final int sz = indices.size();
             for (int ii = 0; ii < sz; ++ii) {
@@ -565,14 +672,15 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
                 if (blockNo >= blocks.length) {
                     dest.set(ii, NULL_BOOLEAN_AS_BYTE);
                 } else {
-                    final byte [] currentBlock = blocks[blockNo];
+                    final byte[] currentBlock = blocks[blockNo];
                     dest.set(ii, currentBlock[(int) (fromIndex & INDEX_MASK)]);
                 }
             }
             dest.setSize(sz);
         }
 
-        protected void fillSparsePrevChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric, @NotNull final LongChunk<? extends RowKeys> indices) {
+        protected void fillSparsePrevChunkUnordered(@NotNull final WritableChunk<? super Values> destGeneric,
+                @NotNull final LongChunk<? extends RowKeys> indices) {
             final WritableByteChunk<? super Values> dest = destGeneric.asWritableByteChunk();
             final int sz = indices.size();
             for (int ii = 0; ii < sz; ++ii) {
@@ -586,29 +694,35 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
                     dest.set(ii, NULL_BOOLEAN_AS_BYTE);
                     continue;
                 }
-                final byte [] currentBlock = shouldUsePrevious(fromIndex) ? prevBlocks[blockNo] : blocks[blockNo];
+                final byte[] currentBlock = shouldUsePrevious(fromIndex) ? prevBlocks[blockNo] : blocks[blockNo];
                 dest.set(ii, currentBlock[(int) (fromIndex & INDEX_MASK)]);
             }
             dest.setSize(sz);
         }
 
         @Override
-        public void fillChunk(@NotNull final ColumnSource.FillContext context, @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
+        public void fillChunk(@NotNull final ColumnSource.FillContext context,
+                @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
             fillSparseChunk(destination, rowSequence);
         }
 
         @Override
-        public void fillPrevChunk(@NotNull final ColumnSource.FillContext context, @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
+        public void fillPrevChunk(@NotNull final ColumnSource.FillContext context,
+                @NotNull final WritableChunk<? super Values> destination, @NotNull final RowSequence rowSequence) {
             fillSparsePrevChunk(destination, rowSequence);
         }
 
         @Override
-        public void fillChunkUnordered(@NotNull final FillContext context, @NotNull final WritableChunk<? super Values> destination, @NotNull final LongChunk<? extends RowKeys> keyIndices) {
+        public void fillChunkUnordered(@NotNull final FillContext context,
+                @NotNull final WritableChunk<? super Values> destination,
+                @NotNull final LongChunk<? extends RowKeys> keyIndices) {
             fillSparseChunkUnordered(destination, keyIndices);
         }
 
         @Override
-        public void fillPrevChunkUnordered(@NotNull final FillContext context, @NotNull final WritableChunk<? super Values> destination, @NotNull final LongChunk<? extends RowKeys> keyIndices) {
+        public void fillPrevChunkUnordered(@NotNull final FillContext context,
+                @NotNull final WritableChunk<? super Values> destination,
+                @NotNull final LongChunk<? extends RowKeys> keyIndices) {
             fillSparsePrevChunkUnordered(destination, keyIndices);
         }
 
@@ -628,13 +742,18 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         }
 
         @Override
+        public void prepareForParallelPopulation(RowSequence rowSequence) {
+            BooleanArraySource.this.prepareForParallelPopulation(rowSequence);
+        }
+
+        @Override
         public FillFromContext makeFillFromContext(int chunkCapacity) {
             return BooleanArraySource.this.makeFillFromContext(chunkCapacity);
         }
 
         @Override
         public void fillFromChunk(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src,
-                                  @NotNull RowSequence rowSequence) {
+                @NotNull RowSequence rowSequence) {
             final ByteChunk<? extends Values> chunk = src.asByteChunk();
             if (rowSequence.getAverageRunLengthEstimate() < USE_RANGES_AVERAGE_RUN_LENGTH) {
                 fillFromChunkByKeys(rowSequence, src, chunk::get);
@@ -644,7 +763,8 @@ public class BooleanArraySource extends ArraySourceHelper<Boolean, byte[]> imple
         }
 
         @Override
-        public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src, @NotNull LongChunk<RowKeys> keys) {
+        public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src,
+                @NotNull LongChunk<RowKeys> keys) {
             final ByteChunk<? extends Values> chunk = src.asByteChunk();
             BooleanArraySource.this.fillFromChunkUnordered(src, keys, chunk::get);
         }

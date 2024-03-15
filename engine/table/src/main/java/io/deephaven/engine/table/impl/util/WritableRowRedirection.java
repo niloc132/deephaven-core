@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.util;
 
 import gnu.trove.map.TLongLongMap;
@@ -81,12 +81,12 @@ public interface WritableRowRedirection extends RowRedirection, ChunkSink<RowKey
     }
 
     /**
-     * Remove the specified {@code outerRowKeys}.
+     * Remove the specified {@code rowSequence}.
      *
-     * @param outerRowKeys The outer row keys to remove
+     * @param rowSequence The outer row keys to remove
      */
-    default void removeAll(final RowSequence outerRowKeys) {
-        outerRowKeys.forAllRowKeys(this::remove);
+    default void removeAll(final RowSequence rowSequence) {
+        rowSequence.forAllRowKeys(this::remove);
     }
 
     /**
@@ -171,7 +171,7 @@ public interface WritableRowRedirection extends RowRedirection, ChunkSink<RowKey
     }
 
     /**
-     * Factory for producing WritableRowSets and their components.
+     * Factory for producing WritableRowRedirections and their components.
      */
     interface Factory {
         TLongLongMap createUnderlyingMapWithCapacity(int initialCapacity);

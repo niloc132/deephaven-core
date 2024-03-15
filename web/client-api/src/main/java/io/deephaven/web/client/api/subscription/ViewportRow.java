@@ -1,8 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.subscription;
 
+import com.vertispan.tsdefs.annotations.TsInterface;
+import com.vertispan.tsdefs.annotations.TsName;
 import elemental2.core.JsArray;
 import io.deephaven.web.client.api.Column;
 import io.deephaven.web.client.api.Format;
@@ -12,6 +14,12 @@ import jsinterop.annotations.JsMethod;
 import jsinterop.base.Any;
 import jsinterop.base.Js;
 
+/**
+ * This object may be pooled internally or discarded and not updated. Do not retain references to it. Instead, request
+ * the viewport again.
+ */
+@TsInterface
+@TsName(namespace = "dh")
 public class ViewportRow implements TableData.Row {
     protected final int offsetInSnapshot;
     private final Object[] dataColumns;
@@ -28,6 +36,12 @@ public class ViewportRow implements TableData.Row {
         throw new UnsupportedOperationException("Viewports don't currently represent their position with an index");
     }
 
+    /**
+     * the data for the given column's cell
+     * 
+     * @param column
+     * @return Any
+     */
     @Override
     @JsMethod
     public Any get(Column column) {
@@ -39,6 +53,12 @@ public class ViewportRow implements TableData.Row {
         return uncheckedData.getAtAsAny(offsetInSnapshot);
     }
 
+    /**
+     * the format object for the given columns' cell
+     * 
+     * @param column
+     * @return {@link Format}.
+     */
     @Override
     @JsMethod
     public Format getFormat(Column column) {

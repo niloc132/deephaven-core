@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.io.log.impl;
 
 import io.deephaven.io.log.LogBufferPool;
@@ -28,11 +28,11 @@ public class TestLogEntryImpl extends TestCase {
 
     public void testStartWritten() {
         final LogEntryImpl SUT = new LogEntryImpl(pool);
-        final ByteBuffer buf = ByteBuffer.allocate(100);
+        final ByteBuffer buf = ByteBuffer.allocate(LogOutputBaseImpl.START_SIZE_BYTES);
 
         context.checking(new Expectations() {
             {
-                one(pool).take();
+                oneOf(pool).take(LogOutputBaseImpl.START_SIZE_BYTES);
                 will(returnValue(buf));
             }
         });

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select.analyzers;
 
 import io.deephaven.engine.table.ColumnDefinition;
@@ -56,8 +56,8 @@ public abstract class DependencyLayerBase extends SelectAndViewAnalyzer {
     }
 
     @Override
-    final Map<String, Set<String>> calcDependsOnRecurse() {
-        final Map<String, Set<String>> result = inner.calcDependsOnRecurse();
+    final Map<String, Set<String>> calcDependsOnRecurse(boolean forcePublishAllResources) {
+        final Map<String, Set<String>> result = inner.calcDependsOnRecurse(forcePublishAllResources);
         final Set<String> thisResult = new HashSet<>();
         for (final String dep : dependencies) {
             final Set<String> innerDependencies = result.get(dep);

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.ssa;
 
 import io.deephaven.engine.table.impl.SortingOrder;
@@ -23,7 +23,7 @@ public interface SsaChecker {
                 final LongSortKernel sortKernel = LongSortKernel.makeContext(columnSource.getChunkType(),
                         ssa.isReversed() ? SortingOrder.Descending : SortingOrder.Ascending, size, true)) {
             columnSource.fillChunk(fillContext, valuesChunk, rowSequence);
-            rowSequence.fillRowKeyChunk(WritableLongChunk.downcast(keyChunk));
+            rowSequence.fillRowKeyChunk(keyChunk);
             sortKernel.sort(keyChunk, valuesChunk);
             checkSsa(ssa, valuesChunk, keyChunk);
         }

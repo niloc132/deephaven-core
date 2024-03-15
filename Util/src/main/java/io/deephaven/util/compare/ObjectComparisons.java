@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.util.compare;
 
 import java.util.Objects;
@@ -17,7 +17,7 @@ public class ObjectComparisons {
         if (rhs == null) {
             return 1;
         }
-        // noinspection unchecked
+        // noinspection unchecked,rawtypes
         return ((Comparable) lhs).compareTo(rhs);
     }
 

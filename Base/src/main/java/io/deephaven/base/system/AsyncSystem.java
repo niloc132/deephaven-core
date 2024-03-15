@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.base.system;
 
 import io.deephaven.base.verify.Assert;
@@ -82,7 +82,7 @@ public class AsyncSystem {
     }
 
     /**
-     * Equivalent to {@code exitCaught(thread, throwable, status, out, null).
+     * Equivalent to {@code exitCaught(thread, throwable, status, out, null)}.
      */
     public static void exitCaught(Thread thread, Throwable throwable, int status, PrintStream out) {
         exitCaught(thread, throwable, status, out, null);

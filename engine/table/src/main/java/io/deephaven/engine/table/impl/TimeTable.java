@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.clock.Clock;
@@ -9,6 +9,8 @@ import io.deephaven.chunk.WritableChunk;
 import io.deephaven.chunk.WritableLongChunk;
 import io.deephaven.chunk.WritableObjectChunk;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.RowSetBuilderRandom;
 import io.deephaven.engine.rowset.RowSetFactory;
@@ -16,41 +18,47 @@ import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.impl.perf.PerformanceEntry;
-import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
 import io.deephaven.engine.table.impl.sources.FillUnordered;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.updategraph.UpdateSourceRegistrar;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.function.Numeric;
-import io.deephaven.internal.log.LoggerFactory;
-import io.deephaven.io.logger.Logger;
-import io.deephaven.time.DateTime;
-import io.deephaven.time.DateTimeUtils;
+import io.deephaven.util.QueryConstants;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static io.deephaven.time.DateTimeUtils.currentClock;
+import static io.deephaven.time.DateTimeUtils.epochNanos;
+import static io.deephaven.time.DateTimeUtils.epochNanosToInstant;
+import static io.deephaven.time.DateTimeUtils.isBefore;
+import static io.deephaven.time.DateTimeUtils.minus;
+import static io.deephaven.time.DateTimeUtils.parseInstant;
+import static io.deephaven.time.DateTimeUtils.parseDurationNanos;
+import static io.deephaven.time.DateTimeUtils.plus;
 import static io.deephaven.util.type.TypeUtils.box;
 
 /**
  * A TimeTable adds rows at a fixed interval with a single column named "Timestamp".
  *
  * To create a TimeTable, you should use the {@link TableTools#timeTable} family of methods.
+ *
+ * @implNote The constructor publishes {@code this} to the {@link UpdateSourceRegistrar} and thus cannot be subclassed.
  */
-public class TimeTable extends QueryTable implements Runnable {
-    private static final Logger log = LoggerFactory.getLogger(TimeTable.class);
+public final class TimeTable extends QueryTable implements Runnable {
 
     public static class Builder {
-        private UpdateSourceRegistrar registrar = UpdateGraphProcessor.DEFAULT;
+        private UpdateSourceRegistrar registrar = ExecutionContext.getContext().getUpdateGraph();
+
         private Clock clock;
-        private DateTime startTime;
+        private Instant startTime;
         private long period;
-        private boolean streamTable;
+        private boolean blinkTable;
 
         public Builder registrar(UpdateSourceRegistrar registrar) {
             this.registrar = registrar;
@@ -62,14 +70,18 @@ public class TimeTable extends QueryTable implements Runnable {
             return this;
         }
 
-        public Builder startTime(DateTime startTime) {
+        public Builder startTime(Instant startTime) {
             this.startTime = startTime;
             return this;
         }
 
         public Builder startTime(String startTime) {
-            this.startTime = DateTimeUtils.convertDateTime(startTime);
+            this.startTime = parseInstant(startTime);
             return this;
+        }
+
+        public Builder period(Duration period) {
+            return period(period.toNanos());
         }
 
         public Builder period(long period) {
@@ -78,19 +90,18 @@ public class TimeTable extends QueryTable implements Runnable {
         }
 
         public Builder period(String period) {
-            this.period = DateTimeUtils.expressionToNanos(period);
-            return this;
+            return period(parseDurationNanos(period));
         }
 
-        public Builder streamTable(boolean streamTable) {
-            this.streamTable = streamTable;
+        public Builder blinkTable(boolean blinkTable) {
+            this.blinkTable = blinkTable;
             return this;
         }
 
         public QueryTable build() {
             return new TimeTable(registrar,
-                    Objects.requireNonNullElse(clock, DateTimeUtils.currentClock()),
-                    startTime, period, streamTable);
+                    Objects.requireNonNullElse(clock, currentClock()),
+                    startTime, period, blinkTable);
         }
     }
 
@@ -100,36 +111,46 @@ public class TimeTable extends QueryTable implements Runnable {
 
     private static final String TIMESTAMP = "Timestamp";
     private long lastIndex = -1;
-    private final SyntheticDateTimeSource columnSource;
+    private final SyntheticInstantSource columnSource;
     private final Clock clock;
-    private final PerformanceEntry entry;
-    private final boolean isStreamTable;
+    private final String name;
+    private final boolean isBlinkTable;
+    private final UpdateSourceRegistrar registrar;
+    private final SourceRefresher refresher;
 
-    public TimeTable(UpdateSourceRegistrar registrar, Clock clock,
-            @Nullable DateTime startTime, long period, boolean isStreamTable) {
+    public TimeTable(
+            UpdateSourceRegistrar registrar,
+            Clock clock,
+            @Nullable Instant startTime,
+            long period,
+            boolean isBlinkTable) {
         super(RowSetFactory.empty().toTracking(), initColumn(startTime, period));
-        this.isStreamTable = isStreamTable;
-        final String name = isStreamTable ? "TimeTableStream" : "TimeTable";
-        this.entry = UpdatePerformanceTracker.getInstance().getEntry(name + "(" + startTime + "," + period + ")");
-        columnSource = (SyntheticDateTimeSource) getColumnSourceMap().get(TIMESTAMP);
+        this.registrar = registrar;
+        this.isBlinkTable = isBlinkTable;
+        this.name = (isBlinkTable ? "TimeTableBlink" : "TimeTable") + "(" + startTime + "," + period + ")";
+
+        columnSource = (SyntheticInstantSource) getColumnSourceMap().get(TIMESTAMP);
         this.clock = clock;
-        if (isStreamTable) {
-            setAttribute(Table.STREAM_TABLE_ATTRIBUTE, Boolean.TRUE);
+        if (isBlinkTable) {
+            setAttribute(Table.BLINK_TABLE_ATTRIBUTE, Boolean.TRUE);
         } else {
             setAttribute(Table.ADD_ONLY_TABLE_ATTRIBUTE, Boolean.TRUE);
+            setAttribute(Table.APPEND_ONLY_TABLE_ATTRIBUTE, Boolean.TRUE);
             setFlat();
         }
+        refresher = new SourceRefresher();
         if (startTime != null) {
             refresh(false);
         }
-        registrar.addSource(this);
+        setRefreshing(true);
+        registrar.addSource(refresher);
     }
 
-    private static Map<String, ColumnSource<?>> initColumn(DateTime firstTime, long period) {
+    private static Map<String, ColumnSource<?>> initColumn(Instant firstTime, long period) {
         if (period <= 0) {
             throw new IllegalArgumentException("Invalid time period: " + period + " nanoseconds");
         }
-        return Collections.singletonMap(TIMESTAMP, new SyntheticDateTimeSource(firstTime, period));
+        return Collections.singletonMap(TIMESTAMP, new SyntheticInstantSource(firstTime, period));
     }
 
     @Override
@@ -137,84 +158,101 @@ public class TimeTable extends QueryTable implements Runnable {
         refresh(true);
     }
 
-    private void refresh(final boolean notifyListeners) {
-        entry.onUpdateStart();
-        try {
-            final DateTime dateTime = DateTime.of(clock);
-            long rangeStart = lastIndex + 1;
-            if (columnSource.startTime == null) {
-                lastIndex = 0;
-                columnSource.startTime = new DateTime(
-                        Numeric.lowerBin(dateTime.getNanos(), columnSource.period));
-            } else if (dateTime.compareTo(columnSource.startTime) >= 0) {
-                lastIndex = Math.max(lastIndex,
-                        DateTimeUtils.minus(dateTime, columnSource.startTime) / columnSource.period);
-            }
+    private class SourceRefresher extends InstrumentedTableUpdateSource {
 
-            final boolean rowsAdded = rangeStart <= lastIndex;
-            final boolean rowsRemoved = isStreamTable && getRowSet().isNonempty();
-            if (rowsAdded || rowsRemoved) {
-                final RowSet addedRange = rowsAdded
-                        ? RowSetFactory.fromRange(rangeStart, lastIndex)
-                        : RowSetFactory.empty();
-                final RowSet removedRange = rowsRemoved
-                        ? RowSetFactory.fromRange(getRowSet().firstRowKey(), rangeStart - 1)
-                        : RowSetFactory.empty();
-                if (rowsAdded) {
-                    getRowSet().writableCast().insertRange(rangeStart, lastIndex);
-                }
-                if (rowsRemoved) {
-                    getRowSet().writableCast().removeRange(0, rangeStart - 1);
-                }
-                if (notifyListeners) {
-                    notifyListeners(addedRange, removedRange, RowSetFactory.empty());
-                }
+        public SourceRefresher() {
+            super(registrar, TimeTable.this, name);
+        }
+
+        @Override
+        protected void instrumentedRefresh() {
+            refresh(true);
+        }
+    }
+
+    private void refresh(final boolean notifyListeners) {
+        final Instant now = clock.instantNanos();
+        long rangeStart = lastIndex + 1;
+        if (columnSource.startTime == null) {
+            lastIndex = 0;
+            columnSource.startTime = epochNanosToInstant(
+                    Numeric.lowerBin(epochNanos(now), columnSource.period));
+        } else if (now.compareTo(columnSource.startTime) >= 0) {
+            lastIndex = Math.max(lastIndex,
+                    minus(now, columnSource.startTime) / columnSource.period);
+        }
+
+        final boolean rowsAdded = rangeStart <= lastIndex;
+        final boolean rowsRemoved = isBlinkTable && getRowSet().isNonempty();
+        if (rowsAdded || rowsRemoved) {
+            final RowSet addedRange = rowsAdded
+                    ? RowSetFactory.fromRange(rangeStart, lastIndex)
+                    : RowSetFactory.empty();
+            final RowSet removedRange = rowsRemoved
+                    ? RowSetFactory.fromRange(getRowSet().firstRowKey(), rangeStart - 1)
+                    : RowSetFactory.empty();
+            if (rowsAdded) {
+                getRowSet().writableCast().insertRange(rangeStart, lastIndex);
             }
-        } finally {
-            entry.onUpdateEnd();
+            if (rowsRemoved) {
+                getRowSet().writableCast().removeRange(0, rangeStart - 1);
+            }
+            if (notifyListeners) {
+                notifyListeners(addedRange, removedRange, RowSetFactory.empty());
+            }
         }
     }
 
     @Override
     protected void destroy() {
         super.destroy();
-        UpdateGraphProcessor.DEFAULT.removeSource(this);
+        registrar.removeSource(refresher);
     }
 
-    private static final class SyntheticDateTimeSource extends AbstractColumnSource<DateTime> implements
-            ImmutableColumnSourceGetDefaults.LongBacked<DateTime>,
+    private static final class SyntheticInstantSource extends AbstractColumnSource<Instant> implements
+            ImmutableColumnSourceGetDefaults.LongBacked<Instant>,
             FillUnordered<Values> {
 
-        private DateTime startTime;
+        private Instant startTime;
         private final long period;
 
-        private SyntheticDateTimeSource(DateTime startTime, long period) {
-            super(DateTime.class);
+        private SyntheticInstantSource(Instant startTime, long period) {
+            super(Instant.class);
             this.startTime = startTime;
             this.period = period;
         }
 
-        private DateTime computeDateTime(long rowKey) {
-            return DateTimeUtils.plus(startTime, period * rowKey);
+        private Instant computeInstant(long rowKey) {
+            return plus(startTime, period * rowKey);
         }
 
         @Override
-        public DateTime get(long rowKey) {
-            return computeDateTime(rowKey);
+        public Instant get(long rowKey) {
+            if (rowKey < 0) {
+                return null;
+            }
+            return computeInstant(rowKey);
         }
 
         private long computeNanos(long rowKey) {
-            return startTime.getNanos() + period * rowKey;
+            return epochNanos(startTime) + period * rowKey;
         }
 
         @Override
         public long getLong(long rowKey) {
+            if (rowKey < 0) {
+                return QueryConstants.NULL_LONG;
+            }
             return computeNanos(rowKey);
         }
 
         @Override
-        public WritableRowSet match(boolean invertMatch, boolean usePrev, boolean caseInsensitive, RowSet selection,
-                Object... keys) {
+        public WritableRowSet match(
+                final boolean invertMatch,
+                final boolean usePrev,
+                final boolean caseInsensitive,
+                @NotNull final RowSet selection,
+                final Object... keys) {
             if (startTime == null) {
                 // there are no valid rows for this column source yet
                 return RowSetFactory.empty();
@@ -223,17 +261,16 @@ public class TimeTable extends QueryTable implements Runnable {
             final RowSetBuilderRandom matchingSet = RowSetFactory.builderRandom();
 
             for (Object o : keys) {
-                if (!(o instanceof DateTime)) {
+                if (!(o instanceof Instant)) {
                     continue;
                 }
-                final DateTime key = (DateTime) o;
+                final Instant key = (Instant) o;
 
-                if (key.getNanos() % period != startTime.getNanos() % period
-                        || DateTimeUtils.isBefore(key, startTime)) {
+                if (epochNanos(key) % period != epochNanos(startTime) % period || isBefore(key, startTime)) {
                     continue;
                 }
 
-                matchingSet.addKey(DateTimeUtils.minus(key, startTime) / period);
+                matchingSet.addKey(minus(key, startTime) / period);
             }
 
             if (invertMatch) {
@@ -248,10 +285,10 @@ public class TimeTable extends QueryTable implements Runnable {
         }
 
         @Override
-        public Map<DateTime, RowSet> getValuesMapping(RowSet subRange) {
-            final Map<DateTime, RowSet> result = new LinkedHashMap<>();
+        public Map<Instant, RowSet> getValuesMapping(RowSet subRange) {
+            final Map<Instant, RowSet> result = new LinkedHashMap<>();
             subRange.forAllRowKeys(
-                    ii -> result.put(computeDateTime(ii), RowSetFactory.fromKeys(ii)));
+                    ii -> result.put(computeInstant(ii), RowSetFactory.fromKeys(ii)));
             return result;
         }
 
@@ -265,23 +302,50 @@ public class TimeTable extends QueryTable implements Runnable {
         public <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(
                 @NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
             // noinspection unchecked
-            return (ColumnSource<ALTERNATE_DATA_TYPE>) new SyntheticDateTimeAsLongSource();
+            return (ColumnSource<ALTERNATE_DATA_TYPE>) new SyntheticInstantAsLongSource();
         }
 
         @Override
-        public void fillChunkUnordered(@NotNull FillContext context, @NotNull WritableChunk<? super Values> dest,
-                @NotNull LongChunk<? extends RowKeys> keys) {
-            final WritableObjectChunk<DateTime, ? super Values> objectDest = dest.asWritableObjectChunk();
+        public void fillChunk(
+                @NotNull final FillContext context,
+                @NotNull final WritableChunk<? super Values> dest,
+                @NotNull final RowSequence rowSequence) {
+            final WritableObjectChunk<Instant, ? super Values> objectDest = dest.asWritableObjectChunk();
+            dest.setSize(0);
+            rowSequence.forAllRowKeys(rowKey -> objectDest.add(computeInstant(rowKey)));
+        }
+
+        @Override
+        public void fillPrevChunk(
+                @NotNull final FillContext context,
+                @NotNull final WritableChunk<? super Values> dest,
+                @NotNull final RowSequence rowSequence) {
+            fillChunk(context, dest, rowSequence);
+        }
+
+        @Override
+        public void fillChunkUnordered(
+                @NotNull final FillContext context,
+                @NotNull final WritableChunk<? super Values> dest,
+                @NotNull final LongChunk<? extends RowKeys> keys) {
+            final WritableObjectChunk<Instant, ? super Values> objectDest = dest.asWritableObjectChunk();
             objectDest.setSize(keys.size());
 
             for (int ii = 0; ii < keys.size(); ++ii) {
-                objectDest.set(ii, computeDateTime(keys.get(ii)));
+                long rowKey = keys.get(ii);
+                if (rowKey < 0) {
+                    objectDest.set(ii, null);
+                } else {
+                    objectDest.set(ii, computeInstant(rowKey));
+                }
             }
         }
 
         @Override
-        public void fillPrevChunkUnordered(@NotNull FillContext context, @NotNull WritableChunk<? super Values> dest,
-                @NotNull LongChunk<? extends RowKeys> keys) {
+        public void fillPrevChunkUnordered(
+                @NotNull final FillContext context,
+                @NotNull final WritableChunk<? super Values> dest,
+                @NotNull final LongChunk<? extends RowKeys> keys) {
             fillChunkUnordered(context, dest, keys);
         }
 
@@ -290,27 +354,55 @@ public class TimeTable extends QueryTable implements Runnable {
             return true;
         }
 
-        private class SyntheticDateTimeAsLongSource extends AbstractColumnSource<Long> implements
+        private class SyntheticInstantAsLongSource extends AbstractColumnSource<Long> implements
                 ImmutableColumnSourceGetDefaults.LongBacked<Long>,
                 FillUnordered<Values> {
 
-            SyntheticDateTimeAsLongSource() {
+            SyntheticInstantAsLongSource() {
                 super(long.class);
             }
 
             @Override
             public Long get(long rowKey) {
+                if (rowKey < 0) {
+                    return null;
+                }
                 return box(computeNanos(rowKey));
             }
 
             @Override
             public long getLong(long rowKey) {
+                if (rowKey < 0) {
+                    return QueryConstants.NULL_LONG;
+                }
                 return computeNanos(rowKey);
             }
 
             @Override
-            public WritableRowSet match(boolean invertMatch, boolean usePrev, boolean caseInsensitive, RowSet selection,
-                    Object... keys) {
+            public void fillChunk(
+                    @NotNull final FillContext context,
+                    @NotNull final WritableChunk<? super Values> dest,
+                    @NotNull final RowSequence rowSequence) {
+                WritableLongChunk<? super Values> longDest = dest.asWritableLongChunk();
+                dest.setSize(0);
+                rowSequence.forAllRowKeys(rowKey -> longDest.add(computeNanos(rowKey)));
+            }
+
+            @Override
+            public void fillPrevChunk(
+                    @NotNull final FillContext context,
+                    @NotNull final WritableChunk<? super Values> dest,
+                    @NotNull final RowSequence rowSequence) {
+                fillChunk(context, dest, rowSequence);
+            }
+
+            @Override
+            public WritableRowSet match(
+                    final boolean invertMatch,
+                    final boolean usePrev,
+                    final boolean caseInsensitive,
+                    @NotNull final RowSet selection,
+                    final Object... keys) {
                 if (startTime == null) {
                     // there are no valid rows for this column source yet
                     return RowSetFactory.empty();
@@ -324,11 +416,11 @@ public class TimeTable extends QueryTable implements Runnable {
                     }
                     final long key = (Long) o;
 
-                    if (key % period != startTime.getNanos() % period || key < startTime.getNanos()) {
+                    if (key % period != epochNanos(startTime) % period || key < epochNanos(startTime)) {
                         continue;
                     }
 
-                    matchingSet.addKey((key - startTime.getNanos()) / period);
+                    matchingSet.addKey((key - epochNanos(startTime)) / period);
                 }
 
                 if (invertMatch) {
@@ -353,14 +445,14 @@ public class TimeTable extends QueryTable implements Runnable {
             @Override
             public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(
                     @NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {
-                return alternateDataType == DateTime.class;
+                return alternateDataType == Instant.class;
             }
 
             @Override
             public <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(
                     @NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {
                 // noinspection unchecked
-                return (ColumnSource<ALTERNATE_DATA_TYPE>) SyntheticDateTimeSource.this;
+                return (ColumnSource<ALTERNATE_DATA_TYPE>) SyntheticInstantSource.this;
             }
 
             @Override
@@ -370,7 +462,12 @@ public class TimeTable extends QueryTable implements Runnable {
                 longDest.setSize(keys.size());
 
                 for (int ii = 0; ii < keys.size(); ++ii) {
-                    longDest.set(ii, computeNanos(keys.get(ii)));
+                    long rowKey = keys.get(ii);
+                    if (rowKey < 0) {
+                        longDest.set(ii, QueryConstants.NULL_LONG);
+                    } else {
+                        longDest.set(ii, computeNanos(rowKey));
+                    }
                 }
             }
 

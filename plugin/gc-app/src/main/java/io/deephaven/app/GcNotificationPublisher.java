@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.app;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
@@ -10,9 +13,9 @@ import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
+import io.deephaven.stream.StreamChunkUtils;
 import io.deephaven.stream.StreamConsumer;
 import io.deephaven.stream.StreamPublisher;
-import io.deephaven.stream.StreamToTableAdapter;
 import io.deephaven.time.DateTimeUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -68,8 +71,7 @@ final class GcNotificationPublisher implements StreamPublisher {
 
     GcNotificationPublisher() {
         this.vmStartMillis = ManagementFactory.getRuntimeMXBean().getStartTime();
-        // noinspection unchecked
-        chunks = StreamToTableAdapter.makeChunksForDefinition(DEFINITION, CHUNK_SIZE);
+        chunks = StreamChunkUtils.makeChunksForDefinition(DEFINITION, CHUNK_SIZE);
     }
 
     @Override
@@ -120,11 +122,13 @@ final class GcNotificationPublisher implements StreamPublisher {
 
     private void flushInternal() {
         consumer.accept(chunks);
-        // noinspection unchecked
-        chunks = StreamToTableAdapter.makeChunksForDefinition(DEFINITION, CHUNK_SIZE);
+        chunks = StreamChunkUtils.makeChunksForDefinition(DEFINITION, CHUNK_SIZE);
     }
 
     public void acceptFailure(Throwable e) {
         consumer.acceptFailure(e);
     }
+
+    @Override
+    public void shutdown() {}
 }

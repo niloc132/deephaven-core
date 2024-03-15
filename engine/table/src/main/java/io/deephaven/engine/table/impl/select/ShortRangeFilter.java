@@ -1,11 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharRangeFilter and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit CharRangeFilter and run "./gradlew replicateChunkFilters" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.rowset.RowSet;
@@ -19,15 +18,31 @@ import io.deephaven.gui.table.filters.Condition;
 import io.deephaven.util.QueryConstants;
 import io.deephaven.util.compare.ShortComparisons;
 import io.deephaven.util.type.TypeUtils;
+import org.jetbrains.annotations.NotNull;
 
 public class ShortRangeFilter extends AbstractRangeFilter {
+    public static ShortRangeFilter lt(String columnName, short x) {
+        return new ShortRangeFilter(columnName, QueryConstants.NULL_SHORT, x, true, false);
+    }
+
+    public static ShortRangeFilter leq(String columnName, short x) {
+        return new ShortRangeFilter(columnName, QueryConstants.NULL_SHORT, x, true, true);
+    }
+
+    public static ShortRangeFilter gt(String columnName, short x) {
+        return new ShortRangeFilter(columnName, x, QueryConstants.MAX_SHORT, false, true);
+    }
+
+    public static ShortRangeFilter geq(String columnName, short x) {
+        return new ShortRangeFilter(columnName, x, QueryConstants.MAX_SHORT, true, true);
+    }
+
     final short upper;
     final short lower;
 
     public ShortRangeFilter(String columnName, short val1, short val2, boolean lowerInclusive, boolean upperInclusive) {
         super(columnName, lowerInclusive, upperInclusive);
-
-        if(ShortComparisons.gt(val1, val2)) {
+        if (ShortComparisons.gt(val1, val2)) {
             upper = val1;
             lower = val2;
         } else {
@@ -39,13 +54,13 @@ public class ShortRangeFilter extends AbstractRangeFilter {
     static WhereFilter makeShortRangeFilter(String columnName, Condition condition, String value) {
         switch (condition) {
             case LESS_THAN:
-                return new ShortRangeFilter(columnName, RangeConditionFilter.parseShortFilter(value), QueryConstants.NULL_SHORT, true, false);
+                return lt(columnName, RangeConditionFilter.parseShortFilter(value));
             case LESS_THAN_OR_EQUAL:
-                return new ShortRangeFilter(columnName, RangeConditionFilter.parseShortFilter(value), QueryConstants.NULL_SHORT, true, true);
+                return leq(columnName, RangeConditionFilter.parseShortFilter(value));
             case GREATER_THAN:
-                return new ShortRangeFilter(columnName, RangeConditionFilter.parseShortFilter(value), QueryConstants.MAX_SHORT, false, true);
+                return gt(columnName, RangeConditionFilter.parseShortFilter(value));
             case GREATER_THAN_OR_EQUAL:
-                return new ShortRangeFilter(columnName, RangeConditionFilter.parseShortFilter(value), QueryConstants.MAX_SHORT, true, true);
+                return geq(columnName, RangeConditionFilter.parseShortFilter(value));
             default:
                 throw new IllegalArgumentException("RangeConditionFilter does not support condition " + condition);
         }
@@ -59,7 +74,8 @@ public class ShortRangeFilter extends AbstractRangeFilter {
 
         final ColumnDefinition<?> def = tableDefinition.getColumn(columnName);
         if (def == null) {
-            throw new RuntimeException("Column \"" + columnName + "\" doesn't exist in this table, available columns: " + tableDefinition.getColumnNames());
+            throw new RuntimeException("Column \"" + columnName + "\" doesn't exist in this table, available columns: "
+                    + tableDefinition.getColumnNames());
         }
 
         final Class<?> colClass = TypeUtils.getUnboxedTypeIfBoxed(def.getDataType());
@@ -89,28 +105,36 @@ public class ShortRangeFilter extends AbstractRangeFilter {
                 (upperInclusive ? "]" : ")") + ")";
     }
 
+    @NotNull
     @Override
-    WritableRowSet binarySearch(RowSet selection, ColumnSource columnSource, boolean usePrev, boolean reverse) {
+    WritableRowSet binarySearch(
+            @NotNull final RowSet selection,
+            @NotNull final ColumnSource<?> columnSource,
+            final boolean usePrev,
+            final boolean reverse) {
         if (selection.isEmpty()) {
             return selection.copy();
         }
 
-        //noinspection unchecked
-        final ColumnSource<Short> shortColumnSource = (ColumnSource<Short>)columnSource;
+        // noinspection unchecked
+        final ColumnSource<Short> shortColumnSource = (ColumnSource<Short>) columnSource;
 
         final short startValue = reverse ? upper : lower;
         final short endValue = reverse ? lower : upper;
         final boolean startInclusive = reverse ? upperInclusive : lowerInclusive;
         final boolean endInclusive = reverse ? lowerInclusive : upperInclusive;
-        final int compareSign = reverse ? - 1 : 1;
+        final int compareSign = reverse ? -1 : 1;
 
-        long lowerBoundMin = bound(selection, usePrev, shortColumnSource, 0, selection.size(), startValue, startInclusive, compareSign, false);
-        long upperBoundMin = bound(selection, usePrev, shortColumnSource, lowerBoundMin, selection.size(), endValue, endInclusive, compareSign, true);
+        long lowerBoundMin = bound(selection, usePrev, shortColumnSource, 0, selection.size(), startValue,
+                startInclusive, compareSign, false);
+        long upperBoundMin = bound(selection, usePrev, shortColumnSource, lowerBoundMin, selection.size(), endValue,
+                endInclusive, compareSign, true);
 
         return selection.subSetByPositionRange(lowerBoundMin, upperBoundMin);
     }
 
-    private long bound(RowSet selection, boolean usePrev, ColumnSource<Short> longColumnSource, long minPosition, long maxPosition, short targetValue, boolean inclusive, int compareSign, boolean end) {
+    private long bound(RowSet selection, boolean usePrev, ColumnSource<Short> longColumnSource, long minPosition,
+            long maxPosition, short targetValue, boolean inclusive, int compareSign, boolean end) {
         while (minPosition < maxPosition) {
             final long midPos = (minPosition + maxPosition) / 2;
             final long midIdx = selection.get(midPos);

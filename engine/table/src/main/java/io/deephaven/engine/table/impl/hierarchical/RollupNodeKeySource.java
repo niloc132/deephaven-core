@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.hierarchical;
 
 import io.deephaven.chunk.*;
@@ -195,8 +195,8 @@ final class RollupNodeKeySource implements DefaultChunkSource.WithPrev<Values> {
         @Override
         public void close() {
             depthContext.close();
-            SafeCloseable.closeArray(groupByValueContexts);
-            SafeCloseable.closeArray(groupByValueBoxers);
+            SafeCloseable.closeAll(groupByValueContexts);
+            SafeCloseable.closeAll(groupByValueBoxers);
         }
     }
 

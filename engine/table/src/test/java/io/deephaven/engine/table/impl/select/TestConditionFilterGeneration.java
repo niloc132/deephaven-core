@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.context.ExecutionContext;
@@ -10,6 +10,7 @@ import io.deephaven.engine.table.impl.util.ModelFileGenerator;
 import io.deephaven.engine.testutil.junit4.EngineCleanup;
 import io.deephaven.util.SafeCloseable;
 import org.jetbrains.annotations.NotNull;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -30,7 +31,11 @@ public class TestConditionFilterGeneration {
                 .captureQueryCompiler()
                 .captureQueryScope()
                 .build().open();
+    }
 
+    @After
+    public void tearDown() {
+        executionContext.close();
     }
 
     // @Test

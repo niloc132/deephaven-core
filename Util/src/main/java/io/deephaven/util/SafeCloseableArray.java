@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.util;
 
 import io.deephaven.UncheckedDeephavenException;
@@ -36,12 +36,16 @@ public class SafeCloseableArray<SCT extends SafeCloseable> implements SafeClosea
      * @param array The array to operate one
      */
     public static <SCT extends SafeCloseable> void close(@NotNull final SCT[] array) {
+        final int length = array.length;
         List<Exception> exceptions = null;
-        for (int ii = 0; ii < array.length; ii++) {
+        for (int ii = 0; ii < length; ii++) {
             try (final SafeCloseable ignored = array[ii]) {
                 array[ii] = null;
             } catch (Exception e) {
-                (exceptions = new ArrayList<>()).add(e);
+                if (exceptions == null) {
+                    exceptions = new ArrayList<>();
+                }
+                exceptions.add(e);
             }
         }
         // noinspection ConstantConditions

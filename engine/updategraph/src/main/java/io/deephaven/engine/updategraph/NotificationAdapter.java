@@ -1,10 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.updategraph;
 
 import io.deephaven.base.log.LogOutput;
-import io.deephaven.engine.context.ExecutionContext;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -14,7 +13,7 @@ public class NotificationAdapter extends AbstractNotification {
 
     private final NotificationQueue.Notification wrapped;
 
-    NotificationAdapter(@NotNull final NotificationQueue.Notification wrapped) {
+    public NotificationAdapter(@NotNull final NotificationQueue.Notification wrapped) {
         super(wrapped.isTerminal());
         this.wrapped = wrapped;
     }
@@ -33,10 +32,5 @@ public class NotificationAdapter extends AbstractNotification {
     @Override
     public void run() {
         wrapped.run();
-    }
-
-    @Override
-    public ExecutionContext getExecutionContext() {
-        return wrapped.getExecutionContext();
     }
 }

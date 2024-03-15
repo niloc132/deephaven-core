@@ -1,13 +1,16 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.updateby.spec;
 
-import io.deephaven.annotations.SimpleStyle;
+import io.deephaven.annotations.SingletonStyle;
 import org.immutables.value.Value.Immutable;
 
 /**
  * A {@link UpdateBySpec} for performing a Cumulative Sum of the specified columns.
  */
 @Immutable
-@SimpleStyle
+@SingletonStyle
 public class CumSumSpec extends UpdateBySpecBase {
     public static CumSumSpec of() {
         return ImmutableCumSumSpec.of();
@@ -16,14 +19,9 @@ public class CumSumSpec extends UpdateBySpecBase {
     @Override
     public final boolean applicableTo(Class<?> inputType) {
         return
-        // is primitive numeric?
-        inputType.equals(double.class) || inputType.equals(float.class)
-                || inputType.equals(int.class) || inputType.equals(long.class) || inputType.equals(short.class)
-                || inputType.equals(byte.class)
-
-                // is boxed numeric?
-                || Number.class.isAssignableFrom(inputType)
-
+        // is primitive or boxed numeric?
+        applicableToNumeric(inputType)
+                || inputType == char.class || inputType == Character.class
                 // is boolean?
                 || inputType == boolean.class || inputType == Boolean.class;
     }

@@ -1,10 +1,17 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
+import io.deephaven.api.AsOfJoinMatch;
 import io.deephaven.api.ColumnName;
+import io.deephaven.api.JoinAddition;
 import io.deephaven.api.JoinMatch;
+import io.deephaven.api.RangeJoinMatch;
 import io.deephaven.api.Selectable;
 import io.deephaven.api.SortColumn;
 import io.deephaven.api.agg.Aggregation;
+import io.deephaven.api.Pair;
 import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.api.filter.Filter;
 import io.deephaven.api.snapshot.SnapshotWhenOptions;
@@ -12,10 +19,12 @@ import io.deephaven.api.updateby.UpdateByControl;
 import io.deephaven.api.updateby.UpdateByOperation;
 import io.deephaven.base.log.LogOutput;
 import io.deephaven.engine.liveness.LivenessReferent;
+import io.deephaven.engine.primitive.iterator.*;
 import io.deephaven.engine.rowset.TrackingRowSet;
 import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.hierarchical.RollupTable;
 import io.deephaven.engine.table.hierarchical.TreeTable;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,6 +32,7 @@ import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -54,6 +64,11 @@ public interface TableAdapter extends TableDefaults {
 
     @Override
     default String getDescription() {
+        return throwUnsupported();
+    }
+
+    @Override
+    default UpdateGraph getUpdateGraph() {
         return throwUnsupported();
     }
 
@@ -147,12 +162,47 @@ public interface TableAdapter extends TableDefaults {
     }
 
     @Override
-    default DataColumn getColumn(String columnName) {
+    default <DATA_TYPE> CloseableIterator<DATA_TYPE> columnIterator(@NotNull String columnName) {
         return throwUnsupported();
     }
 
     @Override
-    default Object[] getRecord(long rowNo, String... columnNames) {
+    default CloseablePrimitiveIteratorOfChar characterColumnIterator(@NotNull String columnName) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default CloseablePrimitiveIteratorOfByte byteColumnIterator(@NotNull String columnName) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default CloseablePrimitiveIteratorOfShort shortColumnIterator(@NotNull String columnName) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default CloseablePrimitiveIteratorOfInt integerColumnIterator(@NotNull String columnName) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default CloseablePrimitiveIteratorOfLong longColumnIterator(@NotNull String columnName) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default CloseablePrimitiveIteratorOfFloat floatColumnIterator(@NotNull String columnName) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default CloseablePrimitiveIteratorOfDouble doubleColumnIterator(@NotNull String columnName) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default <DATA_TYPE> CloseableIterator<DATA_TYPE> objectColumnIterator(@NotNull String columnName) {
         return throwUnsupported();
     }
 
@@ -167,22 +217,22 @@ public interface TableAdapter extends TableDefaults {
     }
 
     @Override
-    default Table renameColumns(MatchPair... pairs) {
+    default Table renameColumns(Collection<Pair> pairs) {
         return throwUnsupported();
     }
 
     @Override
-    default Table moveColumns(int index, boolean moveToEnd, String... columnsToMove) {
-        return throwUnsupported();
-    }
-
-    @Override
-    default Table dateTimeColumnAsNanos(String dateTimeColumnName, String nanosColumnName) {
+    default Table moveColumns(int index, String... columnsToMove) {
         return throwUnsupported();
     }
 
     @Override
     default Table slice(long firstPositionInclusive, long lastPositionExclusive) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default Table slicePct(double startPercentInclusive, double endPercentExclusive) {
         return throwUnsupported();
     }
 
@@ -197,30 +247,32 @@ public interface TableAdapter extends TableDefaults {
     }
 
     @Override
-    default Table exactJoin(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd) {
+    default Table exactJoin(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
+            Collection<? extends JoinAddition> columnsToAdd) {
         return throwUnsupported();
     }
 
     @Override
-    default Table aj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd,
-            AsOfMatchRule asOfMatchRule) {
+    default Table asOfJoin(Table rightTable, Collection<? extends JoinMatch> exactMatches, AsOfJoinMatch asOfMatch,
+            Collection<? extends JoinAddition> columnsToAdd) {
         return throwUnsupported();
     }
 
     @Override
-    default Table raj(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd,
-            AsOfMatchRule asOfMatchRule) {
+    default Table naturalJoin(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
+            Collection<? extends JoinAddition> columnsToAdd) {
         return throwUnsupported();
     }
 
     @Override
-    default Table naturalJoin(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd) {
+    default Table join(Table rightTable, Collection<? extends JoinMatch> columnsToMatch,
+            Collection<? extends JoinAddition> columnsToAdd, int reserveBits) {
         return throwUnsupported();
     }
 
     @Override
-    default Table join(Table rightTable, MatchPair[] columnsToMatch, MatchPair[] columnsToAdd,
-            int numRightBitsToReserve) {
+    default Table rangeJoin(@NotNull Table rightTable, @NotNull Collection<? extends JoinMatch> exactMatches,
+            @NotNull RangeJoinMatch rangeMatch, @NotNull Collection<? extends Aggregation> aggregations) {
         return throwUnsupported();
     }
 
@@ -235,7 +287,12 @@ public interface TableAdapter extends TableDefaults {
     }
 
     @Override
-    default Table dropStream() {
+    default <R> R apply(Function<Table, R> function) {
+        return throwUnsupported();
+    }
+
+    @Override
+    default Table removeBlink() {
         return throwUnsupported();
     }
 
@@ -309,6 +366,11 @@ public interface TableAdapter extends TableDefaults {
     }
 
     @Override
+    default boolean addUpdateListener(final TableUpdateListener listener, final long requiredLastNotificationStep) {
+        return throwUnsupported();
+    }
+
+    @Override
     default void removeUpdateListener(ShiftObliviousListener listener) {
         throwUnsupported();
     }
@@ -316,6 +378,11 @@ public interface TableAdapter extends TableDefaults {
     @Override
     default void removeUpdateListener(TableUpdateListener listener) {
         throwUnsupported();
+    }
+
+    @Override
+    default boolean isFailed() {
+        return throwUnsupported();
     }
 
     @Override
@@ -384,7 +451,7 @@ public interface TableAdapter extends TableDefaults {
     }
 
     @Override
-    default Table where(Collection<? extends Filter> filters) {
+    default Table where(Filter filter) {
         return throwUnsupported();
     }
 

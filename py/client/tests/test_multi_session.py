@@ -1,14 +1,13 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
+import unittest
 
-
+import timeout_decorator
 
 from pydeephaven import Session
 from tests.testbase import BaseTestCase
-import timeout_decorator
 
-import time
 
 class MultiSessionTestCase(BaseTestCase):
     def test_persistent_tables(self):
@@ -38,3 +37,7 @@ class MultiSessionTestCase(BaseTestCase):
             wait_for_table()
         except timeout_decorator.TimeoutError:
             self.fail('table did not get synced to session1')
+
+
+if __name__ == '__main__':
+    unittest.main()

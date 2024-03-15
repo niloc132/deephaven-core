@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.kafka.publish;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -168,7 +168,9 @@ public class JsonKeyOrValueSerializer implements KeyOrValueSerializer<String> {
                         node.putNull(childNodeFieldName);
                     }
                 } else {
-                    node.put(childNodeFieldName, raw);
+                    // No signature matches ObjectNode#put(String, byte).
+                    // #set w/ ContainerNode#numberNode(byte) is the most appropriately typed call.
+                    node.set(childNodeFieldName, node.numberNode(raw));
                 }
             }
         };
@@ -184,7 +186,8 @@ public class JsonKeyOrValueSerializer implements KeyOrValueSerializer<String> {
                         node.putNull(childNodeFieldName);
                     }
                 } else {
-                    node.put(childNodeFieldName, raw);
+                    // No native support for char type; we'll treat as String.
+                    node.put(childNodeFieldName, String.valueOf(raw));
                 }
             }
         };
@@ -471,7 +474,7 @@ public class JsonKeyOrValueSerializer implements KeyOrValueSerializer<String> {
         public void close() {
             outputChunk.close();
             jsonChunk.close();
-            SafeCloseable.closeArray(fieldContexts);
+            SafeCloseable.closeAll(fieldContexts);
         }
     }
 }

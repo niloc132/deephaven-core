@@ -1,13 +1,13 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.chunk.WritableCharChunk;
 import io.deephaven.chunk.WritableChunk;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.impl.MutableColumnSourceGetDefaults;
-import io.deephaven.engine.updategraph.LogicalClock;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.chunk.CharChunk;
 import io.deephaven.chunk.Chunk;
@@ -26,7 +26,8 @@ import static io.deephaven.util.type.TypeUtils.unbox;
  *
  * (C-haracter is deliberately spelled that way in order to prevent Replicate from altering this very comment).
  */
-public class CharacterSingleValueSource extends SingleValueColumnSource<Character> implements MutableColumnSourceGetDefaults.ForChar {
+public class CharacterSingleValueSource extends SingleValueColumnSource<Character>
+        implements MutableColumnSourceGetDefaults.ForChar {
 
     private char current;
     private transient char prev;
@@ -42,7 +43,7 @@ public class CharacterSingleValueSource extends SingleValueColumnSource<Characte
     @Override
     public final void set(Character value) {
         if (isTrackingPrevValues) {
-            final long currentStep = LogicalClock.DEFAULT.currentStep();
+            final long currentStep = updateGraph.clock().currentStep();
             if (changeTime < currentStep) {
                 prev = current;
                 changeTime = currentStep;
@@ -55,7 +56,7 @@ public class CharacterSingleValueSource extends SingleValueColumnSource<Characte
     @Override
     public final void set(char value) {
         if (isTrackingPrevValues) {
-            final long currentStep = LogicalClock.DEFAULT.currentStep();
+            final long currentStep = updateGraph.clock().currentStep();
             if (changeTime < currentStep) {
                 prev = current;
                 changeTime = currentStep;
@@ -76,13 +77,6 @@ public class CharacterSingleValueSource extends SingleValueColumnSource<Characte
     }
 
     @Override
-    public final void setNull(long key) {
-        // region null set
-        set(NULL_CHAR);
-        // endregion null set
-    }
-
-    @Override
     public final char getChar(long rowKey) {
         if (rowKey == RowSequence.NULL_ROW_KEY) {
             return NULL_CHAR;
@@ -95,14 +89,15 @@ public class CharacterSingleValueSource extends SingleValueColumnSource<Characte
         if (rowKey == RowSequence.NULL_ROW_KEY) {
             return NULL_CHAR;
         }
-        if (!isTrackingPrevValues || changeTime < LogicalClock.DEFAULT.currentStep()) {
+        if (!isTrackingPrevValues || changeTime < updateGraph.clock().currentStep()) {
             return current;
         }
         return prev;
     }
 
     @Override
-    public final void fillFromChunk(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src, @NotNull RowSequence rowSequence) {
+    public final void fillFromChunk(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src,
+            @NotNull RowSequence rowSequence) {
         if (rowSequence.size() == 0) {
             return;
         }
@@ -112,7 +107,8 @@ public class CharacterSingleValueSource extends SingleValueColumnSource<Characte
     }
 
     @Override
-    public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src, @NotNull LongChunk<RowKeys> keys) {
+    public void fillFromChunkUnordered(@NotNull FillFromContext context, @NotNull Chunk<? extends Values> src,
+            @NotNull LongChunk<RowKeys> keys) {
         if (keys.size() == 0) {
             return;
         }

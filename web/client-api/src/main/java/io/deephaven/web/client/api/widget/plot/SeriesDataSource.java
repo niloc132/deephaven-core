@@ -1,15 +1,24 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.widget.plot;
 
+import com.vertispan.tsdefs.annotations.TsInterface;
+import com.vertispan.tsdefs.annotations.TsName;
+import com.vertispan.tsdefs.annotations.TsTypeRef;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.figuredescriptor.SourceDescriptor;
 import io.deephaven.web.client.api.JsTable;
+import io.deephaven.web.client.api.widget.plot.enums.JsSourceType;
 import jsinterop.annotations.JsIgnore;
 import jsinterop.annotations.JsProperty;
 
 import java.util.Map;
 
+/**
+ * Describes how to access and display data required within a series.
+ */
+@TsInterface
+@TsName(namespace = "dh.plot")
 public class SeriesDataSource {
     private final JsAxis axis;
     private final SourceDescriptor sourceDescriptor;
@@ -31,27 +40,42 @@ public class SeriesDataSource {
         }
     }
 
+    /**
+     * the axis that this source should be drawn on.
+     * 
+     * @return dh.plot.Axis
+     */
     @JsProperty
     public JsAxis getAxis() {
         return axis;
     }
 
+    /**
+     * the feature of this series represented by this source. See the <b>SourceType</b> enum for more details.
+     * 
+     * @return int
+     */
     @JsProperty
-    @SuppressWarnings("unusable-by-js")
+    @TsTypeRef(JsSourceType.class)
     public int getType() {
         return sourceDescriptor.getType();
     }
 
+    /**
+     * the type of data stored in the underlying table's Column.
+     * 
+     * @return String
+     */
     @JsProperty
     public String getColumnType() {
         return columnType;
     }
 
-    @JsIgnore
     public SourceDescriptor getDescriptor() {
         return sourceDescriptor;
     }
 
+    @TsName(namespace = "dh.plot")
     public class SeriesDataSourceException extends RuntimeException {
         private SeriesDataSource source;
 

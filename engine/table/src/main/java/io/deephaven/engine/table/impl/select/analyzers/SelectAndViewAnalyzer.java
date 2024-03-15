@@ -1,22 +1,18 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select.analyzers;
 
-import io.deephaven.base.log.LogOutput;
+import io.deephaven.base.Pair;
 import io.deephaven.base.log.LogOutputAppendable;
 import io.deephaven.datastructures.util.CollectionUtil;
-import io.deephaven.engine.rowset.RowSetFactory;
-import io.deephaven.engine.table.ColumnSource;
-import io.deephaven.engine.table.ColumnDefinition;
-import io.deephaven.engine.table.TableUpdate;
-import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.liveness.LivenessNode;
 import io.deephaven.engine.rowset.RowSet;
+import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.rowset.TrackingRowSet;
 import io.deephaven.engine.table.*;
-import io.deephaven.engine.table.impl.OperationInitializationThreadPool;
-import io.deephaven.engine.table.impl.perf.BasePerformanceEntry;
+import io.deephaven.engine.table.impl.MatchPair;
+import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.select.FormulaColumn;
 import io.deephaven.engine.table.impl.select.SelectColumn;
 import io.deephaven.engine.table.impl.select.SourceColumn;
@@ -24,15 +20,14 @@ import io.deephaven.engine.table.impl.select.SwitchColumn;
 import io.deephaven.engine.table.impl.sources.InMemoryColumnSource;
 import io.deephaven.engine.table.impl.sources.SingleValueColumnSource;
 import io.deephaven.engine.table.impl.sources.WritableRedirectedColumnSource;
-import io.deephaven.engine.table.impl.util.InverseRowRedirectionImpl;
+import io.deephaven.engine.table.impl.util.InverseWrappedRowSetRowRedirection;
+import io.deephaven.engine.table.impl.util.JobScheduler;
+import io.deephaven.engine.table.impl.util.RowRedirection;
 import io.deephaven.engine.table.impl.util.WritableRowRedirection;
-import io.deephaven.engine.updategraph.AbstractNotification;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
-import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.io.log.impl.LogOutputStringImpl;
 import io.deephaven.util.SafeCloseable;
 import io.deephaven.util.SafeCloseablePair;
-import io.deephaven.util.process.ProcessEnvironment;
 import io.deephaven.vector.Vector;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +37,9 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
+    private static final Consumer<ColumnSource<?>> NOOP = ignore -> {
+    };
+
     public enum Mode {
         VIEW_LAZY, VIEW_EAGER, SELECT_STATIC, SELECT_REFRESHING, SELECT_REDIRECTED_REFRESHING, SELECT_REDIRECTED_STATIC
     }
@@ -58,24 +56,35 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
         }
     }
 
-    public static SelectAndViewAnalyzer create(Mode mode, Map<String, ColumnSource<?>> columnSources,
-            TrackingRowSet rowSet, ModifiedColumnSet parentMcs, boolean publishTheseSources,
+    public static SelectAndViewAnalyzerWrapper create(
+            QueryTable sourceTable, Mode mode, Map<String, ColumnSource<?>> columnSources,
+            TrackingRowSet rowSet, ModifiedColumnSet parentMcs, boolean publishTheseSources, boolean useShiftedColumns,
             SelectColumn... selectColumns) {
-        return create(mode, columnSources, rowSet, parentMcs, publishTheseSources, true, selectColumns);
+        return create(sourceTable, mode, columnSources, rowSet, parentMcs, publishTheseSources, useShiftedColumns,
+                true, selectColumns);
     }
 
-    public static SelectAndViewAnalyzer create(final Mode mode, final Map<String, ColumnSource<?>> columnSources,
-            TrackingRowSet rowSet, final ModifiedColumnSet parentMcs, final boolean publishTheseSources,
+    public static SelectAndViewAnalyzerWrapper create(
+            final QueryTable sourceTable,
+            final Mode mode,
+            final Map<String, ColumnSource<?>> columnSources,
+            TrackingRowSet rowSet,
+            final ModifiedColumnSet parentMcs,
+            final boolean publishTheseSources,
+            boolean useShiftedColumns,
             final boolean allowInternalFlatten,
             final SelectColumn... selectColumns) {
+        final UpdateGraph updateGraph = sourceTable.getUpdateGraph();
         SelectAndViewAnalyzer analyzer = createBaseLayer(columnSources, publishTheseSources);
         final Map<String, ColumnDefinition<?>> columnDefinitions = new LinkedHashMap<>();
-        final WritableRowRedirection rowRedirection;
+        final RowRedirection rowRedirection;
         if (mode == Mode.SELECT_REDIRECTED_STATIC) {
-            rowRedirection = new InverseRowRedirectionImpl(rowSet);
+            rowRedirection = new InverseWrappedRowSetRowRedirection(rowSet);
         } else if (mode == Mode.SELECT_REDIRECTED_REFRESHING && rowSet.size() < Integer.MAX_VALUE) {
-            rowRedirection = WritableRowRedirection.FACTORY.createRowRedirection(rowSet.intSize());
-            analyzer = analyzer.createRedirectionLayer(rowSet, rowRedirection);
+            final WritableRowRedirection writableRowRedirection =
+                    WritableRowRedirection.FACTORY.createRowRedirection(rowSet.intSize());
+            analyzer = analyzer.createRedirectionLayer(rowSet, writableRowRedirection);
+            rowRedirection = writableRowRedirection;
         } else {
             rowRedirection = null;
         }
@@ -89,8 +98,19 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
                 && mode == Mode.SELECT_STATIC;
         int numberOfInternallyFlattenedColumns = 0;
 
-        final HashSet<String> resultColumns = flattenedResult ? new HashSet<>() : null;
+        List<SelectColumn> processedCols = new LinkedList<>();
+        List<SelectColumn> remainingCols = null;
+        FormulaColumn shiftColumn = null;
+        boolean shiftColumnHasPositiveOffset = false;
+
+        final HashSet<String> resultColumns = new HashSet<>();
+        final HashMap<String, ColumnSource<?>> resultAlias = new HashMap<>();
         for (final SelectColumn sc : selectColumns) {
+            if (remainingCols != null) {
+                remainingCols.add(sc);
+                continue;
+            }
+
             analyzer.updateColumnDefinitionsFromTopLayer(columnDefinitions);
             sc.initDef(columnDefinitions);
             sc.initInputs(rowSet, analyzer.getAllColumnSources());
@@ -106,14 +126,33 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
 
                 // we must re-initialize the column inputs as they may have changed post-flatten
                 sc.initInputs(rowSet, analyzer.getAllColumnSources());
-            } else if (!flatResult && flattenedResult) {
-                resultColumns.add(sc.getName());
             }
+
+            resultColumns.add(sc.getName());
+            // this shadows any known alias
+            resultAlias.remove(sc.getName());
 
             final Stream<String> allDependencies =
                     Stream.concat(sc.getColumns().stream(), sc.getColumnArrays().stream());
             final String[] distinctDeps = allDependencies.distinct().toArray(String[]::new);
             final ModifiedColumnSet mcsBuilder = new ModifiedColumnSet(parentMcs);
+
+            if (useShiftedColumns && hasConstantArrayAccess(sc)) {
+                remainingCols = new LinkedList<>();
+                shiftColumn = sc instanceof FormulaColumn
+                        ? (FormulaColumn) sc
+                        : (FormulaColumn) ((SwitchColumn) sc).getRealColumn();
+                shiftColumnHasPositiveOffset = hasPositiveOffsetConstantArrayAccess(sc);
+                continue;
+            }
+
+            // shifted columns appear to not be safe for refresh, so we do not validate them until they are rewritten
+            // using the intermediary shifted column
+            if (sourceTable.isRefreshing()) {
+                sc.validateSafeForRefresh(sourceTable);
+            }
+
+            processedCols.add(sc);
 
             if (hasConstantValue(sc)) {
                 final WritableColumnSource<?> constViewSource =
@@ -124,30 +163,61 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
                 continue;
             }
 
-            if (shouldPreserve(sc)) {
-                if (numberOfInternallyFlattenedColumns > 0) {
-                    // we must preserve this column, but have already created an analyzer for the internally flattened
-                    // column, therefore must start over without permitting internal flattening
-                    return create(mode, columnSources, originalRowSet, parentMcs, publishTheseSources, false,
-                            selectColumns);
+            final SourceColumn realColumn;
+            if (sc instanceof SourceColumn) {
+                realColumn = (SourceColumn) sc;
+            } else if ((sc instanceof SwitchColumn) && ((SwitchColumn) sc).getRealColumn() instanceof SourceColumn) {
+                realColumn = (SourceColumn) ((SwitchColumn) sc).getRealColumn();
+            } else {
+                realColumn = null;
+            }
+
+            if (realColumn != null && shouldPreserve(sc)) {
+                boolean sourceIsNew = resultColumns.contains(realColumn.getSourceName());
+                if (!sourceIsNew) {
+                    if (numberOfInternallyFlattenedColumns > 0) {
+                        // we must preserve this column, but have already created an analyzer for the internally
+                        // flattened
+                        // column, therefore must start over without permitting internal flattening
+                        return create(sourceTable, mode, columnSources, originalRowSet, parentMcs, publishTheseSources,
+                                useShiftedColumns, false, selectColumns);
+                    } else {
+                        // we can not flatten future columns because we are preserving a column that may not be flat
+                        flattenedResult = false;
+                    }
                 }
-                analyzer =
-                        analyzer.createLayerForPreserve(sc.getName(), sc, sc.getDataView(), distinctDeps, mcsBuilder);
-                // we can not flatten future columns because we are preserving this column
-                flattenedResult = false;
+
+                analyzer = analyzer.createLayerForPreserve(
+                        sc.getName(), sc, sc.getDataView(), distinctDeps, mcsBuilder);
+
                 continue;
             }
+
+            // look for an existing alias that can be preserved instead
+            if (realColumn != null) {
+                final ColumnSource<?> alias = resultAlias.get(realColumn.getSourceName());
+                if (alias != null) {
+                    analyzer = analyzer.createLayerForPreserve(sc.getName(), sc, alias, distinctDeps, mcsBuilder);
+                    continue;
+                }
+            }
+
+            // if this is a source column, then results are eligible for aliasing
+            final Consumer<ColumnSource<?>> maybeCreateAlias = realColumn == null ? NOOP
+                    : cs -> resultAlias.put(realColumn.getSourceName(), cs);
 
             final long targetDestinationCapacity =
                     rowSet.isEmpty() ? 0 : (flattenedResult ? rowSet.size() : rowSet.lastRowKey() + 1);
             switch (mode) {
                 case VIEW_LAZY: {
                     final ColumnSource<?> viewCs = sc.getLazyView();
+                    maybeCreateAlias.accept(viewCs);
                     analyzer = analyzer.createLayerForView(sc.getName(), sc, viewCs, distinctDeps, mcsBuilder);
                     break;
                 }
                 case VIEW_EAGER: {
                     final ColumnSource<?> viewCs = sc.getDataView();
+                    maybeCreateAlias.accept(viewCs);
                     analyzer = analyzer.createLayerForView(sc.getName(), sc, viewCs, distinctDeps, mcsBuilder);
                     break;
                 }
@@ -157,9 +227,9 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
                     final WritableColumnSource<?> scs =
                             flatResult || flattenedResult ? sc.newFlatDestInstance(targetDestinationCapacity)
                                     : sc.newDestInstance(targetDestinationCapacity);
-                    analyzer =
-                            analyzer.createLayerForSelect(rowSet, sc.getName(), sc, scs, null, distinctDeps, mcsBuilder,
-                                    false, flattenedResult, flatResult && flattenedResult);
+                    maybeCreateAlias.accept(scs);
+                    analyzer = analyzer.createLayerForSelect(updateGraph, rowSet, sc.getName(), sc, scs, null,
+                            distinctDeps, mcsBuilder, false, flattenedResult, flatResult && flattenedResult);
                     if (flattenedResult) {
                         numberOfInternallyFlattenedColumns++;
                     }
@@ -169,9 +239,9 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
                     final WritableColumnSource<?> underlyingSource = sc.newDestInstance(rowSet.size());
                     final WritableColumnSource<?> scs = WritableRedirectedColumnSource.maybeRedirect(
                             rowRedirection, underlyingSource, rowSet.size());
-                    analyzer =
-                            analyzer.createLayerForSelect(rowSet, sc.getName(), sc, scs, underlyingSource, distinctDeps,
-                                    mcsBuilder, true, false, false);
+                    maybeCreateAlias.accept(scs);
+                    analyzer = analyzer.createLayerForSelect(updateGraph, rowSet, sc.getName(), sc, scs,
+                            underlyingSource, distinctDeps, mcsBuilder, true, false, false);
                     break;
                 }
                 case SELECT_REDIRECTED_REFRESHING:
@@ -186,17 +256,47 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
                         scs = WritableRedirectedColumnSource.maybeRedirect(
                                 rowRedirection, underlyingSource, rowSet.intSize());
                     }
-                    analyzer =
-                            analyzer.createLayerForSelect(rowSet, sc.getName(), sc, scs, underlyingSource, distinctDeps,
-                                    mcsBuilder, rowRedirection != null, false, false);
+                    maybeCreateAlias.accept(scs);
+                    analyzer = analyzer.createLayerForSelect(updateGraph, rowSet, sc.getName(), sc, scs,
+                            underlyingSource, distinctDeps, mcsBuilder, rowRedirection != null, false, false);
                     break;
                 }
                 default:
                     throw new UnsupportedOperationException("Unsupported case " + mode);
             }
         }
-        return analyzer;
+        return new SelectAndViewAnalyzerWrapper(analyzer, shiftColumn, shiftColumnHasPositiveOffset, remainingCols,
+                processedCols);
     }
+
+    private static boolean hasConstantArrayAccess(final SelectColumn sc) {
+        if (sc instanceof FormulaColumn) {
+            return ((FormulaColumn) sc).hasConstantArrayAccess();
+        } else if (sc instanceof SwitchColumn) {
+            final SelectColumn realColumn = ((SwitchColumn) sc).getRealColumn();
+            if (realColumn instanceof FormulaColumn) {
+                return ((FormulaColumn) realColumn).hasConstantArrayAccess();
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasPositiveOffsetConstantArrayAccess(final SelectColumn sc) {
+        Pair<String, Map<Long, List<MatchPair>>> shifts = null;
+        if (sc instanceof FormulaColumn) {
+            shifts = ((FormulaColumn) sc).getFormulaShiftColPair();
+        } else if (sc instanceof SwitchColumn) {
+            final SelectColumn realColumn = ((SwitchColumn) sc).getRealColumn();
+            if (realColumn instanceof FormulaColumn) {
+                shifts = ((FormulaColumn) realColumn).getFormulaShiftColPair();
+            }
+        }
+        if (shifts == null) {
+            throw new IllegalStateException("Column " + sc.getName() + " does not have constant array access");
+        }
+        return shifts.getSecond().keySet().stream().max(Long::compareTo).orElse(0L) > 0;
+    }
+
 
     private static boolean hasConstantValue(final SelectColumn sc) {
         if (sc instanceof FormulaColumn) {
@@ -211,12 +311,10 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
     }
 
     private static boolean shouldPreserve(final SelectColumn sc) {
-        if (!(sc instanceof SourceColumn)
-                && (!(sc instanceof SwitchColumn) || !(((SwitchColumn) sc).getRealColumn() instanceof SourceColumn))) {
-            return false;
-        }
+        // we already know sc is a SourceColumn or switches to a SourceColumn
         final ColumnSource<?> sccs = sc.getDataView();
-        return sccs instanceof InMemoryColumnSource && !Vector.class.isAssignableFrom(sc.getReturnedType());
+        return sccs instanceof InMemoryColumnSource && ((InMemoryColumnSource) sccs).isInMemory()
+                && !Vector.class.isAssignableFrom(sc.getReturnedType());
     }
 
     static final int BASE_LAYER_INDEX = 0;
@@ -268,11 +366,12 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
         return new StaticFlattenLayer(this, parentRowSet);
     }
 
-    private SelectAndViewAnalyzer createLayerForSelect(RowSet parentRowset, String name, SelectColumn sc,
-            WritableColumnSource<?> cs, WritableColumnSource<?> underlyingSource,
-            String[] parentColumnDependencies, ModifiedColumnSet mcsBuilder, boolean isRedirected,
-            boolean flattenResult, boolean alreadyFlattened) {
-        return new SelectColumnLayer(parentRowset, this, name, sc, cs, underlyingSource, parentColumnDependencies,
+    private SelectAndViewAnalyzer createLayerForSelect(
+            UpdateGraph updateGraph, RowSet parentRowset, String name, SelectColumn sc, WritableColumnSource<?> cs,
+            WritableColumnSource<?> underlyingSource, String[] parentColumnDependencies, ModifiedColumnSet mcsBuilder,
+            boolean isRedirected, boolean flattenResult, boolean alreadyFlattened) {
+        return new SelectColumnLayer(updateGraph, parentRowset, this, name, sc, cs, underlyingSource,
+                parentColumnDependencies,
                 mcsBuilder, isRedirected, flattenResult, alreadyFlattened);
     }
 
@@ -398,8 +497,8 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
      * this in two stages. In the first stage we create a map from column to (set of dependent columns). In the second
      * stage we reverse that map.
      */
-    public final Map<String, String[]> calcEffects() {
-        final Map<String, Set<String>> dependsOn = calcDependsOnRecurse();
+    public final Map<String, String[]> calcEffects(boolean forcePublishAllResources) {
+        final Map<String, Set<String>> dependsOn = calcDependsOnRecurse(forcePublishAllResources);
 
         // Now create effects, which is the inverse of dependsOn:
         // An entry W -> [X, Y, Z] in effects means that W affects X, Y, and Z
@@ -419,7 +518,7 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
         return result;
     }
 
-    abstract Map<String, Set<String>> calcDependsOnRecurse();
+    abstract Map<String, Set<String>> calcDependsOnRecurse(boolean forcePublishAllResources);
 
     public abstract SelectAndViewAnalyzer getInner();
 
@@ -512,16 +611,16 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
          */
         void onLayerCompleted(int completedColumn) {
             if (!fired) {
-                final boolean readyToFire;
+                boolean readyToFire = false;
                 synchronized (completedColumns) {
-                    completedColumns.set(completedColumn);
-                    if (requiredColumns.get(completedColumn) || requiredColumns.isEmpty()) {
-                        readyToFire = requiredColumns.stream().allMatch(completedColumns::get);
-                        if (readyToFire) {
-                            fired = true;
+                    if (!fired) {
+                        completedColumns.set(completedColumn);
+                        if (requiredColumns.get(completedColumn) || requiredColumns.isEmpty()) {
+                            readyToFire = requiredColumns.stream().allMatch(completedColumns::get);
+                            if (readyToFire) {
+                                fired = true;
+                            }
                         }
-                    } else {
-                        readyToFire = false;
                     }
                 }
                 if (readyToFire) {
@@ -543,165 +642,6 @@ public abstract class SelectAndViewAnalyzer implements LogOutputAppendable {
          * Called when all of the required columns are completed.
          */
         protected abstract void onAllRequiredColumnsCompleted();
-    }
-
-    /**
-     * An interface for submitting jobs to be executed and accumulating their performance of all the tasks performed off
-     * thread.
-     */
-    public interface JobScheduler {
-        /**
-         * Cause runnable to be executed.
-         *
-         * @param executionContext the execution context to run it under
-         * @param runnable the runnable to execute
-         * @param description a description for logging
-         * @param onError a routine to call if an exception occurs while running runnable
-         */
-        void submit(
-                ExecutionContext executionContext,
-                Runnable runnable,
-                final LogOutputAppendable description,
-                final Consumer<Exception> onError);
-
-        /**
-         * The performance statistics of all runnables that have been completed off-thread, or null if it was executed
-         * in the current thread.
-         */
-        BasePerformanceEntry getAccumulatedPerformance();
-
-        /**
-         * How many threads exist in the job scheduler? The job submitters can use this value to determine how many
-         * sub-jobs to split work into.
-         */
-        int threadCount();
-    }
-
-    public static class UpdateGraphProcessorJobScheduler implements SelectAndViewAnalyzer.JobScheduler {
-        final BasePerformanceEntry accumulatedBaseEntry = new BasePerformanceEntry();
-
-        @Override
-        public void submit(
-                final ExecutionContext executionContext,
-                final Runnable runnable,
-                final LogOutputAppendable description,
-                final Consumer<Exception> onError) {
-            UpdateGraphProcessor.DEFAULT.addNotification(new AbstractNotification(false) {
-                @Override
-                public boolean canExecute(long step) {
-                    return true;
-                }
-
-                @Override
-                public void run() {
-                    final BasePerformanceEntry baseEntry = new BasePerformanceEntry();
-                    baseEntry.onBaseEntryStart();
-                    try {
-                        runnable.run();
-                    } catch (Exception e) {
-                        onError.accept(e);
-                    } catch (Error e) {
-                        ProcessEnvironment.getGlobalFatalErrorReporter().report("SelectAndView Error", e);
-                        throw e;
-                    } finally {
-                        baseEntry.onBaseEntryEnd();
-                        synchronized (accumulatedBaseEntry) {
-                            accumulatedBaseEntry.accumulate(baseEntry);
-                        }
-                    }
-                }
-
-                @Override
-                public LogOutput append(LogOutput output) {
-                    return output.append("{Notification(").append(System.identityHashCode(this)).append(" for ")
-                            .append(description).append("}");
-                }
-
-                @Override
-                public ExecutionContext getExecutionContext() {
-                    return executionContext;
-                }
-            });
-        }
-
-        @Override
-        public BasePerformanceEntry getAccumulatedPerformance() {
-            return accumulatedBaseEntry;
-        }
-
-        @Override
-        public int threadCount() {
-            return UpdateGraphProcessor.DEFAULT.getUpdateThreads();
-        }
-    }
-
-    public static class OperationInitializationPoolJobScheduler implements SelectAndViewAnalyzer.JobScheduler {
-        final BasePerformanceEntry accumulatedBaseEntry = new BasePerformanceEntry();
-
-        @Override
-        public void submit(
-                final ExecutionContext executionContext,
-                final Runnable runnable,
-                final LogOutputAppendable description,
-                final Consumer<Exception> onError) {
-            OperationInitializationThreadPool.executorService.submit(() -> {
-                final BasePerformanceEntry basePerformanceEntry = new BasePerformanceEntry();
-                basePerformanceEntry.onBaseEntryStart();
-                try (final SafeCloseable ignored = executionContext == null ? null : executionContext.open()) {
-                    runnable.run();
-                } catch (Exception e) {
-                    onError.accept(e);
-                } catch (Error e) {
-                    ProcessEnvironment.getGlobalFatalErrorReporter().report("SelectAndView Error", e);
-                    throw e;
-                } finally {
-                    basePerformanceEntry.onBaseEntryEnd();
-                    synchronized (accumulatedBaseEntry) {
-                        accumulatedBaseEntry.accumulate(basePerformanceEntry);
-                    }
-                }
-            });
-        }
-
-        @Override
-        public BasePerformanceEntry getAccumulatedPerformance() {
-            return accumulatedBaseEntry;
-        }
-
-        @Override
-        public int threadCount() {
-            return OperationInitializationThreadPool.NUM_THREADS;
-        }
-    }
-
-    public static class ImmediateJobScheduler implements SelectAndViewAnalyzer.JobScheduler {
-        public static final ImmediateJobScheduler INSTANCE = new ImmediateJobScheduler();
-
-        @Override
-        public void submit(
-                final ExecutionContext executionContext,
-                final Runnable runnable,
-                final LogOutputAppendable description,
-                final Consumer<Exception> onError) {
-            try (SafeCloseable ignored = executionContext != null ? executionContext.open() : null) {
-                runnable.run();
-            } catch (Exception e) {
-                onError.accept(e);
-            } catch (Error e) {
-                ProcessEnvironment.getGlobalFatalErrorReporter().report("SelectAndView Error", e);
-                throw e;
-            }
-        }
-
-        @Override
-        public BasePerformanceEntry getAccumulatedPerformance() {
-            return null;
-        }
-
-        @Override
-        public int threadCount() {
-            return 1;
-        }
     }
 
     /**

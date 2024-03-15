@@ -1,6 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+/*
+ * Copyright 2022 Deephaven Data Labs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
+
 package io.grpc.servlet.web.websocket;
 
 import io.grpc.Attributes;
@@ -15,6 +25,7 @@ import jakarta.websocket.CloseReason;
 import jakarta.websocket.EndpointConfig;
 import jakarta.websocket.Session;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
@@ -38,10 +49,6 @@ import static io.grpc.internal.GrpcUtil.TIMEOUT_KEY;
  * On the initial request, an extra header is sent from the client, indicating the path to the service method.
  * Technically, this makes it possible for a grpc message to split across several websocket frames, but at this time
  * each grpc message is exactly one websocket frame.
- * <p>
- * </p>
- * JSR356 websockets always handle their incoming messages in a serial manner, so we don't need to worry here about
- * runOnTransportThread while in onMessage, as we're already in the transport thread.
  */
 public class MultiplexedWebSocketServerStream extends AbstractWebSocketServerStream {
     public static final String GRACEFUL_CLOSE = MultiplexedWebSocketServerStream.class.getName() + ".graceful_close";
@@ -61,9 +68,7 @@ public class MultiplexedWebSocketServerStream extends AbstractWebSocketServerStr
 
     public static final String GRPC_WEBSOCKETS_MULTIPLEX_PROTOCOL = "grpc-websockets-multiplex";
 
-    private final InternalLogId logId = InternalLogId.allocate(MultiplexedWebSocketServerStream.class, null);
-
-    // No need to be thread-safe, this will only be accessed from the transport thread.
+    // No need to be thread-safe, this will only be accessed from the jsr356 callbacks in a serial manner
     private final Map<Integer, MultiplexedWebsocketStreamImpl> streams = new HashMap<>();
     private final boolean isTextRequest = false;// not supported yet
 
@@ -225,10 +230,9 @@ public class MultiplexedWebSocketServerStream extends AbstractWebSocketServerStr
         }
         streams.clear();
         // onClose will be called automatically
-        if (error instanceof ClosedChannelException) {
-            // ignore this for now
-            // TODO need to understand why this is happening
-        } else {
+
+        // These two IOExceptions frequently occur when clients close the connection
+        if (!(error instanceof ClosedChannelException || error instanceof EOFException)) {
             logger.log(Level.SEVERE, "Error from websocket", error);
         }
     }
@@ -246,6 +250,8 @@ public class MultiplexedWebSocketServerStream extends AbstractWebSocketServerStr
 
         StatsTraceContext statsTraceCtx =
                 StatsTraceContext.newServerContext(streamTracerFactories, path, headers);
+
+        InternalLogId logId = InternalLogId.allocate(MultiplexedWebSocketServerStream.class, null);
 
         MultiplexedWebsocketStreamImpl stream =
                 new MultiplexedWebsocketStreamImpl(statsTraceCtx, maxInboundMessageSize, websocketSession, logId,

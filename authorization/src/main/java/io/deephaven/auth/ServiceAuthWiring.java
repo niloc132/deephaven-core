@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.auth;
 
 import com.google.rpc.Code;
@@ -9,7 +9,7 @@ import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.internal.log.LoggerFactory;
 import io.deephaven.io.logger.Logger;
 import io.deephaven.proto.util.Exceptions;
-import io.deephaven.util.FunctionalInterfaces;
+import io.deephaven.util.function.ThrowingRunnable;
 import io.grpc.ForwardingServerCallListener;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
@@ -100,7 +100,7 @@ public interface ServiceAuthWiring<ServiceImplBase> {
 
         private boolean validateAuth(
                 final ServerCall<ReqT, RespT> call,
-                FunctionalInterfaces.ThrowingRunnable<ReflectiveOperationException> authRunner) {
+                ThrowingRunnable<ReflectiveOperationException> authRunner) {
             try {
                 authRunner.run();
             } catch (ReflectiveOperationException | RuntimeException originalErr) {

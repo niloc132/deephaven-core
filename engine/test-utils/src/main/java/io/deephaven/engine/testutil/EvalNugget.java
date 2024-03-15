@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.testutil;
 
 import io.deephaven.base.Pair;
@@ -52,10 +52,7 @@ public abstract class EvalNugget implements EvalNuggetInterface {
     private Throwable exception = null;
 
     // We should listen for failures on the table, and if we get any, the test case is no good.
-    class FailureListener extends InstrumentedTableUpdateListener {
-        FailureListener() {
-            super("Failure Listener");
-        }
+    class FailureListener extends ValidationFailureListener {
 
         @Override
         public void onUpdate(final TableUpdate upstream) {
@@ -63,6 +60,17 @@ public abstract class EvalNugget implements EvalNuggetInterface {
                 System.out.println("Incremental Table Update:");
                 System.out.println(upstream);
             }
+        }
+    }
+
+    class ValidationFailureListener extends InstrumentedTableUpdateListener {
+        ValidationFailureListener() {
+            super("Failure Listener");
+        }
+
+        @Override
+        public void onUpdate(TableUpdate upstream) {
+            // do nothing
         }
 
         @Override
@@ -88,12 +96,15 @@ public abstract class EvalNugget implements EvalNuggetInterface {
     }
 
     private final TableUpdateValidator validator;
+    private final TableUpdateListener validationFailureListener;
     {
         if (originalValue instanceof QueryTable && ((QueryTable) originalValue).isRefreshing()) {
             validator = TableUpdateValidator.make((QueryTable) originalValue);
-            validator.getResultTable().addUpdateListener(failureListener);
+            validationFailureListener = new ValidationFailureListener();
+            validator.getResultTable().addUpdateListener(validationFailureListener);
         } else {
             validator = null;
+            validationFailureListener = null;
         }
     }
 
@@ -116,7 +127,6 @@ public abstract class EvalNugget implements EvalNuggetInterface {
             recomputedTable = e();
         }
         checkDifferences(msg, recomputedTable);
-        recomputedTable = null;
     }
 
     public void showResult(String label, Table e) {
@@ -129,7 +139,7 @@ public abstract class EvalNugget implements EvalNuggetInterface {
     }
 
     @NotNull
-    EnumSet<TableDiff.DiffItems> diffItems() {
+    protected EnumSet<TableDiff.DiffItems> diffItems() {
         return EnumSet.of(TableDiff.DiffItems.DoublesExact);
     }
 
@@ -163,12 +173,22 @@ public abstract class EvalNugget implements EvalNuggetInterface {
 
             if (recomputedForComparison != recomputedTable) {
                 showResult("Recomputed Table (unmodified):", recomputedTable);
-                e();
             }
             if (originalForComparison != originalValue) {
                 showResult("Incremental Table (unmodified):", originalValue);
             }
         }
+    }
+
+    @Override
+    public void releaseRecomputed() {
+        if (recomputedTable != null && recomputedTable != originalValue) {
+            if (recomputedTable.tryRetainReference()) {
+                recomputedTable.dropReference();
+                throw new IllegalStateException("Recomputed table " + recomputedTable + " is still live upon release");
+            }
+        }
+        recomputedTable = null;
     }
 
     public abstract static class Sorted extends EvalNugget {

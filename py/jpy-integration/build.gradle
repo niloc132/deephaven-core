@@ -115,9 +115,12 @@ Task pythonToJava = tasks.create 'unittestPythonToJava', {
 Closure<TaskProvider<Task>> gradleTestInDocker = { String taskName, SourceSet sourceSet ->
 
   def gradleWrapper = tasks.register("${taskName}GradleInit", Wrapper.class) { wrapper ->
-    wrapper.scriptFile "${buildDir}/template-project/gradlew"
-    wrapper.jarFile "${buildDir}/template-project/gradle/wrapper/gradle-wrapper.jar"
-    wrapper.gradleVersion '7.2'
+
+    def templateProject = layout.buildDirectory.dir('template-project').get()
+    wrapper.scriptFile "${templateProject}/gradlew"
+    wrapper.jarFile "${templateProject}/gradle/wrapper/gradle-wrapper.jar"
+    wrapper.gradleVersion '8.4'
+    wrapper.validateDistributionUrl.set false
   }
   return Docker.registerDockerTask(project, taskName) {
     copyIn {
@@ -176,9 +179,9 @@ Closure<TaskProvider<Task>> javaMainInDocker = { String taskName, String javaMai
       copyFile 'classpath', '/classpath'
     }
     entrypoint = ['java', '-cp', '/classpath:/classpath/*',
-                  '-Djpy.jpyLib=/opt/deephaven-venv/lib/python3.7/site-packages/jpy.cpython-37m-x86_64-linux-gnu.so',
-                  '-Djpy.jdlLib=/opt/deephaven-venv/lib/python3.7/site-packages/jdl.cpython-37m-x86_64-linux-gnu.so',
-                  '-Djpy.pythonLib=/usr/lib/x86_64-linux-gnu/libpython3.7m.so.1.0'
+                  '-Djpy.jpyLib=/opt/deephaven/venv/lib/python3.10/site-packages/jpy.cpython-310-x86_64-linux-gnu.so',
+                  '-Djpy.jdlLib=/opt/deephaven/venv/lib/python3.10/site-packages/jdl.cpython-310-x86_64-linux-gnu.so',
+                  '-Djpy.pythonLib=/usr/lib/python3.10/config-3.10-x86_64-linux-gnu/libpython3.10.so'
     ] + jvmArgs + javaMain
 
     showLogsOnSuccess = true

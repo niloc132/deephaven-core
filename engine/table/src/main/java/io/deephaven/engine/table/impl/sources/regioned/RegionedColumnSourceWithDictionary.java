@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.engine.rowset.*;
@@ -12,9 +12,9 @@ import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.*;
 import io.deephaven.engine.table.impl.locations.ColumnLocation;
 import io.deephaven.engine.table.impl.ColumnSourceGetDefaults;
-import io.deephaven.engine.table.impl.sources.RowIdSource;
 import io.deephaven.engine.table.impl.chunkattributes.DictionaryKeys;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.table.impl.sources.RowKeyColumnSource;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.jetbrains.annotations.NotNull;
@@ -235,7 +235,7 @@ class RegionedColumnSourceWithDictionary<DATA_TYPE>
         }
 
         final Map<String, ColumnSource<?>> symbolTableColumnSources = new LinkedHashMap<>();
-        symbolTableColumnSources.put(SymbolTableSource.ID_COLUMN_NAME, new RowIdSource());
+        symbolTableColumnSources.put(SymbolTableSource.ID_COLUMN_NAME, RowKeyColumnSource.INSTANCE);
         symbolTableColumnSources.put(SymbolTableSource.SYMBOL_COLUMN_NAME, dictionaryColumn);
 
         return new QueryTable(symbolTableRowSet, symbolTableColumnSources);
@@ -248,19 +248,19 @@ class RegionedColumnSourceWithDictionary<DATA_TYPE>
         return sourceTable.memoizeResult(MemoizedOperationKey.symbolTable(this, useLookupCaching), () -> {
             final String description = "getSymbolTable(" + sourceTable.getDescription() + ", " + useLookupCaching + ')';
             return QueryPerformanceRecorder.withNugget(description, sourceTable.size(), () -> {
-                final SwapListener swapListener =
-                        sourceTable.createSwapListenerIfRefreshing(SwapListener::new);
+                final OperationSnapshotControl snapshotControl =
+                        sourceTable.createSnapshotControlIfRefreshing(OperationSnapshotControl::new);
                 final Mutable<Table> result = new MutableObject<>();
-                BaseTable.initializeWithSnapshot(description, swapListener,
+                BaseTable.initializeWithSnapshot(description, snapshotControl,
                         (final boolean usePrev, final long beforeClockValue) -> {
                             final QueryTable symbolTable;
-                            if (swapListener == null) {
+                            if (snapshotControl == null) {
                                 symbolTable = getStaticSymbolTable(sourceTable.getRowSet(), useLookupCaching);
                             } else {
                                 symbolTable = getStaticSymbolTable(
                                         usePrev ? sourceTable.getRowSet().copyPrev() : sourceTable.getRowSet(),
                                         useLookupCaching);
-                                swapListener.setListenerAndResult(
+                                snapshotControl.setListenerAndResult(
                                         new SymbolTableUpdateListener(description, sourceTable, symbolTable),
                                         symbolTable);
                             }

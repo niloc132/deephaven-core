@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.util;
 
 import io.deephaven.base.verify.Assert;
@@ -12,7 +12,7 @@ import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.Context;
 import io.deephaven.engine.table.SharedContext;
 
-import static io.deephaven.util.SafeCloseable.closeArray;
+import static io.deephaven.util.SafeCloseable.closeAll;
 
 /**
  * Static functions used by Typed Hashers.
@@ -81,7 +81,7 @@ public class TypedHasherUtil {
 
         @Override
         public void close() {
-            closeArray(getContexts);
+            closeAll(getContexts);
             closeSharedContexts();
         }
 

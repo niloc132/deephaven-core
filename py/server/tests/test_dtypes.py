@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 import functools
@@ -12,9 +12,11 @@ import pandas as pd
 
 from deephaven import dtypes
 from deephaven.constants import *
-from deephaven.dtypes import DateTime
-from deephaven.time import now
+from deephaven.dtypes import Instant, LocalDate, LocalTime, Duration, Period, TimeZone, ZonedDateTime
+from deephaven.time import dh_now
 from tests.testbase import BaseTestCase
+
+_JDateTimeUtils = jpy.get_type("io.deephaven.time.DateTimeUtils")
 
 
 def remap_double(v, null_value):
@@ -45,10 +47,17 @@ class DTypesTestCase(BaseTestCase):
         self.assertEqual(dtypes.string.j_type, jpy.get_type("java.lang.String"))
         self.assertEqual(dtypes.BigDecimal.j_type, jpy.get_type("java.math.BigDecimal"))
         self.assertEqual(dtypes.StringSet.j_type, jpy.get_type("io.deephaven.stringset.StringSet"))
-        self.assertEqual(dtypes.DateTime.j_type, jpy.get_type("io.deephaven.time.DateTime"))
-        self.assertEqual(dtypes.Period.j_type, jpy.get_type("io.deephaven.time.Period"))
+        self.assertEqual(dtypes.Instant.j_type, jpy.get_type("java.time.Instant"))
+        self.assertEqual(dtypes.LocalDate.j_type, jpy.get_type("java.time.LocalDate"))
+        self.assertEqual(dtypes.LocalTime.j_type, jpy.get_type("java.time.LocalTime"))
+        self.assertEqual(dtypes.ZonedDateTime.j_type, jpy.get_type("java.time.ZonedDateTime"))
+        self.assertEqual(dtypes.Duration.j_type, jpy.get_type("java.time.Duration"))
+        self.assertEqual(dtypes.Period.j_type, jpy.get_type("java.time.Period"))
+        self.assertEqual(dtypes.TimeZone.j_type, jpy.get_type("java.time.ZoneId"))
         self.assertEqual(dtypes.PyObject.j_type, jpy.get_type("org.jpy.PyObject"))
         self.assertEqual(dtypes.JObject.j_type, jpy.get_type("java.lang.Object"))
+        self.assertEqual(dtypes.instant_array.j_type, jpy.get_type("[Ljava.time.Instant;"))
+        self.assertEqual(dtypes.zdt_array.j_type, jpy.get_type("[Ljava.time.ZonedDateTime;"))
 
     def test_np_type(self):
         self.assertEqual(dtypes.bool_.np_type, np.bool_)
@@ -62,14 +71,17 @@ class DTypesTestCase(BaseTestCase):
         self.assertEqual(dtypes.string.np_type, np.str_)
         self.assertEqual(dtypes.BigDecimal.np_type, np.object_)
         self.assertEqual(dtypes.StringSet.np_type, np.object_)
-        self.assertEqual(dtypes.DateTime.np_type, np.dtype("datetime64[ns]"))
+        self.assertEqual(dtypes.Instant.np_type, np.dtype("datetime64[ns]"))
+        self.assertEqual(dtypes.LocalDate.np_type, np.object_)
+        self.assertEqual(dtypes.LocalTime.np_type, np.object_)
+        self.assertEqual(dtypes.ZonedDateTime.np_type, np.object_)
+        self.assertEqual(dtypes.Duration.np_type, np.object_)
         self.assertEqual(dtypes.Period.np_type, np.object_)
+        self.assertEqual(dtypes.TimeZone.np_type, np.object_)
         self.assertEqual(dtypes.PyObject.np_type, np.object_)
         self.assertEqual(dtypes.JObject.np_type, np.object_)
-
-    def test_period(self):
-        hour_period = dtypes.Period.j_type("T1H")
-        self.assertTrue(isinstance(hour_period, dtypes.Period.j_type))
+        self.assertEqual(dtypes.instant_array.np_type, np.object_)
+        self.assertEqual(dtypes.zdt_array.np_type, np.object_)
 
     def test_callable(self):
         big_decimal = dtypes.BigDecimal(12.88)
@@ -90,6 +102,10 @@ class DTypesTestCase(BaseTestCase):
         j_array = dtypes.array(dtypes.int64, [0, 1, 2, 3, 4])
         np_array = np.frombuffer(j_array, dtype=np.int64)
         self.assertTrue(np.array_equal(np_array, expected))
+
+        with self.assertRaises(TypeError) as cm:
+            j_array = dtypes.array("java.lang.String", ["a", "b"])
+        self.assertIn("expects a DType", str(cm.exception))
 
     def test_integer_array(self):
         np_array = np.array([float('nan'), NULL_DOUBLE, np.inf], dtype=np.float64)
@@ -185,12 +201,50 @@ class DTypesTestCase(BaseTestCase):
         self.assertIn("[C", str(type(j_array)))
         self.assertEqual(expected, py_array)
 
-    def test_datetime(self):
-        dt1 = DateTime(round(time.time()))
-        dt2 = now()
+    def test_instant(self):
+        dt1 = Instant.j_type.ofEpochSecond(0, round(time.time()))
+        dt2 = dh_now()
         values = [dt1, dt2, None]
-        j_array = dtypes.array(DateTime, values)
+        j_array = dtypes.array(Instant, values)
         self.assertTrue(all(x == y for x, y in zip(j_array, values)))
+
+    def test_local_date(self):
+        s = "2010-02-03"
+        l = LocalDate.j_type.parse(s)
+        self.assertEqual(s, str(l))
+        self.assertTrue(isinstance(l, dtypes.LocalDate.j_type))
+
+    def test_local_time(self):
+        s = "12:14"
+        l = LocalTime.j_type.parse(s)
+        self.assertEqual(s, str(l))
+        self.assertTrue(isinstance(l, dtypes.LocalTime.j_type))
+
+    def test_time_zone(self):
+        s = "America/New_York"
+        l = TimeZone.j_type.of(s)
+        self.assertEqual(s, str(l))
+        self.assertTrue(isinstance(l, dtypes.TimeZone.j_type))
+
+    def test_duration(self):
+        s = "PT2H"
+        l = Duration.j_type.parse(s)
+        self.assertEqual(s, str(l))
+        self.assertTrue(isinstance(l, dtypes.Duration.j_type))
+
+    def test_period(self):
+        s = "P3D"
+        l = Period.j_type.parse(s)
+        self.assertEqual(s, str(l))
+        self.assertTrue(isinstance(l, dtypes.Period.j_type))
+
+    def test_zdt(self):
+        dt1 = ZonedDateTime.j_type.now()
+        dt2 = _JDateTimeUtils.toZonedDateTime(dh_now(), _JDateTimeUtils.timeZone())
+        values = [dt1, dt2, None]
+        j_array = dtypes.array(ZonedDateTime, values)
+        self.assertTrue(all(x == y for x, y in zip(j_array, values)))
+        self.assertTrue(isinstance(dt1, dtypes.ZonedDateTime.j_type))
 
     def test_bool_array(self):
         np_array = np.array([True, False], np.bool_)
@@ -198,6 +252,11 @@ class DTypesTestCase(BaseTestCase):
         j_array2 = dtypes.array(dtypes.bool_, [True, False])
         self.assertEqual(j_array[0], j_array2[0])
         self.assertEqual(j_array[1], j_array2[1])
+
+    def test_np_ndim_array(self):
+        np_array = np.ndarray([1, 2, 3], np.int32)
+        with self.assertRaises(ValueError):
+            j_array = dtypes.array(dtypes.int32, np_array)
 
 
 if __name__ == '__main__':

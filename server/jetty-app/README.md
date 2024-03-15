@@ -1,95 +1,66 @@
-# Native packaging for Deephaven Jetty server
+# server-jetty-app
 
-### Setting up a Python virtual environment
+This README is oriented towards getting a server up for local development in a development environment. From a development environment, users can modify source code towards contributing to the project, creating custom capabilities, and more.
 
-This is an optional prerequisite, but lets the later commands to run the server work without
-specifying groovy as the console language. If you skip this step, be sure to use groovy, or
-there will be errors on startup indicating that the Python environment is not suitable.
+If you wish to use Deephaven from a production environment, which is simpler but source code cannot be modified, see one of the following documents:
 
-See https://github.com/deephaven/deephaven-core/issues/1657 for more discussion
+- [Quickstart for Docker](https://deephaven.io/core/docs/tutorials/quickstart/)
+- [How to configure the Deephaven native application](https://deephaven.io/core/docs/how-to-guides/configuration/native-application/)
 
-1. On MacOS there is an extra patch to apply at this time, to add an extra argument to clang,
-see the first code snippet of the comment at
-https://github.com/deephaven/deephaven-core/issues/1657#issuecomment-989040798 for specifics.
-1. Make sure Python is installed with a shared library. For example, if using `pyenv install`,
-be sure to first set `PYTHON_CONFIGURE_OPTS="--enabled-shared"`.
-1. Make a new directory for a virtual environment, and set it up:
-    ```shell
-    $ mkdir dh-py && cd dh-py
-    $ python -m venv local-jetty-build
-    $ source local-jetty-build/bin/activate # this must be re-run for each new shell
-    $ cd -
-   ```
-1. Build and install wheels for deephaven-jpy and deephaven:
-    ```shell
-    $ python -m pip install --upgrade pip # First upgrade pip
-    $ pip install wheel
-    $ export DEEPHAVEN_VERSION=0.21.0 # this should match the current version of your git repo
+This README deals with general development for either the Python or Groovy server-side API. For Python-specific development instructions, see the [Python development README](../../py/README.md).
 
-    $ cd py/jpy
-    $ export JAVA_HOME=/path/to/your/java/home # Customize this to fit your computer
-    $ python setup.py bdist_wheel
-    $ pip install dist/deephaven_jpy-0.21.0-cp39-cp39-linux_x86_64.whl # This will vary by version/platform
-    $ cd -
+## Local development
 
-    $ cd Integrations/python
-    $ python setup.py bdist_wheel
-    $ pip install dist/deephaven-0.21.0-py2.py3-none-any.whl
-    $ cd -
-    ```
-
-
-### Build
+`./gradlew server-jetty-app:run` will incorporate local Java changes on each start. If you are not frequently changing Java code, see the next section.
 
 ```shell
-./gradlew server-jetty-app:build
+./gradlew server-jetty-app:run # Python session (default)
+./gradlew server-jetty-app:run -Pdebug # Attach a Java debugger to the Python session on port 5005
+./gradlew server-jetty-app:run -Pgroovy # Groovy session
+./gradlew server-jetty-app:run -Pgroovy -Pdebug # Attach a Java debugger to the Groovy session on port 5005
 ```
 
-produces
+## Development with infrequent changes
 
-* `server/jetty-app/build/distributions/server-jetty-<version>.tar`
-* `server/jetty-app/build/distributions/server-jetty-<version>.zip`
-
-### Run
-
-The above artifacts can be uncompressed and their `bin/start` script can be executed:
+To create a more production-like environment, you can create and invoke the start script instead of running via gradle. This is faster if you need to often restart the server without making any changes to Java code (such as Python server development).
 
 ```shell
-START_OPTS="-Ddeephaven.console.type=groovy" bin/start
+./gradlew server-jetty-app:installDist # Run after any Java changes
+./server/jetty-app/build/install/server-jetty/bin/start
 ```
 
-Alternatively, the uncompressed installation can be built directly by gradle:
+### Configuration
+
+The `START_OPTS` environment variable is used to set JVM arguments. For example:
 
 ```shell
-./gradlew server-jetty-app:installDist
+START_OPTS="-Xmx12g" ./gradlew server-jetty-app:run # Starts Deephaven with 12gb of heap memory
 ```
 
-And then run via:
+While configuration properties can be inherited via JVM system properties (`-Dmy.property=my.value`), you may prefer to
+set persistent configuration properties in the `<configDir>/deephaven.prop` file.
+On Linux, this file is `~/.config/deephaven/deephaven.prop`.
+On Mac OS, this file is `~/Library/Application Support/io.Deephaven-Data-Labs.deephaven/deephaven.prop`.
 
-```shell
-START_OPTS="-Ddeephaven.console.type=groovy" ./server/jetty-app/build/install/server-jetty/bin/start
+See [config-dir](https://deephaven.io/core/docs/how-to-guides/configuration/native-application/#config-directory) for more information on `<configDir>`.
+
+See [config-file](https://deephaven.io/core/docs/how-to-guides/configuration/config-file/) for more information on the configuration file format.
+
+### Shutdown
+
+There are multiple ways to shut down the Deephaven server. The easiest is to `ctrl+C` the process. If it's being run in background mode, you can kill it with a `SIGINT`.
+
+```sh
+kill -2 <pid>
 ```
 
-Finally, Gradle can be used to update the build and run the application in a single step:
-
-```shell
-./gradlew server-jetty-app:run -Pgroovy
-```
-
-### Internals
-
-`server-jetty-app` is configured by default to include code that depends on JVM internals via
-`--add-exports java.management/sun.management=ALL-UNNAMED`. To disable this, set the gradle property `-PexcludeHotspotImpl`.
-
-`server-jetty-app` is configured by default to include code that depends on JVM internals via
-`--add-exports java.base/jdk.internal.misc=ALL-UNNAMED`. To disable this, set the gradle property `-PexcludeClockImpl`.
-
-### Configuration / SSL
+### SSL
 
 By default, the server starts up on all interfaces with plaintext port 10000 (port 443 when SSL is enabled), a token
 expiration duration of 5 minutes, a scheduler pool size of 4, and a max inbound message size of 100 MiB.
 
 To bring up a SSL-enabled server on port 8443 with a development key and certificate, you can run:
+
 ```shell
 ./gradlew server-jetty-app:run -Pgroovy -PdevCerts
 ```

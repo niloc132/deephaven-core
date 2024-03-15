@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.datasets.category;
 
 import io.deephaven.base.verify.Require;
@@ -125,6 +125,11 @@ public abstract class AbstractCategoryDataSeries extends AbstractDataSeries impl
     }
 
     @Override
+    public Double getPointSize() {
+        return PlotUtils.numberToDouble(sizes.getDefault());
+    }
+
+    @Override
     public Double getPointSize(final Comparable category) {
         return PlotUtils.numberToDouble(sizes.get(category));
     }
@@ -135,8 +140,18 @@ public abstract class AbstractCategoryDataSeries extends AbstractDataSeries impl
     }
 
     @Override
+    public String getLabel() {
+        return labels.getDefault();
+    }
+
+    @Override
     public String getLabel(final Comparable category) {
         return labels.get(category);
+    }
+
+    @Override
+    public Shape getPointShape() {
+        return shapes.getDefault();
     }
 
     @Override

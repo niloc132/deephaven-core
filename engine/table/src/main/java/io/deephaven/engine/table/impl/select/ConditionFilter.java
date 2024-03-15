@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.Pair;
@@ -17,13 +17,13 @@ import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.lang.QueryLanguageParser;
 import io.deephaven.engine.table.impl.util.codegen.CodeGenerator;
 import io.deephaven.engine.context.QueryScopeParam;
-import io.deephaven.time.DateTimeUtils;
-import io.deephaven.engine.table.impl.perf.QueryPerformanceNugget;
+import io.deephaven.time.TimeLiteralReplacedExpression;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.chunk.*;
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeys;
 import io.deephaven.util.SafeCloseable;
+import io.deephaven.util.SafeCloseableList;
 import io.deephaven.util.text.Indenter;
 import io.deephaven.util.type.TypeUtils;
 import groovy.json.StringEscapeUtils;
@@ -334,14 +334,15 @@ public class ConditionFilter extends AbstractConditionFilter {
         public WritableRowSet filter(final RowSet selection, final RowSet fullSet, final Table table,
                 final boolean usePrev,
                 String formula, final QueryScopeParam... params) {
-            try (final FilterKernel.Context context = filterKernel.getContext(chunkSize);
-                    final RowSequence.Iterator rsIterator = selection.getRowSequenceIterator()) {
+            try (final SafeCloseableList toClose = new SafeCloseableList()) {
+                final FilterKernel.Context context = toClose.add(filterKernel.getContext(chunkSize));
+                final RowSequence.Iterator rsIterator = toClose.add(selection.getRowSequenceIterator());
                 final ChunkGetter[] chunkGetters = new ChunkGetter[columnNames.length];
-                final Context sourceContexts[] = new Context[columnNames.length];
-                final SharedContext sharedContext = populateChunkGettersAndContexts(selection, fullSet, table, usePrev,
-                        chunkGetters, sourceContexts);
+                final Context[] sourceContexts = toClose.addArray(new Context[columnNames.length]);
+                final SharedContext sharedContext = toClose.add(populateChunkGettersAndContexts(selection, fullSet,
+                        table, usePrev, chunkGetters, sourceContexts));
                 final RowSetBuilderSequential resultBuilder = RowSetFactory.builderSequential();
-                final Chunk inputChunks[] = new Chunk[columnNames.length];
+                final Chunk[] inputChunks = new Chunk[columnNames.length];
                 while (rsIterator.hasMore()) {
                     final RowSequence currentChunkRowSequence = rsIterator.getNextRowSequenceWithLength(chunkSize);
                     for (int i = 0; i < chunkGetters.length; i++) {
@@ -352,17 +353,19 @@ public class ConditionFilter extends AbstractConditionFilter {
                         sharedContext.reset();
                     }
                     try {
+                        // noinspection unchecked
                         final LongChunk<OrderedRowKeys> matchedIndices =
                                 filterKernel.filter(context, currentChunkRowSequence.asRowKeyChunk(), inputChunks);
                         resultBuilder.appendOrderedRowKeysChunk(matchedIndices);
                     } catch (Exception e) {
+                        // Clean up the contexts before throwing the exception.
+                        SafeCloseable.closeAll(sourceContexts);
+                        if (sharedContext != null) {
+                            sharedContext.close();
+                        }
                         throw new FormulaEvaluationException(e.getClass().getName() + " encountered in filter={ "
                                 + StringEscapeUtils.escapeJava(truncateLongFormula(formula)) + " }", e);
                     }
-                }
-                SafeCloseable.closeArray(sourceContexts);
-                if (sharedContext != null) {
-                    sharedContext.close();
                 }
                 return resultBuilder.build();
             }
@@ -374,13 +377,14 @@ public class ConditionFilter extends AbstractConditionFilter {
     }
 
     @Override
-    protected void generateFilterCode(TableDefinition tableDefinition, DateTimeUtils.Result timeConversionResult,
+    protected void generateFilterCode(
+            TableDefinition tableDefinition,
+            TimeLiteralReplacedExpression timeConversionResult,
             QueryLanguageParser.Result result) {
         final StringBuilder classBody = getClassBody(tableDefinition, timeConversionResult, result);
         if (classBody == null)
             return;
-        final QueryPerformanceNugget nugget = QueryPerformanceRecorder.getInstance().getNugget("Compile:" + formula);
-        try {
+        try (final SafeCloseable ignored = QueryPerformanceRecorder.getInstance().getCompilationNugget(formula)) {
             final List<Class<?>> paramClasses = new ArrayList<>();
             final Consumer<Class<?>> addParamClass = (cls) -> {
                 if (cls != null) {
@@ -406,13 +410,13 @@ public class ConditionFilter extends AbstractConditionFilter {
             filterKernelClass = ExecutionContext.getContext().getQueryCompiler()
                     .compile("GeneratedFilterKernel", this.classBody = classBody.toString(),
                             QueryCompiler.FORMULA_PREFIX, QueryScopeParamTypeUtil.expandParameterClasses(paramClasses));
-        } finally {
-            nugget.done();
         }
     }
 
     @Nullable
-    private StringBuilder getClassBody(TableDefinition tableDefinition, DateTimeUtils.Result timeConversionResult,
+    private StringBuilder getClassBody(
+            TableDefinition tableDefinition,
+            TimeLiteralReplacedExpression timeConversionResult,
             QueryLanguageParser.Result result) {
         if (filterKernelClass != null) {
             return null;
@@ -540,7 +544,7 @@ public class ConditionFilter extends AbstractConditionFilter {
             if (columnType.isPrimitive() && columnType != boolean.class) {
                 chunkType = toTitleCase(columnType.getSimpleName()) + "Chunk";
             } else {
-                // TODO: Reinterpret Boolean and DateTime to byte and long
+                // TODO: Reinterpret Boolean and Instant to byte and long
                 chunkType = "ObjectChunk";
             }
             classBody.append(indenter).append("final ").append(chunkType).append(" __columnChunk").append(i)
@@ -609,5 +613,11 @@ public class ConditionFilter extends AbstractConditionFilter {
     @Override
     public ConditionFilter renameFilter(Map<String, String> renames) {
         return new ConditionFilter(formula, renames);
+    }
+
+    @Override
+    public boolean permitParallelization() {
+        // TODO (https://github.com/deephaven/deephaven-core/issues/4896): Assume statelessness by default.
+        return false;
     }
 }

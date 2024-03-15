@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.rowset.impl.rsp;
 
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeyRanges;
@@ -9,7 +9,7 @@ import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.RowSequenceFactory;
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeys;
-import io.deephaven.engine.rowset.impl.TrackingWritableRowSetImpl;
+import io.deephaven.engine.rowset.impl.WritableRowSetImpl;
 import io.deephaven.util.datastructures.LongAbortableConsumer;
 import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.impl.RowSequenceAsChunkImpl;
@@ -37,7 +37,7 @@ public class RspRowSequence extends RowSequenceAsChunkImpl {
             final RspArray arr,
             final int startIdx, final long startOffset, final long cardBeforeStartIdx,
             final int endIdx, final long endOffset, final long cardBeforeEndIdx) {
-        if (RspBitmap.debug) {
+        if (RspArray.debug) {
             if (endIdx < startIdx ||
                     (endIdx == startIdx && endOffset < startOffset)) {
                 throw new IllegalArgumentException("Empty " + RspRowSequence.class.getSimpleName() + " :" +
@@ -162,7 +162,7 @@ public class RspRowSequence extends RowSequenceAsChunkImpl {
     @Override
     public RowSet asRowSet() {
         final RspBitmap newArr = new RspBitmap(arr, startIdx, startOffset, endIdx, endOffset);
-        return new TrackingWritableRowSetImpl(newArr);
+        return new WritableRowSetImpl(newArr);
     }
 
     @Override

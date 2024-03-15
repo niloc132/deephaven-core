@@ -1,21 +1,24 @@
 package io.deephaven.lang.completion
 
-import io.deephaven.engine.context.TestExecutionContext
-import io.deephaven.engine.table.Table
-import io.deephaven.engine.table.TableDefinition
-import io.deephaven.engine.util.VariableProvider
+import io.deephaven.engine.context.QueryScope
+import io.deephaven.engine.context.StandaloneQueryScope
+import io.deephaven.engine.context.TestExecutionContext;
+import io.deephaven.engine.table.TableFactory
 import io.deephaven.internal.log.LoggerFactory
 import io.deephaven.io.logger.Logger
 import io.deephaven.lang.parse.CompletionParser
 import io.deephaven.proto.backplane.script.grpc.CompletionItem
-import io.deephaven.time.DateTime
+import io.deephaven.qst.column.Column
 import io.deephaven.util.SafeCloseable
 import spock.lang.Specification
 import spock.lang.Unroll
 
+import java.time.Instant
+import java.time.LocalDate
+
 class ColumnExpressionCompletionHandlerTest extends Specification implements ChunkerCompleterMixin {
 
-    private static String src_(String methodName = 't', String columnName = 'Date', String completion = "las") {
+    private static String src_(String methodName = 't', String columnName = 'Date', String completion = "past") {
         return """u = ${methodName}.update('$columnName = $completion"""
     }
 
@@ -33,18 +36,17 @@ class ColumnExpressionCompletionHandlerTest extends Specification implements Chu
     def "Completion at #position should find typesafe column completion for partially completed column expressions"(int position, Set<String> completions) {
         given:
 
-//u = t.update('Date=las
+//u = t.update('Date=past
             String src = src_()
             CompletionParser p = new CompletionParser()
             doc = p.parse(src)
 
             Logger log = LoggerFactory.getLogger(CompletionHandler)
-        VariableProvider variables = Mock(VariableProvider) {
-                (0..1) * getVariableNames() >> ['t']
-                (0..1) * getVariableType('t') >> Table
-                (0..1) * getTableDefinition('t') >> TableDefinition.from(['Date', 'DateTime'], [String, DateTime]
-                )
-            }
+            QueryScope variables = new StandaloneQueryScope()
+            variables.putParam("t", TableFactory.newTable(
+                    Column.of('Date', LocalDate.class, new LocalDate[0]),
+                    Column.of('DateTime', Instant.class, new Instant[0]))
+            )
 
             ChunkerCompleter completer = new ChunkerCompleter(log, variables)
 
@@ -53,6 +55,7 @@ class ColumnExpressionCompletionHandlerTest extends Specification implements Chu
                 .collect { this.doCompletion(src, it) }
 
         then: "Expect the completion result to suggest all namespaces"
+            result.forEach(System.out::println)
             result.size() == completions.size()
             // with() inside a then will assert on each removal
             with(result){
@@ -64,15 +67,17 @@ class ColumnExpressionCompletionHandlerTest extends Specification implements Chu
 
         where:
             position | completions
-            // between `e=`, expect method name completions, and a single column name completion, for DateTime
+            // between `e=`, expect method name completions, and a single column name completion, for Clock
             19 | [
-                src_('t', 'Date', "lastBusinessDateNy()'"),
-                src_('t', 'Date', 'lastBusinessDateNy('),
+                src_('t', 'Date', "pastDate("),
+                src_('t', 'Date', "pastBusinessDate("),
+                src_('t', 'Date', "pastNonBusinessDate("),
             ]
             18 | [
-                src_('t', 'Date', "lastBusinessDateNy()'"),
-                src_('t', 'Date', 'lastBusinessDateNy('),
-                src_('t', 'DateTime', 'las'),
+                src_('t', 'Date', "pastDate("),
+                src_('t', 'Date', "pastBusinessDate("),
+                src_('t', 'Date', "pastNonBusinessDate("),
+                src_('t', 'DateTime', "past"),
             ]
     }
 
@@ -86,17 +91,17 @@ t = t.updateView ( 'D
         doc = p.parse(src)
 
         Logger log = LoggerFactory.getLogger(CompletionHandler)
-        VariableProvider variables = Mock() {
-            (0..1) * getTableDefinition('t') >> TableDefinition.from(
-                    ['Date', 'Delta', 'NotMeThough'], [String, Long, Integer])
-            (0..1) * getVariableType('t') >> Table
-            (0..1) * getVariableNames() >> []
-        }
+        QueryScope variables = new StandaloneQueryScope();
+        variables.putParam('t', TableFactory.newTable(
+            Column.of('Date', String.class, new String[0]),
+            Column.of('Delta', Long.class, new Long[0]),
+            Column.of('NotMeThough', Integer.class, new Integer[0]),
+        ));
 
         ChunkerCompleter completer = new ChunkerCompleter(log, variables)
 
         when: "Cursor is at EOF, table name completion from t is returned"
-        Set<CompletionItem.Builder> result = completer.runCompletion(doc, pos)
+        Set<CompletionItem> result = completer.runCompletion(doc, pos)
         result.removeIf({it.textEdit.text == 'updateView('})
 
 //       t = t.where ( 'D
@@ -126,10 +131,11 @@ t = t.update('A=') .update( 'B=')
         doc = p.parse(src)
 
         Logger log = LoggerFactory.getLogger(CompletionHandler)
-        VariableProvider variables = Mock(VariableProvider) {
-            _ * getTableDefinition('t') >> TableDefinition.from(['A1', 'A2'], [Long, Integer])
-            0 * _
-        }
+        QueryScope variables = new StandaloneQueryScope()
+        variables.putParam('t', TableFactory.newTable(
+                Column.of('A1', Long.class, new Long[0]),
+                Column.of('A2', Integer.class, new Integer[0]),
+        ));
 
         ChunkerCompleter completer = new ChunkerCompleter(log, variables)
 
@@ -183,10 +189,8 @@ t.where('"""
         doc = p.parse(src)
 
         Logger log = LoggerFactory.getLogger(CompletionHandler)
-        VariableProvider variables = Mock(VariableProvider) {
-            _ * getTableDefinition('t') >> null
-            0 * _
-        }
+        QueryScope variables = new StandaloneQueryScope()
+        variables.putParam('t', null);
 
         ChunkerCompleter completer = new ChunkerCompleter(log, variables)
 
@@ -201,11 +205,5 @@ t.where('"""
 
         cleanup:
         System.clearProperty(ChunkerCompleter.PROP_SUGGEST_STATIC_METHODS)
-    }
-    @Override
-    VariableProvider getVariables() {
-        return Mock(VariableProvider) {
-            _ * getVariableNames() >> []
-        }
     }
 }

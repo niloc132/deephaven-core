@@ -1,75 +1,110 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.parquet.base;
 
-import io.deephaven.parquet.base.util.Helpers;
-import io.deephaven.parquet.base.util.SeekableChannelsProvider;
+import io.deephaven.util.channel.SeekableChannelContext;
+import io.deephaven.util.channel.SeekableChannelsProvider;
 import org.apache.parquet.format.*;
 import org.apache.parquet.format.ColumnOrder;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.schema.*;
 
-import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.io.InputStream;
+import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
+import static io.deephaven.base.FileUtils.convertToURI;
+
 /**
- * Top level accessor for a parquet file
+ * Top level accessor for a parquet file which can read both from a file path string or a CLI style file URI,
+ * ex."s3://bucket/key".
  */
 public class ParquetFileReader {
     private static final int FOOTER_LENGTH_SIZE = 4;
     private static final String MAGIC_STR = "PAR1";
     static final byte[] MAGIC = MAGIC_STR.getBytes(StandardCharsets.US_ASCII);
+    public static final String FILE_URI_SCHEME = "file";
+
     public final FileMetaData fileMetaData;
     private final SeekableChannelsProvider channelsProvider;
-    private final Path rootPath;
+
+    /**
+     * If reading a single parquet file, root URI is the URI of the file, else the parent directory for a metadata file
+     */
+    private final URI rootURI;
     private final MessageType type;
 
-    public ParquetFileReader(final String filePath, final SeekableChannelsProvider channelsProvider)
+    /**
+     * Create a new ParquetFileReader for the provided source.
+     *
+     * @param source The source path or URI for the parquet file or the parquet metadata file
+     * @param channelsProvider The {@link SeekableChannelsProvider} to use for reading the file
+     */
+    public ParquetFileReader(final String source, final SeekableChannelsProvider channelsProvider)
+            throws IOException {
+        this(convertToURI(source, false), channelsProvider);
+    }
+
+    /**
+     * Create a new ParquetFileReader for the provided source.
+     *
+     * @param parquetFileURI The URI for the parquet file or the parquet metadata file
+     * @param channelsProvider The {@link SeekableChannelsProvider} to use for reading the file
+     */
+    public ParquetFileReader(final URI parquetFileURI, final SeekableChannelsProvider channelsProvider)
             throws IOException {
         this.channelsProvider = channelsProvider;
-        // Root path should be this file if a single file, else the parent directory for a metadata
-        // file
-        rootPath =
-                filePath.endsWith(".parquet") ? Paths.get(filePath) : Paths.get(filePath).getParent();
-
-        final byte[] footer;
-        try (final SeekableByteChannel readChannel = channelsProvider.getReadChannel(filePath)) {
-            final long fileLen = readChannel.size();
-            if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer +
-                // footerIndex + MAGIC
-                throw new RuntimeException(filePath + " is not a Parquet file (too small length: " + fileLen + ")");
-            }
-
-            final long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
-            readChannel.position(footerLengthIndex);
-
-            final int footerLength = readIntLittleEndian(readChannel);
-            final byte[] magic = new byte[MAGIC.length];
-            Helpers.readBytes(readChannel, magic);
-            if (!Arrays.equals(MAGIC, magic)) {
-                throw new RuntimeException(
-                        filePath + " is not a Parquet file. expected magic number at tail "
-                                + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
-            }
-            final long footerIndex = footerLengthIndex - footerLength;
-            if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
-                throw new RuntimeException(
-                        "corrupted file: the footer index is not within the file: " + footerIndex);
-            }
-            readChannel.position(footerIndex);
-            footer = new byte[footerLength];
-            Helpers.readBytes(readChannel, footer);
+        if (!parquetFileURI.getRawPath().endsWith(".parquet") && FILE_URI_SCHEME.equals(parquetFileURI.getScheme())) {
+            // Construct a new file URI for the parent directory
+            rootURI = convertToURI(new File(parquetFileURI).getParentFile(), true);
+        } else {
+            // TODO(deephaven-core#5066): Add support for reading metadata files from non-file URIs
+            rootURI = parquetFileURI;
         }
-        fileMetaData = Util.readFileMetaData(new ByteArrayInputStream(footer));
+        try (
+                final SeekableChannelContext context = channelsProvider.makeContext();
+                final SeekableByteChannel ch = channelsProvider.getReadChannel(context, parquetFileURI)) {
+            positionToFileMetadata(parquetFileURI, ch);
+            try (final InputStream in = channelsProvider.getInputStream(ch)) {
+                fileMetaData = Util.readFileMetaData(in);
+            }
+        }
         type = fromParquetSchema(fileMetaData.schema, fileMetaData.column_orders);
+    }
+
+    private static void positionToFileMetadata(URI parquetFileURI, SeekableByteChannel readChannel) throws IOException {
+        final long fileLen = readChannel.size();
+        if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer +
+            // footerIndex + MAGIC
+            throw new InvalidParquetFileException(
+                    parquetFileURI + " is not a Parquet file (too small length: " + fileLen + ")");
+        }
+        final byte[] trailer = new byte[Integer.BYTES + MAGIC.length];
+        final long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
+        readChannel.position(footerLengthIndex);
+        Helpers.readBytes(readChannel, trailer);
+        if (!Arrays.equals(MAGIC, 0, MAGIC.length, trailer, Integer.BYTES, trailer.length)) {
+            throw new InvalidParquetFileException(
+                    parquetFileURI + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC)
+                            + " but found "
+                            + Arrays.toString(Arrays.copyOfRange(trailer, Integer.BYTES, trailer.length)));
+        }
+        final int footerLength = makeLittleEndianInt(trailer[0], trailer[1], trailer[2], trailer[3]);
+        final long footerIndex = footerLengthIndex - footerLength;
+        if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
+            throw new InvalidParquetFileException(
+                    "corrupted file: the footer index is not within the file: " + footerIndex);
+        }
+        readChannel.position(footerIndex);
+    }
+
+    private static int makeLittleEndianInt(byte b0, byte b1, byte b2, byte b3) {
+        return (b0 & 0xff) | ((b1 & 0xff) << 8) | ((b2 & 0xff) << 16) | ((b3 & 0xff) << 24);
     }
 
     /**
@@ -100,7 +135,7 @@ public class ParquetFileReader {
      * True only if we are certain every data page in this column chunk uses dictionary encoding; note false also covers
      * the "we can't tell" case.
      */
-    private boolean columnChunkUsesDictionaryOnEveryPage(final ColumnChunk columnChunk) {
+    private static boolean columnChunkUsesDictionaryOnEveryPage(final ColumnChunk columnChunk) {
         final ColumnMetaData columnMeta = columnChunk.getMeta_data();
         if (columnMeta.encoding_stats == null) {
             return false; // this is false as "don't know".
@@ -160,28 +195,23 @@ public class ParquetFileReader {
         return result;
     }
 
-    private int readIntLittleEndian(SeekableByteChannel f) throws IOException {
-        ByteBuffer tempBuf = ByteBuffer.allocate(Integer.BYTES);
-        tempBuf.order(ByteOrder.LITTLE_ENDIAN);
-        int read = f.read(tempBuf);
-        if (read != 4) {
-            throw new IOException("Expected for bytes, only read " + read);
-        }
-        tempBuf.flip();
-        return tempBuf.getInt();
-    }
-
-    public RowGroupReader getRowGroup(int groupNumber) {
+    /**
+     * Create a {@link RowGroupReader} object for provided row group number
+     * 
+     * @param version The "version" string from deephaven specific parquet metadata, or null if it's not present.
+     */
+    public RowGroupReader getRowGroup(final int groupNumber, final String version) {
         return new RowGroupReaderImpl(
                 fileMetaData.getRow_groups().get(groupNumber),
                 channelsProvider,
-                rootPath,
+                rootURI,
                 type,
-                getSchema());
+                getSchema(),
+                version);
     }
 
-    private static MessageType fromParquetSchema(List<SchemaElement> schema,
-            List<ColumnOrder> columnOrders) {
+    private static MessageType fromParquetSchema(List<SchemaElement> schema, List<ColumnOrder> columnOrders)
+            throws ParquetFileReaderException {
         final Iterator<SchemaElement> iterator = schema.iterator();
         final SchemaElement root = iterator.next();
         final Types.MessageTypeBuilder builder = Types.buildMessage();
@@ -193,7 +223,7 @@ public class ParquetFileReader {
     }
 
     private static void buildChildren(Types.GroupBuilder builder, Iterator<SchemaElement> schema,
-            int childrenCount, List<ColumnOrder> columnOrders, int columnCount) {
+            int childrenCount, List<ColumnOrder> columnOrders, int columnCount) throws ParquetFileReaderException {
         for (int i = 0; i < childrenCount; ++i) {
             SchemaElement schemaElement = schema.next();
             Object childBuilder;
@@ -234,14 +264,13 @@ public class ParquetFileReader {
             }
 
             if (schemaElement.isSetLogicalType()) {
-                ((Types.Builder) childBuilder)
-                        .as(getLogicalTypeAnnotation(schemaElement.logicalType));
+                ((Types.Builder) childBuilder).as(getLogicalTypeAnnotation(schemaElement.logicalType));
             }
 
             if (schemaElement.isSetConverted_type()) {
-                LogicalTypeAnnotation originalType =
-                        getLogicalTypeAnnotation(schemaElement.converted_type, schemaElement);
-                LogicalTypeAnnotation newOriginalType = schemaElement.isSetLogicalType()
+                final LogicalTypeAnnotation originalType = getLogicalTypeAnnotation(
+                        schemaElement.converted_type, schemaElement.logicalType, schemaElement);
+                final LogicalTypeAnnotation newOriginalType = schemaElement.isSetLogicalType()
                         && getLogicalTypeAnnotation(schemaElement.logicalType) != null
                                 ? getLogicalTypeAnnotation(schemaElement.logicalType)
                                 : null;
@@ -260,8 +289,7 @@ public class ParquetFileReader {
 
     }
 
-    private static LogicalTypeAnnotation.TimeUnit convertTimeUnit(
-            TimeUnit unit) {
+    private static LogicalTypeAnnotation.TimeUnit convertTimeUnit(TimeUnit unit) throws ParquetFileReaderException {
         switch (unit.getSetField()) {
             case MICROS:
                 return LogicalTypeAnnotation.TimeUnit.MICROS;
@@ -270,11 +298,11 @@ public class ParquetFileReader {
             case NANOS:
                 return LogicalTypeAnnotation.TimeUnit.NANOS;
             default:
-                throw new RuntimeException("Unknown time unit " + unit);
+                throw new ParquetFileReaderException("Unknown time unit " + unit);
         }
     }
 
-    static LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
+    static LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) throws ParquetFileReaderException {
         switch (type.getSetField()) {
             case MAP:
                 return LogicalTypeAnnotation.mapType();
@@ -289,34 +317,31 @@ public class ParquetFileReader {
             case LIST:
                 return LogicalTypeAnnotation.listType();
             case TIME:
-                TimeType time = type.getTIME();
-                return LogicalTypeAnnotation.timeType(time.isAdjustedToUTC,
-                        convertTimeUnit(time.unit));
+                final TimeType time = type.getTIME();
+                return LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
             case STRING:
                 return LogicalTypeAnnotation.stringType();
             case DECIMAL:
-                DecimalType decimal = type.getDECIMAL();
+                final DecimalType decimal = type.getDECIMAL();
                 return LogicalTypeAnnotation.decimalType(decimal.scale, decimal.precision);
             case INTEGER:
-                IntType integer = type.getINTEGER();
+                final IntType integer = type.getINTEGER();
                 return LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
             case UNKNOWN:
                 return null;
             case TIMESTAMP:
-                TimestampType timestamp = type.getTIMESTAMP();
-                return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC,
-                        convertTimeUnit(timestamp.unit));
+                final TimestampType timestamp = type.getTIMESTAMP();
+                return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
             default:
-                throw new RuntimeException("Unknown logical type " + type);
+                throw new ParquetFileReaderException("Unknown logical type " + type);
         }
     }
 
-    private static org.apache.parquet.schema.Type.Repetition fromParquetRepetition(
-            FieldRepetitionType repetition) {
+    private static org.apache.parquet.schema.Type.Repetition fromParquetRepetition(FieldRepetitionType repetition) {
         return org.apache.parquet.schema.Type.Repetition.valueOf(repetition.name());
     }
 
-    private static PrimitiveType.PrimitiveTypeName getPrimitive(Type type) {
+    private static PrimitiveType.PrimitiveTypeName getPrimitive(Type type) throws ParquetFileReaderException {
         switch (type) {
             case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
                 return PrimitiveType.PrimitiveTypeName.BINARY;
@@ -335,7 +360,7 @@ public class ParquetFileReader {
             case FIXED_LEN_BYTE_ARRAY:
                 return PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
             default:
-                throw new RuntimeException("Unknown type " + type);
+                throw new ParquetFileReaderException("Unknown type " + type);
         }
     }
 
@@ -347,9 +372,9 @@ public class ParquetFileReader {
         return org.apache.parquet.schema.ColumnOrder.undefined();
     }
 
-    private static LogicalTypeAnnotation getLogicalTypeAnnotation(ConvertedType type,
-            SchemaElement schemaElement) {
-        switch (type) {
+    private static LogicalTypeAnnotation getLogicalTypeAnnotation(final ConvertedType convertedType,
+            final LogicalType logicalType, final SchemaElement schemaElement) throws ParquetFileReaderException {
+        switch (convertedType) {
             case UTF8:
                 return LogicalTypeAnnotation.stringType();
             case MAP:
@@ -361,22 +386,22 @@ public class ParquetFileReader {
             case ENUM:
                 return LogicalTypeAnnotation.enumType();
             case DECIMAL:
-                int scale = schemaElement == null ? 0 : schemaElement.scale;
-                int precision = schemaElement == null ? 0 : schemaElement.precision;
+                final int scale = schemaElement == null ? 0 : schemaElement.scale;
+                final int precision = schemaElement == null ? 0 : schemaElement.precision;
                 return LogicalTypeAnnotation.decimalType(scale, precision);
             case DATE:
                 return LogicalTypeAnnotation.dateType();
             case TIME_MILLIS:
-                return LogicalTypeAnnotation.timeType(true,
-                        LogicalTypeAnnotation.TimeUnit.MILLIS);
+                // isAdjustedToUTC parameter is ignored while reading Parquet TIME type, so disregard it here
+                return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
             case TIME_MICROS:
-                return LogicalTypeAnnotation.timeType(true,
-                        LogicalTypeAnnotation.TimeUnit.MICROS);
+                return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
             case TIMESTAMP_MILLIS:
-                return LogicalTypeAnnotation.timestampType(true,
+                // Converted type doesn't have isAdjustedToUTC parameter, so use the information from logical type
+                return LogicalTypeAnnotation.timestampType(isAdjustedToUTC(logicalType),
                         LogicalTypeAnnotation.TimeUnit.MILLIS);
             case TIMESTAMP_MICROS:
-                return LogicalTypeAnnotation.timestampType(true,
+                return LogicalTypeAnnotation.timestampType(isAdjustedToUTC(logicalType),
                         LogicalTypeAnnotation.TimeUnit.MICROS);
             case INTERVAL:
                 return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance();
@@ -401,9 +426,22 @@ public class ParquetFileReader {
             case BSON:
                 return LogicalTypeAnnotation.bsonType();
             default:
-                throw new RuntimeException(
-                        "Can't convert converted type to logical type, unknown converted type " + type);
+                throw new ParquetFileReaderException(
+                        "Can't convert converted type to logical type, unknown converted type " + convertedType);
         }
+    }
+
+    /**
+     * Helper method to determine if a logical type is adjusted to UTC.
+     * 
+     * @param logicalType the logical type to check
+     * @return true if the logical type is a timestamp adjusted to UTC, false otherwise
+     */
+    private static boolean isAdjustedToUTC(final LogicalType logicalType) {
+        if (logicalType.getSetField() == LogicalType._Fields.TIMESTAMP) {
+            return logicalType.getTIMESTAMP().isAdjustedToUTC;
+        }
+        return false;
     }
 
     public MessageType getSchema() {

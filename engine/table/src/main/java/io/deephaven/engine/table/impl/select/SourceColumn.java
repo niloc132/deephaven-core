@@ -1,11 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.api.JoinAddition;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.table.*;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.impl.sources.InMemoryColumnSource;
 import io.deephaven.api.util.NameValidator;
 import io.deephaven.engine.table.impl.NoSuchColumnException;
@@ -48,15 +49,6 @@ public class SourceColumn implements SelectColumn {
     private SourceColumn(String sourceName, String destName, boolean unused) {
         this.sourceName = sourceName;
         this.destName = destName;
-    }
-
-    @Override
-    public List<String> initInputs(Table table) {
-        this.sourceColumn = table.getColumnSource(sourceName);
-        if (sourceColumn == null) {
-            throw new NoSuchColumnException(table.getDefinition().getColumnNames(), sourceName);
-        }
-        return Collections.singletonList(sourceName);
     }
 
     @Override
@@ -165,12 +157,6 @@ public class SourceColumn implements SelectColumn {
         int result = sourceName.hashCode();
         result = 31 * result + destName.hashCode();
         return result;
-    }
-
-
-    @Override
-    public boolean disallowRefresh() {
-        return false;
     }
 
     @Override

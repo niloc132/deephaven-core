@@ -1,16 +1,15 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharChunkedAddOnlyMinMaxOperator and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit CharChunkedAddOnlyMinMaxOperator and run "./gradlew replicateOperators" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.by;
 
-import io.deephaven.time.DateTime;
-import io.deephaven.engine.table.impl.sources.DateTimeArraySource;
-import io.deephaven.engine.table.impl.sources.LongArraySource;
+import java.time.Instant;
+import io.deephaven.engine.table.impl.sources.InstantArraySource;
+import io.deephaven.engine.table.impl.sources.NanosBasedTimeArraySource;
 
 import io.deephaven.chunk.attributes.ChunkLengths;
 import io.deephaven.chunk.attributes.ChunkPositions;
@@ -18,7 +17,7 @@ import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.util.QueryConstants;
 import io.deephaven.util.compare.LongComparisons;
-import io.deephaven.engine.table.impl.sources.AbstractLongArraySource;
+import io.deephaven.engine.table.impl.sources.LongArraySource;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.chunk.*;
 import org.apache.commons.lang3.mutable.MutableInt;
@@ -30,7 +29,10 @@ import java.util.Map;
  * Iterative average operator.
  */
 class LongChunkedAddOnlyMinMaxOperator implements IterativeChunkedAggregationOperator {
-    private final AbstractLongArraySource resultColumn;
+    private final LongArraySource resultColumn;
+    // region actualResult
+    private final ColumnSource<?> actualResult;
+    // endregion actualResult
     private final boolean minimum;
     private final String name;
 
@@ -42,7 +44,12 @@ class LongChunkedAddOnlyMinMaxOperator implements IterativeChunkedAggregationOpe
         this.minimum = minimum;
         this.name = name;
         // region resultColumn initialization
-        resultColumn = type == DateTime.class ? new DateTimeArraySource() : new LongArraySource();
+        if (type == Instant.class) {
+            actualResult = new InstantArraySource();
+            resultColumn = ((NanosBasedTimeArraySource<?>)actualResult).toEpochNano();
+        } else {
+            actualResult = resultColumn = new LongArraySource();
+        }
         // endregion resultColumn initialization
     }
 
@@ -64,7 +71,7 @@ class LongChunkedAddOnlyMinMaxOperator implements IterativeChunkedAggregationOpe
     }
 
     private long max(LongChunk<?> values, MutableInt chunkNonNull, int chunkStart, int chunkEnd) {
-        int nonNull =0;
+        int nonNull = 0;
         long value = QueryConstants.NULL_LONG;
         for (int ii = chunkStart; ii < chunkEnd; ++ii) {
             final long candidate = values.get(ii);
@@ -89,7 +96,10 @@ class LongChunkedAddOnlyMinMaxOperator implements IterativeChunkedAggregationOpe
     }
 
     @Override
-    public void addChunk(BucketedContext bucketedContext, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations, IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length, WritableBooleanChunk<Values> stateModified) {
+    public void addChunk(BucketedContext bucketedContext, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations,
+            IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length,
+            WritableBooleanChunk<Values> stateModified) {
         final LongChunk<? extends Values> asLongChunk = values.asLongChunk();
         for (int ii = 0; ii < startPositions.size(); ++ii) {
             final int startPosition = startPositions.get(ii);
@@ -99,27 +109,36 @@ class LongChunkedAddOnlyMinMaxOperator implements IterativeChunkedAggregationOpe
     }
 
     @Override
-    public void removeChunk(BucketedContext context, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations, IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length, WritableBooleanChunk<Values> stateModified) {
+    public void removeChunk(BucketedContext context, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations,
+            IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length,
+            WritableBooleanChunk<Values> stateModified) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void modifyChunk(BucketedContext context, Chunk<? extends Values> previousValues, Chunk<? extends Values> newValues, LongChunk<? extends RowKeys> postShiftRowKeys, IntChunk<RowKeys> destinations, IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length, WritableBooleanChunk<Values> stateModified) {
+    public void modifyChunk(BucketedContext context, Chunk<? extends Values> previousValues,
+            Chunk<? extends Values> newValues, LongChunk<? extends RowKeys> postShiftRowKeys,
+            IntChunk<RowKeys> destinations, IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length,
+            WritableBooleanChunk<Values> stateModified) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean addChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, long destination) {
+    public boolean addChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, long destination) {
         return addChunk(values.asLongChunk(), destination, 0, values.size());
     }
 
     @Override
-    public boolean removeChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, long destination) {
+    public boolean removeChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, long destination) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean modifyChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> previousValues, Chunk<? extends Values> newValues, LongChunk<? extends RowKeys> postShiftRowKeys, long destination) {
+    public boolean modifyChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> previousValues,
+            Chunk<? extends Values> newValues, LongChunk<? extends RowKeys> postShiftRowKeys, long destination) {
         throw new UnsupportedOperationException();
     }
 
@@ -129,7 +148,8 @@ class LongChunkedAddOnlyMinMaxOperator implements IterativeChunkedAggregationOpe
         }
         final MutableInt chunkNonNull = new MutableInt(0);
         final int chunkEnd = chunkStart + chunkSize;
-        final long chunkValue = minimum ? min(values, chunkNonNull, chunkStart, chunkEnd) : max(values, chunkNonNull, chunkStart, chunkEnd);
+        final long chunkValue = minimum ? min(values, chunkNonNull, chunkStart, chunkEnd)
+                : max(values, chunkNonNull, chunkStart, chunkEnd);
         if (chunkNonNull.intValue() == 0) {
             return false;
         }
@@ -158,7 +178,9 @@ class LongChunkedAddOnlyMinMaxOperator implements IterativeChunkedAggregationOpe
 
     @Override
     public Map<String, ? extends ColumnSource<?>> getResultColumns() {
-        return Collections.<String, ColumnSource<?>>singletonMap(name, resultColumn);
+        // region getResultColumns
+        return Collections.<String, ColumnSource<?>>singletonMap(name, actualResult);
+        // endregion getResultColumns
     }
 
     @Override

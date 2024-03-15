@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sort.timsort;
 
 import io.deephaven.chunk.LongChunk;
@@ -178,7 +178,7 @@ public abstract class TestTimSortKernel {
     <T> void correctnessTest(int size, GenerateTupleList<T> tupleListGenerator, Comparator<T> comparator,
             Function<List<T>, SortKernelStuff<T>> prepareFunction) {
         for (int seed = 0; seed < CORRECTNESS_SEEDS; ++seed) {
-            System.out.println("Size = " + size + ", seed=" + seed);
+            System.out.println("size = " + size + ", seed = " + seed);
             final Random random = new Random(seed);
 
             final List<T> javaTuples = tupleListGenerator.generate(random, size);

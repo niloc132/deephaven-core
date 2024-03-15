@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 import unittest
@@ -141,7 +141,7 @@ class LearnGatherTestCase(BaseTestCase):
         gatherer_colmajor = lambda rowset, colset: gather.table_to_numpy_2d(rowset, colset,
                                                                             gather.MemoryLayout.COLUMN_MAJOR, np_dtype)
 
-        array_from_table = to_pandas(source).values
+        array_from_table = to_pandas(source, dtype_backend=None, conv_null=False).values
 
         gathered_rowmajor = gatherer_rowmajor(rows, cols)
         gathered_colmajor = gatherer_colmajor(rows, cols)

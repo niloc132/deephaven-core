@@ -3,33 +3,35 @@
 #
 import os
 import pathlib
-from setuptools.extern import packaging
+
+# Note: pkg_resources is deprecated https://setuptools.pypa.io/en/latest/pkg_resources.html, and it is suggested
+# to use an external library `packaging`. From the context of building a wheel though, we'd prefer to not have to
+# install extra dependencies, at least until we can more properly manage the build environment (pyproject.toml).
+# TODO(deephaven-core#2233): upgrade setup.py to pyproject.toml
+from pkg_resources import parse_version
 from setuptools import find_namespace_packages, setup
 
-# The directory containing this file
-HERE = pathlib.Path(__file__).parent
+def _get_readme() -> str:
+    # The directory containing this file
+    HERE = pathlib.Path(__file__).parent
+    # The text of the README file
+    return (HERE / "README.md").read_text(encoding="utf-8")
 
-# The text of the README file
-README = (HERE / "README.md").read_text()
+def _normalize_version(java_version) -> str:
+    partitions = java_version.partition("-")
+    regular_version = partitions[0]
+    local_segment = partitions[2]
+    python_version = f"{regular_version}+{local_segment}" if local_segment else regular_version
+    return str(parse_version(python_version))
 
-
-# Versions should comply with PEP440.  For a discussion on single-sourcing
-# the version across setup.py and the project code, see
-# https://packaging.python.org/en/latest/single_source_version.html
-# todo: does DH versions align w/ PEP440?
-# see https://github.com/pypa/setuptools/blob/v40.8.0/setuptools/dist.py#L470
-def normalize_version(version):
-    return str(packaging.version.Version(version))
-
-
-__deephaven_version__ = os.environ['DEEPHAVEN_VERSION']
-__normalized_version__ = normalize_version(__deephaven_version__)
+def _compute_version():
+    return _normalize_version(os.environ['DEEPHAVEN_VERSION'])
 
 setup(
     name='deephaven-core',
-    version=__normalized_version__,
+    version=_compute_version(),
     description='Deephaven Engine Python Package',
-    long_description=README,
+    long_description=_get_readme(),
     long_description_content_type='text/markdown',
     packages=find_namespace_packages(exclude=("tests", "tests.*", "integration-tests", "test_helper")),
     url='https://deephaven.io/',
@@ -38,35 +40,38 @@ setup(
     license='Deephaven Community License',
     test_loader='unittest:TestLoader',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
-        'Topic :: Software Development :: Build Tools',
         'License :: Other/Proprietary License',
+        'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
     keywords='Deephaven Development',
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     install_requires=[
-        'jpy>=0.13.0',
-        'deephaven-plugin',
+        'jpy>=0.15.0',
+        'deephaven-plugin>=0.6.0',
         'numpy',
-        'pandas',
+        'pandas>=1.5.0',
         'pyarrow',
-        # Numba does not support 3.11 yet
-        # https://github.com/numba/numba/issues/8304
-        # TODO(deephaven-core#3082): Remove numba dependency workarounds
-        'numba; python_version < "3.11"',
+        # TODO(deephaven-core#3082): Clarify dependency requirements wrt numba
+        # It took 6 months for numba to support 3.11 after it was released, we want to make sure deephaven-core will be
+        # installable when 3.13 is out. When we decide to upgrade to 3.13 or higher for testing/production, CI check
+        # will alert us that numba isn't available.
+        'numba; python_version < "3.13"',
     ],
     extras_require={
         "autocomplete": ["jedi==0.18.2"],
     },
     entry_points={
         'deephaven.plugin': ['registration_cls = deephaven.pandasplugin:PandasPluginRegistration']
-    }
+    },
+    package_data={'deephaven': ['py.typed']}
 )

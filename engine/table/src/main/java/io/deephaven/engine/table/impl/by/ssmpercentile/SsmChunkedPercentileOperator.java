@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.by.ssmpercentile;
 
 import io.deephaven.base.verify.Assert;
@@ -10,7 +10,7 @@ import io.deephaven.chunk.attributes.Values;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
-import io.deephaven.time.DateTime;
+import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.table.impl.by.IterativeChunkedAggregationOperator;
 import io.deephaven.engine.table.impl.sources.*;
 import io.deephaven.chunk.*;
@@ -19,6 +19,7 @@ import io.deephaven.engine.table.impl.util.compact.CompactKernel;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -29,7 +30,7 @@ import java.util.function.Supplier;
 public class SsmChunkedPercentileOperator implements IterativeChunkedAggregationOperator {
     private static final int NODE_SIZE =
             Configuration.getInstance().getIntegerWithDefault("SsmChunkedMinMaxOperator.nodeSize", 4096);
-    private final ArrayBackedColumnSource internalResult;
+    private final WritableColumnSource internalResult;
     private final ColumnSource externalResult;
     /**
      * Even slots hold the low values, odd slots hold the high values.
@@ -45,16 +46,16 @@ public class SsmChunkedPercentileOperator implements IterativeChunkedAggregation
     public SsmChunkedPercentileOperator(Class<?> type, double percentile, boolean averageEvenlyDivided, String name) {
         this.name = name;
         this.ssms = new ObjectArraySource<>(SegmentedSortedMultiSet.class);
-        final boolean isDateTime = type == DateTime.class;
-        if (isDateTime) {
+        final boolean isInstant = type == Instant.class;
+        if (isInstant) {
             chunkType = ChunkType.Long;
         } else {
             chunkType = ChunkType.fromElementType(type);
         }
-        if (isDateTime) {
+        if (isInstant) {
             internalResult = new LongArraySource();
             // noinspection unchecked
-            externalResult = new BoxedColumnSource.OfDateTime(internalResult);
+            externalResult = new LongAsInstantColumnSource(internalResult);
             averageEvenlyDivided = false;
         } else {
             if (averageEvenlyDivided) {
@@ -84,7 +85,7 @@ public class SsmChunkedPercentileOperator implements IterativeChunkedAggregation
     }
 
     private static PercentileTypeHelper makeTypeHelper(ChunkType chunkType, Class<?> type, double percentile,
-            boolean averageEvenlyDivided, ArrayBackedColumnSource resultColumn) {
+            boolean averageEvenlyDivided, WritableColumnSource resultColumn) {
         if (averageEvenlyDivided) {
             switch (chunkType) {
                 // for things that are not int, long, double, or float we do not actually average the median;
@@ -137,12 +138,14 @@ public class SsmChunkedPercentileOperator implements IterativeChunkedAggregation
     }
 
     @NotNull
-    private static PercentileTypeHelper makeObjectHelper(Class<?> type, double percentile,
-            ArrayBackedColumnSource resultColumn) {
+    private static PercentileTypeHelper makeObjectHelper(
+            Class<?> type,
+            double percentile,
+            WritableColumnSource resultColumn) {
         if (type == Boolean.class) {
             return new BooleanPercentileTypeHelper(percentile, resultColumn);
-        } else if (type == DateTime.class) {
-            return new DateTimePercentileTypeHelper(percentile, resultColumn);
+        } else if (type == Instant.class) {
+            return new InstantPercentileTypeHelper(percentile, resultColumn);
         } else {
             return new ObjectPercentileTypeHelper(percentile, resultColumn);
         }

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.by;
 
 import io.deephaven.chunk.attributes.ChunkLengths;
@@ -39,7 +39,10 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
     }
 
     @Override
-    public void addChunk(BucketedContext context, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations, IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length, WritableBooleanChunk<Values> stateModified) {
+    public void addChunk(BucketedContext context, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations,
+            IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length,
+            WritableBooleanChunk<Values> stateModified) {
         final FloatChunk<? extends Values> asFloatChunk = values.asFloatChunk();
         for (int ii = 0; ii < startPositions.size(); ++ii) {
             final int startPosition = startPositions.get(ii);
@@ -49,7 +52,10 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
     }
 
     @Override
-    public void removeChunk(BucketedContext context, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations, IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length, WritableBooleanChunk<Values> stateModified) {
+    public void removeChunk(BucketedContext context, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, IntChunk<RowKeys> destinations,
+            IntChunk<ChunkPositions> startPositions, IntChunk<ChunkLengths> length,
+            WritableBooleanChunk<Values> stateModified) {
         final FloatChunk<? extends Values> asFloatChunk = values.asFloatChunk();
         for (int ii = 0; ii < startPositions.size(); ++ii) {
             final int startPosition = startPositions.get(ii);
@@ -59,12 +65,14 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
     }
 
     @Override
-    public boolean addChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, long destination) {
+    public boolean addChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, long destination) {
         return addChunk(values.asFloatChunk(), destination, 0, values.size());
     }
 
     @Override
-    public boolean removeChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values, LongChunk<? extends RowKeys> inputRowKeys, long destination) {
+    public boolean removeChunk(SingletonContext context, int chunkSize, Chunk<? extends Values> values,
+            LongChunk<? extends RowKeys> inputRowKeys, long destination) {
         return removeChunk(values.asFloatChunk(), destination, 0, values.size());
     }
 
@@ -74,7 +82,8 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
         final MutableInt chunkNanCount = new MutableInt();
         final MutableInt chunkInfinityCount = new MutableInt();
         final MutableInt chunkMinusInfinity = new MutableInt();
-        final double sum = SumFloatChunk.sum2FloatChunk(values, chunkStart, chunkSize, chunkNormalCount, chunkNanCount, chunkInfinityCount, chunkMinusInfinity, sum2);
+        final double sum = SumFloatChunk.sum2FloatChunk(values, chunkStart, chunkSize, chunkNormalCount, chunkNanCount,
+                chunkInfinityCount, chunkMinusInfinity, sum2);
 
         final long totalPositiveInfinities = updatePositiveInfinityCount(destination, chunkInfinityCount.intValue());
         final long totalNegativeInfinities = updateNegativeInfinityCount(destination, chunkMinusInfinity.intValue());
@@ -92,7 +101,12 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
             if (forceNanResult || nonNullCount <= 1) {
                 resultColumn.set(destination, Double.NaN);
             } else {
-                final double variance = (newSum2 - newSum * newSum / nonNullCount) / (nonNullCount - 1);
+                // If the sum or sumSquared has reached +/-Infinity, we are stuck with NaN forever.
+                if (Double.isInfinite(newSum) || Double.isInfinite(newSum2)) {
+                    resultColumn.set(destination, Double.NaN);
+                    return true;
+                }
+                final double variance = computeVariance(nonNullCount, newSum, newSum2);
                 resultColumn.set(destination, std ? Math.sqrt(variance) : variance);
             }
             return true;
@@ -104,6 +118,17 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
         }
     }
 
+    private static double computeVariance(long nonNullCount, double newSum, double newSum2) {
+        // Perform the calculation in a way that minimizes the impact of FP error.
+        final double eps = Math.ulp(newSum2);
+        final double vs2bar = newSum * (newSum / nonNullCount);
+        final double delta = newSum2 - vs2bar;
+        final double rel_eps = delta / eps;
+
+        // Return zero when the variance is leq the FP error or when variance becomes negative
+        final double variance = Math.abs(rel_eps) > 1.0 ? delta / (nonNullCount - 1) : 0.0;
+        return Math.max(variance, 0.0);
+    }
 
     private boolean removeChunk(FloatChunk<? extends Values> values, long destination, int chunkStart, int chunkSize) {
         final MutableDouble sum2 = new MutableDouble();
@@ -111,9 +136,11 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
         final MutableInt chunkNanCount = new MutableInt();
         final MutableInt chunkInfinityCount = new MutableInt();
         final MutableInt chunkMinusInfinity = new MutableInt();
-        final double sum = SumFloatChunk.sum2FloatChunk(values, chunkStart, chunkSize, chunkNormalCount, chunkNanCount, chunkInfinityCount, chunkMinusInfinity, sum2);
+        final double sum = SumFloatChunk.sum2FloatChunk(values, chunkStart, chunkSize, chunkNormalCount, chunkNanCount,
+                chunkInfinityCount, chunkMinusInfinity, sum2);
 
-        if (chunkNormalCount.intValue() == 0 && chunkNanCount.intValue() == 0 && chunkInfinityCount.intValue() == 0 && chunkMinusInfinity.intValue() == 0) {
+        if (chunkNormalCount.intValue() == 0 && chunkNanCount.intValue() == 0 && chunkInfinityCount.intValue() == 0
+                && chunkMinusInfinity.intValue() == 0) {
             return false;
         }
 
@@ -145,7 +172,15 @@ final class FloatChunkedVarOperator extends FpChunkedNonNormalCounter implements
             resultColumn.set(destination, Double.NaN);
             return true;
         }
-        final double variance = (newSum2 - newSum * newSum / totalNormalCount) / (totalNormalCount - 1);
+
+        // If the sum has reach +/-Infinity, we are stuck with NaN forever.
+        if (Double.isInfinite(newSum) || Double.isInfinite(newSum2)) {
+            resultColumn.set(destination, Double.NaN);
+            return true;
+        }
+
+        // Perform the calculation in a way that minimizes the impact of FP error.
+        final double variance = computeVariance(totalNormalCount, newSum, newSum2);
         resultColumn.set(destination, std ? Math.sqrt(variance) : variance);
         return true;
     }

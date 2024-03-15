@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.rowset.WritableRowSet;
+import io.deephaven.engine.table.impl.locations.ImmutableTableLocationKey;
 import io.deephaven.engine.table.impl.locations.TableLocation;
 import io.deephaven.engine.table.impl.sources.DeferredGroupingColumnSource;
 import org.jetbrains.annotations.NotNull;
@@ -66,4 +67,12 @@ public interface ColumnSourceManager {
      * @return True if there are no included locations
      */
     boolean isEmpty();
+
+    /**
+     * Remove a table location key from the sources.
+     *
+     * @return true if the location key was actually removed
+     * @param tableLocationKey the location key being removed
+     */
+    boolean removeLocationKey(@NotNull ImmutableTableLocationKey tableLocationKey);
 }

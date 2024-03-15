@@ -1,12 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sort.megamerge;
 
+import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.util.compare.CharComparisons;
 import io.deephaven.engine.table.impl.sort.LongMegaMergeKernel;
 import io.deephaven.engine.table.impl.sort.timsort.TimsortUtils;
-import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
 import io.deephaven.engine.table.impl.sources.CharacterArraySource;
 import io.deephaven.engine.table.impl.sources.LongArraySource;
 import io.deephaven.chunk.attributes.Any;
@@ -27,7 +27,7 @@ public class CharLongMegaMergeKernel {
         private static final CharLongMegaMergeKernelContext INSTANCE = new CharLongMegaMergeKernelContext();
 
         @Override
-        public void merge(LongArraySource indexDestinationSource, ArrayBackedColumnSource<?> valuesDestinationSource,
+        public void merge(LongArraySource indexDestinationSource, WritableColumnSource<?> valuesDestinationSource,
                 long destinationOffset, long destinationSize, LongChunk<KEY_INDICES> indexKeys,
                 Chunk<ATTR> valuesToMerge) {
             CharLongMegaMergeKernel.merge(indexDestinationSource, (CharacterArraySource) valuesDestinationSource,

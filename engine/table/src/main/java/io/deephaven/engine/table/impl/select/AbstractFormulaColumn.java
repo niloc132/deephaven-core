@@ -1,14 +1,14 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Require;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.table.*;
-import io.deephaven.engine.context.ExecutionContext;
-import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.context.QueryScopeParam;
+import io.deephaven.engine.table.impl.BaseTable;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.vector.Vector;
 import io.deephaven.engine.table.impl.vector.*;
 import io.deephaven.engine.table.impl.select.formula.*;
@@ -29,7 +29,7 @@ import java.util.function.Consumer;
 public abstract class AbstractFormulaColumn implements FormulaColumn {
     private static final Logger log = LoggerFactory.getLogger(AbstractFormulaColumn.class);
 
-    private static final boolean ALLOW_UNSAFE_REFRESHING_FORMULAS = Configuration.getInstance()
+    public static final boolean ALLOW_UNSAFE_REFRESHING_FORMULAS = Configuration.getInstance()
             .getBooleanForClassWithDefault(AbstractFormulaColumn.class, "allowUnsafeRefreshingFormulas", false);
 
 
@@ -65,17 +65,14 @@ public abstract class AbstractFormulaColumn implements FormulaColumn {
     }
 
     @Override
-    public List<String> initInputs(Table table) {
-        return initInputs(table.getRowSet(), table.getColumnSourceMap());
-    }
-
-    @Override
     public Class<?> getReturnedType() {
         return returnedType;
     }
 
     @Override
-    public List<String> initInputs(TrackingRowSet rowSet, Map<String, ? extends ColumnSource<?>> columnsOfInterest) {
+    public List<String> initInputs(
+            @NotNull final TrackingRowSet rowSet,
+            @NotNull final Map<String, ? extends ColumnSource<?>> columnsOfInterest) {
         this.rowSet = rowSet;
 
         this.columnSources = columnsOfInterest;
@@ -85,14 +82,32 @@ public abstract class AbstractFormulaColumn implements FormulaColumn {
         return initDef(extractDefinitions(columnsOfInterest));
     }
 
-    protected void applyUsedVariables(Map<String, ColumnDefinition<?>> columnDefinitionMap, Set<String> variablesUsed) {
-        columnDefinitions = columnDefinitionMap;
-
-        final Map<String, QueryScopeParam<?>> possibleParams = new HashMap<>();
-        final QueryScope queryScope = ExecutionContext.getContext().getQueryScope();
-        for (QueryScopeParam<?> param : queryScope.getParams(queryScope.getParamNames())) {
-            possibleParams.put(param.getName(), param);
+    @Override
+    public void validateSafeForRefresh(BaseTable<?> sourceTable) {
+        if (sourceTable.hasAttribute(BaseTable.TEST_SOURCE_TABLE_ATTRIBUTE)) {
+            // allow any tests to use i, ii, and k without throwing an exception; we're probably using it safely
+            return;
         }
+        if (sourceTable.isRefreshing() && !ALLOW_UNSAFE_REFRESHING_FORMULAS) {
+            // note that constant offset array accesss does not use i/ii or end up in usedColumnArrays
+            boolean isUnsafe = (usesI || usesII) && !sourceTable.isAppendOnly() && !sourceTable.isBlink();
+            isUnsafe |= usesK && !sourceTable.isAddOnly() && !sourceTable.isBlink();
+            isUnsafe |= !usedColumnArrays.isEmpty() && !sourceTable.isBlink();
+            if (isUnsafe) {
+                throw new IllegalArgumentException("Formula '" + formulaString + "' uses i, ii, k, or column array " +
+                        "variables, and is not safe to refresh. Note that some usages, such as on an append-only " +
+                        "table are safe. To allow unsafe refreshing formulas, set the system property " +
+                        "io.deephaven.engine.table.impl.select.AbstractFormulaColumn.allowUnsafeRefreshingFormulas.");
+            }
+        }
+    }
+
+    protected void applyUsedVariables(
+            @NotNull final Map<String, ColumnDefinition<?>> columnDefinitionMap,
+            @NotNull final Set<String> variablesUsed,
+            @NotNull final Map<String, Object> possibleParams) {
+        // the column definition map passed in is being mutated by the caller, so we need to make a copy
+        columnDefinitions = Map.copyOf(columnDefinitionMap);
 
         final List<QueryScopeParam<?>> paramsList = new ArrayList<>();
         usedColumns = new ArrayList<>();
@@ -112,12 +127,12 @@ public abstract class AbstractFormulaColumn implements FormulaColumn {
                 if (variable.endsWith(COLUMN_SUFFIX) && columnDefinitions.get(strippedColumnName) != null) {
                     usedColumnArrays.add(strippedColumnName);
                 } else if (possibleParams.containsKey(variable)) {
-                    paramsList.add(possibleParams.get(variable));
+                    paramsList.add(new QueryScopeParam<>(variable, possibleParams.get(variable)));
                 }
             }
         }
 
-        params = paramsList.toArray(QueryScopeParam.ZERO_LENGTH_PARAM_ARRAY);
+        params = paramsList.toArray(QueryScopeParam[]::new);
     }
 
     protected void onCopy(final AbstractFormulaColumn copy) {
@@ -292,11 +307,6 @@ public abstract class AbstractFormulaColumn implements FormulaColumn {
     @Override
     public WritableColumnSource<?> newFlatDestInstance(long size) {
         return InMemoryColumnSource.getImmutableMemoryColumnSource(size, returnedType, null);
-    }
-
-    @Override
-    public boolean disallowRefresh() {
-        return !ALLOW_UNSAFE_REFRESHING_FORMULAS && !usesI && !usesII && !usesK && usedColumnArrays.isEmpty();
     }
 
     static class ColumnArrayParameter {

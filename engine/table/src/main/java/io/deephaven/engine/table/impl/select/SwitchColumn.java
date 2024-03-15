@@ -1,11 +1,13 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Require;
 import io.deephaven.engine.table.*;
 import io.deephaven.api.util.NameValidator;
+import io.deephaven.engine.table.impl.BaseTable;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.impl.select.python.FormulaColumnPython;
 import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.rowset.TrackingRowSet;
@@ -28,18 +30,6 @@ public class SwitchColumn implements SelectColumn {
         this.expression = Require.neqNull(expression, "expression");
         this.columnName = NameValidator.validateColumnName(columnName);
         this.parser = parserConfiguration;
-    }
-
-    @Override
-    public List<String> initInputs(Table table) {
-        if (realColumn == null) {
-            if (table.getDefinition().getColumn(expression) != null) {
-                realColumn = new SourceColumn(expression, columnName);
-            } else {
-                realColumn = FormulaColumn.createFormulaColumn(columnName, expression, parser);
-            }
-        }
-        return realColumn.initInputs(table);
     }
 
     @Override
@@ -124,6 +114,11 @@ public class SwitchColumn implements SelectColumn {
     }
 
     @Override
+    public void validateSafeForRefresh(BaseTable<?> sourceTable) {
+        getRealColumn().validateSafeForRefresh(sourceTable);
+    }
+
+    @Override
     public String toString() {
         return columnName + "=" + expression;
     }
@@ -134,11 +129,6 @@ public class SwitchColumn implements SelectColumn {
                     "getRealColumn() is not available until this SwitchColumn is initialized; ensure that initInputs or initDef has been called first");
         }
         return realColumn;
-    }
-
-    @Override
-    public boolean disallowRefresh() {
-        return getRealColumn().disallowRefresh();
     }
 
     @Override

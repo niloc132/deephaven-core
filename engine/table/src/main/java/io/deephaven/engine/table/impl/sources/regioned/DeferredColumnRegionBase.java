@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.regioned;
 
 import io.deephaven.base.verify.Require;
@@ -27,6 +27,16 @@ public abstract class DeferredColumnRegionBase<ATTR extends Any, REGION_TYPE ext
     DeferredColumnRegionBase(final long pageMask, @NotNull final Supplier<REGION_TYPE> resultRegionFactory) {
         super(pageMask);
         this.resultRegionFactory = Require.neqNull(resultRegionFactory, "resultRegionFactory");
+    }
+
+    @Override
+    public void invalidate() {
+        super.invalidate();
+        synchronized (this) {
+            if (resultRegion != null) {
+                resultRegion.invalidate();
+            }
+        }
     }
 
     @Override
@@ -73,9 +83,11 @@ public abstract class DeferredColumnRegionBase<ATTR extends Any, REGION_TYPE ext
     }
 
     @Override
-    public void fillChunkAppend(@NotNull FillContext context, @NotNull WritableChunk<? super ATTR> destination,
-            @NotNull RowSequence.Iterator RowSequenceIterator) {
-        getResultRegion().fillChunkAppend(context, destination, RowSequenceIterator);
+    public void fillChunkAppend(
+            @NotNull final FillContext context,
+            @NotNull final WritableChunk<? super ATTR> destination,
+            @NotNull final RowSequence.Iterator rowSequenceIterator) {
+        getResultRegion().fillChunkAppend(context, destination, rowSequenceIterator);
     }
 
     @Override
@@ -86,15 +98,5 @@ public abstract class DeferredColumnRegionBase<ATTR extends Any, REGION_TYPE ext
     @Override
     public Chunk<? extends ATTR> getChunk(@NotNull GetContext context, long firstKey, long lastKey) {
         return getResultRegion().getChunk(context, firstKey, lastKey);
-    }
-
-    @Override
-    public FillContext makeFillContext(int chunkCapacity, SharedContext sharedContext) {
-        return getResultRegion().makeFillContext(chunkCapacity, sharedContext);
-    }
-
-    @Override
-    public GetContext makeGetContext(int chunkCapacity, SharedContext sharedContext) {
-        return getResultRegion().makeGetContext(chunkCapacity, sharedContext);
     }
 }

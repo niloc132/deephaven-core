@@ -1,17 +1,16 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharPercentileTypeHelper and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit CharPercentileTypeHelper and run "./gradlew replicateSegmentedSortedMultiset" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.by.ssmpercentile;
 
 import io.deephaven.chunk.attributes.ChunkLengths;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.util.compare.ShortComparisons;
-import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
 import io.deephaven.engine.table.impl.sources.ShortArraySource;
 import io.deephaven.chunk.ShortChunk;
 import io.deephaven.chunk.Chunk;
@@ -26,7 +25,7 @@ public class ShortPercentileTypeHelper implements SsmChunkedPercentileOperator.P
     private final double percentile;
     private final ShortArraySource resultColumn;
 
-    ShortPercentileTypeHelper(double percentile, ArrayBackedColumnSource resultColumn) {
+    ShortPercentileTypeHelper(double percentile, WritableColumnSource resultColumn) {
         this.percentile = percentile;
         // region resultColumn
         this.resultColumn = (ShortArraySource) resultColumn;
@@ -49,7 +48,7 @@ public class ShortPercentileTypeHelper implements SsmChunkedPercentileOperator.P
                 ssmLo.moveBackToFront(ssmHi, loSize - targetLo);
             }
 
-            return setResult(destination, ((ShortSegmentedSortedMultiset)ssmLo).getMaxShort());
+            return setResult(destination, ((ShortSegmentedSortedMultiset) ssmLo).getMaxShort());
         }
     }
 
@@ -64,16 +63,18 @@ public class ShortPercentileTypeHelper implements SsmChunkedPercentileOperator.P
     }
 
     @Override
-    public int pivot(SegmentedSortedMultiSet segmentedSortedMultiSet, Chunk<? extends Values> valueCopy, IntChunk<ChunkLengths> counts, int startPosition, int runLength, MutableInt leftOvers) {
+    public int pivot(SegmentedSortedMultiSet segmentedSortedMultiSet, Chunk<? extends Values> valueCopy,
+            IntChunk<ChunkLengths> counts, int startPosition, int runLength, MutableInt leftOvers) {
         final ShortChunk<? extends Values> asShortChunk = valueCopy.asShortChunk();
-        final ShortSegmentedSortedMultiset ssmLo = (ShortSegmentedSortedMultiset)segmentedSortedMultiSet;
+        final ShortSegmentedSortedMultiset ssmLo = (ShortSegmentedSortedMultiset) segmentedSortedMultiSet;
         final short hiValue = ssmLo.getMaxShort();
 
         final int result = upperBound(asShortChunk, startPosition, startPosition + runLength, hiValue);
 
         final long hiCount = ssmLo.getMaxCount();
-        if (result > startPosition && ShortComparisons.eq(asShortChunk.get(result - 1), hiValue) && counts.get(result - 1) > hiCount) {
-            leftOvers.setValue((int)(counts.get(result - 1) - hiCount));
+        if (result > startPosition && ShortComparisons.eq(asShortChunk.get(result - 1), hiValue)
+                && counts.get(result - 1) > hiCount) {
+            leftOvers.setValue((int) (counts.get(result - 1) - hiCount));
         } else {
             leftOvers.setValue(0);
         }
@@ -82,9 +83,10 @@ public class ShortPercentileTypeHelper implements SsmChunkedPercentileOperator.P
     }
 
     @Override
-    public int pivot(SegmentedSortedMultiSet segmentedSortedMultiSet, Chunk<? extends Values> valueCopy, IntChunk<ChunkLengths> counts, int startPosition, int runLength) {
+    public int pivot(SegmentedSortedMultiSet segmentedSortedMultiSet, Chunk<? extends Values> valueCopy,
+            IntChunk<ChunkLengths> counts, int startPosition, int runLength) {
         final ShortChunk<? extends Values> asShortChunk = valueCopy.asShortChunk();
-        final ShortSegmentedSortedMultiset ssmLo = (ShortSegmentedSortedMultiset)segmentedSortedMultiSet;
+        final ShortSegmentedSortedMultiset ssmLo = (ShortSegmentedSortedMultiset) segmentedSortedMultiSet;
         final short hiValue = ssmLo.getMaxShort();
 
         final int result = upperBound(asShortChunk, startPosition, startPosition + runLength, hiValue);

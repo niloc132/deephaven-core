@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.qst.array;
 
 import io.deephaven.qst.type.FloatType;
+import io.deephaven.util.QueryConstants;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -61,19 +62,29 @@ public final class FloatArray extends PrimitiveArrayBase<Float> {
     }
 
     @Override
+    public Float value(int index) {
+        float value = values[index];
+        return value == QueryConstants.NULL_FLOAT ? null : value;
+    }
+
+    @Override
+    public boolean isNull(int index) {
+        return values[index] == QueryConstants.NULL_FLOAT;
+    }
+
+    @Override
     public final int size() {
         return values().length;
     }
 
     @Override
     public final FloatType componentType() {
-        return FloatType.instance();
+        return FloatType.of();
     }
 
     @Override
-    public final <V extends PrimitiveArray.Visitor> V walk(V visitor) {
-        visitor.visit(this);
-        return visitor;
+    public final <R> R walk(PrimitiveArray.Visitor<R> visitor) {
+        return visitor.visit(this);
     }
 
     @Override

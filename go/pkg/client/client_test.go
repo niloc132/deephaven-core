@@ -12,7 +12,16 @@ import (
 func TestConnectError(t *testing.T) {
 	ctx := context.Background()
 
-	_, err := client.NewClient(ctx, "foobar", "1234")
+	_, err := client.NewClient(ctx, "foobar", "1234", test_tools.GetAuthType(), test_tools.GetAuthToken())
+	if err == nil {
+		t.Fatalf("client did not fail to connect")
+	}
+}
+
+func TestAuthError(t *testing.T) {
+	ctx := context.Background()
+
+	_, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), "garbage in", "badtoken")
 	if err == nil {
 		t.Fatalf("client did not fail to connect")
 	}
@@ -21,7 +30,7 @@ func TestConnectError(t *testing.T) {
 func TestClosedClient(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
 	}
@@ -40,7 +49,7 @@ func TestClosedClient(t *testing.T) {
 func TestMismatchedScript(t *testing.T) {
 	ctx := context.Background()
 
-	_, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("groovy"))
+	_, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken(), client.WithConsole("groovy"))
 	if err == nil {
 		t.Fatalf("client did not fail to connect")
 	}
@@ -52,7 +61,7 @@ func TestEmptyTable(t *testing.T) {
 
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
 	}
@@ -83,15 +92,41 @@ func TestEmptyTable(t *testing.T) {
 func TestTimeTable(t *testing.T) {
 	ctx := context.Background()
 
-	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
 	}
 	defer c.Close()
 
-	tbl, err := c.TimeTable(ctx, 10000000, time.Now())
+	// test a variety of period types
+	testTimeTableHelper(t, ctx, c, int(10000000), time.Now())
+	testTimeTableHelper(t, ctx, c, int32(10000000), time.Now())
+	testTimeTableHelper(t, ctx, c, int64(10000000), time.Now())
+	testTimeTableHelper(t, ctx, c, time.Duration(10000000), time.Now())
+	testTimeTableHelper(t, ctx, c, "PT0.01S", time.Now())
+
+	// test a variety of startTime types
+	testTimeTableHelper(t, ctx, c, "PT1H", int(1703874484000000000))
+	testTimeTableHelper(t, ctx, c, "PT1H", int32(123456)) // a date far in the past but should work
+	testTimeTableHelper(t, ctx, c, "PT1H", int64(1703874484000000000))
+	testTimeTableHelper(t, ctx, c, "PT1H", time.Now())
+	testTimeTableHelper(t, ctx, c, "PT1M", "2023-03-01T12:34:56-05:00")
+
+	_, err = c.TimeTable(ctx, "unparseable", "2023-03-01T12:34:56-05:00")
+	if err == nil {
+		t.Errorf("Expected failure, got success")
+	}
+	_, err = c.TimeTable(ctx, "PT1M", "unparseable")
+	if err == nil {
+		t.Errorf("Expected failure, got success")
+	}
+}
+
+func testTimeTableHelper(t *testing.T, ctx context.Context, c *client.Client, period any, startTime any) {
+	tbl, err := c.TimeTable(ctx, period, startTime)
 	if err != nil {
-		t.Errorf("EmptyTable err %s", err.Error())
+		t.Errorf("EmptyTable err %v", err)
+		return
 	}
 
 	if tbl.IsStatic() {
@@ -101,7 +136,7 @@ func TestTimeTable(t *testing.T) {
 
 	err = tbl.Release(ctx)
 	if err != nil {
-		t.Errorf("Release err %s", err.Error())
+		t.Errorf("Release err %v", err)
 	}
 }
 
@@ -110,7 +145,7 @@ func TestTableUpload(t *testing.T) {
 	defer r.Release()
 
 	ctx := context.Background()
-	s, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort())
+	s, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken())
 	if err != nil {
 		t.Fatalf("NewClient err %s", err.Error())
 		return
@@ -196,7 +231,7 @@ func waitForTable(ctx context.Context, cl *client.Client, names []string, timeou
 func TestFieldSync(t *testing.T) {
 	ctx := context.Background()
 
-	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("python"))
+	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken(), client.WithConsole("python"))
 	test_tools.CheckError(t, "NewClient", err)
 	defer client1.Close()
 
@@ -206,7 +241,7 @@ gotesttable1 = None
 `)
 	test_tools.CheckError(t, "RunScript", err)
 
-	client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("python"))
+	client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken(), client.WithConsole("python"))
 	test_tools.CheckError(t, "NewClient", err)
 	defer client2.Close()
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 from pydeephaven._table_ops import *
@@ -13,10 +13,11 @@ class BatchOpAssembler:
         self._curr_source = None
 
     @property
-    def batch(self):
+    def batch(self) -> List[Any]:
         return self.grpc_table_ops
 
-    def build_batch(self):
+    def build_batch(self) -> List[Any]:
+        """Transforms the table ops into valid chained batch compatible ops."""
         self._curr_source = table_pb2.TableReference(ticket=self.table_ops[0].table.ticket)
 
         for table_op in self.table_ops[1:-1]:

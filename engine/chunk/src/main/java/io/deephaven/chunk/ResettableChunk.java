@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.chunk;
 
 import io.deephaven.chunk.attributes.Any;
@@ -9,7 +9,7 @@ import io.deephaven.chunk.attributes.Any;
  * {@link WritableChunk} that may have its backing storage reset to a slice of that belonging to another
  * {@link WritableChunk} or a native array.
  */
-public interface ResettableChunk<ATTR_BASE extends Any> extends Chunk {
+public interface ResettableChunk<ATTR_BASE extends Any> extends Chunk<ATTR_BASE> {
 
     /**
      * Reset the data and bounds of this chunk to a range or sub-range of the specified {@link WritableChunk}.

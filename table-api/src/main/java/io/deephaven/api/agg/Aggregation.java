@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.agg;
 
 import io.deephaven.api.ColumnName;
+import io.deephaven.api.Pair;
 import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.api.agg.spec.AggSpecApproximatePercentile;
 import io.deephaven.api.agg.spec.AggSpecCountDistinct;
@@ -18,7 +19,6 @@ import io.deephaven.api.agg.spec.AggSpecWSum;
 import io.deephaven.api.agg.util.PercentileOutput;
 import io.deephaven.api.object.UnionObject;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -36,7 +36,7 @@ import java.util.function.BiFunction;
  * @see FirstRowKey
  * @see LastRowKey
  */
-public interface Aggregation extends Serializable {
+public interface Aggregation {
 
     /**
      * Combine an {@link AggSpec} and an input/output {@link Pair column name pair} into a {@link ColumnAggregation}.
@@ -522,8 +522,12 @@ public interface Aggregation extends Serializable {
     }
 
     /**
-     * Create a {@link io.deephaven.api.agg.spec.AggSpecStd standard deviation} aggregation for the supplied column name
-     * pairs.
+     * Create a {@link io.deephaven.api.agg.spec.AggSpecStd sample standard deviation} aggregation for the supplied
+     * column name pairs.
+     *
+     * Sample standard deviation is computed using Bessel's correction
+     * (https://en.wikipedia.org/wiki/Bessel%27s_correction), which ensures that the sample variance will be an unbiased
+     * estimator of population variance.
      *
      * @param pairs The input/output column name pairs
      * @return The aggregation
@@ -608,7 +612,11 @@ public interface Aggregation extends Serializable {
     }
 
     /**
-     * Create a {@link io.deephaven.api.agg.spec.AggSpecVar variance} aggregation for the supplied column name pairs.
+     * Create a {@link io.deephaven.api.agg.spec.AggSpecVar sample variance} aggregation for the supplied column name
+     * pairs.
+     *
+     * Sample variance is computed using Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction),
+     * which ensures that the sample variance will be an unbiased estimator of population variance.
      *
      * @param pairs The input/output column name pairs
      * @return The aggregation

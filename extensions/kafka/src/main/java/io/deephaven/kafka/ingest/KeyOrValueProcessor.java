@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.kafka.ingest;
 
 import io.deephaven.chunk.ObjectChunk;
@@ -16,6 +16,5 @@ public interface KeyOrValueProcessor {
      * @param inputChunk the chunk containing the keys or values as Kafka deserialized them from the consumer record
      * @param publisherChunks the output chunks for this table that must be appended to.
      */
-    void handleChunk(ObjectChunk<Object, Values> inputChunk,
-            WritableChunk<Values>[] publisherChunks);
+    void handleChunk(ObjectChunk<Object, Values> inputChunk, WritableChunk<Values>[] publisherChunks);
 }

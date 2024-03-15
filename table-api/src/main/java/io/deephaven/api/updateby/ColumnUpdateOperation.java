@@ -1,7 +1,10 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.updateby;
 
 import io.deephaven.annotations.BuildableStyle;
-import io.deephaven.api.agg.Pair;
+import io.deephaven.api.Pair;
 import io.deephaven.api.updateby.spec.UpdateBySpec;
 import org.immutables.value.Value.Immutable;
 

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.io.log;
 
 import io.deephaven.base.MathUtil;
@@ -20,9 +20,17 @@ public interface LogEntry extends LogOutput, LogSink.Element {
 
     LogEntry start(LogSink sink, LogLevel level, long currentTimeMicros, Throwable t);
 
-    LogEntry end();
+    /**
+     * Completes the log entry. Callers should not use {@code this} after completion. End or {@link #endl()} should be
+     * called exactly once.
+     */
+    void end();
 
-    LogEntry endl();
+    /**
+     * Completes the log entry with a newline. Callers should not use {@code this} after completion. Endl or
+     * {@link #end()} should be called exactly once.
+     */
+    void endl();
 
     LogEntry append(boolean b);
 
@@ -213,13 +221,13 @@ public interface LogEntry extends LogOutput, LogSink.Element {
         }
 
         @Override
-        public LogEntry end() {
-            return this;
+        public void end() {
+
         }
 
         @Override
-        public LogEntry endl() {
-            return this;
+        public void endl() {
+
         }
 
         @Override

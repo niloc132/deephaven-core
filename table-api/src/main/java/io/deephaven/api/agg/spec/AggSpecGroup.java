@@ -1,9 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api.agg.spec;
 
-import io.deephaven.annotations.SimpleStyle;
+import io.deephaven.annotations.SingletonStyle;
 import org.immutables.value.Value.Immutable;
 
 /**
@@ -12,7 +12,7 @@ import org.immutables.value.Value.Immutable;
  * @see io.deephaven.api.TableOperations#groupBy
  */
 @Immutable
-@SimpleStyle
+@SingletonStyle
 public abstract class AggSpecGroup extends AggSpecEmptyBase {
 
     public static AggSpecGroup of() {

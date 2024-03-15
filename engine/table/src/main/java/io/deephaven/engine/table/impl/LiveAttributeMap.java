@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.api.util.ConcurrentMethod;
@@ -31,8 +34,10 @@ public abstract class LiveAttributeMap<IFACE_TYPE extends AttributeMap<IFACE_TYP
         implements AttributeMap<IFACE_TYPE> {
 
     private static final Map<String, Object> EMPTY_ATTRIBUTES = Collections.emptyMap();
+    @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<LiveAttributeMap, Map> MUTABLE_ATTRIBUTES_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(LiveAttributeMap.class, Map.class, "mutableAttributes");
+    @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<LiveAttributeMap, Map> IMMUTABLE_ATTRIBUTES_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(LiveAttributeMap.class, Map.class, "immutableAttributes");
 
@@ -131,19 +136,17 @@ public abstract class LiveAttributeMap<IFACE_TYPE extends AttributeMap<IFACE_TYP
     private Map<String, Object> ensureAttributes() {
         checkMutable();
         // If we see an "old" value, in the worst case we'll just try (and fail) to replace attributes.
-        final Map<String, Object> localInitial = initialAttributes;
-        if (localInitial == null) {
+        final Map<String, Object> localInitialAttributes = initialAttributes;
+        if (localInitialAttributes == null) {
             // We've replaced the initial attributes already, no fanciness required.
             return mutableAttributes;
         }
         try {
-            if (localInitial == EMPTY_ATTRIBUTES) {
-                // noinspection unchecked
-                return FieldUtils.ensureField(this, MUTABLE_ATTRIBUTES_UPDATER, EMPTY_ATTRIBUTES, HashMap::new);
-            }
             // noinspection unchecked
-            return FieldUtils.ensureField(this, MUTABLE_ATTRIBUTES_UPDATER, localInitial,
-                    () -> new HashMap(localInitial));
+            return FieldUtils.ensureField(this, MUTABLE_ATTRIBUTES_UPDATER, localInitialAttributes,
+                    () -> localInitialAttributes.isEmpty()
+                            ? new HashMap<>()
+                            : new HashMap<>(localInitialAttributes));
         } finally {
             initialAttributes = null; // Avoid referencing initially-shared attributes for longer than necessary.
         }
@@ -180,14 +183,17 @@ public abstract class LiveAttributeMap<IFACE_TYPE extends AttributeMap<IFACE_TYP
         // }
         // return immutableAttributes;
         // @formatter:on
-        final Map<String, Object> localImmutableAttributes = immutableAttributes;
-        if (localImmutableAttributes != null) {
-            return localImmutableAttributes;
+        final Map<String, Object> localMutableAttributes = mutableAttributes;
+        if (localMutableAttributes == null) {
+            // We lost a race, someone else has already initialized immutableAttributes and cleared mutableAttributes.
+            return Objects.requireNonNull(immutableAttributes);
         }
         try {
             // noinspection unchecked
             return FieldUtils.ensureField(this, IMMUTABLE_ATTRIBUTES_UPDATER, null,
-                    () -> Collections.unmodifiableMap(mutableAttributes));
+                    () -> localMutableAttributes.isEmpty()
+                            ? EMPTY_ATTRIBUTES
+                            : Collections.unmodifiableMap(localMutableAttributes));
         } finally {
             mutableAttributes = null;
             initialAttributes = null;

@@ -1,10 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.base.pool;
 
-import io.deephaven.base.Function;
-import io.deephaven.base.Procedure;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 // --------------------------------------------------------------------
 /**
@@ -39,7 +39,7 @@ public interface Pool<T> {
          * @param clearingProcedure Called on each item given to the pool to clear the fields of the item. May be
          *        <code>null</code>.
          */
-        <T> Pool<T> create(int nSize, Function.Nullary<T> itemFactory, Procedure.Unary<T> clearingProcedure);
+        <T> Pool<T> create(int nSize, Supplier<T> itemFactory, Consumer<T> clearingProcedure);
     }
 
     /**

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.chunk.Chunk;
@@ -26,8 +26,8 @@ public class DelegatingColumnSource<T, R> extends AbstractColumnSource<T> {
     }
 
     @Override
-    public WritableRowSet match(boolean invertMatch, boolean usePrev, boolean caseInsensitive, RowSet mapper,
-            Object... keys) {
+    public WritableRowSet match(
+            boolean invertMatch, boolean usePrev, boolean caseInsensitive, @NotNull RowSet mapper, Object... keys) {
         return delegate.match(invertMatch, usePrev, caseInsensitive, mapper, keys);
     }
 

@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.testutil.sources;
 
 import io.deephaven.base.verify.Assert;
@@ -21,8 +24,8 @@ import java.util.function.LongConsumer;
 /**
  * A test column source that ignores modifications, throws on removals, and adds when requested.
  * <p>
- * It uses a fastutil open addressed hash map from long RowSet keys to char values. If an uninitialized key is accessed;
- * then an IllegalStateException is thrown. If the test framework attempts to remove or shift values, then an
+ * It uses a fastutil open addressed hash map from long RowSet keys to column values. If an uninitialized key is
+ * accessed; then an IllegalStateException is thrown. If the test framework attempts to remove or shift values, then an
  * UnsupportedOperationException is thrown.
  */
 public class ImmutableCharTestSource extends AbstractColumnSource<Character>

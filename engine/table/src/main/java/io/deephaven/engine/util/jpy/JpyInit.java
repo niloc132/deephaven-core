@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.util.jpy;
 
 import io.deephaven.configuration.Configuration;
@@ -53,15 +53,18 @@ public class JpyInit {
         jpyConfig.initPython();
         jpyConfig.startPython();
         log.info().append("Started Python interpreter").endl();
-        markJvmReady();
+        markReadyAndCheckEnv();
     }
 
-    private static void markJvmReady() {
+    private static void markReadyAndCheckEnv() {
         // noinspection EmptyTryBlock,unused
         try (
                 final PyModule deephavenJpyModule = PyModule.importModule("deephaven_internal.jvm");
-                final PyObject obj = deephavenJpyModule.callMethod("ready")) {
+                final PyObject readyObj = deephavenJpyModule.callMethod("ready");
+                final PyObject checkObj = deephavenJpyModule.callMethod("check_py_env");
+                final PyObject initObj = deephavenJpyModule.callMethod("init_py")) {
             // empty
         }
     }
+
 }

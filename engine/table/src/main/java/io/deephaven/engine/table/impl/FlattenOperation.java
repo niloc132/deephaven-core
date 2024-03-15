@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.engine.rowset.*;
@@ -38,7 +38,7 @@ public class FlattenOperation implements QueryTable.MemoizableOperation<QueryTab
     public Result<QueryTable> initialize(boolean usePrev, long beforeClock) {
         final TrackingRowSet rowSet = parent.getRowSet();
         final Map<String, ColumnSource<?>> resultColumns = new LinkedHashMap<>();
-        final WritableRowRedirection rowRedirection = new WrappedRowSetWritableRowRedirection(rowSet);
+        final RowRedirection rowRedirection = new WrappedRowSetRowRedirection(rowSet);
 
         final long size = usePrev ? rowSet.sizePrev() : rowSet.size();
 

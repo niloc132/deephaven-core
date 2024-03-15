@@ -1,16 +1,24 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import io.deephaven.api.Pair;
 import io.deephaven.base.Base64;
 import io.deephaven.base.log.LogOutput;
 import io.deephaven.base.reference.SimpleReference;
 import io.deephaven.base.reference.WeakSimpleReference;
 import io.deephaven.base.verify.Assert;
+import io.deephaven.base.verify.Require;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.exceptions.TableAlreadyFailedException;
+import io.deephaven.engine.exceptions.UpdateGraphConflictException;
+import io.deephaven.engine.table.impl.util.StepUpdater;
+import io.deephaven.engine.updategraph.NotificationQueue;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.exceptions.NotSortableException;
 import io.deephaven.engine.liveness.LivenessReferent;
 import io.deephaven.engine.rowset.RowSet;
@@ -23,6 +31,7 @@ import io.deephaven.engine.table.impl.select.SourceColumn;
 import io.deephaven.engine.table.impl.select.SwitchColumn;
 import io.deephaven.engine.table.impl.util.FieldUtils;
 import io.deephaven.engine.updategraph.*;
+import io.deephaven.engine.updategraph.impl.PeriodicUpdateGraph;
 import io.deephaven.engine.util.systemicmarking.SystemicObjectTracker;
 import io.deephaven.hash.KeyedObjectHashSet;
 import io.deephaven.internal.log.LoggerFactory;
@@ -38,6 +47,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.Condition;
 import java.util.function.BiConsumer;
@@ -63,7 +73,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
     private static final Logger log = LoggerFactory.getLogger(BaseTable.class);
 
     private static final AtomicReferenceFieldUpdater<BaseTable, Condition> CONDITION_UPDATER =
-            AtomicReferenceFieldUpdater.newUpdater(BaseTable.class, Condition.class, "updateGraphProcessorCondition");
+            AtomicReferenceFieldUpdater.newUpdater(BaseTable.class, Condition.class, "updateGraphCondition");
 
     private static final AtomicReferenceFieldUpdater<BaseTable, Collection> PARENTS_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(BaseTable.class, Collection.class, "parents");
@@ -77,6 +87,10 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
                 throw new UnsupportedOperationException("EMPTY_CHILDREN does not support adds");
             }, Collections.emptyList());
 
+    @SuppressWarnings("rawtypes")
+    private static final AtomicLongFieldUpdater<BaseTable> LAST_SATISFIED_STEP_UPDATER =
+            AtomicLongFieldUpdater.newUpdater(BaseTable.class, "lastSatisfiedStep");
+
     /**
      * This table's definition.
      */
@@ -87,17 +101,27 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
      */
     protected final String description;
 
+    /**
+     * This table's update graph.
+     */
+    protected final UpdateGraph updateGraph;
+
+    /**
+     * The last clock step when this table dispatched a notification.
+     */
+    private volatile long lastNotificationStep;
+
     // Fields for DynamicNode implementation and update propagation support
     private volatile boolean refreshing;
     @SuppressWarnings({"FieldMayBeFinal", "unused"}) // Set via ensureField with CONDITION_UPDATER
-    private volatile Condition updateGraphProcessorCondition;
+    private volatile Condition updateGraphCondition;
     @SuppressWarnings("FieldMayBeFinal") // Set via ensureField with PARENTS_UPDATER
     private volatile Collection<Object> parents = EMPTY_PARENTS;
     @SuppressWarnings("FieldMayBeFinal") // Set via ensureField with CHILD_LISTENER_REFERENCES_UPDATER
     private volatile SimpleReferenceManager<TableUpdateListener, ? extends SimpleReference<TableUpdateListener>> childListenerReferences =
             EMPTY_CHILD_LISTENER_REFERENCES;
-    private volatile long lastNotificationStep;
-    private volatile long lastSatisfiedStep;
+    @SuppressWarnings("FieldMayBeFinal")
+    private volatile long lastSatisfiedStep = NotificationStepReceiver.NULL_NOTIFICATION_STEP;
     private volatile boolean isFailed;
 
     /**
@@ -112,7 +136,8 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         super(attributes);
         this.definition = definition;
         this.description = description;
-        lastNotificationStep = LogicalClock.DEFAULT.currentStep();
+        updateGraph = Require.neqNull(ExecutionContext.getContext().getUpdateGraph(), "UpdateGraph");
+        lastNotificationStep = updateGraph.clock().currentStep();
 
         // Properly flag this table as systemic or not. Note that we use the initial attributes map, rather than
         // getAttribute, in order to avoid triggering the "immutable after first access" restrictions of
@@ -138,6 +163,11 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
     }
 
     @Override
+    public UpdateGraph getUpdateGraph() {
+        return updateGraph;
+    }
+
+    @Override
     public String toString() {
         return description;
     }
@@ -158,7 +188,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         // legacy attributes
         Flatten, Sort, UpdateView, Join, Filter,
         // new attributes
-        DropColumns, View, Reverse,
+        DropColumns, RenameColumns, View, Reverse,
         /**
          * The result tables that go in a PartitionBy TableMap
          */
@@ -199,6 +229,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         // into constituent tables
         tempMap.put(MERGED_TABLE_ATTRIBUTE, EnumSet.of(
                 CopyAttributeOperation.DropColumns,
+                CopyAttributeOperation.RenameColumns,
                 CopyAttributeOperation.View));
 
         tempMap.put(INITIALLY_EMPTY_COALESCED_SOURCE_TABLE_ATTRIBUTE, EnumSet.complementOf(EnumSet.of(
@@ -269,10 +300,19 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
 
         tempMap.put(SNAPSHOT_VIEWPORT_TYPE, EnumSet.allOf(CopyAttributeOperation.class));
 
+        // Note: The logic applying this attribute for select/update/view/updateView is in SelectAndViewAnalyzerWrapper.
         tempMap.put(ADD_ONLY_TABLE_ATTRIBUTE, EnumSet.of(
                 CopyAttributeOperation.DropColumns,
-                CopyAttributeOperation.UpdateView,
-                CopyAttributeOperation.View,
+                CopyAttributeOperation.RenameColumns,
+                CopyAttributeOperation.PartitionBy,
+                CopyAttributeOperation.Coalesce));
+
+        // Note: The logic applying this attribute for select/update/view/updateView is in SelectAndViewAnalyzerWrapper.
+        tempMap.put(APPEND_ONLY_TABLE_ATTRIBUTE, EnumSet.of(
+                CopyAttributeOperation.DropColumns,
+                CopyAttributeOperation.RenameColumns,
+                CopyAttributeOperation.FirstBy,
+                CopyAttributeOperation.Flatten,
                 CopyAttributeOperation.PartitionBy,
                 CopyAttributeOperation.Coalesce));
 
@@ -301,7 +341,8 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
                 CopyAttributeOperation.Filter,
                 CopyAttributeOperation.PartitionBy));
 
-        tempMap.put(STREAM_TABLE_ATTRIBUTE, EnumSet.of(
+        // Note: The logic applying this attribute for select/update/view/updateView is in SelectAndViewAnalyzerWrapper.
+        tempMap.put(BLINK_TABLE_ATTRIBUTE, EnumSet.of(
                 CopyAttributeOperation.Coalesce,
                 CopyAttributeOperation.Filter,
                 CopyAttributeOperation.Sort,
@@ -309,9 +350,8 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
                 CopyAttributeOperation.Flatten,
                 CopyAttributeOperation.PartitionBy,
                 CopyAttributeOperation.Preview,
-                CopyAttributeOperation.View, // and Select, if added
-                CopyAttributeOperation.UpdateView, // and Update, if added
                 CopyAttributeOperation.DropColumns,
+                CopyAttributeOperation.RenameColumns,
                 CopyAttributeOperation.Join,
                 CopyAttributeOperation.WouldMatch));
 
@@ -367,22 +407,39 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         if (!isRefreshing()) {
             return true;
         }
-        return Boolean.TRUE.equals(getAttribute(Table.ADD_ONLY_TABLE_ATTRIBUTE));
+        boolean addOnly = Boolean.TRUE.equals(getAttribute(Table.ADD_ONLY_TABLE_ATTRIBUTE));
+        boolean appendOnly = Boolean.TRUE.equals(getAttribute(Table.APPEND_ONLY_TABLE_ATTRIBUTE));
+        return addOnly || appendOnly;
     }
 
     /**
-     * Returns true if this table is a stream table.
+     * Returns true if this table is append-only, or has an attribute asserting that no modifies, shifts, or removals
+     * are generated and that all new rows are added to the end of the table.
      *
-     * @return Whether this table is a stream table
-     * @see #STREAM_TABLE_ATTRIBUTE
+     * @return true if this table may only append rows at the end of the table
      */
-    public boolean isStream() {
-        return StreamTableTools.isStream(this);
+    public boolean isAppendOnly() {
+        if (!isRefreshing()) {
+            return true;
+        }
+        boolean addOnly = Boolean.TRUE.equals(getAttribute(Table.ADD_ONLY_TABLE_ATTRIBUTE));
+        boolean appendOnly = Boolean.TRUE.equals(getAttribute(Table.APPEND_ONLY_TABLE_ATTRIBUTE));
+        return appendOnly || (addOnly && isFlat());
+    }
+
+    /**
+     * Returns true if this table is a blink table.
+     *
+     * @return Whether this table is a blink table
+     * @see #BLINK_TABLE_ATTRIBUTE
+     */
+    public boolean isBlink() {
+        return BlinkTableTools.isBlink(this);
     }
 
     @Override
-    public Table dropStream() {
-        return withoutAttributes(Set.of(STREAM_TABLE_ATTRIBUTE));
+    public Table removeBlink() {
+        return withoutAttributes(Set.of(BLINK_TABLE_ATTRIBUTE));
     }
 
     // ------------------------------------------------------------------------------------------------------------------
@@ -391,6 +448,10 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
 
     @Override
     public final void addParentReference(@NotNull final Object parent) {
+        if (parent instanceof NotificationQueue.Dependency) {
+            // Ensure that we are in the same update graph
+            getUpdateGraph((NotificationQueue.Dependency) parent);
+        }
         if (DynamicNode.notDynamicOrIsRefreshing(parent)) {
             setRefreshing(true);
             ensureParents().add(parent);
@@ -412,24 +473,34 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
             return true;
         }
 
-        final Collection<Object> localParents = parents;
+        StepUpdater.checkForOlderStep(step, lastSatisfiedStep);
+        StepUpdater.checkForOlderStep(step, lastNotificationStep);
+
         // If we have no parents whatsoever then we are a source, and have no dependency chain other than the UGP
         // itself
-        if (localParents.isEmpty()) {
-            if (UpdateGraphProcessor.DEFAULT.satisfied(step)) {
-                UpdateGraphProcessor.DEFAULT.logDependencies().append("Root node satisfied ").append(this).endl();
-                return true;
+        final Collection<Object> localParents = parents;
+
+        if (!updateGraph.satisfied(step)) {
+            if (localParents.isEmpty()) {
+                updateGraph.logDependencies().append("Root node not satisfied ").append(this).endl();
+            } else {
+                updateGraph.logDependencies().append("Update graph not satisfied for ").append(this).endl();
             }
             return false;
         }
 
-        // noinspection SynchronizationOnLocalVariableOrMethodParameter
+        if (localParents.isEmpty()) {
+            updateGraph.logDependencies().append("Root node satisfied ").append(this).endl();
+            StepUpdater.tryUpdateRecordedStep(LAST_SATISFIED_STEP_UPDATER, this, step);
+            return true;
+        }
+
         synchronized (localParents) {
             for (Object parent : localParents) {
                 if (parent instanceof NotificationQueue.Dependency) {
                     if (!((NotificationQueue.Dependency) parent).satisfied(step)) {
-                        UpdateGraphProcessor.DEFAULT.logDependencies()
-                                .append("Parents dependencies not satisfied for ").append(this)
+                        updateGraph.logDependencies()
+                                .append("Parent dependencies not satisfied for ").append(this)
                                 .append(", parent=").append((NotificationQueue.Dependency) parent)
                                 .endl();
                         return false;
@@ -438,38 +509,38 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
             }
         }
 
-        UpdateGraphProcessor.DEFAULT.logDependencies()
-                .append("All parents dependencies satisfied for ").append(this)
+        updateGraph.logDependencies()
+                .append("All parent dependencies satisfied for ").append(this)
                 .endl();
 
-        lastSatisfiedStep = step;
+        StepUpdater.tryUpdateRecordedStep(LAST_SATISFIED_STEP_UPDATER, this, step);
 
         return true;
     }
 
     @Override
     public void awaitUpdate() throws InterruptedException {
-        UpdateGraphProcessor.DEFAULT.exclusiveLock().doLocked(ensureCondition()::await);
+        updateGraph.exclusiveLock().doLocked(ensureCondition()::await);
     }
 
     @Override
     public boolean awaitUpdate(long timeout) throws InterruptedException {
         final MutableBoolean result = new MutableBoolean(false);
-        UpdateGraphProcessor.DEFAULT.exclusiveLock()
-                .doLocked(() -> result.setValue(ensureCondition().await(timeout, TimeUnit.MILLISECONDS)));
+        updateGraph.exclusiveLock().doLocked(
+                () -> result.setValue(ensureCondition().await(timeout, TimeUnit.MILLISECONDS)));
 
         return result.booleanValue();
     }
 
     private Condition ensureCondition() {
         return FieldUtils.ensureField(this, CONDITION_UPDATER, null,
-                () -> UpdateGraphProcessor.DEFAULT.exclusiveLock().newCondition());
+                () -> updateGraph.exclusiveLock().newCondition());
     }
 
     private void maybeSignal() {
-        final Condition localCondition = updateGraphProcessorCondition;
+        final Condition localCondition = updateGraphCondition;
         if (localCondition != null) {
-            UpdateGraphProcessor.DEFAULT.requestSignal(localCondition);
+            updateGraph.requestSignal(localCondition);
         }
     }
 
@@ -478,7 +549,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         addUpdateListener(new LegacyListenerAdapter(listener, getRowSet()));
         if (replayInitialImage) {
             if (isRefreshing()) {
-                UpdateGraphProcessor.DEFAULT.checkInitiateTableOperation();
+                updateGraph.checkInitiateSerialTableOperation();
             }
             if (getRowSet().isNonempty()) {
                 listener.setInitialImage(getRowSet());
@@ -488,12 +559,42 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
     }
 
     @Override
-    public void addUpdateListener(final TableUpdateListener listener) {
+    public void addUpdateListener(@NotNull final TableUpdateListener listener) {
         if (isFailed) {
-            throw new IllegalStateException("Can not listen to failed table " + description);
+            throw new TableAlreadyFailedException("Can not listen to failed table " + description);
         }
         if (isRefreshing()) {
+            // ensure that listener is in the same update graph if applicable
+            if (listener instanceof NotificationQueue.Dependency) {
+                getUpdateGraph((NotificationQueue.Dependency) listener);
+            }
             ensureChildListenerReferences().add(listener);
+        }
+    }
+
+    @Override
+    public boolean addUpdateListener(
+            @NotNull final TableUpdateListener listener, final long requiredLastNotificationStep) {
+        if (isFailed) {
+            throw new TableAlreadyFailedException("Can not listen to failed table " + description);
+        }
+
+        if (!isRefreshing()) {
+            return false;
+        }
+
+        synchronized (this) {
+            if (this.lastNotificationStep != requiredLastNotificationStep) {
+                return false;
+            }
+
+            // ensure that listener is in the same update graph if applicable
+            if (listener instanceof NotificationQueue.Dependency) {
+                getUpdateGraph((NotificationQueue.Dependency) listener);
+            }
+            ensureChildListenerReferences().add(listener);
+
+            return true;
         }
     }
 
@@ -503,8 +604,6 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
                 () -> new SimpleReferenceManager<>((final TableUpdateListener tableUpdateListener) -> {
                     if (tableUpdateListener instanceof LegacyListenerAdapter) {
                         return (LegacyListenerAdapter) tableUpdateListener;
-                    } else if (tableUpdateListener instanceof SwapListener) {
-                        return ((SwapListener) tableUpdateListener).getReferenceForSource();
                     } else {
                         return new WeakSimpleReference<>(tableUpdateListener);
                     }
@@ -530,6 +629,10 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
 
     @Override
     public final boolean setRefreshing(boolean refreshing) {
+        if (refreshing && !updateGraph.supportsRefreshing()) {
+            throw new UpdateGraphConflictException("Attempt to setRefreshing(true) but Table was constructed with a " +
+                    "static-only UpdateGraph.");
+        }
         return this.refreshing = refreshing;
     }
 
@@ -567,9 +670,9 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
      */
     public final void notifyListeners(final TableUpdate update) {
         Assert.eqFalse(isFailed, "isFailed");
-        final long currentStep = LogicalClock.DEFAULT.currentStep();
+        final long currentStep = updateGraph.clock().currentStep();
         // tables may only be updated once per cycle
-        Assert.lt(lastNotificationStep, "lastNotificationStep", currentStep, "LogicalClock.DEFAULT.currentStep()");
+        Assert.lt(lastNotificationStep, "lastNotificationStep", currentStep, "updateGraph.clock().currentStep()");
 
         Assert.eqTrue(update.valid(), "update.valid()");
         if (update.empty()) {
@@ -592,11 +695,21 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         Assert.neqNull(update.shifted(), "shifted");
 
         if (isFlat()) {
-            Assert.assertion(getRowSet().isFlat(), "build().isFlat()", getRowSet(), "build()");
+            Assert.assertion(getRowSet().isFlat(), "getRowSet().isFlat()", getRowSet(), "getRowSet()");
         }
-        if (isAddOnly()) {
+        if (isAppendOnly() || isAddOnly()) {
             Assert.assertion(update.removed().isEmpty(), "update.removed.empty()");
             Assert.assertion(update.modified().isEmpty(), "update.modified.empty()");
+            Assert.assertion(update.shifted().empty(), "update.shifted.empty()");
+        }
+        if (isAppendOnly()) {
+            Assert.assertion(getRowSet().sizePrev() == 0 || getRowSet().lastRowKeyPrev() < update.added().firstRowKey(),
+                    "getRowSet().lastRowKeyPrev() < update.added().firstRowKey()");
+        }
+        if (isBlink()) {
+            Assert.eq(update.added().size(), "added size", getRowSet().size(), "current table size");
+            Assert.eq(update.removed().size(), "removed size", getRowSet().sizePrev(), "previous table size");
+            Assert.assertion(update.modified().isEmpty(), "update.modified.isEmpty()");
             Assert.assertion(update.shifted().empty(), "update.shifted.empty()");
         }
 
@@ -614,12 +727,14 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
             validateUpdateOverlaps(update);
         }
 
-        lastNotificationStep = currentStep;
-
         // notify children
-        final NotificationQueue notificationQueue = getNotificationQueue();
-        childListenerReferences.forEach(
-                (listenerRef, listener) -> notificationQueue.addNotification(listener.getNotification(update)));
+        synchronized (this) {
+            lastNotificationStep = currentStep;
+
+            final NotificationQueue notificationQueue = getNotificationQueue();
+            childListenerReferences.forEach(
+                    (listenerRef, listener) -> notificationQueue.addNotification(listener.getNotification(update)));
+        }
 
         update.release();
     }
@@ -720,28 +835,32 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
      */
     public final void notifyListenersOnError(final Throwable e, @Nullable final TableListener.Entry sourceEntry) {
         Assert.eqFalse(isFailed, "isFailed");
-        final long currentStep = LogicalClock.DEFAULT.currentStep();
-        Assert.lt(lastNotificationStep, "lastNotificationStep", currentStep, "LogicalClock.DEFAULT.currentStep()");
+        final long currentStep = updateGraph.clock().currentStep();
+        Assert.lt(lastNotificationStep, "lastNotificationStep", currentStep,
+                "updateGraph.clock().currentStep()");
 
         isFailed = true;
         maybeSignal();
-        lastNotificationStep = currentStep;
 
-        final NotificationQueue notificationQueue = getNotificationQueue();
-        childListenerReferences.forEach((listenerRef, listener) -> notificationQueue
-                .addNotification(listener.getErrorNotification(e, sourceEntry)));
+        synchronized (this) {
+            lastNotificationStep = currentStep;
+
+            final NotificationQueue notificationQueue = getNotificationQueue();
+            childListenerReferences.forEach((listenerRef, listener) -> notificationQueue
+                    .addNotification(listener.getErrorNotification(e, sourceEntry)));
+        }
     }
 
     /**
      * Get the notification queue to insert notifications into as they are generated by listeners during
      * {@link #notifyListeners} and {@link #notifyListenersOnError(Throwable, TableListener.Entry)}. This method may be
-     * overridden to provide a different notification queue than the {@link UpdateGraphProcessor#DEFAULT} instance for
+     * overridden to provide a different notification queue than the table's {@link PeriodicUpdateGraph} instance for
      * more complex behavior.
      *
      * @return The {@link NotificationQueue} to add to
      */
     protected NotificationQueue getNotificationQueue() {
-        return UpdateGraphProcessor.DEFAULT;
+        return updateGraph;
     }
 
     @Override
@@ -776,9 +895,9 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
 
         @ReferentialIntegrity
         private final Table parent;
-        private final BaseTable dependent;
+        private final BaseTable<?> dependent;
 
-        public ShiftObliviousListenerImpl(String description, Table parent, BaseTable dependent) {
+        public ShiftObliviousListenerImpl(String description, Table parent, BaseTable<?> dependent) {
             super(description);
             this.parent = parent;
             this.dependent = dependent;
@@ -820,10 +939,10 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
 
         @ReferentialIntegrity
         private final Table parent;
-        private final BaseTable dependent;
+        private final BaseTable<?> dependent;
         private final boolean canReuseModifiedColumnSet;
 
-        public ListenerImpl(String description, Table parent, BaseTable dependent) {
+        public ListenerImpl(String description, Table parent, BaseTable<?> dependent) {
             super(description);
             this.parent = parent;
             this.dependent = dependent;
@@ -876,7 +995,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
             return parent;
         }
 
-        protected BaseTable getDependent() {
+        protected BaseTable<?> getDependent() {
             return dependent;
         }
     }
@@ -902,13 +1021,8 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
     }
 
     @Override
-    public void checkAvailableColumns(@NotNull final Collection<String> columns) {
-        final Map<String, ? extends ColumnSource<?>> sourceMap = getColumnSourceMap();
-        final String[] missingColumns =
-                columns.stream().filter(col -> !sourceMap.containsKey(col)).toArray(String[]::new);
-        if (missingColumns.length > 0) {
-            throw new NoSuchColumnException(sourceMap.keySet(), Arrays.asList(missingColumns));
-        }
+    public final void checkAvailableColumns(@NotNull final Collection<String> columns) {
+        getDefinition().checkHasColumns(columns);
     }
 
     public void copySortableColumns(
@@ -921,7 +1035,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         destination.setSortableColumns(currentSortableColumns.stream().filter(shouldCopy).collect(Collectors.toList()));
     }
 
-    void copySortableColumns(BaseTable<?> destination, MatchPair[] renamedColumns) {
+    void copySortableColumns(BaseTable<?> destination, Collection<Pair> renamedColumns) {
         final Collection<String> currentSortableColumns = getSortableColumns();
         if (currentSortableColumns == null) {
             return;
@@ -934,9 +1048,9 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         // b) The original column exists, and has not been replaced by another. For example
         // T1 = [ Col1, Col2, Col3 ]; T1.renameColumns(Col1=Col3, Col2];
         if (renamedColumns != null) {
-            for (MatchPair mp : renamedColumns) {
+            for (final Pair pair : renamedColumns) {
                 // Only the last grouping matters.
-                columnMapping.forcePut(mp.leftColumn(), mp.rightColumn());
+                columnMapping.forcePut(pair.output().name(), pair.input().name());
             }
         }
 
@@ -945,7 +1059,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         // Process the original set of sortable columns, adding them to the new set if one of the below
         // 1) The column exists in the new table and was not renamed in any way but the Identity (C1 = C1)
         // 2) The column does not exist in the new table, but was renamed to another (C2 = C1)
-        final Set<String> resultColumnNames = destination.getDefinition().getColumnNameMap().keySet();
+        final Set<String> resultColumnNames = destination.getDefinition().getColumnNameSet();
         for (final String columnName : currentSortableColumns) {
             // Only add it to the set of sortable columns if it hasn't changed in an unknown way
             final String maybeRenamedColumn = columnMapping.get(columnName);
@@ -991,9 +1105,9 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         }
 
         // Now go through the other columns in the table and add them if they were unchanged
-        final Map<String, ? extends ColumnSource<?>> sourceMap = destination.getColumnSourceMap();
+        final Set<String> destKeys = destination.getDefinition().getColumnNameSet();
         for (String col : currentSortableSet) {
-            if (sourceMap.containsKey(col)) {
+            if (destKeys.contains(col)) {
                 newSortableSet.add(col);
             }
         }
@@ -1045,7 +1159,9 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
      * @param destination the table which shall possibly have a column-description attribute created
      * @param renamedColumns an array of the columns which have been renamed
      */
-    void maybeCopyColumnDescriptions(final BaseTable<?> destination, final MatchPair[] renamedColumns) {
+    void maybeCopyColumnDescriptions(
+            final BaseTable<?> destination,
+            final Collection<Pair> renamedColumns) {
         // noinspection unchecked
         final Map<String, String> oldDescriptions =
                 (Map<String, String>) getAttribute(Table.COLUMN_DESCRIPTIONS_ATTRIBUTE);
@@ -1055,11 +1171,13 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
         }
         final Map<String, String> sourceDescriptions = new HashMap<>(oldDescriptions);
 
-        if (renamedColumns != null && renamedColumns.length != 0) {
-            for (final MatchPair mp : renamedColumns) {
-                final String desc = sourceDescriptions.remove(mp.rightColumn());
+        if (renamedColumns != null) {
+            for (final Pair pair : renamedColumns) {
+                final String desc = sourceDescriptions.remove(pair.input().name());
                 if (desc != null) {
-                    sourceDescriptions.put(mp.leftColumn(), desc);
+                    sourceDescriptions.put(pair.output().name(), desc);
+                } else {
+                    sourceDescriptions.remove(pair.output().name());
                 }
             }
         }
@@ -1173,34 +1291,35 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
     }
 
     public static void initializeWithSnapshot(
-            String logPrefix, SwapListener swapListener, ConstructSnapshot.SnapshotFunction snapshotFunction) {
-        if (swapListener == null) {
-            snapshotFunction.call(false, LogicalClock.DEFAULT.currentValue());
+            @NotNull final String logPrefix,
+            @Nullable final ConstructSnapshot.SnapshotControl snapshotControl,
+            @NotNull final ConstructSnapshot.SnapshotFunction snapshotFunction) {
+        if (snapshotControl == null) {
+            snapshotFunction.call(false, LogicalClock.NULL_CLOCK_VALUE);
             return;
         }
-        ConstructSnapshot.callDataSnapshotFunction(logPrefix, swapListener.makeSnapshotControl(), snapshotFunction);
+        ConstructSnapshot.callDataSnapshotFunction(logPrefix, snapshotControl, snapshotFunction);
     }
 
-    public interface SwapListenerFactory<T extends SwapListener> {
-        T newListener(BaseTable sourceTable);
+    public interface SnapshotControlFactory<T extends ConstructSnapshot.SnapshotControl> {
+        T newControl(BaseTable<?> sourceTable);
     }
 
     /**
-     * If we are a refreshing table, then we should create a swap listener that listens for updates to this table.
-     *
+     * If we are a refreshing table, then we should create a snapshot control to validate the snapshot.
+     * <p>
      * Otherwise, we return null.
      *
-     * @return a swap listener for this table (or null)
+     * @return a snapshot control to snapshot this table (or null)
      */
     @Nullable
-    public <T extends SwapListener> T createSwapListenerIfRefreshing(final SwapListenerFactory<T> factory) {
+    public <T extends OperationSnapshotControl> T createSnapshotControlIfRefreshing(
+            final SnapshotControlFactory<T> factory) {
         if (!isRefreshing()) {
             return null;
         }
 
-        final T swapListener = factory.newListener(this);
-        swapListener.subscribeForUpdates();
-        return swapListener;
+        return factory.newControl(this);
     }
 
     // ------------------------------------------------------------------------------------------------------------------

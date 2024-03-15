@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.parquet.table;
 
 import io.deephaven.UncheckedDeephavenException;
@@ -9,11 +9,13 @@ import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.table.impl.DataAccessHelpers;
 import io.deephaven.engine.table.impl.InMemoryTable;
+import io.deephaven.engine.table.impl.UncoalescedTable;
 import io.deephaven.engine.table.impl.locations.TableDataException;
 import io.deephaven.engine.testutil.junit4.EngineCleanup;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.util.TableTools;
+import io.deephaven.parquet.base.InvalidParquetFileException;
 import io.deephaven.parquet.table.layout.ParquetKeyValuePartitionedLayout;
 import io.deephaven.stringset.HashStringSet;
 import io.deephaven.stringset.StringSet;
@@ -23,8 +25,6 @@ import org.junit.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -47,15 +47,15 @@ public class TestParquetTools {
     @Rule
     public final EngineCleanup framework = new EngineCleanup();
 
+    private Table table1;
+    private Table emptyTable;
+    private Table brokenTable;
+
     private String testRoot;
     private File testRootFile;
 
-    private static Table table1;
-    private static Table emptyTable;
-    private static Table brokenTable;
-
-    @BeforeClass
-    public static void setUpFirst() {
+    @Before
+    public void setUp() throws IOException {
         table1 = new InMemoryTable(
                 new String[] {"StringKeys", "GroupedInts"},
                 new Object[] {
@@ -69,19 +69,9 @@ public class TestParquetTools {
                         new byte[] {}
                 });
         brokenTable = (Table) Proxy.newProxyInstance(Table.class.getClassLoader(), new Class[] {Table.class},
-                new InvocationHandler() {
-                    @Override
-                    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                        throw new UnsupportedOperationException("This table is broken!");
-                    }
+                (proxy, method, args) -> {
+                    throw new UnsupportedOperationException("This table is broken!");
                 });
-    }
-
-    @Before
-    public void setUp() throws IOException {
-        UpdateGraphProcessor.DEFAULT.enableUnitTestMode();
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(false);
-
         testRootFile = Files.createTempDirectory(TestParquetTools.class.getName()).toFile();
         testRoot = testRootFile.toString();
     }
@@ -150,10 +140,10 @@ public class TestParquetTools {
         Table test2 = ParquetTools.readTable(path);
         Assert.assertEquals(10, test2.size());
         Assert.assertEquals(2, test2.numColumns());
-        Assert.assertEquals(Arrays.asList(toString((Enum[]) test.getColumn("enumC").get(0, 10))),
-                Arrays.asList(toString((Enum[]) test2.getColumn("enumC").get(0, 10))));
-        StringSet[] objects = (StringSet[]) test.getColumn("enumSet").get(0, 10);
-        StringSet[] objects1 = (StringSet[]) test2.getColumn("enumSet").get(0, 10);
+        Assert.assertEquals(Arrays.asList(toString((Enum[]) DataAccessHelpers.getColumn(test, "enumC").get(0, 10))),
+                Arrays.asList(toString((Enum[]) DataAccessHelpers.getColumn(test2, "enumC").get(0, 10))));
+        StringSet[] objects = (StringSet[]) DataAccessHelpers.getColumn(test, "enumSet").get(0, 10);
+        StringSet[] objects1 = (StringSet[]) DataAccessHelpers.getColumn(test2, "enumSet").get(0, 10);
         for (int i = 0; i < objects1.length; i++) {
             Assert.assertEquals(new HashSet<>(Arrays.asList(objects[i].values())),
                     new HashSet<>(Arrays.asList(objects1[i].values())));
@@ -167,10 +157,10 @@ public class TestParquetTools {
         test2 = ParquetTools.readTable(path);
         Assert.assertEquals(10, test2.size());
         Assert.assertEquals(2, test2.numColumns());
-        Assert.assertEquals(Arrays.asList(test.getColumn("enumC").get(0, 10)),
-                Arrays.asList(test2.getColumn("enumC").get(0, 10)));
-        Assert.assertEquals(Arrays.asList(test.getColumn("enumSet").get(0, 10)),
-                Arrays.asList(test2.getColumn("enumSet").get(0, 10)));
+        Assert.assertEquals(Arrays.asList(DataAccessHelpers.getColumn(test, "enumC").get(0, 10)),
+                Arrays.asList(DataAccessHelpers.getColumn(test2, "enumC").get(0, 10)));
+        Assert.assertEquals(Arrays.asList(DataAccessHelpers.getColumn(test, "enumSet").get(0, 10)),
+                Arrays.asList(DataAccessHelpers.getColumn(test2, "enumSet").get(0, 10)));
         test2.close();
 
         test = TableTools.newTable(TableDefinition.of(
@@ -246,7 +236,7 @@ public class TestParquetTools {
                 "D    = NULL_DOUBLE",
                 "Bl   = (Boolean) null",
                 "Str  = (String) null",
-                "DT   = (DateTime) null");
+                "DT   = (Instant) null");
         final File dest = new File(testRoot + File.separator + "Null.parquet");
         ParquetTools.writeTables(new Table[] {TableTools.emptyTable(10_000L)}, nullTable.getDefinition(),
                 new File[] {dest});
@@ -358,13 +348,27 @@ public class TestParquetTools {
         final TableDefinition partitionedDefinition = TableDefinition.of(allColumns);
 
         final Table result = ParquetTools.readPartitionedTableInferSchema(
-                new ParquetKeyValuePartitionedLayout(testRootFile, 2), ParquetInstructions.EMPTY);
+                new ParquetKeyValuePartitionedLayout(testRootFile, 2, ParquetInstructions.EMPTY),
+                ParquetInstructions.EMPTY);
         TestCase.assertEquals(partitionedDefinition, result.getDefinition());
         final Table expected = TableTools.merge(
                 table1.updateView("Date=`2021-07-20`", "Num=100"),
                 table1.updateView("Date=`2021-07-20`", "Num=200"),
                 table1.updateView("Date=`2021-07-21`", "Num=300")).moveColumnsUp("Date", "Num");
         assertTableEquals(expected, result);
+    }
+
+    @Test
+    public void testBooleanPartition() {
+        ParquetTools.writeTable(table1, new File(testRootFile, "Active=true" + File.separator + "file1.parquet"));
+        ParquetTools.writeTable(table1, new File(testRootFile, "Active=false" + File.separator + "file2.parquet"));
+        Table table = ParquetTools.readTable(testRootFile);
+        Assert.assertTrue(table instanceof UncoalescedTable);
+        final Table expected = TableTools.merge(
+                table1.updateView("Active=false"),
+                table1.updateView("Active=true")).moveColumnsUp("Active");
+
+        assertTableEquals(expected, table);
     }
 
     @Test
@@ -432,6 +436,85 @@ public class TestParquetTools {
     public void testMultipleRenamesWithSameOuterName() {
         testWriteRead(emptyTable(10).update("X = ii", "Y = ii", "Z = ii % 3"),
                 t -> t.updateView("Y = Z", "Y = X").where("Y % 2 == 0"));
+    }
+
+    private static final String InvalidParquetFileErrorMsgString = "Invalid parquet file detected, please ensure " +
+            "the file is fetched properly from Git LFS. Run commands 'git lfs install; git lfs pull' inside the repo " +
+            "to pull the files from LFS. Check cause of exception for more details.";
+
+    @Test
+    public void e0() {
+        try {
+            final Table uncompressed =
+                    ParquetTools.readTable(TestParquetTools.class.getResource("/e0/uncompressed.parquet").getFile());
+
+            final Table gzip = ParquetTools.readTable(TestParquetTools.class.getResource("/e0/gzip.parquet").getFile());
+            assertTableEquals(uncompressed, gzip);
+
+            final Table lz4 = ParquetTools.readTable(TestParquetTools.class.getResource("/e0/lz4.parquet").getFile());
+            assertTableEquals(uncompressed, lz4);
+
+            final Table snappy =
+                    ParquetTools.readTable(TestParquetTools.class.getResource("/e0/snappy.parquet").getFile());
+            assertTableEquals(uncompressed, snappy);
+
+            final Table zstd = ParquetTools.readTable(TestParquetTools.class.getResource("/e0/zstd.parquet").getFile());
+            assertTableEquals(uncompressed, zstd);
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof InvalidParquetFileException) {
+                throw new UncheckedDeephavenException(InvalidParquetFileErrorMsgString, e.getCause());
+            }
+        }
+    }
+
+    @Test
+    public void e1() {
+        try {
+            final Table uncompressed =
+                    ParquetTools.readTable(TestParquetTools.class.getResource("/e1/uncompressed.parquet").getFile());
+
+            final Table gzip = ParquetTools.readTable(TestParquetTools.class.getResource("/e1/gzip.parquet").getFile());
+            assertTableEquals(uncompressed, gzip);
+
+            final Table lz4 = ParquetTools.readTable(TestParquetTools.class.getResource("/e1/lz4.parquet").getFile());
+            assertTableEquals(uncompressed, lz4);
+
+            final Table snappy =
+                    ParquetTools.readTable(TestParquetTools.class.getResource("/e1/snappy.parquet").getFile());
+            assertTableEquals(uncompressed, snappy);
+
+            final Table zstd = ParquetTools.readTable(TestParquetTools.class.getResource("/e1/zstd.parquet").getFile());
+            assertTableEquals(uncompressed, zstd);
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof InvalidParquetFileException) {
+                throw new UncheckedDeephavenException(InvalidParquetFileErrorMsgString, e.getCause());
+            }
+        }
+    }
+
+    @Test
+    public void e2() {
+        try {
+            final Table uncompressed =
+                    ParquetTools.readTable(TestParquetTools.class.getResource("/e2/uncompressed.parquet").getFile());
+
+            final Table gzip = ParquetTools.readTable(TestParquetTools.class.getResource("/e2/gzip.parquet").getFile());
+            assertTableEquals(uncompressed, gzip);
+
+            final Table lz4 = ParquetTools.readTable(TestParquetTools.class.getResource("/e2/lz4.parquet").getFile());
+            assertTableEquals(uncompressed, lz4);
+
+            final Table snappy =
+                    ParquetTools.readTable(TestParquetTools.class.getResource("/e2/snappy.parquet").getFile());
+            assertTableEquals(uncompressed, snappy);
+
+            final Table zstd = ParquetTools.readTable(TestParquetTools.class.getResource("/e2/zstd.parquet").getFile());
+            assertTableEquals(uncompressed, zstd);
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof InvalidParquetFileException) {
+                throw new UncheckedDeephavenException(InvalidParquetFileErrorMsgString, e.getCause());
+            }
+        }
     }
 
     private void testWriteRead(Table source, Function<Table, Table> transform) {

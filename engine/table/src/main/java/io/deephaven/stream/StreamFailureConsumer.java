@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.stream;
 
 import org.jetbrains.annotations.NotNull;
@@ -8,7 +8,9 @@ import org.jetbrains.annotations.NotNull;
 /**
  * An interface for accepting failures from an incoming stream in order to propagate them to downstream tables.
  */
+@FunctionalInterface
 public interface StreamFailureConsumer {
+
     /**
      * Report an error while processing the stream.
      *

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.qst.table;
 
 /**
@@ -18,12 +18,14 @@ public interface InputTable extends TableSpec {
      */
     TableSchema schema();
 
-    <V extends Visitor> V walk(V visitor);
+    <R> R walk(Visitor<R> visitor);
 
-    interface Visitor {
+    interface Visitor<R> {
 
-        void visit(InMemoryAppendOnlyInputTable inMemoryAppendOnly);
+        R visit(InMemoryAppendOnlyInputTable inMemoryAppendOnly);
 
-        void visit(InMemoryKeyBackedInputTable inMemoryKeyBacked);
+        R visit(InMemoryKeyBackedInputTable inMemoryKeyBacked);
+
+        R visit(BlinkInputTable blinkInputTable);
     }
 }

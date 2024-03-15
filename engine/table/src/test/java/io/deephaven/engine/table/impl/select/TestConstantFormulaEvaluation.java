@@ -1,18 +1,21 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import com.github.javaparser.ast.expr.Expression;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.lang.JavaExpressionParser;
-import io.deephaven.engine.table.impl.perf.QueryPerformanceNugget;
 import io.deephaven.engine.table.impl.perf.QueryPerformanceRecorder;
 import io.deephaven.engine.table.impl.sources.SingleValueColumnSource;
 import io.deephaven.engine.testutil.TstUtils;
 import io.deephaven.engine.testutil.junit4.EngineCleanup;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.util.TableTools;
+import io.deephaven.util.SafeCloseable;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -190,8 +193,7 @@ public class TestConstantFormulaEvaluation {
 
     private <T> void singleColumnConstantValueFormulaTest(final String formula, final Class<T> columnType,
             final T columnRowValue, final int tableLength, final String description) {
-        final QueryPerformanceNugget nugget = QueryPerformanceRecorder.getInstance().getNugget(description);
-        try {
+        try (final SafeCloseable ignored = QueryPerformanceRecorder.getInstance().getNugget(description)) {
             final Table source = TableTools.emptyTable(tableLength).update(formula);
             String[] columns = source.getDefinition().getColumnNamesArray();
             Assert.assertEquals("length of columns = 1", 1, columns.length);
@@ -202,8 +204,6 @@ public class TestConstantFormulaEvaluation {
                 Assert.assertEquals(columnType, source.getColumnSource(columns[0]).getType());
                 Assert.assertEquals(columnRowValue, source.getColumnSource(columns[0]).get(key));
             });
-        } finally {
-            nugget.done();
         }
     }
 
@@ -230,8 +230,7 @@ public class TestConstantFormulaEvaluation {
     private <T> void threeColumnConstantValueFormulaTest(final String[] formulas, final Class<T> calculatedColType,
             final T expectedConstValue, final ColumnFormula<T> columnFormula, final int tableLength,
             final String description) {
-        final QueryPerformanceNugget nugget = QueryPerformanceRecorder.getInstance().getNugget(description);
-        try {
+        try (final SafeCloseable nugget = QueryPerformanceRecorder.getInstance().getNugget(description)) {
             final Table source = TableTools.emptyTable(tableLength).update(formulas);
             String[] columns = source.getDefinition().getColumnNamesArray();
             boolean constantValueColFound = false;
@@ -262,16 +261,12 @@ public class TestConstantFormulaEvaluation {
                         (T) source.getColumnSource(columns[1]).get(key));
                 Assert.assertEquals(expected, source.getColumnSource(columns[2]).get(key));
             });
-        } finally {
-            nugget.done();
         }
     }
 
     @Test
     public void queryScopeForAtomicIntPlusConstantFormulaTest() {
-        final QueryPerformanceNugget nugget = QueryPerformanceRecorder.getInstance()
-                .getNugget("queryScopeForAtomicInt");
-        try {
+        try (final SafeCloseable ignored = QueryPerformanceRecorder.getInstance().getNugget("queryScopeForAtomicInt")) {
             final AtomicInteger atomicValue = new AtomicInteger(1);
             QueryScope.addParam("atomicValue", atomicValue);
             String[] formulas = new String[] {
@@ -309,8 +304,6 @@ public class TestConstantFormulaEvaluation {
                 Assert.assertEquals("Calculate Col verification", expectedCalculatedColValue,
                         source.getColumnSource(columns[2]).get(key));
             });
-        } finally {
-            nugget.done();
         }
     }
 
@@ -360,15 +353,15 @@ public class TestConstantFormulaEvaluation {
         final QueryTable table = TstUtils.testRefreshingTable(i(2, 4, 6).toTracking(),
                 col("x", 1, 2, 3), col("y", 'a', 'b', 'c'));
         final String[] formulas = new String[] {"x = x * 2", "z = y", "u=7"};
-        QueryTable table2 = UpdateGraphProcessor.DEFAULT.sharedLock().computeLocked(
+        QueryTable table2 = ExecutionContext.getContext().getUpdateGraph().sharedLock().computeLocked(
                 () -> (QueryTable) table.select(formulas));
         Set<String> expectedConstValueColumns = Collections.singleton("u");
         Integer[] expectedConstValues = new Integer[] {7};
         checkConstantFormula(table2, expectedConstValueColumns, expectedConstValues, int.class);
 
         final String[] formulas2 = new String[] {"x = x * 2", "z1 = z", "u1=u", "u2=u1 * 2"};
-        QueryTable table3 =
-                UpdateGraphProcessor.DEFAULT.sharedLock().computeLocked(() -> (QueryTable) table2.select(formulas2));
+        QueryTable table3 = ExecutionContext.getContext().getUpdateGraph().sharedLock().computeLocked(
+                () -> (QueryTable) table2.select(formulas2));
         Set<String> expectedConstValueColumns2 = Collections.singleton("u1");
         Integer[] expectedConstValues2 = new Integer[] {7};
         // verify parent constant value ColumnSource is same when inherited as is
@@ -379,9 +372,7 @@ public class TestConstantFormulaEvaluation {
     @SuppressWarnings("SameParameterValue")
     private <T> void checkConstantFormula(final Table source, final Set<String> expectedConstValueColumns,
             final T[] expectedConstValues, final Class<T> calculatedColType) {
-        final QueryPerformanceNugget nugget =
-                QueryPerformanceRecorder.getInstance().getNugget("queryScopeForAtomicInt");
-        try {
+        try (final SafeCloseable ignored = QueryPerformanceRecorder.getInstance().getNugget("queryScopeForAtomicInt")) {
             int count = 0;
             int[] constantColIndex = new int[expectedConstValues.length];
             String[] columns = source.getDefinition().getColumnNamesArray();
@@ -412,8 +403,6 @@ public class TestConstantFormulaEvaluation {
                             source.getColumnSource(columns[constantColIndex[i]]).get(key));
                 }
             });
-        } finally {
-            nugget.done();
         }
     }
 }

@@ -1,22 +1,22 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.util;
 
+import io.deephaven.base.verify.Require;
+import io.deephaven.base.verify.RequirementFailure;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.plot.datasets.data.IndexableNumericData;
 import io.deephaven.plot.errors.*;
 import io.deephaven.plot.filters.SelectableDataSet;
 import io.deephaven.plot.util.tables.TableHandle;
-import io.deephaven.engine.table.DataColumn;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.qst.column.Column;
-import io.deephaven.time.DateTime;
 import io.deephaven.util.type.TypeUtils;
 import org.apache.commons.lang3.ClassUtils;
 
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -180,7 +180,8 @@ public class ArgumentValidations {
             final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
         assertIsNumericOrTimeOrCharOrComparableInstance(t, column,
-                createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+                createWrongColumnTypeErrorMessage(t, column, plotInfo, "Numeric", "Time", "Character", "Comparable"),
+                plotInfo);
     }
 
 
@@ -198,7 +199,8 @@ public class ArgumentValidations {
             final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
         assertIsNumericOrTimeOrCharOrComparableInstance(t, column,
-                createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+                createWrongColumnTypeErrorMessage(t, column, plotInfo, "Numeric", "Time", "Character", "Comparable"),
+                plotInfo);
     }
 
     /**
@@ -348,15 +350,15 @@ public class ArgumentValidations {
     }
 
     /**
-     * Whether the class is equal to Date.class or DateTime.class
+     * Whether the class is equal to Date.class or Instant.class
      *
      * @param c class
      * @param plotInfo source of the exception
-     * @return true if {@code c} equals Date.class or DateTime.class, false otherwise
+     * @return true if {@code c} equals Date.class or Instant.class, false otherwise
      */
     public static boolean isTime(final Class c, final PlotInfo plotInfo) {
         assertNotNull(c, "c", plotInfo);
-        return c.equals(Date.class) || c.equals(DateTime.class);
+        return c == Date.class || c == Instant.class;
     }
 
     /**
@@ -381,36 +383,36 @@ public class ArgumentValidations {
     }
 
     /**
-     * Whether the column's data type equals Date.class or DateTime.class
+     * Whether the column's data type equals Date.class or Instant.class
      *
      * @param t table
      * @param column column
      * @param plotInfo source of the exception
-     * @return true if the column's data type equals Date.class or DateTime.class, false otherwise
+     * @return true if the column's data type equals Date.class or Instant.class, false otherwise
      */
     public static boolean isTime(final Table t, final String column, final PlotInfo plotInfo) {
         return isTime(getColumnType(t, column, plotInfo), plotInfo);
     }
 
     /**
-     * Whether the column's data type equals Date.class or DateTime.class
+     * Whether the column's data type equals Date.class or Instant.class
      *
      * @param t table
      * @param column column
      * @param plotInfo source of the exception
-     * @return true if the column's data type equals Date.class or DateTime.class, false otherwise
+     * @return true if the column's data type equals Date.class or Instant.class, false otherwise
      */
     public static boolean isTime(final TableDefinition t, final String column, final PlotInfo plotInfo) {
         return isTime(getColumnType(t, column, plotInfo), plotInfo);
     }
 
     /**
-     * Whether the column's data type equals Date.class or DateTime.class
+     * Whether the column's data type equals Date.class or Instant.class
      *
      * @param sds selectable dataset
      * @param column column
      * @param plotInfo source of the exception
-     * @return true if the column's data type equals Date.class or DateTime.class, false otherwise
+     * @return true if the column's data type equals Date.class or Instant.class, false otherwise
      */
     public static boolean isTime(final SelectableDataSet sds, final String column, final PlotInfo plotInfo) {
         return isTime(getColumnType(sds, column, plotInfo), plotInfo);
@@ -530,7 +532,7 @@ public class ArgumentValidations {
      */
     public static void assertIsTime(final Table t, final String column, final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
-        assertIsTime(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+        assertIsTime(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "Time"), plotInfo);
     }
 
     /**
@@ -543,7 +545,7 @@ public class ArgumentValidations {
      */
     public static void assertIsTime(final TableDefinition t, final String column, final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
-        assertIsTime(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+        assertIsTime(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "Time"), plotInfo);
     }
 
     /**
@@ -590,7 +592,8 @@ public class ArgumentValidations {
      */
     public static void assertIsPrimitiveNumeric(final Table t, final String column, final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
-        assertIsPrimitiveNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+        assertIsPrimitiveNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "primitive Numeric"),
+                plotInfo);
     }
 
     /**
@@ -622,7 +625,8 @@ public class ArgumentValidations {
      */
     public static void assertIsBoxedNumeric(final Table t, final String column, final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
-        assertIsBoxedNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+        assertIsBoxedNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "boxed Numeric"),
+                plotInfo);
     }
 
     /**
@@ -654,7 +658,7 @@ public class ArgumentValidations {
      */
     public static void assertIsNumeric(final Table t, final String column, final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
-        assertIsNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+        assertIsNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "Numeric"), plotInfo);
     }
 
 
@@ -668,7 +672,7 @@ public class ArgumentValidations {
      */
     public static void assertIsNumeric(final TableDefinition t, final String column, final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
-        assertIsNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo), plotInfo);
+        assertIsNumeric(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "Numeric"), plotInfo);
     }
 
 
@@ -751,7 +755,7 @@ public class ArgumentValidations {
      */
     public static void assertIsNumericOrTime(final TableDefinition t, final String column, final PlotInfo plotInfo) {
         assertNotNull(t, "t", plotInfo);
-        assertIsNumericOrTime(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "Numeric, Time"),
+        assertIsNumericOrTime(t, column, createWrongColumnTypeErrorMessage(t, column, plotInfo, "Numeric", "Time"),
                 plotInfo);
     }
 
@@ -767,7 +771,7 @@ public class ArgumentValidations {
     public static void assertIsNumericOrTime(final SelectableDataSet sds, final String column,
             final PlotInfo plotInfo) {
         assertNotNull(sds, "sds", plotInfo);
-        assertIsNumericOrTime(sds, column, createWrongColumnTypeErrorMessage(sds, column, plotInfo, "Numeric, Time"),
+        assertIsNumericOrTime(sds, column, createWrongColumnTypeErrorMessage(sds, column, plotInfo, "Numeric", "Time"),
                 plotInfo);
     }
 
@@ -837,7 +841,7 @@ public class ArgumentValidations {
         assertNotNull(t, "t", plotInfo);
         assertNotNull(cols, "cols", plotInfo);
         for (String c : cols) {
-            if (!t.getColumnSourceMap().containsKey(c)) {
+            if (!t.hasColumns(c)) {
                 throw new PlotIllegalArgumentException("Column " + c + " could not be found in table.", plotInfo);
             }
         }
@@ -905,24 +909,51 @@ public class ArgumentValidations {
         return x == x1 || (Double.isNaN(x) && Double.isNaN(x1));
     }
 
+    private static String wrongColumnTypeErrorMessage(final String column, final Class columnType,
+            final String... expectedTypes) {
+        Require.geqZero(expectedTypes.length, "expectedTypes.length");
+
+        final StringBuilder sb = new StringBuilder();
+        sb.append("Invalid data type in column = ").append(column).append(".");
+
+        if (expectedTypes.length == 1) {
+            sb.append(" Expected a ").append(expectedTypes[0]).append(" but was a ").append(columnType.getName());
+        } else {
+            sb.append(" Expected the type to be ");
+
+            for (int i = 0; i < expectedTypes.length; i++) {
+                if (i != 0) {
+                    sb.append(", ");
+                }
+
+                if (i == expectedTypes.length) {
+                    sb.append("or ");
+                }
+
+                sb.append(expectedTypes[i]);
+            }
+
+            sb.append(" but was a ").append(columnType.getName());
+        }
+
+        return sb.toString();
+    }
+
     private static String createWrongColumnTypeErrorMessage(final Table t, final String column, final PlotInfo plotInfo,
             final String... types) {
         assertNotNull(t, "t", plotInfo);
-        return "Invalid data type in column = " + column + ". Expected one of " + Arrays.toString(types) + ", was "
-                + getColumnType(t, column, plotInfo);
+        return wrongColumnTypeErrorMessage(column, getColumnType(t, column, plotInfo), types);
     }
 
     private static String createWrongColumnTypeErrorMessage(final TableDefinition t, final String column,
             final PlotInfo plotInfo, final String... types) {
         assertNotNull(t, "t", plotInfo);
-        return "Invalid data type in column = " + column + ". Expected one of " + Arrays.toString(types) + ", was "
-                + getColumnType(t, column, plotInfo);
+        return wrongColumnTypeErrorMessage(column, getColumnType(t, column, plotInfo), types);
     }
 
     private static String createWrongColumnTypeErrorMessage(final SelectableDataSet sds, final String column,
             final PlotInfo plotInfo, final String... types) {
         assertNotNull(sds, "sds", plotInfo);
-        return "Invalid data type in column = " + column + ". Expected one of " + Arrays.toString(types) + ", was "
-                + getColumnType(sds, column, plotInfo);
+        return wrongColumnTypeErrorMessage(column, getColumnType(sds, column, plotInfo), types);
     }
 }

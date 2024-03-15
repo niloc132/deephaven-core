@@ -1,17 +1,17 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.client;
 
 import io.deephaven.api.TableOperations;
 import io.deephaven.api.updateby.UpdateByOperation;
 import io.deephaven.client.impl.TableHandle;
+import io.deephaven.extensions.barrage.util.BarrageUtil;
 import io.deephaven.qst.TableCreator;
 import io.deephaven.qst.column.header.ColumnHeader;
 import io.deephaven.qst.table.NewTable;
 import io.deephaven.qst.table.TableCreatorImpl;
 import io.deephaven.qst.table.TableSpec;
-import io.deephaven.qst.table.UpdateByTable;
 import org.apache.arrow.flight.FlightStream;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -29,13 +29,13 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DeephavenFlightSessionTest extends DeephavenFlightSessionTestBase {
-    public static <T extends TableOperations<T, T>> T i32768(TableCreator<T> c) {
-        return c.emptyTable(32768).view("I=i");
+    public static <T extends TableOperations<T, T>> T i132768(TableCreator<T> c) {
+        return c.emptyTable(132768).view("I=i");
     }
 
     @Test
     public void getSchema() throws Exception {
-        final TableSpec table = i32768(TableCreatorImpl.INSTANCE);
+        final TableSpec table = i132768(TableCreatorImpl.INSTANCE);
         try (final TableHandle handle = flightSession.session().execute(table)) {
             final Schema schema = flightSession.schema(handle.export());
             final Schema expected = new Schema(Collections.singletonList(
@@ -46,21 +46,24 @@ public class DeephavenFlightSessionTest extends DeephavenFlightSessionTestBase {
 
     @Test
     public void getStream() throws Exception {
-        final TableSpec table = i32768(TableCreatorImpl.INSTANCE);
+        final TableSpec table = i132768(TableCreatorImpl.INSTANCE);
         try (final TableHandle handle = flightSession.session().execute(table);
                 final FlightStream stream = flightSession.stream(handle)) {
             int numRows = 0;
+            int flightCount = 0;
             while (stream.next()) {
+                ++flightCount;
                 numRows += stream.getRoot().getRowCount();
             }
-            Assert.assertEquals(32768, numRows);
+            Assert.assertEquals(1, flightCount);
+            Assert.assertEquals(132768, numRows);
         }
     }
 
     @Test
     public void updateBy() throws Exception {
         final int size = 100;
-        final UpdateByTable spec = TableSpec.empty(size)
+        final TableSpec spec = TableSpec.empty(size)
                 .view("I=i")
                 .updateBy(UpdateByOperation.CumSum("I"));
         try (
@@ -82,25 +85,25 @@ public class DeephavenFlightSessionTest extends DeephavenFlightSessionTestBase {
         }
     }
 
-    // TODO (deephaven-core#1373): Hook up doPut integration unit testing
-    // @Test
-    // public void doPutStream() throws Exception {
-    // try (
-    // final TableHandle ten = flightSession.session().execute(TableSpec.empty(10).view("I=i"));
-    // // DoGet
-    // final FlightStream tenStream = flightSession.stream(ten);
-    // // DoPut
-    // final TableHandle tenAgain = flightSession.put(tenStream)) {
-    // assertThat(tenAgain.response().getSchemaHeader()).isEqualTo(ten.response().getSchemaHeader());
-    // }
-    // }
-    //
-    // @Test
-    // public void doPutNewTable() throws TableHandleException, InterruptedException {
-    // try (final TableHandle newTableHandle = flightSession.put(newTable(), bufferAllocator)) {
-    // // ignore
-    // }
-    // }
+    @Test
+    public void doPutStream() throws Exception {
+        try (final TableHandle ten = flightSession.session().execute(TableSpec.empty(10).view("I=i"));
+                // DoGet
+                final FlightStream tenStream = flightSession.stream(ten);
+                // DoPut
+                final TableHandle tenAgain = flightSession.putExport(tenStream)) {
+            BarrageUtil.ConvertedArrowSchema tenSchema = BarrageUtil.convertArrowSchema(ten.response());
+            BarrageUtil.ConvertedArrowSchema tenAgainSchema = BarrageUtil.convertArrowSchema(tenAgain.response());
+            assertThat(tenSchema.tableDef).isEqualTo(tenAgainSchema.tableDef);
+        }
+    }
+
+    @Test
+    public void doPutNewTable() throws TableHandle.TableHandleException, InterruptedException {
+        try (final TableHandle newTableHandle = flightSession.putExport(newTable(), bufferAllocator)) {
+            // ignore
+        }
+    }
 
     private static Schema metadataLess(Schema schema) {
         return new Schema(
@@ -127,13 +130,14 @@ public class DeephavenFlightSessionTest extends DeephavenFlightSessionTestBase {
                 ColumnHeader.ofFloat("Float"),
                 ColumnHeader.ofDouble("Double"),
                 ColumnHeader.ofString("String"),
-                ColumnHeader.ofInstant("Instant"))
+                ColumnHeader.ofInstant("Instant"),
+                ColumnHeader.of("ByteVector", byte[].class))
                 .start(3)
                 .row(true, (byte) 42, 'a', (short) 32_000, 1234567, 1234567890123L, 3.14f, 3.14d, "Hello, World",
-                        Instant.now())
-                .row(null, null, null, null, null, null, null, null, null, (Instant) null)
+                        Instant.now(), "abc".getBytes())
+                .row(null, null, null, null, null, null, null, null, null, (Instant) null, (byte[]) null)
                 .row(false, (byte) -42, 'b', (short) -32_000, -1234567, -1234567890123L, -3.14f, -3.14d, "Goodbye.",
-                        Instant.ofEpochMilli(0))
+                        Instant.ofEpochMilli(0), new byte[] {0x32, 0x02, 0x17, 0x42})
                 .newTable();
     }
 }

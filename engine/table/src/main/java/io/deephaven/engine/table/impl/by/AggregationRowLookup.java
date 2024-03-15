@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.by;
 
 import static io.deephaven.engine.rowset.RowSequence.NULL_ROW_KEY;
@@ -35,7 +38,7 @@ public interface AggregationRowLookup {
      * <dt>Multiple group-by columns</dt>
      * <dd>Compound keys are {@code Object[]} of (boxed, if needed) objects, in the order of the aggregation's group-by
      * columns</dd>
-     * </p>
+     * </dl>
      * <p>
      * All key fields must be reinterpreted to the appropriate primitive value before boxing. See
      * {@link io.deephaven.engine.table.impl.sources.ReinterpretUtils#maybeConvertToPrimitive}.

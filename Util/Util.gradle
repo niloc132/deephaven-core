@@ -1,4 +1,5 @@
 plugins {
+    id 'java-library'
     id 'io.deephaven.project.register'
 }
 
@@ -8,6 +9,7 @@ configurations {
 }
 
 dependencies {
+    api project(':engine-query-constants')
     implementation project(':log-factory')
 
     testRuntimeOnly project(path: ':configs')
@@ -20,4 +22,5 @@ dependencies {
     testImplementation project(':base-test-utils')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

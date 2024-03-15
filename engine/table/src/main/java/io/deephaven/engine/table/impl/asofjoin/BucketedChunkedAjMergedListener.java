@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.asofjoin;
 
 import io.deephaven.base.verify.Assert;
@@ -11,7 +11,7 @@ import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.ModifiedColumnSet;
 import io.deephaven.engine.table.impl.TableUpdateImpl;
 import io.deephaven.engine.table.impl.SortingOrder;
-import io.deephaven.engine.table.MatchPair;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.impl.*;
 import io.deephaven.chunk.util.hashing.ChunkEquals;
 import io.deephaven.engine.table.impl.join.JoinListenerRecorder;
@@ -179,7 +179,7 @@ public class BucketedChunkedAjMergedListener extends MergedListener {
             slots.ensureCapacity(leftRestampRemovals.size());
 
             if (leftRestampRemovals.isNonempty()) {
-                leftRestampRemovals.forAllRowKeys(rowRedirection::removeVoid);
+                rowRedirection.removeAll(leftRestampRemovals);
 
                 // We first do a probe pass, adding all of the removals to a builder in the as of join state manager
                 final int removedSlotCount = asOfJoinStateManager.markForRemoval(leftRestampRemovals, leftKeySources,
@@ -191,8 +191,7 @@ public class BucketedChunkedAjMergedListener extends MergedListener {
                     final int slot = slots.getInt(slotIndex);
                     final RowSet leftRemoved = indexFromBuilder(slotIndex);
 
-                    leftRemoved.forAllRowKeys(rowRedirection::removeVoid);
-
+                    rowRedirection.removeAll(leftRemoved);
 
                     final SegmentedSortedArray leftSsa = asOfJoinStateManager.getLeftSsaOrIndex(slot, leftIndexOutput);
                     if (leftSsa == null) {
@@ -738,7 +737,7 @@ public class BucketedChunkedAjMergedListener extends MergedListener {
             downstream.shifted = leftRecorder.getShifted();
         }
 
-        SafeCloseable.closeArray(sortKernel, leftStampKeys, leftStampValues, leftFillContext, leftSsaFactory,
+        SafeCloseable.closeAll(sortKernel, leftStampKeys, leftStampValues, leftFillContext, leftSsaFactory,
                 rightSsaFactory);
 
         downstream.modified = leftRecorder.getModified().union(modifiedBuilder.build());

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.util.profiling;
 
 import io.deephaven.configuration.Configuration;
@@ -68,7 +68,10 @@ public interface ThreadProfiler {
             return NullThreadProfiler.INSTANCE;
         }
         final String vendor = System.getProperty("java.vendor");
-        if (vendor.contains("Sun") || vendor.contains("Oracle") || vendor.contains("OpenJDK")) {
+        if (vendor.contains("Sun")
+                || vendor.contains("Oracle")
+                || vendor.contains("OpenJDK")
+                || vendor.contains("Adoptium")) {
             return new SunThreadMXBeanThreadProfiler();
         }
         return new BaselineThreadMXBeanThreadProfiler();

@@ -1,8 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.subscription;
 
+import com.vertispan.tsdefs.annotations.TsInterface;
+import com.vertispan.tsdefs.annotations.TsName;
 import elemental2.core.JsArray;
 import elemental2.core.JsObject;
 import io.deephaven.web.client.api.*;
@@ -20,6 +22,13 @@ import java.util.Iterator;
 import java.util.PrimitiveIterator.OfLong;
 import java.util.Set;
 
+/**
+ * Contains data in the current viewport. Also contains the offset to this data, so that the actual row number may be
+ * determined. Do not assume that the first row in `rows` is the first visible row, because extra rows may be provided
+ * for easier scrolling without going to the server.
+ */
+@TsInterface
+@TsName(namespace = "dh")
 public class ViewportData implements TableData {
     private static final Any NULL_SENTINEL = Js.asAny(new JsObject());
 
@@ -179,7 +188,8 @@ public class ViewportData implements TableData {
                 }
                 return cleanData;
             }
-            case "io.deephaven.time.DateTime": {
+            case "java.time.Instant":
+            case "java.time.ZonedDateTime": {
                 JsArray<Any> values = Js.uncheckedCast(dataColumn);
                 DateWrapper[] cleanData = new DateWrapper[values.length];
                 for (int i = 0; i < values.length; i++) {
@@ -261,6 +271,11 @@ public class ViewportData implements TableData {
         }
     }
 
+    /**
+     * The index of the first returned row
+     * 
+     * @return double
+     */
     @JsProperty
     public double getOffset() {
         return offset;
@@ -297,6 +312,11 @@ public class ViewportData implements TableData {
         return getRows().getAt((int) index).getFormat(column);
     }
 
+    /**
+     * An array of rows of data
+     * 
+     * @return {@link ViewportRow} array.
+     */
     @Override
     @JsProperty
     public JsArray<ViewportRow> getRows() {
@@ -310,6 +330,11 @@ public class ViewportData implements TableData {
         return rows;
     }
 
+    /**
+     * A list of columns describing the data types in each row
+     * 
+     * @return {@link Column} array.
+     */
     @Override
     @JsProperty
     public JsArray<Column> getColumns() {

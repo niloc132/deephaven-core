@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.configuration;
 
 import io.deephaven.base.verify.Assert;
@@ -39,7 +39,7 @@ public class PropertyFile {
      *
      * @param filename name of file to load properties from
      * @param log Logger for error/warning messages, or null if not logging
-     * @param fatal If the file can't be read and fatal is true -> throw exception
+     * @param fatal If the file can't be read and fatal is true -&gt; throw exception
      */
     public PropertyFile(String filename, Logger log, boolean fatal) {
         this.log = log;

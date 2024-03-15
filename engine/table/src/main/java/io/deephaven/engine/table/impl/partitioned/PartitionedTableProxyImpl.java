@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.partitioned;
 
 import io.deephaven.api.*;
@@ -13,18 +13,18 @@ import io.deephaven.api.updateby.UpdateByOperation;
 import io.deephaven.api.updateby.UpdateByControl;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessArtifact;
-import io.deephaven.engine.table.MatchPair;
-import io.deephaven.engine.table.PartitionedTable;
-import io.deephaven.engine.table.Table;
-import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.table.TableUpdate;
+import io.deephaven.engine.liveness.LivenessScopeStack;
+import io.deephaven.engine.table.*;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.impl.*;
 import io.deephaven.engine.table.impl.select.MatchFilter;
 import io.deephaven.engine.table.impl.select.SelectColumn;
 import io.deephaven.engine.table.impl.select.SourceColumn;
 import io.deephaven.engine.table.impl.select.WhereFilter;
 import io.deephaven.engine.table.impl.select.analyzers.SelectAndViewAnalyzer;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.engine.table.impl.updateby.UpdateBy;
+import io.deephaven.engine.updategraph.NotificationQueue.Dependency;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.engine.util.TableTools;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -176,46 +176,72 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
         if (other instanceof Table) {
             final Table otherTable = (Table) other;
             final boolean refreshingResults = target.table().isRefreshing() || otherTable.isRefreshing();
+            final UpdateGraph updateGraph = target.table().getUpdateGraph(otherTable);
             if (refreshingResults && joinMatches != null) {
-                UpdateGraphProcessor.DEFAULT.checkInitiateTableOperation();
+                updateGraph.checkInitiateSerialTableOperation();
             }
-            return new PartitionedTableProxyImpl(
-                    target.transform(context, ct -> transformer.apply(ct, otherTable), refreshingResults),
-                    requireMatchingKeys,
-                    sanityCheckJoins);
+
+            final Dependency[] dependencies = otherTable.isRefreshing()
+                    ? new Dependency[] {otherTable}
+                    : new Dependency[0];
+
+            return ExecutionContext.getContext().withUpdateGraph(updateGraph).apply(
+                    () -> new PartitionedTableProxyImpl(
+                            target.transform(
+                                    context,
+                                    ct -> transformer.apply(ct, otherTable),
+                                    refreshingResults,
+                                    dependencies),
+                            requireMatchingKeys,
+                            sanityCheckJoins));
         }
         if (other instanceof PartitionedTable.Proxy) {
             final PartitionedTable.Proxy otherProxy = (PartitionedTable.Proxy) other;
             final PartitionedTable otherTarget = otherProxy.target();
             final boolean refreshingResults = target.table().isRefreshing() || otherTarget.table().isRefreshing();
-
-            if (target.table().isRefreshing() || otherTarget.table().isRefreshing()) {
-                UpdateGraphProcessor.DEFAULT.checkInitiateTableOperation();
+            final UpdateGraph updateGraph = target.table().getUpdateGraph(otherTarget.table());
+            if (refreshingResults) {
+                updateGraph.checkInitiateSerialTableOperation();
             }
+            return ExecutionContext.getContext().withUpdateGraph(updateGraph)
+                    .apply(() -> LivenessScopeStack.computeEnclosed(
+                            () -> {
+                                final MatchPair[] keyColumnNamePairs =
+                                        PartitionedTableImpl.matchKeyColumns(target, otherTarget);
+                                final DependentValidation uniqueKeys = requireMatchingKeys
+                                        ? matchingKeysValidation(target, otherTarget, keyColumnNamePairs)
+                                        : null;
+                                final DependentValidation overlappingLhsJoinKeys =
+                                        sanityCheckJoins && joinMatches != null
+                                                ? overlappingLhsJoinKeysValidation(target, joinMatches)
+                                                : null;
+                                final DependentValidation overlappingRhsJoinKeys =
+                                        sanityCheckJoins && joinMatches != null
+                                                ? overlappingRhsJoinKeysValidation(otherTarget, joinMatches)
+                                                : null;
 
-            final MatchPair[] keyColumnNamePairs = PartitionedTableImpl.matchKeyColumns(target, otherTarget);
-            final DependentValidation uniqueKeys = requireMatchingKeys
-                    ? matchingKeysValidation(target, otherTarget, keyColumnNamePairs)
-                    : null;
-            final DependentValidation overlappingLhsJoinKeys = sanityCheckJoins && joinMatches != null
-                    ? overlappingLhsJoinKeysValidation(target, joinMatches)
-                    : null;
-            final DependentValidation overlappingRhsJoinKeys = sanityCheckJoins && joinMatches != null
-                    ? overlappingRhsJoinKeysValidation(otherTarget, joinMatches)
-                    : null;
+                                final Table validatedLhsTable =
+                                        validated(target.table(), uniqueKeys, overlappingLhsJoinKeys);
+                                final Table validatedRhsTable =
+                                        validated(otherTarget.table(), uniqueKeys, overlappingRhsJoinKeys);
+                                final PartitionedTable lhsToUse = maybeRewrap(validatedLhsTable, target);
+                                final PartitionedTable rhsToUse = maybeRewrap(validatedRhsTable, otherTarget);
 
-            final Table validatedLhsTable = validated(target.table(), uniqueKeys, overlappingLhsJoinKeys);
-            final Table validatedRhsTable = validated(otherTarget.table(), uniqueKeys, overlappingRhsJoinKeys);
-            final PartitionedTable lhsToUse = maybeRewrap(validatedLhsTable, target);
-            final PartitionedTable rhsToUse = maybeRewrap(validatedRhsTable, otherTarget);
-
-            return new PartitionedTableProxyImpl(
-                    lhsToUse.partitionedTransform(rhsToUse, context, transformer, refreshingResults),
-                    requireMatchingKeys,
-                    sanityCheckJoins);
+                                return new PartitionedTableProxyImpl(
+                                        lhsToUse.partitionedTransform(rhsToUse, context, transformer,
+                                                refreshingResults),
+                                        requireMatchingKeys,
+                                        sanityCheckJoins);
+                            },
+                            () -> refreshingResults,
+                            ptp -> refreshingResults));
         }
-        throw new IllegalArgumentException("Unexpected TableOperations input " + other
-                + ", expected Table or PartitionedTable.Proxy");
+        throw onUnexpectedTableOperations(other);
+    }
+
+    private static IllegalArgumentException onUnexpectedTableOperations(@NotNull TableOperations<?, ?> other) {
+        return new IllegalArgumentException(String.format(
+                "Unexpected TableOperations input %s, expected Table or PartitionedTable.Proxy", other));
     }
 
     /**
@@ -239,7 +265,7 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
 
     private static Table validated(
             @NotNull final Table parent,
-            @NotNull final DependentValidation... dependentValidationsIn) {
+            final DependentValidation... dependentValidationsIn) {
         if (dependentValidationsIn.length == 0 || !parent.isRefreshing()) {
             return parent;
         }
@@ -249,8 +275,8 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
             return parent;
         }
 
-        // NB: All code paths that pass non-null validations for refreshing parents call checkInitiateTableOperation
-        // first, so we can dispense with snapshots and swap listeners.
+        // NB: All code paths that pass non-null validations for refreshing parents call
+        // checkInitiateSerialTableOperation first, so we can dispense with snapshots and swap listeners.
         final QueryTable coalescedParent = (QueryTable) parent.coalesce();
         final QueryTable child = coalescedParent.getSubTable(
                 coalescedParent.getRowSet(),
@@ -307,8 +333,8 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
             @NotNull final MatchPair[] keyColumnNamePairs) {
         final String[] lhsKeyColumnNames = Arrays.stream(keyColumnNamePairs)
                 .map(MatchPair::leftColumn).toArray(String[]::new);
-        final SourceColumn[] rhsKeyColumnRenames = Arrays.stream(keyColumnNamePairs)
-                .map(mp -> new SourceColumn(mp.rightColumn(), mp.leftColumn())).toArray(SourceColumn[]::new);
+        final List<SourceColumn> rhsKeyColumnRenames = Arrays.stream(keyColumnNamePairs)
+                .map(mp -> new SourceColumn(mp.rightColumn(), mp.leftColumn())).collect(Collectors.toList());
         final Table lhsKeys = lhs.table().selectDistinct(lhsKeyColumnNames);
         final Table rhsKeys = rhs.table().updateView(rhsKeyColumnRenames).selectDistinct(lhsKeyColumnNames);
         final Table unionedKeys = TableTools.merge(lhsKeys, rhsKeys);
@@ -360,7 +386,8 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
         final PartitionedTable stamped = input.transform(
                 null,
                 table -> table.updateView(
-                        new LongConstantColumn(ENCLOSING_CONSTITUENT.name(), sequenceCounter.getAndIncrement())),
+                        List.of(new LongConstantColumn(ENCLOSING_CONSTITUENT.name(),
+                                sequenceCounter.getAndIncrement()))),
                 input.table().isRefreshing());
         final Table merged = stamped.merge();
         final Table mergedWithUniqueAgg = merged.aggAllBy(AggSpec.unique(), joinKeyColumnNames);
@@ -381,7 +408,8 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
         }
     }
 
-    private static PartitionedTable maybeRewrap(@NotNull final Table table, @NotNull final PartitionedTable existing) {
+    private static PartitionedTable maybeRewrap(@NotNull final Table table,
+            @NotNull final PartitionedTable existing) {
         return table == existing.table()
                 ? existing
                 : new PartitionedTableImpl(table, existing.keyColumnNames(), existing.uniqueKeys(),
@@ -433,13 +461,13 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     }
 
     @Override
-    public PartitionedTable.Proxy where(Collection<? extends Filter> filters) {
-        final WhereFilter[] whereFilters = WhereFilter.from(filters);
+    public PartitionedTable.Proxy where(Filter filter) {
+        final WhereFilter[] whereFilters = WhereFilter.fromInternal(filter);
         final TableDefinition definition = target.constituentDefinition();
-        for (WhereFilter filter : whereFilters) {
-            filter.init(definition);
+        for (WhereFilter whereFilter : whereFilters) {
+            whereFilter.init(definition);
         }
-        return basicTransform(ct -> ct.where(WhereFilter.copyFrom(whereFilters)));
+        return basicTransform(ct -> ct.where(Filter.and(WhereFilter.copyFrom(whereFilters))));
     }
 
     @Override
@@ -455,40 +483,41 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     }
 
     @NotNull
-    private SelectColumn[] toSelectColumns(Collection<? extends Selectable> columns) {
-        final SelectColumn[] selectColumns = SelectColumn.from(columns);
+    private Collection<SelectColumn> toSelectColumns(Collection<? extends Selectable> columns) {
+        final SelectColumn[] selectColumns =
+                SelectColumn.from(columns.isEmpty() ? target.constituentDefinition().getTypedColumnNames() : columns);
         SelectAndViewAnalyzer.initializeSelectColumns(
                 target.constituentDefinition().getColumnNameMap(), selectColumns);
-        return selectColumns;
+        return Arrays.asList(selectColumns);
     }
 
     @Override
     public PartitionedTable.Proxy view(Collection<? extends Selectable> columns) {
-        final SelectColumn[] selectColumns = toSelectColumns(columns);
+        final Collection<SelectColumn> selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.view(SelectColumn.copyFrom(selectColumns)));
     }
 
     @Override
     public PartitionedTable.Proxy updateView(Collection<? extends Selectable> columns) {
-        final SelectColumn[] selectColumns = toSelectColumns(columns);
+        final Collection<SelectColumn> selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.updateView(SelectColumn.copyFrom(selectColumns)));
     }
 
     @Override
     public PartitionedTable.Proxy update(Collection<? extends Selectable> columns) {
-        final SelectColumn[] selectColumns = toSelectColumns(columns);
+        final Collection<SelectColumn> selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.update(SelectColumn.copyFrom(selectColumns)));
     }
 
     @Override
     public PartitionedTable.Proxy lazyUpdate(Collection<? extends Selectable> columns) {
-        final SelectColumn[] selectColumns = toSelectColumns(columns);
+        final Collection<SelectColumn> selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.lazyUpdate(SelectColumn.copyFrom(selectColumns)));
     }
 
     @Override
     public PartitionedTable.Proxy select(Collection<? extends Selectable> columns) {
-        final SelectColumn[] selectColumns = toSelectColumns(columns);
+        final Collection<SelectColumn> selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.select(SelectColumn.copyFrom(selectColumns)));
     }
 
@@ -520,17 +549,19 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     }
 
     @Override
-    public PartitionedTable.Proxy aj(TableOperations<?, ?> rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd, AsOfJoinRule asOfJoinRule) {
-        return complexTransform(rightTable, (ct, ot) -> ct.aj(ot, columnsToMatch, columnsToAdd, asOfJoinRule),
-                columnsToMatch.stream().limit(columnsToMatch.size() - 1).collect(Collectors.toList()));
+    public PartitionedTable.Proxy asOfJoin(TableOperations<?, ?> rightTable,
+            Collection<? extends JoinMatch> exactMatches,
+            AsOfJoinMatch asOfMatch, Collection<? extends JoinAddition> columnsToAdd) {
+        return complexTransform(rightTable, (ct, ot) -> ct.asOfJoin(ot, exactMatches, asOfMatch, columnsToAdd),
+                exactMatches);
     }
 
     @Override
-    public PartitionedTable.Proxy raj(TableOperations<?, ?> rightTable, Collection<? extends JoinMatch> columnsToMatch,
-            Collection<? extends JoinAddition> columnsToAdd, ReverseAsOfJoinRule reverseAsOfJoinRule) {
-        return complexTransform(rightTable, (ct, ot) -> ct.raj(ot, columnsToMatch, columnsToAdd, reverseAsOfJoinRule),
-                columnsToMatch.stream().limit(columnsToMatch.size() - 1).collect(Collectors.toList()));
+    public PartitionedTable.Proxy rangeJoin(TableOperations<?, ?> rightTable,
+            Collection<? extends JoinMatch> exactMatches,
+            RangeJoinMatch rangeMatch, Collection<? extends Aggregation> aggregations) {
+        return complexTransform(rightTable, (ct, ot) -> ct.rangeJoin(ot, exactMatches, rangeMatch, aggregations),
+                exactMatches);
     }
 
     @Override
@@ -542,17 +573,36 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
     public PartitionedTable.Proxy aggBy(Collection<? extends Aggregation> aggregations, boolean preserveEmpty,
             TableOperations<?, ?> initialGroups, Collection<? extends ColumnName> groupByColumns) {
         if (initialGroups == null) {
-            return basicTransform(true, ct -> ct.aggBy(aggregations, preserveEmpty, null, groupByColumns));
+            return basicTransform(
+                    true,
+                    ct -> ct.aggBy(aggregations, preserveEmpty, null, groupByColumns));
         }
-        return complexTransform(true, initialGroups,
-                (ct, ot) -> ct.aggBy(aggregations, preserveEmpty, ot, groupByColumns),
-                null);
+        if (initialGroups instanceof Table) {
+            // Force a consistent view of initial groups table to be used for all current and future constituents
+            final Table initialGroupsTable = LivenessScopeStack.computeEnclosed(
+                    () -> ((Table) initialGroups).selectDistinct(groupByColumns).snapshot(),
+                    () -> ((Table) initialGroups).isRefreshing(),
+                    Table::isRefreshing);
+            return basicTransform(
+                    true,
+                    ct -> ct.aggBy(aggregations, preserveEmpty, initialGroupsTable, groupByColumns));
+        }
+        if (initialGroups instanceof PartitionedTable.Proxy) {
+            return complexTransform(
+                    true,
+                    initialGroups,
+                    (ct, ot) -> ct.aggBy(aggregations, preserveEmpty, ot, groupByColumns),
+                    null);
+        }
+        throw onUnexpectedTableOperations(initialGroups);
     }
 
     @Override
     public PartitionedTable.Proxy updateBy(UpdateByControl control, Collection<? extends UpdateByOperation> operations,
             Collection<? extends ColumnName> byColumns) {
-        return basicTransform(ct -> ct.updateBy(control, operations, byColumns));
+        final UpdateBy.UpdateByOperatorCollection collection = UpdateBy.UpdateByOperatorCollection
+                .from(target.constituentDefinition(), control, operations, byColumns);
+        return basicTransform(ct -> UpdateBy.updateBy((QueryTable) ct, collection.copy(), control));
     }
 
     @Override
@@ -562,13 +612,18 @@ class PartitionedTableProxyImpl extends LivenessArtifact implements PartitionedT
 
     @Override
     public PartitionedTable.Proxy selectDistinct(Collection<? extends Selectable> columns) {
-        final SelectColumn[] selectColumns = toSelectColumns(columns);
+        final Collection<SelectColumn> selectColumns = toSelectColumns(columns);
         return basicTransform(ct -> ct.selectDistinct(SelectColumn.copyFrom(selectColumns)));
     }
 
     @Override
     public PartitionedTable.Proxy ungroup(boolean nullFill, Collection<? extends ColumnName> columnsToUngroup) {
         return basicTransform(ct -> ct.ungroup(nullFill, columnsToUngroup));
+    }
+
+    @Override
+    public PartitionedTable.Proxy dropColumns(String... columnNames) {
+        return basicTransform(ct -> ct.dropColumns(columnNames));
     }
 
     // endregion TableOperations Implementation

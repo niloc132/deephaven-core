@@ -1,8 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.liveness;
 
+import io.deephaven.base.reference.CleanupReference;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.ref.WeakReference;
@@ -13,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 public class SingletonLivenessManager implements ReleasableLivenessManager {
 
+    @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<SingletonLivenessManager, WeakReference> RETAINED_REFERENCE_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(SingletonLivenessManager.class, WeakReference.class,
                     "retainedReference");
@@ -65,9 +67,14 @@ public class SingletonLivenessManager implements ReleasableLivenessManager {
             return;
         }
         final WeakReference<? extends LivenessReferent> localRetainedReference = getAndClearRetainedReference();
+        if (localRetainedReference == null) {
+            return;
+        }
         final LivenessReferent retained;
-        if (localRetainedReference != null && (retained = localRetainedReference.get()) != null) {
+        if ((retained = localRetainedReference.get()) != null) {
             retained.dropReference();
+        } else if (localRetainedReference instanceof CleanupReference) {
+            ((CleanupReference<?>) localRetainedReference).cleanup();
         }
     }
 }

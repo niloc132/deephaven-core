@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot;
 
 import io.deephaven.configuration.Configuration;
@@ -33,7 +33,7 @@ public class ChartImpl implements Chart, PlotExceptionCause {
     private final BaseFigureImpl figure;
     @SuppressWarnings("unchecked")
     private final List<AxisImpl>[] axis =
-            new List[] {new ArrayList<Axis>(), new ArrayList<Axis>(), new ArrayList<Axis>()};
+            new List[] {new ArrayList<Axis>(), new ArrayList<Axis>()};
     private final List<AxesImpl> axes = new ArrayList<>();
     private ChartType chartType;
     private Font titleFont;

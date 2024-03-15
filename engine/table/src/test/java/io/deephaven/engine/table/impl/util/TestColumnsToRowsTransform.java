@@ -1,9 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.util;
 
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.primitive.iterator.CloseableIterator;
+import io.deephaven.engine.primitive.iterator.CloseablePrimitiveIteratorOfInt;
 import io.deephaven.engine.table.ChunkSource;
 import io.deephaven.engine.table.SharedContext;
 import io.deephaven.engine.table.Table;
@@ -15,11 +18,9 @@ import io.deephaven.engine.testutil.generator.SetGenerator;
 import io.deephaven.engine.testutil.testcase.RefreshingTableTestCase;
 import io.deephaven.engine.testutil.EvalNugget;
 import io.deephaven.engine.testutil.EvalNuggetInterface;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.context.QueryScope;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.table.impl.*;
-import io.deephaven.engine.table.iterators.IntegerColumnIterator;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.chunk.*;
 import junit.framework.TestCase;
@@ -56,8 +57,8 @@ public class TestColumnsToRowsTransform extends RefreshingTableTestCase {
         final Table ex3 = TableTools.newTable(stringCol("Sym", "AAPL", "AAPL", "AAPL", "SPY", "SPY", "SPY"),
                 stringCol("Label", "First", "Second", "Third", "First", "Second", "Third"), intCol("Value", expected));
         assertTableEquals(ex3, out3);
-        final Iterator<Integer> it = out3.columnIterator("Value");
-        final IntegerColumnIterator it2 = out3.integerColumnIterator("Value");
+        final CloseableIterator<Integer> it = out3.columnIterator("Value");
+        final CloseablePrimitiveIteratorOfInt it2 = out3.integerColumnIterator("Value");
         int position = 0;
         while (it.hasNext()) {
             assertEquals(expected[position++], (int) it.next());
@@ -188,27 +189,24 @@ public class TestColumnsToRowsTransform extends RefreshingTableTestCase {
                         .updateView("MappedVal=nameMap.get(Name)").where("MappedVal in `EyeOne` || Value > 50000")),
                 new QueryTableTestBase.TableComparator(
                         ColumnsToRowsTransform.columnsToRows(queryTable, "Name", "Value", "I1", "I2", "I3"),
-                        UpdateGraphProcessor.DEFAULT.sharedLock()
-                                .computeLocked(() -> queryTable
-                                        .update("Name=new String[]{`I1`, `I2`, `I3`}", "Value=new int[]{I1, I2, I3}")
-                                        .dropColumns("I1", "I2", "I3").ungroup())),
+                        ExecutionContext.getContext().getUpdateGraph().sharedLock().computeLocked(() -> queryTable
+                                .update("Name=new String[]{`I1`, `I2`, `I3`}", "Value=new int[]{I1, I2, I3}")
+                                .dropColumns("I1", "I2", "I3").ungroup())),
                 new QueryTableTestBase.TableComparator(
                         ColumnsToRowsTransform.columnsToRows(queryTable, "Name", "Value", "I1", "I2", "I3")
                                 .updateView("MappedVal=nameMap.get(Name)")
                                 .where("MappedVal in `EyeOne` || Value > 50000"),
-                        UpdateGraphProcessor.DEFAULT.sharedLock()
-                                .computeLocked(() -> queryTable
-                                        .update("Name=new String[]{`I1`, `I2`, `I3`}", "Value=new int[]{I1, I2, I3}")
-                                        .dropColumns("I1", "I2", "I3").ungroup())
+                        ExecutionContext.getContext().getUpdateGraph().sharedLock().computeLocked(() -> queryTable
+                                .update("Name=new String[]{`I1`, `I2`, `I3`}", "Value=new int[]{I1, I2, I3}")
+                                .dropColumns("I1", "I2", "I3").ungroup())
                                 .updateView("MappedVal=nameMap.get(Name)")
                                 .where("MappedVal in `EyeOne` || Value > 50000")),
                 new QueryTableTestBase.TableComparator(
                         ColumnsToRowsTransform.columnsToRows(queryTable, "Name", "Value", "I1", "I2", "I3")
                                 .updateView("MappedVal=nameMap.get(Name)").where("MappedVal in `EyeOne`"),
-                        UpdateGraphProcessor.DEFAULT.sharedLock()
-                                .computeLocked(() -> queryTable
-                                        .update("Name=new String[]{`I1`, `I2`, `I3`}", "Value=new int[]{I1, I2, I3}")
-                                        .dropColumns("I1", "I2", "I3").ungroup())
+                        ExecutionContext.getContext().getUpdateGraph().sharedLock().computeLocked(() -> queryTable
+                                .update("Name=new String[]{`I1`, `I2`, `I3`}", "Value=new int[]{I1, I2, I3}")
+                                .dropColumns("I1", "I2", "I3").ungroup())
                                 .updateView("MappedVal=nameMap.get(Name)").where("MappedVal in `EyeOne`")),
                 EvalNugget.from(() -> ColumnsToRowsTransform
                         .columnsToRows(queryTable, "Name", "Value", "I1", "I2", "I3").where("Value > 50000")),
@@ -219,11 +217,10 @@ public class TestColumnsToRowsTransform extends RefreshingTableTestCase {
                         ColumnsToRowsTransform.columnsToRows(queryTable, "Name", new String[] {"IV", "DV"},
                                 new String[] {"First", "Second", "Third"},
                                 new String[][] {new String[] {"I1", "I2", "I3"}, new String[] {"D1", "D2", "D3"}}),
-                        UpdateGraphProcessor.DEFAULT.sharedLock()
-                                .computeLocked(() -> queryTable
-                                        .update("Name=new String[]{`First`, `Second`, `Third`}",
-                                                "IV=new int[]{I1, I2, I3}", "DV=new double[]{D1, D2, D3}")
-                                        .dropColumns("I1", "I2", "I3", "D1", "D2", "D3").ungroup())),
+                        ExecutionContext.getContext().getUpdateGraph().sharedLock().computeLocked(() -> queryTable
+                                .update("Name=new String[]{`First`, `Second`, `Third`}",
+                                        "IV=new int[]{I1, I2, I3}", "DV=new double[]{D1, D2, D3}")
+                                .dropColumns("I1", "I2", "I3", "D1", "D2", "D3").ungroup())),
                 new QueryTableTestBase.TableComparator(
                         ColumnsToRowsTransform
                                 .columnsToRows(queryTable, "Name", new String[] {"IV", "DV"},
@@ -231,7 +228,7 @@ public class TestColumnsToRowsTransform extends RefreshingTableTestCase {
                                         new String[][] {new String[] {"I1", "I2", "I3"},
                                                 new String[] {"D1", "D2", "D3"}})
                                 .updateView("MappedVal=nameMap.get(Name)").where("MappedVal in `AiTwo`"),
-                        UpdateGraphProcessor.DEFAULT.sharedLock().computeLocked(() -> queryTable
+                        ExecutionContext.getContext().getUpdateGraph().sharedLock().computeLocked(() -> queryTable
                                 .update("Name=new String[]{`First`, `Second`, `Third`}", "IV=new int[]{I1, I2, I3}",
                                         "DV=new double[]{D1, D2, D3}")
                                 .dropColumns("I1", "I2", "I3", "D1", "D2", "D3").ungroup()

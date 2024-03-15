@@ -1,10 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.benchmark.engine;
 
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.table.Table;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.table.impl.select.IncrementalReleaseFilter;
 import io.deephaven.chunk.WritableLongChunk;
 import io.deephaven.benchmarking.BenchUtil;
@@ -104,7 +104,7 @@ public class NaturalJoinMultipleColumnsFillChunkBench extends RedirectionBenchBa
         final String joinColsStr = String.join(",", joinCols);
         final String joinColumnsToAddStr = String.join(",", joinColumnsToAdd);
         if (doSelect) {
-            live = UpdateGraphProcessor.DEFAULT.exclusiveLock().computeLocked(
+            live = ExecutionContext.getContext().getUpdateGraph().exclusiveLock().computeLocked(
                     () -> t1Released.select(t1Cols).sort(sortCol).naturalJoin(t2, joinColsStr, joinColumnsToAddStr));
         } else {
             live = t1Released.sort(sortCol).naturalJoin(t2, joinColsStr, joinColumnsToAddStr);

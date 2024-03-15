@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.client;
 
 import io.deephaven.client.impl.TableHandle;
@@ -85,16 +88,6 @@ public class UpdateOrSelectSessionTest extends DeephavenSessionTestBase {
     @Test
     public void allowTimeTableII() throws InterruptedException, TableHandle.TableHandleException {
         allow(TimeTable.of(Duration.ofSeconds(1)), "X = ii");
-    }
-
-    @Test
-    public void allowTickingI() throws InterruptedException, TableHandle.TableHandleException {
-        allow(TimeTable.of(Duration.ofSeconds(1)).tail(1), "Y = i");
-    }
-
-    @Test
-    public void allowTickingII() throws InterruptedException, TableHandle.TableHandleException {
-        allow(TimeTable.of(Duration.ofSeconds(1)).tail(1), "Y = ii");
     }
 
     @Test

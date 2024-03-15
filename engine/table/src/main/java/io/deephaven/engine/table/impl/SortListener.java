@@ -1,9 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
-import io.deephaven.base.LongRingBuffer;
+import io.deephaven.base.ringbuffer.LongRingBuffer;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.datastructures.util.CollectionUtil;
@@ -700,15 +700,17 @@ public class SortListener extends BaseTable.ListenerImpl {
         }
 
         public void add(long numWrites, long numRequestedAdds) {
-            if (writes.size() == writes.capacity()) {
+            if (writes.isFull()) {
                 totalNumWrites -= writes.remove();
                 totalNumRequestedAdds -= requestedAdds.remove();
             }
 
             totalNumWrites += numWrites;
             totalNumRequestedAdds += numRequestedAdds;
-            writes.add(numWrites);
-            requestedAdds.add(numRequestedAdds);
+
+            // assert that the buffers are not overwritten
+            Assert.eqTrue(writes.offer(numWrites), "writes.offer(numWrites)");
+            Assert.eqTrue(requestedAdds.offer(numRequestedAdds), "requestedAdds.offer(numRequestedAdds)");
         }
 
         String summarize() {

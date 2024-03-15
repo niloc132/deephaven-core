@@ -1,8 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.replicators;
 
+import io.deephaven.base.verify.Require;
 import io.deephaven.replication.ReplicatePrimitiveCode;
 import io.deephaven.replication.ReplicationUtils;
 import org.apache.commons.io.FileUtils;
@@ -10,59 +11,78 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.LongFunction;
+import java.util.function.ToLongFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.deephaven.replication.ReplicatePrimitiveCode.*;
 import static io.deephaven.replication.ReplicationUtils.*;
 
 public class ReplicateSourcesAndChunks {
+    public static final String TASK = "replicateSourcesAndChunks";
 
     public static void main(String... args) throws IOException {
+        replicateArraySources();
         replicateSparseArraySources();
-
         replicateSingleValues();
-        charToAllButBooleanAndLong(
-                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterArraySource.java");
-        charToAllButBoolean(
+
+        charToAllButBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/aggregate/CharAggregateColumnSource.java");
-        charToAllButBoolean(
+        charToAllButBoolean(TASK,
+                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/aggregate/SlicedCharAggregateColumnSource.java");
+        charToAllButBoolean(TASK,
+                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/aggregate/RangeAggregateColumnSourceChar.java");
+        charToAllButBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/UngroupedCharArrayColumnSource.java");
-        charToAllButBoolean(
+        charToAllButBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/UngroupedCharVectorColumnSource.java");
-        charToAllButBoolean(
+        charToAllButBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/UngroupedBoxedCharObjectVectorColumnSource.java");
-        charToAllButBoolean(
+        charToAllButBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/UngroupedBoxedCharArrayColumnSource.java");
 
-        charToAllButBooleanAndLong(
+        charToAllButBooleanAndLong(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/ImmutableCharArraySource.java");
-        fixupLongReinterpret(charToLong(
+        fixupImmutableLongArraySource(charToLong(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/ImmutableCharArraySource.java"));
         fixupByteReinterpret(
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/ImmutableByteArraySource.java");
         replicateObjectImmutableArraySource();
 
-        charToAllButBooleanAndLong(
+        charToAllButBooleanAndLong(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/Immutable2DCharArraySource.java");
-        fixupLongReinterpret(charToLong(
+        fixupImmutable2DLongArraySource(charToLong(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/Immutable2DCharArraySource.java"));
         fixupByteReinterpret(
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/Immutable2DByteArraySource.java");
         replicateObjectImmutable2DArraySource();
 
-        charToAllButBooleanAndLong(
+        charToAllButBooleanAndLong(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/ImmutableConstantCharSource.java");
-        fixupLongReinterpret(charToLong(
+        fixupImmutableConstantLongSource(charToLong(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/ImmutableConstantCharSource.java"));
         fixupByteReinterpret(
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/immutable/ImmutableConstantByteSource.java");
         replicateImmutableConstantObjectSource();
 
-        charToAll("engine/chunk/src/main/java/io/deephaven/chunk/sized/SizedCharChunk.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/sized/SizedCharChunk.java");
         replicateObjectSizedChunk();
+
+        charToAll(TASK, "engine/table/src/main/java/io/deephaven/engine/page/CharChunkPage.java");
+        replicateObjectChunkPage("engine/table/src/main/java/io/deephaven/engine/page/CharChunkPage.java");
+
+        charToAll(TASK, "extensions/source-support/src/main/java/io/deephaven/generic/page/ChunkHolderPageChar.java");
+        replicateObjectChunkPage(
+                "extensions/source-support/src/main/java/io/deephaven/generic/page/ChunkHolderPageChar.java");
 
         replicateChunks();
         replicateWritableChunks();
@@ -77,18 +97,19 @@ public class ReplicateSourcesAndChunks {
         replicateResettableWritableChunkChunks();
 
         replicateFactories();
-        charToAll("engine/chunk/src/main/java/io/deephaven/chunk/util/pools/CharChunkPool.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/util/pools/CharChunkPool.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/util/pools/CharChunkSoftPool.java");
 
         replicateChunkFillers();
 
-        charToAll("engine/table/src/main/java/io/deephaven/engine/table/impl/chunkfillers/CharChunkFiller.java");
+        charToAll(TASK, "engine/table/src/main/java/io/deephaven/engine/table/impl/chunkfillers/CharChunkFiller.java");
 
         replicateChunkColumnSource();
     }
 
     private static void replicateObjectSizedChunk() throws IOException {
         String path = ReplicatePrimitiveCode
-                .charToObject("engine/chunk/src/main/java/io/deephaven/chunk/sized/SizedCharChunk.java");
+                .charToObject(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/sized/SizedCharChunk.java");
         final File classFile = new File(path);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
         lines = globalReplacements(lines,
@@ -98,21 +119,223 @@ public class ReplicateSourcesAndChunks {
         FileUtils.writeLines(classFile, lines);
     }
 
-    private static void fixupLongReinterpret(String longImmutableSource) throws IOException {
+    private static void replicateObjectChunkPage(final String charPath) throws IOException {
+        String path = ReplicatePrimitiveCode.charToObject(TASK, charPath);
+        final File classFile = new File(path);
+        List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
+        lines = globalReplacements(lines,
+                "<ATTR extends Any>", "<T, ATTR extends Any>",
+                " <ATTR", " <T, ATTR",
+                "Object\\[]", "T[]",
+                "Object value", "T value",
+                "Object get\\(", "T get(");
+        lines = lines.stream().map(x -> x.replaceAll("ObjectChunk<([^,>]+)>", "ObjectChunk<T, $1>"))
+                .collect(Collectors.toList());
+        lines = lines.stream().map(x -> x.replaceAll("ObjectChunkPage<([^,>]+)>", "ObjectChunkPage<T, $1>"))
+                .collect(Collectors.toList());
+        FileUtils.writeLines(classFile, lines);
+    }
+
+    private static void fixupImmutableLongArraySource(String longImmutableSource) throws IOException {
         final File resultClassJavaFile = new File(longImmutableSource);
         List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
-        lines = addImport(lines, "import io.deephaven.time.DateTime;");
         lines = addImport(lines, "import io.deephaven.engine.table.ColumnSource;");
-        lines = replaceRegion(lines, "reinterpret", Arrays.asList("    @Override",
-                "    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(",
-                "            @NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
-                "        return alternateDataType == DateTime.class;",
+        lines = addImport(lines, LongFunction.class, ToLongFunction.class, Instant.class, ZonedDateTime.class,
+                LocalDate.class, LocalTime.class, Require.class, ZoneId.class);
+        lines = standardCleanups(lines);
+        lines = globalReplacements(lines, "/\\*\\s*MIXIN_IMPLS\\s*\\*/", ", ConvertibleTimeSource");
+        lines = replaceRegion(lines, "fillChunkByRanges", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillChunkByKeys", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillChunkUnordered", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByRanges",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByKeys",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkUnordered",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "reinterpretation", Arrays.asList(
+                "    @Override",
+                "    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(@NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        return alternateDataType == long.class || alternateDataType == Instant.class;",
                 "    }",
                 "",
-                "    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(",
-                "               @NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
-                "         //noinspection unchecked",
-                "         return (ColumnSource<ALTERNATE_DATA_TYPE>) new LongAsDateTimeColumnSource(this);",
+                "    @SuppressWarnings(\"unchecked\")",
+                "    @Override",
+                "    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(@NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        if (alternateDataType == this.getType()) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) this;",
+                "        } else if (alternateDataType == Instant.class) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) toInstant();",
+                "        }",
+                "",
+                "        throw new IllegalArgumentException(\"Cannot reinterpret `\" + getType().getName() + \"` to `\" + alternateDataType.getName() + \"`\");",
+                "    }",
+                "",
+                "    @Override",
+                "    public boolean supportsTimeConversion() {",
+                "        return true;",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<ZonedDateTime> toZonedDateTime(@NotNull final ZoneId zone) {",
+                "        return new ImmutableZonedDateTimeArraySource(Require.neqNull(zone, \"zone\"), this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalDate> toLocalDate(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalDateColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalTime> toLocalTime(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalTimeColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Instant> toInstant() {",
+                "        return new ImmutableInstantArraySource(this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Long> toEpochNano() {",
+                "        return this;",
+                "    }"));
+        FileUtils.writeLines(resultClassJavaFile, lines);
+    }
+
+    private static void fixupImmutableConstantLongSource(String longImmutableSource) throws IOException {
+        final File resultClassJavaFile = new File(longImmutableSource);
+        List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
+        lines = addImport(lines, "import io.deephaven.engine.table.ColumnSource;");
+        lines = addImport(lines, Instant.class, ZonedDateTime.class, LocalDate.class, LocalTime.class, Require.class,
+                ZoneId.class);
+        lines = standardCleanups(lines);
+        lines = globalReplacements(lines, "/\\*\\s*MIXIN_IMPLS\\s*\\*/", ", ConvertibleTimeSource");
+        lines = replaceRegion(lines, "reinterpretation", Arrays.asList(
+                "    @Override",
+                "    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(@NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        return alternateDataType == long.class || alternateDataType == Instant.class;",
+                "    }",
+                "",
+                "    @SuppressWarnings(\"unchecked\")",
+                "    @Override",
+                "    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(@NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        if (alternateDataType == this.getType()) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) this;",
+                "        } else if (alternateDataType == Instant.class) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) toInstant();",
+                "        }",
+                "",
+                "        throw new IllegalArgumentException(\"Cannot reinterpret `\" + getType().getName() + \"` to `\" + alternateDataType.getName() + \"`\");",
+                "    }",
+                "",
+                "    @Override",
+                "    public boolean supportsTimeConversion() {",
+                "        return true;",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<ZonedDateTime> toZonedDateTime(@NotNull final ZoneId zone) {",
+                "        return new ImmutableConstantZonedDateTimeSource(Require.neqNull(zone, \"zone\"), this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalDate> toLocalDate(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalDateColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalTime> toLocalTime(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalTimeColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Instant> toInstant() {",
+                "        return new ImmutableConstantInstantSource(this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Long> toEpochNano() {",
+                "        return this;",
+                "    }"));
+        FileUtils.writeLines(resultClassJavaFile, lines);
+    }
+
+    private static void fixupImmutable2DLongArraySource(String longImmutableSource) throws IOException {
+        final File resultClassJavaFile = new File(longImmutableSource);
+        List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
+        lines = addImport(lines, "import io.deephaven.engine.table.ColumnSource;");
+        lines = addImport(lines, LongFunction.class, ToLongFunction.class, Instant.class, ZonedDateTime.class,
+                LocalDate.class, LocalTime.class, Require.class, ZoneId.class);
+        lines = standardCleanups(lines);
+        lines = globalReplacements(lines, "/\\*\\s*MIXIN_IMPLS\\s*\\*/", ", ConvertibleTimeSource");
+        lines = replaceRegion(lines, "fillChunkByRanges", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillChunkByKeys", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillChunkUnordered", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByRanges",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByKeys",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkUnordered",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "reinterpretation", Arrays.asList(
+                "    @Override",
+                "    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(@NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        return alternateDataType == long.class || alternateDataType == Instant.class;",
+                "    }",
+                "",
+                "    @SuppressWarnings(\"unchecked\")",
+                "    @Override",
+                "    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(@NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        if (alternateDataType == this.getType()) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) this;",
+                "        } else if (alternateDataType == Instant.class) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) toInstant();",
+                "        }",
+                "",
+                "        throw new IllegalArgumentException(\"Cannot reinterpret `\" + getType().getName() + \"` to `\" + alternateDataType.getName() + \"`\");",
+                "    }",
+                "",
+                "    @Override",
+                "    public boolean supportsTimeConversion() {",
+                "        return true;",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<ZonedDateTime> toZonedDateTime(@NotNull final ZoneId zone) {",
+                "        return new Immutable2DZonedDateTimeArraySource(Require.neqNull(zone, \"zone\"), this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalDate> toLocalDate(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalDateColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalTime> toLocalTime(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalTimeColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Instant> toInstant() {",
+                "        return new Immutable2DInstantArraySource(this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Long> toEpochNano() {",
+                "        return this;",
                 "    }"));
         FileUtils.writeLines(resultClassJavaFile, lines);
     }
@@ -121,7 +344,8 @@ public class ReplicateSourcesAndChunks {
         final File resultClassJavaFile = new File(byteImmutableSource);
         List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
         lines = addImport(lines, "import io.deephaven.engine.table.ColumnSource;");
-        lines = replaceRegion(lines, "reinterpret", Arrays.asList("    @Override",
+        lines = replaceRegion(lines, "reinterpretation", Arrays.asList(
+                "    @Override",
                 "    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(",
                 "            @NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
                 "        return alternateDataType == Boolean.class;",
@@ -136,14 +360,14 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateSingleValues() throws IOException {
-        charToAllButBoolean(
+        charToAllButBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSingleValueSource.java");
         replicateObjectSingleValue();
         replicateBooleanSingleValue();
     }
 
     private static void replicateObjectSingleValue() throws IOException {
-        final String resultClassJavaPath = charToObject(
+        final String resultClassJavaPath = charToObject(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSingleValueSource.java");
         final File resultClassJavaFile = new File(resultClassJavaPath);
         List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
@@ -182,7 +406,7 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateBooleanSingleValue() throws IOException {
-        final String resultClassJavaPath = charToBoolean(
+        final String resultClassJavaPath = charToBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSingleValueSource.java");
         final File resultClassJavaFile = new File(resultClassJavaPath);
         List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
@@ -212,13 +436,13 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateChunkColumnSource() throws IOException {
-        charToAllButBoolean(
+        charToAllButBoolean(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/chunkcolumnsource/CharChunkColumnSource.java");
         replicateObjectChunkColumnSource();
     }
 
     private static void replicateObjectChunkColumnSource() throws IOException {
-        final String resultClassJavaPath = charToObject(
+        final String resultClassJavaPath = charToObject(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/chunkcolumnsource/CharChunkColumnSource.java");
         final File resultClassJavaFile = new File(resultClassJavaPath);
         List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
@@ -257,8 +481,7 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateObjectImmutableSource(String immutableSourcePath) throws IOException {
-        final String resultClassJavaPath = charToObject(
-                immutableSourcePath);
+        final String resultClassJavaPath = charToObject(TASK, immutableSourcePath);
         final File resultClassJavaFile = new File(resultClassJavaPath);
         List<String> lines = FileUtils.readLines(resultClassJavaFile, Charset.defaultCharset());
         lines = removeRegion(lines, "boxing imports");
@@ -323,26 +546,31 @@ public class ReplicateSourcesAndChunks {
         return lines;
     }
 
+    private static void replicateArraySources() throws IOException {
+        charToAllButBooleanAndLong(TASK,
+                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterArraySource.java");
+        replicateLongArraySource();
+    }
+
     private static void replicateSparseArraySources() throws IOException {
         replicateOneOrN();
 
-        charToAllButBooleanAndLong(
+        charToAllButBooleanAndLong(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSparseArraySource.java");
-        replicateSparseLongSource();
-
-        replicateSparseBooleanSource();
-        replicateSparseObjectSource();
+        replicateLongSparseArraySource();
+        replicateBooleanSparseArraySource();
+        replicateObjectSparseArraySource();
     }
 
     private static void replicateChunks() throws IOException {
-        charToAllButBooleanAndByte("engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
+        charToAllButBooleanAndByte(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
         replicateByteChunks();
         replicateBooleanChunks();
         replicateObjectChunks();
     }
 
     private static void replicateByteChunks() throws IOException {
-        final String className = charToByte("engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
+        final String className = charToByte(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
         final File classFile = new File(className);
 
         List<String> classLines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -362,16 +590,18 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateBooleanChunks() throws IOException {
-        final String className = charToBoolean("engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
+        final String className = charToBoolean(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
         final File classFile = new File(className);
         List<String> classLines = FileUtils.readLines(classFile, Charset.defaultCharset());
         classLines = ReplicationUtils.removeRegion(classLines, "BufferImports");
         classLines = ReplicationUtils.removeRegion(classLines, "CopyToBuffer");
+        classLines = ReplicationUtils.removeRegion(classLines, "BinarySearchImports");
+        classLines = ReplicationUtils.removeRegion(classLines, "BinarySearch");
         FileUtils.writeLines(classFile, classLines);
     }
 
     private static void replicateObjectChunks() throws IOException {
-        final String className = charToObject("engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
+        final String className = charToObject(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/CharChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
         lines = globalReplacements(lines,
@@ -400,12 +630,12 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateChunkChunks() throws IOException {
-        charToAll("engine/chunk/src/main/java/io/deephaven/chunk/CharChunkChunk.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/CharChunkChunk.java");
         replicateObjectChunkChunks();
     }
 
     private static void replicateObjectChunkChunks() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/CharChunkChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -426,7 +656,7 @@ public class ReplicateSourcesAndChunks {
 
     private static void replicateWritableChunks() throws IOException {
         final List<String> files =
-                charToAllButBoolean("engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunk.java");
+                charToAllButBoolean(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunk.java");
         for (String fileName : files) {
             final File classFile = new File(fileName);
             List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -438,7 +668,7 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateWritableBooleanChunks() throws IOException {
-        final String writableBooleanChunkClassName = charToBoolean(
+        final String writableBooleanChunkClassName = charToBoolean(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunk.java");
         final File writableBooleanChunkClassFile = new File(writableBooleanChunkClassName);
         List<String> writableBooleanChunkClassLines =
@@ -456,7 +686,7 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateWritableObjectChunks() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -475,10 +705,10 @@ public class ReplicateSourcesAndChunks {
         lines = ReplicationUtils.removeRegion(lines, "BufferImports");
         lines = expandDowncast(lines, "WritableObjectChunk");
         lines = ReplicationUtils.replaceRegion(lines, "fillWithBoxedValue", Arrays.asList(
-                "    @Override\n" +
-                        "    public final void fillWithBoxedValue(int offset, int size, Object value) {\n" +
-                        "        fillWithValue(offset,size, (T)value);\n" +
-                        "    }"));
+                "    @Override",
+                "    public final void fillWithBoxedValue(int offset, int size, Object value) {",
+                "        fillWithValue(offset,size, (T)value);",
+                "    }"));
         lines = ReplicationUtils.addImport(lines,
                 "import io.deephaven.util.compare.ObjectComparisons;",
                 "import java.util.Comparator;");
@@ -494,13 +724,13 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateWritableChunkChunks() throws IOException {
-        charToAllButBoolean("engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunkChunk.java");
+        charToAllButBoolean(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunkChunk.java");
         replicateWritableBooleanChunkChunks();
         replicateWritableObjectChunkChunks();
     }
 
     private static void replicateWritableBooleanChunkChunks() throws IOException {
-        final String writableBooleanChunkClassName = charToBoolean(
+        final String writableBooleanChunkClassName = charToBoolean(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunkChunk.java");
         final File writableBooleanChunkClassFile = new File(writableBooleanChunkClassName);
         List<String> writableBooleanChunkClassLines =
@@ -518,7 +748,7 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateWritableObjectChunkChunks() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/WritableCharChunkChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -539,12 +769,12 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateResettableChunks() throws IOException {
-        charToAll("engine/chunk/src/main/java/io/deephaven/chunk/ResettableCharChunk.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/ResettableCharChunk.java");
         replicateResettableObjectChunks();
     }
 
     private static void replicateResettableObjectChunks() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/ResettableCharChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -562,12 +792,12 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateResettableWritableChunks() throws IOException {
-        charToAll("engine/chunk/src/main/java/io/deephaven/chunk/ResettableWritableCharChunk.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/ResettableWritableCharChunk.java");
         replicateResettableWritableObjectChunks();
     }
 
     private static void replicateResettableWritableObjectChunks() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/ResettableWritableCharChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -585,12 +815,12 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateResettableWritableChunkChunks() throws IOException {
-        charToAll("engine/chunk/src/main/java/io/deephaven/chunk/ResettableWritableCharChunkChunk.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/ResettableWritableCharChunkChunk.java");
         replicateResettableWritableObjectChunkChunks();
     }
 
     private static void replicateResettableWritableObjectChunkChunks() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/ResettableWritableCharChunkChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -610,12 +840,12 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateResettableChunkChunks() throws IOException {
-        charToAll("engine/chunk/src/main/java/io/deephaven/chunk/ResettableCharChunkChunk.java");
+        charToAll(TASK, "engine/chunk/src/main/java/io/deephaven/chunk/ResettableCharChunkChunk.java");
         replicateResettableObjectChunkChunks();
     }
 
     private static void replicateResettableObjectChunkChunks() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/ResettableCharChunkChunk.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -630,9 +860,9 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateFactories() throws IOException {
-        charToAllButBoolean(
+        charToAllButBoolean(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/util/factories/CharChunkFactory.java");
-        final String className = charToBoolean(
+        final String className = charToBoolean(TASK,
                 "engine/chunk/src/main/java/io/deephaven/chunk/util/factories/CharChunkFactory.java");
         final File classFile = new File(className);
         List<String> classLines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -640,12 +870,12 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateChunkFillers() throws IOException {
-        charToAll("engine/table/src/main/java/io/deephaven/engine/table/impl/chunkfillers/CharChunkFiller.java");
+        charToAll(TASK, "engine/table/src/main/java/io/deephaven/engine/table/impl/chunkfillers/CharChunkFiller.java");
         replicateObjectChunkFiller();
     }
 
     private static void replicateObjectChunkFiller() throws IOException {
-        final String className = charToObject(
+        final String className = charToObject(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/chunkfillers/CharChunkFiller.java");
         final File classFile = new File(className);
         List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
@@ -656,43 +886,255 @@ public class ReplicateSourcesAndChunks {
         FileUtils.writeLines(classFile, lines);
     }
 
-    private static void replicateSparseLongSource() throws IOException {
-        final File longSparseArraySourceFile = new File(
-                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/LongSparseArraySource.java");
-        final File abstractLongSparseArraySourceFile = new File(
-                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/AbstractSparseLongArraySource.java");
-
-
-        final String longSparseCode = FileUtils.readFileToString(longSparseArraySourceFile, Charset.defaultCharset());
-        charToLong("engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSparseArraySource.java",
-                Collections.emptyMap());
-
-        Files.delete(abstractLongSparseArraySourceFile.toPath());
-        Files.move(longSparseArraySourceFile.toPath(), abstractLongSparseArraySourceFile.toPath());
-
-        FileUtils.writeStringToFile(longSparseArraySourceFile, longSparseCode, Charset.defaultCharset());
-
-        List<String> abstractLines = FileUtils.readLines(abstractLongSparseArraySourceFile, Charset.defaultCharset());
-        abstractLines = globalReplacements(abstractLines, "LongSparseArraySource", "AbstractSparseLongArraySource",
-                "public class AbstractSparseLongArraySource extends SparseArrayColumnSource<Long> implements MutableColumnSourceGetDefaults.ForLong",
-                "abstract public class AbstractSparseLongArraySource<T> extends SparseArrayColumnSource<T> implements MutableColumnSourceGetDefaults.LongBacked<T>",
-                "ColumnSource<Long>", "ColumnSource<T>");
-        abstractLines = replaceRegion(abstractLines, "constructor", Arrays.asList(
-                "    AbstractSparseLongArraySource(Class<T> type) {",
-                "        super(type);",
-                "        blocks = new LongOneOrN.Block0();", "    }"));
-        abstractLines = replaceRegion(abstractLines, "boxed methods", Collections.emptyList());
-        abstractLines = replaceRegion(abstractLines, "copy method", Collections.emptyList());
-        abstractLines = simpleFixup(abstractLines, "getChunk", "LongChunk<Values> getChunk", "Chunk<Values> getChunk");
-        abstractLines = simpleFixup(abstractLines, "getPrevChunk", "LongChunk<Values> getPrevChunk",
-                "Chunk<Values> getPrevChunk");
-        abstractLines = standardCleanups(abstractLines);
-
-        FileUtils.writeLines(abstractLongSparseArraySourceFile, abstractLines);
+    private static void replicateLongArraySource() throws IOException {
+        final String className = charToLong(TASK,
+                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterArraySource.java");
+        final File classFile = new File(className);
+        List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
+        lines = addImport(lines,
+                "import io.deephaven.engine.table.impl.util.copy.CopyKernel;");
+        lines = addImport(lines, LongFunction.class, ToLongFunction.class, Instant.class, ZonedDateTime.class,
+                LocalDate.class, LocalTime.class, Require.class, ZoneId.class);
+        lines = standardCleanups(lines);
+        lines = globalReplacements(lines, "/\\*\\s*MIXIN_IMPLS\\s*\\*/", ", ConvertibleTimeSource");
+        lines = replaceRegion(lines, "getAndAddUnsafe", Arrays.asList(
+                "    public final long getAndAddUnsafe(long index, long addend) {",
+                "        final int blockIndex = (int) (index >> LOG_BLOCK_SIZE);",
+                "        final int indexWithinBlock = (int) (index & INDEX_MASK);",
+                "        final long oldValue = blocks[blockIndex][indexWithinBlock];",
+                "        if (addend != 0) {",
+                "            if (shouldRecordPrevious(index, prevBlocks, recycler)) {",
+                "                prevBlocks[blockIndex][indexWithinBlock] = oldValue;",
+                "            }",
+                "            blocks[blockIndex][indexWithinBlock] = oldValue + addend;",
+                "        }",
+                "        return oldValue;",
+                "    }"));
+        lines = replaceRegion(lines, "fillChunk", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillPrevChunk", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillSparseChunk", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillSparsePrevChunk", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillSparseChunkUnordered", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillSparsePrevChunkUnordered", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "copyFromChunk",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByRanges",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByKeys",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkUnordered",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "reinterpretation", Arrays.asList(
+                "    @Override",
+                "    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(@NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        return alternateDataType == long.class || alternateDataType == Instant.class;",
+                "    }",
+                "",
+                "    @SuppressWarnings(\"unchecked\")",
+                "    @Override",
+                "    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(@NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        if (alternateDataType == this.getType()) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) this;",
+                "        } else if (alternateDataType == Instant.class) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) toInstant();",
+                "        }",
+                "",
+                "        throw new IllegalArgumentException(\"Cannot reinterpret `\" + getType().getName() + \"` to `\" + alternateDataType.getName() + \"`\");",
+                "    }",
+                "",
+                "    @Override",
+                "    public boolean supportsTimeConversion() {",
+                "        return true;",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<ZonedDateTime> toZonedDateTime(@NotNull final ZoneId zone) {",
+                "        return new ZonedDateTimeArraySource(Require.neqNull(zone, \"zone\"), this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalDate> toLocalDate(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalDateColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalTime> toLocalTime(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalTimeColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Instant> toInstant() {",
+                "        return new InstantArraySource(this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Long> toEpochNano() {",
+                "        return this;",
+                "    }"));
+        FileUtils.writeLines(classFile, lines);
     }
 
-    private static void replicateSparseBooleanSource() throws IOException {
-        final String booleanPath = charToBooleanAsByte(
+    private static void replicateLongSparseArraySource() throws IOException {
+        final String className = charToLong(TASK,
+                "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSparseArraySource.java");
+        final File classFile = new File(className);
+        List<String> lines = FileUtils.readLines(classFile, Charset.defaultCharset());
+        lines = addImport(lines, LongFunction.class, ToLongFunction.class, Instant.class, ZonedDateTime.class,
+                LocalDate.class, LocalTime.class, Require.class, ZoneId.class);
+        lines = standardCleanups(lines);
+        lines = globalReplacements(lines, "/\\*\\s*MIXIN_IMPLS\\s*\\*/", ", ConvertibleTimeSource");
+        lines = replaceRegion(lines, "fillByRanges", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillByKeys", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillByUnRowSequence", l -> addLongToBoxedAdapter(l, "LongFunction<R>",
+                "WritableObjectChunk<R, ? super Values>", "asWritableObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByRanges",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkByKeys",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "fillFromChunkUnordered",
+                l -> addLongToBoxedAdapter(l, "ToLongFunction<R>", "ObjectChunk<R, ? extends Values>",
+                        "asObjectChunk"));
+        lines = replaceRegion(lines, "reinterpretation", Arrays.asList(
+                "    @Override",
+                "    public <ALTERNATE_DATA_TYPE> boolean allowsReinterpret(@NotNull final Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        return alternateDataType == long.class || alternateDataType == Instant.class;",
+                "    }",
+                "",
+                "    @SuppressWarnings(\"unchecked\")",
+                "    @Override",
+                "    protected <ALTERNATE_DATA_TYPE> ColumnSource<ALTERNATE_DATA_TYPE> doReinterpret(@NotNull Class<ALTERNATE_DATA_TYPE> alternateDataType) {",
+                "        if (alternateDataType == this.getType()) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) this;",
+                "        } else if (alternateDataType == Instant.class) {",
+                "            return (ColumnSource<ALTERNATE_DATA_TYPE>) toInstant();",
+                "        }",
+                "",
+                "        throw new IllegalArgumentException(\"Cannot reinterpret `\" + getType().getName() + \"` to `\" + alternateDataType.getName() + \"`\");",
+                "    }",
+                "",
+                "    @Override",
+                "    public boolean supportsTimeConversion() {",
+                "        return true;",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<ZonedDateTime> toZonedDateTime(@NotNull final ZoneId zone) {",
+                "        return new ZonedDateTimeSparseArraySource(Require.neqNull(zone, \"zone\"), this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalDate> toLocalDate(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalDateColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<LocalTime> toLocalTime(@NotNull final ZoneId zone) {",
+                "        return new LongAsLocalTimeColumnSource(this, zone);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Instant> toInstant() {",
+                "        return new InstantSparseArraySource(this);",
+                "    }",
+                "",
+                "    @Override",
+                "    public ColumnSource<Long> toEpochNano() {",
+                "        return this;",
+                "    }"));
+        FileUtils.writeLines(classFile, lines);
+    }
+
+    private static List<String> addLongToBoxedAdapter(
+            final List<String> inputLines, String convertType, String chunkClass, String chunkMethod) {
+        List<String> permuted = globalReplacements(inputLines,
+                "/\\*\\s*TYPE_MIXIN\\s*\\*/", "<R>",
+                "/\\*\\s*CONVERTER\\s*\\*/", ", " + convertType + " converter",
+                "/\\*\\s*CONVERTER_ARG\\s*\\*/", ", converter",
+                "@Override", "",
+                "NULL_LONG", "null");
+
+        permuted = applyFixup(permuted, "chunkDecl", "^(\\s+)[^=]+=\\s+([^.]+)(.*)", (m) -> Collections.singletonList(
+                m.group(1) + "final " + chunkClass + " chunk = " + m.group(2) + "." + chunkMethod + "();"));
+        permuted = replaceRegion(permuted, "copyFromTypedArray", Arrays.asList(
+                "                    for (int ii = 0; ii < length; ii++) {",
+                "                        chunk.set(offset + ii, converter.apply(block[sIndexWithinBlock + ii]));",
+                "                    }"));
+        permuted = replaceRegion(permuted, "copyToTypedArray", Arrays.asList(
+                "                for (int jj = 0; jj < length; jj++) {",
+                "                    block[jj + sIndexWithinBlock] = converter.applyAsLong(chunk.get(offset + jj));",
+                "                }"));
+        permuted = replaceRegion(permuted, "copyFromTypedArrayImmutable", Arrays.asList(
+                "           final int offset = destPosition.getAndAdd(length);",
+                "           for (int ii = 0; ii < length; ii++) {",
+                "               chunk.set(offset + ii, converter.apply(data[(int)start + ii]));",
+                "           }"));
+        permuted = replaceRegion(permuted, "copyToTypedArrayImmutable", Arrays.asList(
+                "            final int offset = srcPos.getAndAdd(length);",
+                "            for (int jj = 0; jj < length; jj++) {",
+                "                data[(int)start + jj] = converter.applyAsLong(chunk.get(offset + jj));",
+                "            }"));
+        permuted = replaceRegion(permuted, "copyFromTypedArrayImmutable2D", Arrays.asList(
+                "               final int destOffset = destPosition.getAndAdd(length);",
+                "               for (int ii = 0; ii < length; ii++) {",
+                "                   chunk.set(destOffset + ii, converter.apply(data[segment][offset + ii]));",
+                "               }"));
+        permuted = replaceRegion(permuted, "copyToTypedArrayImmutable2D", Arrays.asList(
+                "               final int offset = srcPos.getAndAdd(length);",
+                "               for (int jj = 0; jj < length; jj++) {",
+                "                   data[segment][destOffset + jj] = converter.applyAsLong(chunk.get(offset + jj));",
+                "               }"));
+        permuted = replaceRegion(permuted, "conditionalCopy", Arrays.asList(
+                "                final int chunkOffset = destOffset.intValue();",
+                "                long[] baseInput = (long[]) getBlock(blockNo);",
+                "                long[] overInput = (long[]) getPrevBlock(blockNo);",
+                "",
+                "                final int srcEndOffset = srcOffset + length;",
+                "                int nextBit = CopyKernel.Utils.nextSetBit(inUse, srcOffset, srcEndOffset, false);",
+                "",
+                "                for (int ii = 0; ii < length; ++ii) {",
+                "                    if (ii != nextBit - srcOffset) {",
+                "                        chunk.set(ii + chunkOffset, converter.apply(baseInput[ii + srcOffset]));",
+                "                    } else {",
+                "                        nextBit = CopyKernel.Utils.nextSetBit(inUse, nextBit + 1, srcEndOffset, false);",
+                "                        chunk.set(ii + chunkOffset, converter.apply(overInput[ii + srcOffset]));",
+                "                    }",
+                "                }"));
+        permuted = applyFixup(permuted, "copyFromArray",
+                "^(\\s+).+\\.copyFromArray\\(([^,]+), ([^,]+), ([^,]+), ([^)]+)\\).*", (m) -> Arrays.asList(
+                        m.group(1) + "{",
+                        m.group(1) + "    long[] block = (long[])" + m.group(2) + ";",
+                        m.group(1) + "    for (int ii = 0; ii < " + m.group(5) + "; ii++) {",
+                        m.group(1) + "        chunk.set(ii + " + m.group(4) + ", converter.apply(block[ii + "
+                                + m.group(3) + "]));",
+                        m.group(1) + "    }",
+                        m.group(1) + "}"));
+        permuted = applyFixup(permuted, "conversion", "^(\\s+chunk\\.set\\([^,]+,)([^;]+);",
+                (m) -> Collections.singletonList(m.group(1) + "converter.apply(" + m.group(2) + ");"));
+        permuted = applyFixup(permuted, "conversion", "^([^=]+=\\s+)([^;]+);",
+                (m) -> Collections.singletonList(m.group(1) + "converter.applyAsLong(" + m.group(2) + ");"));
+        permuted = applyFixup(permuted, "conversion", "^(\\s+set\\([^,]+,)([^;]+);",
+                (m) -> Collections.singletonList(m.group(1) + "converter.applyAsLong(" + m.group(2) + ");"));
+
+        // Stick them together.
+        return Stream.concat(inputLines.stream(), permuted.stream()).collect(Collectors.toList());
+    }
+
+    private static void replicateBooleanSparseArraySource() throws IOException {
+        final String booleanPath = charToBooleanAsByte(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSparseArraySource.java",
                 Collections.emptyMap());
         final File booleanFile = new File(booleanPath);
@@ -702,7 +1144,8 @@ public class ReplicateSourcesAndChunks {
                 "import io.deephaven.engine.table.impl.AbstractColumnSource;",
                 "import io.deephaven.engine.table.WritableColumnSource;",
                 "import io.deephaven.util.BooleanUtils;",
-                "import static io.deephaven.util.BooleanUtils.NULL_BOOLEAN_AS_BYTE;");
+                "import static io.deephaven.util.BooleanUtils.NULL_BOOLEAN_AS_BYTE;",
+                "import io.deephaven.engine.table.WritableSourceWithPrepareForParallelPopulation;");
         lines = globalReplacements(lines, "BooleanOneOrN", "ByteOneOrN");
         lines = globalReplacements(lines, "WritableBooleanChunk", "WritableObjectChunk",
                 "asBooleanChunk", "asObjectChunk",
@@ -714,6 +1157,8 @@ public class ReplicateSourcesAndChunks {
                 "ObjectChunk<[?] super Values>", "ObjectChunk<Boolean, ? super Values>");
         lines = simpleFixup(lines, "primitive get", "NULL_BOOLEAN", "NULL_BOOLEAN_AS_BYTE", "getBoolean", "getByte",
                 "getPrevBoolean", "getPrevByte");
+        lines = simpleFixup(lines, "nullByKeys", "NULL_BOOLEAN", "NULL_BOOLEAN_AS_BYTE");
+        lines = simpleFixup(lines, "nullByRanges", "NULL_BOOLEAN", "NULL_BOOLEAN_AS_BYTE");
         lines = simpleFixup(lines, "setNull", "NULL_BOOLEAN", "NULL_BOOLEAN_AS_BYTE");
 
         lines = replaceRegion(lines, "copyFromTypedArray", Arrays.asList(
@@ -727,7 +1172,7 @@ public class ReplicateSourcesAndChunks {
 
         lines = applyFixup(lines, "fillByKeys", "(.*chunk.set\\(.*, )(ctx\\.block.*)(\\);.*)", m -> Collections
                 .singletonList(m.group(1) + "BooleanUtils.byteAsBoolean(" + m.group(2) + ")" + m.group(3)));
-        lines = applyFixup(lines, "fillByUnRowSequence", "(.*byteChunk.set\\(.*, )(block.*)(\\);.*)", m -> Collections
+        lines = applyFixup(lines, "fillByUnRowSequence", "(.*chunk.set\\(.*, )(block.*)(\\);.*)", m -> Collections
                 .singletonList(m.group(1) + "BooleanUtils.byteAsBoolean(" + m.group(2) + ")" + m.group(3)));
         lines = applyFixup(lines, "fillFromChunkByKeys", "(.*)(chunk.get\\(.*\\));",
                 m -> Collections.singletonList(m.group(1) + "BooleanUtils.booleanAsByte(" + m.group(2) + ");"));
@@ -753,9 +1198,8 @@ public class ReplicateSourcesAndChunks {
                 "        return getPrevChunkByFilling(context, RowSequence).asObjectChunk();",
                 "    }"));
 
-        lines = simpleFixup(lines, "fillByUnRowSequence", "WritableObjectChunk byteChunk",
-                "WritableObjectChunk<Boolean, ? super Values> byteChunk");
-        lines = simpleFixup(lines, "fillByUnRowSequence", "byteChunk", "booleanObjectChunk");
+        lines = simpleFixup(lines, "fillByUnRowSequence", "WritableObjectChunk chunk",
+                "WritableObjectChunk<Boolean, ? super Values> chunk");
         lines = simpleFixup(lines, "fillByUnRowSequence",
                 "BooleanUtils\\.byteAsBoolean\\(blockToUse == null \\? NULL_BOOLEAN : blockToUse\\[indexWithinBlock\\]\\)",
                 "blockToUse == null ? NULL_BOOLEAN : BooleanUtils.byteAsBoolean(blockToUse[indexWithinBlock])");
@@ -773,7 +1217,7 @@ public class ReplicateSourcesAndChunks {
                 "        return (ColumnSource<ALTERNATE_DATA_TYPE>) new BooleanSparseArraySource.ReinterpretedAsByte(this);",
                 "    }",
                 "",
-                "    public static class ReinterpretedAsByte extends AbstractColumnSource<Byte> implements MutableColumnSourceGetDefaults.ForByte, FillUnordered<Values>, WritableColumnSource<Byte> {",
+                "    public static class ReinterpretedAsByte extends AbstractColumnSource<Byte> implements MutableColumnSourceGetDefaults.ForByte, FillUnordered<Values>, WritableColumnSource<Byte>, WritableSourceWithPrepareForParallelPopulation {",
                 "        private final BooleanSparseArraySource wrapped;",
                 "",
                 "        private ReinterpretedAsByte(BooleanSparseArraySource wrapped) {",
@@ -979,9 +1423,9 @@ public class ReplicateSourcesAndChunks {
                 "            final ByteChunk<? extends Values> chunk = src.asByteChunk();",
                 "            final LongChunk<OrderedRowKeys> keys = RowSequence.asRowKeyChunk();",
                 "",
-                "            final boolean hasPrev = wrapped.prevFlusher != null;",
+                "            final boolean trackPrevious = wrapped.shouldTrackPrevious();",
                 "",
-                "            if (hasPrev) {",
+                "            if (trackPrevious) {",
                 "                wrapped.prevFlusher.maybeActivate();",
                 "            }",
                 "",
@@ -1003,13 +1447,13 @@ public class ReplicateSourcesAndChunks {
                 "                }",
                 "",
                 "                // This conditional with its constant condition should be very friendly to the branch predictor.",
-                "                final byte[] prevBlock = hasPrev ? wrapped.ensurePrevBlock(firstRowKey, block0, block1, block2) : null;",
-                "                final long[] inUse = hasPrev ? wrapped.prevInUse.get(block0).get(block1).get(block2) : null;",
+                "                final byte[] prevBlock = trackPrevious ? wrapped.ensurePrevBlock(firstRowKey, block0, block1, block2) : null;",
+                "                final long[] inUse = trackPrevious ? wrapped.prevInUse.get(block0).get(block1).get(block2) : null;",
                 "",
                 "                while (ii <= lastII) {",
                 "                    final int indexWithinBlock = (int) (keys.get(ii) & INDEX_MASK);",
                 "                    // This 'if' with its constant condition should be very friendly to the branch predictor.",
-                "                    if (hasPrev) {",
+                "                    if (trackPrevious) {",
                 "                        assert inUse != null;",
                 "                        assert prevBlock != null;",
                 "",
@@ -1026,12 +1470,17 @@ public class ReplicateSourcesAndChunks {
                 "                }",
                 "            }",
                 "        }",
+                "",
+                "        @Override",
+                "        public void prepareForParallelPopulation(RowSequence rowSequence) {",
+                "           wrapped.prepareForParallelPopulation(rowSequence);",
+                "        }",
                 "    }"));
         FileUtils.writeLines(booleanFile, lines);
     }
 
-    private static void replicateSparseObjectSource() throws IOException {
-        final String objectPath = charToObject(
+    private static void replicateObjectSparseArraySource() throws IOException {
+        final String objectPath = charToObject(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/CharacterSparseArraySource.java");
         final File objectFile = new File(objectPath);
         List<String> lines = FileUtils.readLines(objectFile, Charset.defaultCharset());
@@ -1042,8 +1491,10 @@ public class ReplicateSourcesAndChunks {
         lines = globalReplacements(lines, "ObjectOneOrN.Block([0-2])", "ObjectOneOrN.Block$1<T>");
 
         lines = globalReplacements(lines,
-                "public class ObjectSparseArraySource extends SparseArrayColumnSource<Object> implements MutableColumnSourceGetDefaults.ForObject",
-                "public class ObjectSparseArraySource<T> extends SparseArrayColumnSource<T> implements MutableColumnSourceGetDefaults.ForObject<T>",
+                "public class ObjectSparseArraySource extends SparseArrayColumnSource<Object>",
+                "public class ObjectSparseArraySource<T> extends SparseArrayColumnSource<T>",
+                "implements MutableColumnSourceGetDefaults.ForObject",
+                "implements MutableColumnSourceGetDefaults.ForObject<T>",
                 "Object[ ]?\\[\\]", "T []",
                 "NULL_OBJECT", "null",
                 "getObject", "get",
@@ -1057,7 +1508,8 @@ public class ReplicateSourcesAndChunks {
                 "recycler2.borrowItem\\(\\)", "(T[][])recycler2.borrowItem()",
                 "recycler1.borrowItem\\(\\)", "(T[][][])recycler1.borrowItem()",
                 "recycler0.borrowItem\\(\\)", "(T[][][][])recycler0.borrowItem()",
-                "public final void set\\(long key, Object value\\) \\{", "public final void set(long key, T value) {");
+                "public final void set\\(long key, Object value\\) \\{", "public final void set(long key, T value) {",
+                "Object oldValue", "T oldValue");
 
         lines = replaceRegion(lines, "recyclers", Arrays.asList(
                 "    private static final SoftRecycler recycler = new SoftRecycler<>(DEFAULT_RECYCLER_CAPACITY,",
@@ -1101,8 +1553,8 @@ public class ReplicateSourcesAndChunks {
     }
 
     private static void replicateOneOrN() throws IOException {
-        charToAll("engine/table/src/main/java/io/deephaven/engine/table/impl/sources/sparse/CharOneOrN.java");
-        final String objectOneOrNPath = charToObject(
+        charToAll(TASK, "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/sparse/CharOneOrN.java");
+        final String objectOneOrNPath = charToObject(TASK,
                 "engine/table/src/main/java/io/deephaven/engine/table/impl/sources/sparse/CharOneOrN.java");
         final File oneOrNFile = new File(objectOneOrNPath);
         List<String> lines = FileUtils.readLines(oneOrNFile, Charset.defaultCharset());

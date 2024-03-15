@@ -1,11 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.kafka;
 
 import io.deephaven.engine.table.ColumnDefinition;
 import org.apache.avro.Schema;
 
+import org.apache.avro.util.Utf8;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -38,6 +39,18 @@ public class KafkaToolsTest {
         assertEquals(2, colDefs.size());
         assertEquals("Symbol", colDefs.get(0).getName());
         assertEquals(String.class, colDefs.get(0).getDataType());
+        assertEquals("Price", colDefs.get(1).getName());
+        assertEquals(double.class, colDefs.get(1).getDataType());
+    }
+
+    @Test
+    public void testAvroSchemaWithUTF8Strings() {
+        final Schema avroSchema = new Schema.Parser().parse(schemaWithNull);
+        final List<ColumnDefinition<?>> colDefs = new ArrayList<>();
+        KafkaTools.avroSchemaToColumnDefinitions(colDefs, null, avroSchema, KafkaTools.DIRECT_MAPPING, true);
+        assertEquals(2, colDefs.size());
+        assertEquals("Symbol", colDefs.get(0).getName());
+        assertEquals(Utf8.class, colDefs.get(0).getDataType());
         assertEquals("Price", colDefs.get(1).getName());
         assertEquals(double.class, colDefs.get(1).getDataType());
     }

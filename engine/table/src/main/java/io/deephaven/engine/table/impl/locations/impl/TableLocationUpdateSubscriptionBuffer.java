@@ -1,11 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.locations.impl;
 
 import io.deephaven.base.verify.Require;
 import io.deephaven.engine.table.impl.locations.TableDataException;
 import io.deephaven.engine.table.impl.locations.TableLocation;
+import io.deephaven.engine.table.impl.locations.TableLocationRemovedException;
 import io.deephaven.engine.table.impl.locations.TableLocationState;
 import org.jetbrains.annotations.NotNull;
 
@@ -86,8 +87,9 @@ public class TableLocationUpdateSubscriptionBuffer implements TableLocation.List
         synchronized (updateLock) {
             if (observedNonNullSize) {
                 if (tableLocation.getSize() == TableLocationState.NULL_SIZE) {
-                    pendingException = new TableDataException(
-                            "Location " + tableLocation + " is no longer available, data has been removed or replaced");
+                    pendingException = new TableLocationRemovedException(
+                            "Location " + tableLocation + " is no longer available, data has been removed or replaced",
+                            tableLocation.getKey().makeImmutable());
                     // No need to bother unsubscribing - the consumer will either leak (and allow asynchronous cleanup)
                     // or unsubscribe all of its locations as a result of handling this exception when it polls.
                 }

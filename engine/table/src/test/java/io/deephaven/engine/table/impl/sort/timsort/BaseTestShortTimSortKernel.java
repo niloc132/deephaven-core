@@ -1,11 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit BaseTestCharTimSortKernel and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit BaseTestCharTimSortKernel and run "./gradlew replicateSortKernelTests" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.sort.timsort;
 
 import io.deephaven.chunk.attributes.Any;
@@ -49,9 +48,41 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
     public static class ShortSortKernelStuff extends SortKernelStuff<ShortLongTuple> {
 
         private final WritableShortChunk<Any> shortChunk;
-        private final ShortLongTimsortKernel.ShortLongSortKernelContext context;
+        private final ShortTimsortKernel.ShortSortKernelContext<Any> context;
 
         public ShortSortKernelStuff(List<ShortLongTuple> javaTuples) {
+            super(javaTuples.size());
+            final int size = javaTuples.size();
+            shortChunk = WritableShortChunk.makeWritableChunk(size);
+            context = ShortTimsortKernel.createContext(size);
+
+            prepareShortChunks(javaTuples, shortChunk, rowKeys);
+        }
+
+        @Override
+        public void run() {
+            ShortTimsortKernel.sort(context, shortChunk);
+        }
+
+        @Override
+        void check(List<ShortLongTuple> expected) {
+            verify(expected.size(), expected, shortChunk);
+        }
+
+        @Override
+        public void close() {
+            super.close();
+            shortChunk.close();
+            context.close();
+        }
+    }
+
+    public static class ShortLongSortKernelStuff extends SortKernelStuff<ShortLongTuple> {
+
+        private final WritableShortChunk<Any> shortChunk;
+        private final ShortLongTimsortKernel.ShortLongSortKernelContext<Any, RowKeys> context;
+
+        public ShortLongSortKernelStuff(List<ShortLongTuple> javaTuples) {
             super(javaTuples.size());
             final int size = javaTuples.size();
             shortChunk = WritableShortChunk.makeWritableChunk(size);
@@ -80,7 +111,7 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
 
     public static class ShortPartitionKernelStuff extends PartitionKernelStuff<ShortLongTuple> {
 
-        private final WritableShortChunk valuesChunk;
+        private final WritableShortChunk<Any> valuesChunk;
         private final ShortPartitionKernel.PartitionKernelContext context;
         private final RowSet rowSet;
         private final ColumnSource<Short> columnSource;
@@ -93,7 +124,7 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
 
             for (int ii = 0; ii < javaTuples.size(); ++ii) {
                 final long indexKey = javaTuples.get(ii).getSecondElement();
-                if (indexKey != ii * 10) {
+                if (indexKey != ii * 10L) {
                     throw new IllegalStateException();
                 }
             }
@@ -138,7 +169,7 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
 
     public static class ShortMergeStuff extends MergeStuff<ShortLongTuple> {
 
-        private final short arrayValues[];
+        private final short[] arrayValues;
 
         public ShortMergeStuff(List<ShortLongTuple> javaTuples) {
             super(javaTuples);
@@ -187,7 +218,7 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
 
             prepareMultiShortChunks(javaTuples, primaryChunk, secondaryChunk, rowKeys);
 
-            secondaryColumnSource = new AbstractColumnSource.DefaultedImmutable<Long>(long.class) {
+            secondaryColumnSource = new AbstractColumnSource.DefaultedImmutable<>(long.class) {
                 @Override
                 public Long get(long rowKey) {
                     final long result = getLong(rowKey);
@@ -240,7 +271,7 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
                 sortIndexContext.sort(originalPositions, indicesToFetch);
 
                 // now we have the indices that we need to fetch from the secondary column source, in sorted order
-                secondaryColumnSource.fillChunk(secondaryColumnSourceContext, WritableLongChunk.downcast(secondaryChunk), RowSequenceFactory.wrapRowKeysChunkAsRowSequence(WritableLongChunk.downcast(indicesToFetch)));
+                secondaryColumnSource.fillChunk(secondaryColumnSourceContext, secondaryChunk, RowSequenceFactory.wrapRowKeysChunkAsRowSequence(WritableLongChunk.downcast(indicesToFetch)));
 
                 // permute the results back to the order that we would like them in the subsequent sort
                 secondaryChunkPermuted.setSize(secondaryChunk.size());
@@ -353,19 +384,22 @@ public abstract class BaseTestShortTimSortKernel extends TestTimSortKernel {
         return javaTuples;
     }
 
-    static private void verify(int size, List<ShortLongTuple> javaTuples, ShortChunk shortChunk, LongChunk rowKeys) {
-//        System.out.println("Verify: " + javaTuples);
-//        dumpChunk(valuesChunk);
 
+    static private void verify(int size, List<ShortLongTuple> javaTuples, ShortChunk shortChunk) {
+        verify(size, javaTuples, shortChunk, null);
+    }
+
+    static private void verify(int size, List<ShortLongTuple> javaTuples, ShortChunk shortChunk, LongChunk rowKeys) {
         for (int ii = 0; ii < size; ++ii) {
             final short timSorted = shortChunk.get(ii);
             final short javaSorted = javaTuples.get(ii).getFirstElement();
-
-            final long timIndex = rowKeys.get(ii);
-            final long javaIndex = javaTuples.get(ii).getSecondElement();
-
             TestCase.assertEquals("values[" + ii + "]", javaSorted, timSorted);
-            TestCase.assertEquals("rowKeys[" + ii + "]", javaIndex, timIndex);
+
+            if (rowKeys != null) {
+                final long timIndex = rowKeys.get(ii);
+                final long javaIndex = javaTuples.get(ii).getSecondElement();
+                TestCase.assertEquals("rowKeys[" + ii + "]", javaIndex, timIndex);
+            }
         }
     }
 

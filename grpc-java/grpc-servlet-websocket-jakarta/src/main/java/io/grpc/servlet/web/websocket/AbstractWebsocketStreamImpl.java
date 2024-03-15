@@ -1,3 +1,16 @@
+/*
+ * Copyright 2022 Deephaven Data Labs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
 package io.grpc.servlet.web.websocket;
 
 import com.google.common.util.concurrent.MoreExecutors;
@@ -91,16 +104,20 @@ public abstract class AbstractWebsocketStreamImpl extends AbstractServerStream {
     }
 
     public void createStream(ServerTransportListener transportListener, String methodName, Metadata headers) {
-        transportListener.streamCreated(this, methodName, headers);
-        transportState().onStreamAllocated();
+        transportState().runOnTransportThread(() -> {
+            transportListener.streamCreated(this, methodName, headers);
+            transportState().onStreamAllocated();
+        });
     }
 
     public void inboundDataReceived(ReadableBuffer message, boolean endOfStream) {
-        transportState().inboundDataReceived(message, endOfStream);
+        transportState().runOnTransportThread(() -> {
+            transportState().inboundDataReceived(message, endOfStream);
+        });
     }
 
     public void transportReportStatus(Status status) {
-        transportState().transportReportStatus(status);
+        transportState().runOnTransportThread(() -> transportState().transportReportStatus(status));
     }
 
     @Override

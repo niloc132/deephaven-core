@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.chunk.util.pools;
 
 import io.deephaven.base.MathUtil;
@@ -21,6 +21,9 @@ public final class ChunkPoolConstants {
 
     static final int NUM_POOLED_CHUNK_CAPACITIES =
             LARGEST_POOLED_CHUNK_LOG2_CAPACITY - SMALLEST_POOLED_CHUNK_LOG2_CAPACITY + 1;
+
+    public static final boolean POOL_RESETTABLE_CHUNKS = false;
+    public static final boolean POOL_WRITABLE_CHUNKS = true;
 
     static int checkCapacityBounds(final int chunkCapacity) {
         return Require.geqZero(chunkCapacity, "chunkCapacity");

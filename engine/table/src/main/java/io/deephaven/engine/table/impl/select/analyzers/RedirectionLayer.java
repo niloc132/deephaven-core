@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select.analyzers;
 
 import io.deephaven.base.log.LogOutput;
@@ -155,8 +155,8 @@ public final class RedirectionLayer extends SelectAndViewAnalyzer {
     }
 
     @Override
-    public Map<String, Set<String>> calcDependsOnRecurse() {
-        return inner.calcDependsOnRecurse();
+    public Map<String, Set<String>> calcDependsOnRecurse(boolean forcePublishAllResources) {
+        return inner.calcDependsOnRecurse(forcePublishAllResources);
     }
 
     @Override

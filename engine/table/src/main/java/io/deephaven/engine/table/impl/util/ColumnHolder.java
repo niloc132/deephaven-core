@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.util;
 
 import io.deephaven.base.verify.Assert;
@@ -17,13 +17,14 @@ import io.deephaven.chunk.ShortChunk;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.rowset.RowSequenceFactory;
 import io.deephaven.engine.table.ChunkSink;
+import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.vector.ObjectVector;
-import io.deephaven.time.DateTime;
 import io.deephaven.api.util.NameValidator;
 import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
 import io.deephaven.engine.table.ColumnSource;
 
 import java.lang.reflect.Array;
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -149,7 +150,7 @@ public class ColumnHolder<T> {
             throw new IllegalArgumentException("Data must be provided as an array");
         }
         if (!arrayData.getClass().getComponentType().isAssignableFrom(dataType)
-                && !(dataType == DateTime.class && arrayData.getClass().getComponentType() == long.class)
+                && !(dataType == Instant.class && arrayData.getClass().getComponentType() == long.class)
                 && !(dataType == Boolean.class && arrayData.getClass().getComponentType() == byte.class)) {
             throw new IllegalArgumentException(
                     "Incompatible data type: " + dataType + " can not be stored in array of type "
@@ -169,7 +170,7 @@ public class ColumnHolder<T> {
      * ColumnHolder where the official data type type does not match the data.
      *
      * @param name column name
-     * @param type abstract data type for the column
+     * @param dataType abstract data type for the column
      * @param grouped true if the column is grouped; false otherwise
      * @param chunkData column data
      */
@@ -191,32 +192,31 @@ public class ColumnHolder<T> {
 
 
     /**
-     * Create a column holder for a DateTime column where the values are represented as longs. Whatever process produces
+     * Create a column holder for an Instant column where the values are represented as longs. Whatever process produces
      * a table from this column holder should respect this and create the appropriate type of ColumnSource. Under normal
-     * conditions, this will be a DateTimeArraySource (see {@link #getColumnSource()}).
+     * conditions, this will bean InstantArraySource (see {@link #getColumnSource()}).
      *
      * @param name column name
      * @param grouped true if the column is grouped; false otherwise
      * @param data column data (long integers representing nanos since the epoch)
-     * @return a DateTime column holder implemented with longs for storage
+     * @returnan Instant column holder implemented with longs for storage
      */
-    public static ColumnHolder<DateTime> getDateTimeColumnHolder(String name, boolean grouped, long... data) {
-        return new ColumnHolder<>(name, grouped, DateTime.class, null, data);
+    public static ColumnHolder<Instant> getInstantColumnHolder(String name, boolean grouped, long... data) {
+        return new ColumnHolder<>(name, grouped, Instant.class, null, data);
     }
 
     /**
-     * Create a column holder for a DateTime column where the values are represented as longs. Whatever process produces
+     * Create a column holder for an Instant column where the values are represented as longs. Whatever process produces
      * a table from this column holder should respect this and create the appropriate type of ColumnSource. Under normal
-     * conditions, this will be a DateTimeArraySource (see {@link #getColumnSource()}).
+     * conditions, this will bean InstantArraySource (see {@link #getColumnSource()}).
      *
      * @param name column name
      * @param grouped true if the column is grouped; false otherwise
      * @param chunkData column data (long integers representing nanos since the epoch)
-     * @return a DBDateTime column holder implemented with longs for storage
+     * @returnan Instant column holder implemented with longs for storage
      */
-    public static ColumnHolder<DateTime> getDateTimeColumnHolder(String name, boolean grouped,
-            Chunk<Values> chunkData) {
-        return new ColumnHolder<>(true, name, DateTime.class, null, grouped, chunkData);
+    public static ColumnHolder<Instant> getInstantColumnHolder(String name, boolean grouped, Chunk<Values> chunkData) {
+        return new ColumnHolder<>(true, name, Instant.class, null, grouped, chunkData);
     }
 
     /**
@@ -260,7 +260,7 @@ public class ColumnHolder<T> {
     }
 
     /**
-     * Gets a column source for the data. Other than the special case of DateTime columns, this requires that the type
+     * Gets a column source for the data. Other than the special case of Instant columns, this requires that the type
      * specified match the component type of the actual data.
      *
      * @return column source constructed with data from this column holder
@@ -269,8 +269,8 @@ public class ColumnHolder<T> {
         if (chunkData == null) {
             if (arrayData.getClass().getComponentType().equals(dataType)) {
                 return ArrayBackedColumnSource.getMemoryColumnSourceUntyped(arrayData, dataType, componentType);
-            } else if (dataType.equals(DateTime.class) && arrayData.getClass().getComponentType().equals(long.class)) {
-                return ArrayBackedColumnSource.getDateTimeMemoryColumnSource((long[]) arrayData);
+            } else if (dataType.equals(Instant.class) && arrayData.getClass().getComponentType().equals(long.class)) {
+                return ArrayBackedColumnSource.getInstantMemoryColumnSource((long[]) arrayData);
             } else {
                 throw new IllegalStateException("Unsupported column holder data & type: " + dataType.getName() + ", "
                         + arrayData.getClass().getComponentType().getName());
@@ -279,11 +279,11 @@ public class ColumnHolder<T> {
 
         Assert.eqNull(arrayData, "arrayData");
 
-        if (dataType.equals(DateTime.class) && chunkData.getChunkType() == ChunkType.Long) {
-            return ArrayBackedColumnSource.getDateTimeMemoryColumnSource(chunkData.asLongChunk());
+        if (dataType.equals(Instant.class) && chunkData.getChunkType() == ChunkType.Long) {
+            return ArrayBackedColumnSource.getInstantMemoryColumnSource(chunkData.asLongChunk());
         }
 
-        final ArrayBackedColumnSource<?> cs = ArrayBackedColumnSource.getMemoryColumnSource(
+        final WritableColumnSource<?> cs = ArrayBackedColumnSource.getMemoryColumnSource(
                 chunkData.size(), dataType, componentType);
         try (final ChunkSink.FillFromContext ffc = cs.makeFillFromContext(chunkData.size())) {
             cs.fillFromChunk(ffc, chunkData, RowSequenceFactory.forRange(0, chunkData.size() - 1));

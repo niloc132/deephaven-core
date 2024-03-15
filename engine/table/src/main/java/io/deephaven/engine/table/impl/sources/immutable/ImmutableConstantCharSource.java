@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2023 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.immutable;
 
 import io.deephaven.chunk.LongChunk;
@@ -27,7 +27,7 @@ import static io.deephaven.util.QueryConstants.NULL_CHAR;
 public class ImmutableConstantCharSource
         extends AbstractColumnSource<Character>
         implements ImmutableColumnSourceGetDefaults.ForChar, ShiftData.ShiftCallback, InMemoryColumnSource,
-        RowKeyAgnosticChunkSource<Values> {
+        RowKeyAgnosticChunkSource<Values> /* MIXIN_IMPLS */ {
 
     private final char value;
 
@@ -67,9 +67,6 @@ public class ImmutableConstantCharSource
     @Override
     public final void shift(final long start, final long end, final long offset) {}
 
-    // region reinterpret
-    // endregion reinterpret
-
     @Override
     public void fillChunkUnordered(
             @NotNull FillContext context,
@@ -87,11 +84,14 @@ public class ImmutableConstantCharSource
             @NotNull FillContext context,
             @NotNull WritableChunk<? super Values> dest,
             @NotNull LongChunk<? extends RowKeys> keys) {
-        fillChunkUnordered(context , dest, keys);
+        fillChunkUnordered(context, dest, keys);
     }
 
     @Override
     public boolean providesFillUnordered() {
         return true;
     }
+
+    // region reinterpretation
+    // endregion reinterpretation
 }

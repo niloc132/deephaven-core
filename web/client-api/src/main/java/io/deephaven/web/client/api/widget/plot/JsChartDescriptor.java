@@ -1,12 +1,13 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.widget.plot;
 
 import elemental2.core.JsArray;
 import io.deephaven.web.client.fu.JsData;
 import jsinterop.annotations.JsConstructor;
 import jsinterop.annotations.JsIgnore;
+import jsinterop.annotations.JsNullable;
 import jsinterop.annotations.JsType;
 import jsinterop.base.Js;
 import jsinterop.base.JsPropertyMap;
@@ -16,22 +17,32 @@ import java.util.Map;
 
 @JsType(name = "ChartDescriptor", namespace = "dh.plot")
 public class JsChartDescriptor {
+    @JsNullable
     public int colspan;
+    @JsNullable
     public int rowspan;
 
     public JsArray<JsSeriesDescriptor> series = new JsArray<>();
     public JsArray<JsAxisDescriptor> axes = new JsArray<>();
 
+    // TODO (deephaven-core#3442) change to some kind of String+int union type
     public String chartType;
 
+    @JsNullable
     public String title;
+    @JsNullable
     public String titleFont;
+    @JsNullable
     public String titleColor;
 
+    @JsNullable
     public boolean showLegend;
+    @JsNullable
     public String legendFont;
+    @JsNullable
     public String legendColor;
 
+    @JsNullable
     public boolean is3d;
 
     @JsConstructor

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.plugin.python;
 
 import org.jpy.PyLib.CallableKind;
@@ -8,7 +8,7 @@ import org.jpy.PyModule;
 
 interface Deephaven2ServerPluginModule extends AutoCloseable {
 
-    String MODULE = "deephaven.server.plugin";
+    String MODULE = "deephaven_internal.plugin";
 
     static Deephaven2ServerPluginModule of() {
         final PyModule module = PyModule.importModule(MODULE);

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.barrage;
 
 import elemental2.core.*;
@@ -86,6 +86,7 @@ public class WebBarrageUtils {
             cols[i].setName(f.name().asString());
             cols[i].setColumnIndex(i);
             cols[i].setType(fieldMetadata.get("type"));
+            cols[i].setIsSortable("true".equals(fieldMetadata.get("isSortable")));
             cols[i].setStyleColumn("true".equals(fieldMetadata.get("isStyle")));
             cols[i].setFormatColumn("true".equals(fieldMetadata.get("isDateFormat"))
                     || "true".equals(fieldMetadata.get("isNumberFormat")));
@@ -100,10 +101,12 @@ public class WebBarrageUtils {
             cols[i].setStyleColumnName(fieldMetadata.get("styleColumn"));
 
             if (fieldMetadata.containsKey("inputtable.isKey")) {
-                cols[i].setInputTableKeyColumn(Boolean.parseBoolean(fieldMetadata.get("inputtable.isKey")));
+                cols[i].setInputTableKeyColumn("true".equals(fieldMetadata.get("inputtable.isKey")));
             }
 
             cols[i].setDescription(fieldMetadata.get("description"));
+
+            cols[i].setPartitionColumn("true".equals(fieldMetadata.get("isPartitioning")));
 
             cols[i].setHierarchicalExpandByColumn(
                     "true".equals(fieldMetadata.get("hierarchicalTable.isExpandByColumn")));
@@ -117,7 +120,6 @@ public class WebBarrageUtils {
                     "true".equals(fieldMetadata.get("rollupTable.isConstituentNodeColumn")));
             cols[i].setRollupGroupByColumn("true".equals(fieldMetadata.get("rollupTable.isGroupByColumn")));
             cols[i].setRollupAggregationInputColumn(fieldMetadata.get("rollupTable.aggregationInputColumnName"));
-
         }
         return cols;
     }
@@ -404,8 +406,7 @@ public class WebBarrageUtils {
                         boolArray[i] = wireValues.get(i);
                     }
                 }
-                return new ByteArrayColumnData(Js.uncheckedCast(boolArray));
-
+                return new BooleanArrayColumnData(boolArray);
             case "byte":
                 assert positions.length().toFloat64() >= size;
                 Int8Array byteArray =
@@ -428,7 +429,8 @@ public class WebBarrageUtils {
                 return new CharArrayColumnData(Js.uncheckedCast(charArray));
             // longs are a special case despite being java primitives
             case "long":
-            case "io.deephaven.time.DateTime":
+            case "java.time.Instant":
+            case "java.time.ZonedDateTime":
                 assert positions.length().toFloat64() >= size * 8;
                 long[] longArray = new long[size];
 

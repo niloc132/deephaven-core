@@ -1,11 +1,12 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.client.examples;
 
 import io.deephaven.client.impl.DaggerDeephavenFlightRoot;
 import io.deephaven.client.impl.FlightSession;
 import io.deephaven.client.impl.FlightSessionFactory;
+import io.deephaven.client.impl.FlightSubcomponent.Builder;
 import io.grpc.ManagedChannel;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
@@ -21,6 +22,9 @@ abstract class FlightExampleBase implements Callable<Void> {
     @ArgGroup(exclusive = false)
     ConnectOptions connectOptions;
 
+    @ArgGroup(exclusive = true)
+    AuthenticationOptions authenticationOptions;
+
     BufferAllocator bufferAllocator = new RootAllocator();
 
     protected abstract void execute(FlightSession flight) throws Exception;
@@ -32,15 +36,15 @@ abstract class FlightExampleBase implements Callable<Void> {
         Runtime.getRuntime()
                 .addShutdownHook(new Thread(() -> onShutdown(scheduler, managedChannel)));
 
-        FlightSessionFactory flightSessionFactory =
-                DaggerDeephavenFlightRoot.create().factoryBuilder()
-                        .managedChannel(managedChannel)
-                        .scheduler(scheduler)
-                        .allocator(bufferAllocator)
-                        .build();
-
+        final Builder builder = DaggerDeephavenFlightRoot.create().factoryBuilder()
+                .managedChannel(managedChannel)
+                .scheduler(scheduler)
+                .allocator(bufferAllocator);
+        if (authenticationOptions != null) {
+            authenticationOptions.ifPresent(builder::authenticationTypeAndValue);
+        }
+        FlightSessionFactory flightSessionFactory = builder.build();
         FlightSession flightSession = flightSessionFactory.newFlightSession();
-
         try {
             try {
                 execute(flightSession);

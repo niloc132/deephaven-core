@@ -1,9 +1,13 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.partitionedtable;
 
 import com.google.auto.service.AutoService;
 import com.google.protobuf.ByteString;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.extensions.barrage.util.BarrageUtil;
+import io.deephaven.plugin.type.Exporter;
 import io.deephaven.plugin.type.ObjectType;
 import io.deephaven.plugin.type.ObjectTypeBase;
 import io.deephaven.proto.backplane.grpc.PartitionedTableDescriptor;
@@ -17,7 +21,7 @@ import java.util.Collections;
  * a ticket to the underlying table that tracks the keys and the actual table objects.
  */
 @AutoService(ObjectType.class)
-public class PartitionedTableTypePlugin extends ObjectTypeBase {
+public class PartitionedTableTypePlugin extends ObjectTypeBase.FetchOnly {
 
     @Override
     public String name() {
@@ -32,12 +36,13 @@ public class PartitionedTableTypePlugin extends ObjectTypeBase {
     @Override
     public void writeCompatibleObjectTo(Exporter exporter, Object object, OutputStream out) throws IOException {
         PartitionedTable partitionedTable = (PartitionedTable) object;
-        exporter.reference(partitionedTable.table(), false, true);
+        exporter.reference(partitionedTable.table());
 
         // Send Schema wrapped in Message
         ByteString schemaWrappedInMessage = BarrageUtil.schemaBytesFromTableDefinition(
                 partitionedTable.constituentDefinition(),
-                Collections.emptyMap());
+                Collections.emptyMap(),
+                false);
 
         PartitionedTableDescriptor result = PartitionedTableDescriptor.newBuilder()
                 .addAllKeyColumnNames(partitionedTable.keyColumnNames())

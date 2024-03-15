@@ -1,12 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.api;
 
 import io.deephaven.api.expression.Expression;
-import io.deephaven.api.util.NameValidator;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -20,7 +18,7 @@ import java.util.stream.Collectors;
  * @see TableOperations#updateView(Collection)
  * @see TableOperations#select(Collection)
  */
-public interface Selectable extends Serializable {
+public interface Selectable {
 
     static Selectable of(ColumnName newColumn, Expression expression) {
         if (newColumn.equals(expression)) {

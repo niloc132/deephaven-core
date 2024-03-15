@@ -1,34 +1,39 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.by.typed;
 
 import com.squareup.javapoet.*;
-
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.chunk.*;
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.chunk.util.hashing.CharChunkHasher;
-import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.configuration.Configuration;
-import io.deephaven.engine.rowset.*;
+import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.rowset.RowSequence;
+import io.deephaven.engine.rowset.RowSet;
+import io.deephaven.engine.rowset.RowSetBuilderRandom;
 import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeys;
 import io.deephaven.engine.rowset.chunkattributes.RowKeys;
 import io.deephaven.engine.table.ColumnSource;
+import io.deephaven.engine.table.impl.MultiJoinModifiedSlotTracker;
 import io.deephaven.engine.table.impl.NaturalJoinModifiedSlotTracker;
 import io.deephaven.engine.table.impl.asofjoin.RightIncrementalAsOfJoinStateManagerTypedBase;
 import io.deephaven.engine.table.impl.asofjoin.StaticAsOfJoinStateManagerTypedBase;
 import io.deephaven.engine.table.impl.asofjoin.TypedAsOfJoinFactory;
-import io.deephaven.engine.table.impl.naturaljoin.RightIncrementalNaturalJoinStateManagerTypedBase;
 import io.deephaven.engine.table.impl.by.*;
+import io.deephaven.engine.table.impl.multijoin.IncrementalMultiJoinStateManagerTypedBase;
+import io.deephaven.engine.table.impl.multijoin.StaticMultiJoinStateManagerTypedBase;
+import io.deephaven.engine.table.impl.multijoin.TypedMultiJoinFactory;
 import io.deephaven.engine.table.impl.naturaljoin.IncrementalNaturalJoinStateManagerTypedBase;
+import io.deephaven.engine.table.impl.naturaljoin.RightIncrementalNaturalJoinStateManagerTypedBase;
 import io.deephaven.engine.table.impl.naturaljoin.StaticNaturalJoinStateManagerTypedBase;
 import io.deephaven.engine.table.impl.naturaljoin.TypedNaturalJoinFactory;
 import io.deephaven.engine.table.impl.sources.*;
 import io.deephaven.engine.table.impl.sources.immutable.*;
-import io.deephaven.engine.table.impl.updateby.hashing.UpdateByStateManagerTypedBase;
 import io.deephaven.engine.table.impl.updateby.hashing.TypedUpdateByFactory;
+import io.deephaven.engine.table.impl.updateby.hashing.UpdateByStateManagerTypedBase;
 import io.deephaven.util.QueryConstants;
 import io.deephaven.util.compare.CharComparisons;
 import org.apache.commons.lang3.mutable.MutableInt;
@@ -333,6 +338,79 @@ public class TypedHasherFactory {
             builder.addProbe(new HasherConfig.ProbeSpec("probeHashTable", "rowState",
                     true, TypedUpdateByFactory::incrementalProbeFound, TypedUpdateByFactory::incrementalProbeMissing,
                     outputPositions));
+        } else if (baseClass.equals(StaticMultiJoinStateManagerTypedBase.class)) {
+            builder.classPrefix("StaticMultiJoinHasher").packageGroup("multijoin").packageMiddle("staticopen")
+                    .openAddressedAlternate(false)
+                    .stateType(int.class).mainStateName("slotToOutputRow")
+                    .emptyStateName("EMPTY_OUTPUT_ROW")
+                    .includeOriginalSources(true)
+                    .supportRehash(true)
+                    .moveMainFull(TypedMultiJoinFactory::staticMoveMainFull)
+                    .alwaysMoveMain(true)
+                    .rehashFullSetup(TypedMultiJoinFactory::staticRehashSetup);
+
+
+            builder.addBuild(new HasherConfig.BuildSpec("buildFromTable", "slotValue",
+                    true, true, TypedMultiJoinFactory::staticBuildLeftFound,
+                    TypedMultiJoinFactory::staticBuildLeftInsert,
+                    ParameterSpec.builder(TypeName.get(LongArraySource.class), "tableRedirSource").build(),
+                    ParameterSpec.builder(long.class, "tableNumber").build()));
+        } else if (baseClass.equals(IncrementalMultiJoinStateManagerTypedBase.class)) {
+            final ParameterSpec modifiedSlotTrackerParam =
+                    ParameterSpec.builder(MultiJoinModifiedSlotTracker.class, "modifiedSlotTracker").build();
+            final ParameterSpec tableRedirSourceParam =
+                    ParameterSpec.builder(TypeName.get(LongArraySource.class), "tableRedirSource").build();
+            final ParameterSpec tableNumberParam =
+                    ParameterSpec.builder(int.class, "tableNumber").build();
+            final ParameterSpec flagParam =
+                    ParameterSpec.builder(byte.class, "trackerFlag").build();
+
+            builder.classPrefix("IncrementalMultiJoinHasher").packageGroup("multijoin")
+                    .packageMiddle("incopen")
+                    .openAddressedAlternate(true)
+                    .stateType(int.class).mainStateName("slotToOutputRow")
+                    .overflowOrAlternateStateName("alternateSlotToOutputRow")
+                    .emptyStateName("EMPTY_OUTPUT_ROW")
+                    .includeOriginalSources(true)
+                    .supportRehash(true)
+                    .moveMainFull(TypedMultiJoinFactory::incrementalMoveMainFull)
+                    .moveMainAlternate(TypedMultiJoinFactory::incrementalMoveMainAlternate)
+                    .alwaysMoveMain(true)
+                    .rehashFullSetup(TypedMultiJoinFactory::incrementalRehashSetup);
+
+            builder.addBuild(new HasherConfig.BuildSpec("buildFromTable", "slotValue",
+                    true, true,
+                    TypedMultiJoinFactory::incrementalBuildLeftFound,
+                    TypedMultiJoinFactory::incrementalBuildLeftInsert,
+                    tableRedirSourceParam,
+                    tableNumberParam,
+                    modifiedSlotTrackerParam,
+                    flagParam));
+
+            builder.addProbe(new HasherConfig.ProbeSpec("remove", "slotValue", true,
+                    TypedMultiJoinFactory::incrementalRemoveLeftFound,
+                    TypedMultiJoinFactory::incrementalRemoveLeftMissing,
+                    tableRedirSourceParam,
+                    tableNumberParam,
+                    modifiedSlotTrackerParam,
+                    flagParam));
+
+            builder.addProbe(new HasherConfig.ProbeSpec("shift", "slotValue", true,
+                    TypedMultiJoinFactory::incrementalShiftLeftFound,
+                    TypedMultiJoinFactory::incrementalShiftLeftMissing,
+                    tableRedirSourceParam,
+                    tableNumberParam,
+                    modifiedSlotTrackerParam,
+                    flagParam,
+                    ParameterSpec.builder(long.class, "shiftDelta").build()));
+
+            builder.addProbe(new HasherConfig.ProbeSpec("modify", "slotValue", false,
+                    TypedMultiJoinFactory::incrementalModifyLeftFound,
+                    TypedMultiJoinFactory::incrementalModifyLeftMissing,
+                    tableRedirSourceParam,
+                    tableNumberParam,
+                    modifiedSlotTrackerParam,
+                    flagParam));
         } else {
             throw new UnsupportedOperationException("Unknown class to make: " + baseClass);
         }
@@ -455,6 +533,26 @@ public class TypedHasherFactory {
                 if (pregeneratedHasher != null) {
                     return pregeneratedHasher;
                 }
+            } else if (hasherConfig.baseClass
+                    .equals(StaticMultiJoinStateManagerTypedBase.class)) {
+                // noinspection unchecked
+                T pregeneratedHasher =
+                        (T) io.deephaven.engine.table.impl.multijoin.typed.staticopen.gen.TypedHashDispatcher
+                                .dispatch(tableKeySources, originalKeySources, tableSize, maximumLoadFactor,
+                                        targetLoadFactor);
+                if (pregeneratedHasher != null) {
+                    return pregeneratedHasher;
+                }
+            } else if (hasherConfig.baseClass
+                    .equals(IncrementalMultiJoinStateManagerTypedBase.class)) {
+                // noinspection unchecked
+                T pregeneratedHasher =
+                        (T) io.deephaven.engine.table.impl.multijoin.typed.incopen.gen.TypedHashDispatcher
+                                .dispatch(tableKeySources, originalKeySources, tableSize, maximumLoadFactor,
+                                        targetLoadFactor);
+                if (pregeneratedHasher != null) {
+                    return pregeneratedHasher;
+                }
             }
         }
 
@@ -553,9 +651,14 @@ public class TypedHasherFactory {
         final TypeSpec hasher = hasherBuilder.build();
 
         final JavaFile.Builder fileBuilder = JavaFile.builder(packageName, hasher).indent("    ");
-        fileBuilder.addFileComment("DO NOT EDIT THIS CLASS, AUTOMATICALLY GENERATED BY "
-                + TypedHasherFactory.class.getCanonicalName() + "\n" +
-                "Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending\n");
+        fileBuilder.addFileComment("\n");
+        fileBuilder.addFileComment("Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending\n");
+        fileBuilder.addFileComment("\n");
+        fileBuilder.addFileComment("****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY\n");
+        fileBuilder
+                .addFileComment("****** Run ReplicateTypedHashers or ./gradlew replicateTypedHashers to regenerate\n");
+        fileBuilder.addFileComment("\n");
+        fileBuilder.addFileComment("@formatter:off");
 
         for (ChunkType chunkType : chunkTypes) {
             fileBuilder.addStaticImport(
@@ -1120,7 +1223,7 @@ public class TypedHasherFactory {
             for (int ii = 0; ii < chunkTypes.length; ++ii) {
                 builder.addStatement("mainKeySource$L.set($L, k$L)", ii, tableLocationName, ii);
             }
-            buildSpec.insert.accept(hasherConfig, builder);
+            buildSpec.insert.accept(hasherConfig, chunkTypes, builder);
         }
         builder.addStatement("break");
         builder.nextControlFlow("else if ("

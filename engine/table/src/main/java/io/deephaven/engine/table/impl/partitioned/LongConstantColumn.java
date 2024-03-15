@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.partitioned;
 
 import io.deephaven.chunk.ChunkType;
@@ -9,10 +9,10 @@ import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.rowset.RowSequence;
 import io.deephaven.engine.rowset.TrackingRowSet;
 import io.deephaven.engine.table.*;
+import io.deephaven.engine.table.impl.MatchPair;
 import io.deephaven.engine.table.impl.select.Formula;
 import io.deephaven.engine.table.impl.select.SelectColumn;
-import io.deephaven.engine.table.impl.sources.InMemoryColumnSource;
-import io.deephaven.engine.table.impl.sources.SparseArrayColumnSource;
+import io.deephaven.engine.table.impl.sources.LongSingleValueSource;
 import io.deephaven.engine.table.impl.sources.ViewColumnSource;
 import io.deephaven.util.type.TypeUtils;
 import org.jetbrains.annotations.NotNull;
@@ -70,13 +70,8 @@ class LongConstantColumn implements SelectColumn {
     }
 
     @Override
-    public final List<String> initInputs(@NotNull final Table table) {
-        return initInputs(table.getRowSet(), table.getColumnSourceMap());
-    }
-
-    @Override
     public final Class<?> getReturnedType() {
-        return Table.class;
+        return long.class;
     }
 
     @Override
@@ -97,21 +92,16 @@ class LongConstantColumn implements SelectColumn {
 
     @Override
     public final WritableColumnSource<?> newDestInstance(final long size) {
-        return SparseArrayColumnSource.getSparseMemoryColumnSource(size, Table.class);
+        return new LongSingleValueSource();
     }
 
     @Override
     public final WritableColumnSource<?> newFlatDestInstance(final long size) {
-        return InMemoryColumnSource.getImmutableMemoryColumnSource(size, Table.class, null);
+        return new LongSingleValueSource();
     }
 
     @Override
     public final boolean isRetain() {
-        return false;
-    }
-
-    @Override
-    public final boolean disallowRefresh() {
         return false;
     }
 
@@ -127,8 +117,7 @@ class LongConstantColumn implements SelectColumn {
         private OutputFormulaFillContext() {}
 
         @Override
-        public void close() {
-        }
+        public void close() {}
     }
 
     private final class OutputFormula extends Formula {

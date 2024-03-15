@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select.analyzers;
 
 import io.deephaven.base.log.LogOutput;
@@ -12,6 +15,7 @@ import io.deephaven.engine.table.TableUpdate;
 import io.deephaven.engine.table.WritableColumnSource;
 import io.deephaven.engine.table.impl.select.SelectColumn;
 import io.deephaven.engine.table.impl.select.VectorChunkAdapter;
+import io.deephaven.engine.table.impl.util.JobScheduler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;

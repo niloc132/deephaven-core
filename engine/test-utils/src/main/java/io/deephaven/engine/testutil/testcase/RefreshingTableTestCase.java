@@ -1,30 +1,27 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.testutil.testcase;
 
 import io.deephaven.base.testing.BaseArrayTestCase;
 import io.deephaven.chunk.util.pools.ChunkPoolReleaseTracking;
 import io.deephaven.configuration.Configuration;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.context.QueryCompiler;
-import io.deephaven.engine.context.TestExecutionContextAccess;
+import io.deephaven.engine.context.TestExecutionContext;
 import io.deephaven.engine.liveness.LivenessScope;
 import io.deephaven.engine.liveness.LivenessScopeStack;
 import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.UpdateErrorReporter;
-import io.deephaven.engine.table.impl.perf.UpdatePerformanceTracker;
 import io.deephaven.engine.table.impl.util.AsyncClientErrorNotifier;
-import io.deephaven.engine.testutil.ColumnInfo;
-import io.deephaven.engine.testutil.EvalNuggetInterface;
-import io.deephaven.engine.testutil.GenerateTableUpdates;
-import io.deephaven.engine.testutil.TstUtils;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
+import io.deephaven.engine.table.impl.util.AsyncErrorLogger;
+import io.deephaven.engine.testutil.*;
 import io.deephaven.engine.util.systemicmarking.SystemicObjectTracker;
 import io.deephaven.util.ExceptionDetails;
 import io.deephaven.util.SafeCloseable;
+import io.deephaven.util.process.ProcessEnvironment;
 import junit.framework.TestCase;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,12 +36,13 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
     private static final boolean ENABLE_QUERY_COMPILER_LOGGING = Configuration.getInstance()
             .getBooleanForClassWithDefault(RefreshingTableTestCase.class, "QueryCompile.logEnabled", false);
 
+    private ProcessEnvironment oldProcessEnvironment;
     private boolean oldMemoize;
     private UpdateErrorReporter oldReporter;
     private boolean expectError = false;
     private SafeCloseable livenessScopeCloseable;
     private boolean oldLogEnabled;
-    private boolean oldCheckLtm;
+    private boolean oldSerialSafe;
     private SafeCloseable executionContext;
 
     List<Throwable> errors;
@@ -57,27 +55,32 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
     public void setUp() throws Exception {
         super.setUp();
 
-        UpdateGraphProcessor.DEFAULT.enableUnitTestMode();
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(false);
+        oldProcessEnvironment = ProcessEnvironment.tryGet();
+        ProcessEnvironment.set(FakeProcessEnvironment.INSTANCE, true);
+
+        // initialize the unit test's execution context
+        executionContext = TestExecutionContext.createForUnitTests().open();
+
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.enableUnitTestMode();
+        updateGraph.resetForUnitTests(false);
         SystemicObjectTracker.markThreadSystemic();
         oldMemoize = QueryTable.setMemoizeResults(false);
         oldReporter = AsyncClientErrorNotifier.setReporter(this);
         errors = null;
         livenessScopeCloseable = LivenessScopeStack.open(new LivenessScope(true), true);
 
-        // initialize the unit test's execution context
-        executionContext = TestExecutionContextAccess.createForUnitTests().open();
-
         oldLogEnabled = QueryCompiler.setLogEnabled(ENABLE_QUERY_COMPILER_LOGGING);
-        oldCheckLtm = UpdateGraphProcessor.DEFAULT.setCheckTableOperations(false);
-        UpdatePerformanceTracker.getInstance().enableUnitTestMode();
+        oldSerialSafe = updateGraph.setSerialTableOperationsSafe(true);
+        AsyncErrorLogger.init();
         ChunkPoolReleaseTracking.enableStrict();
     }
 
     @Override
     public void tearDown() throws Exception {
         ChunkPoolReleaseTracking.checkAndDisable();
-        UpdateGraphProcessor.DEFAULT.setCheckTableOperations(oldCheckLtm);
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.setSerialTableOperationsSafe(oldSerialSafe);
         QueryCompiler.setLogEnabled(oldLogEnabled);
 
         // reset the execution context
@@ -86,7 +89,13 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
         livenessScopeCloseable.close();
         AsyncClientErrorNotifier.setReporter(oldReporter);
         QueryTable.setMemoizeResults(oldMemoize);
-        UpdateGraphProcessor.DEFAULT.resetForUnitTests(true);
+        updateGraph.resetForUnitTests(true);
+
+        if (oldProcessEnvironment == null) {
+            ProcessEnvironment.clear();
+        } else {
+            ProcessEnvironment.set(oldProcessEnvironment, true);
+        }
 
         super.tearDown();
     }
@@ -127,7 +136,7 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
         } finally {
             setExpectError(original);
         }
-        if (!errorsAcceptable.test(errors)) {
+        if (errors != null && !errorsAcceptable.test(errors)) {
             TestCase.fail("Unacceptable errors: " + errors);
         }
         return retval;
@@ -151,10 +160,11 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
                 en);
     }
 
-    protected static void simulateShiftAwareStep(final GenerateTableUpdates.SimulationProfile simulationProfile,
+    public static void simulateShiftAwareStep(final GenerateTableUpdates.SimulationProfile simulationProfile,
             final String ctxt, int targetUpdateSize, Random random, QueryTable table, ColumnInfo[] columnInfo,
             EvalNuggetInterface[] en) {
-        UpdateGraphProcessor.DEFAULT.runWithinUnitTestCycle(() -> GenerateTableUpdates
+        final ControlledUpdateGraph updateGraph = ExecutionContext.getContext().getUpdateGraph().cast();
+        updateGraph.runWithinUnitTestCycle(() -> GenerateTableUpdates
                 .generateShiftAwareTableUpdates(simulationProfile, targetUpdateSize, random, table, columnInfo));
         TstUtils.validate(ctxt, en);
         // The EvalNugget test cases end up generating very big listener DAGs, for at each step we create a brand new
@@ -164,7 +174,7 @@ abstract public class RefreshingTableTestCase extends BaseArrayTestCase implemen
         // System.gc();
     }
 
-    public class ErrorExpectation implements Closeable {
+    public class ErrorExpectation implements SafeCloseable {
         final boolean originalExpectError;
 
         public ErrorExpectation() {

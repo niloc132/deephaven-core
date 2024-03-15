@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.web.client.api.barrage.def;
 
 import io.deephaven.web.client.api.Column;
@@ -11,6 +11,8 @@ public class ColumnDefinition {
     private int columnIndex;
     private String name;
     private String type;
+
+    private boolean isSortable;
 
     private String styleColumn;
     private String formatColumn;
@@ -54,6 +56,14 @@ public class ColumnDefinition {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public boolean isSortable() {
+        return isSortable;
+    }
+
+    public void setIsSortable(boolean sortable) {
+        isSortable = sortable;
     }
 
     public boolean isStyleColumn() {
@@ -163,7 +173,8 @@ public class ColumnDefinition {
             Integer styleIndex, boolean isPartitionColumn, Integer formatStringIndex, String description,
             boolean inputTableKeyColumn) {
         return new Column(jsIndex, definition.getColumnIndex(), numberFormatIndex, styleIndex, definition.getType(),
-                definition.getName(), isPartitionColumn, formatStringIndex, description, inputTableKeyColumn);
+                definition.getName(), isPartitionColumn, formatStringIndex, description, inputTableKeyColumn,
+                definition.isSortable());
     }
 
     public boolean isHierarchicalExpandByColumn() {

@@ -1,11 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit FloatRangeFilter and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit FloatRangeFilter and run "./gradlew replicateChunkFilters" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.engine.rowset.WritableRowSet;
@@ -17,8 +16,25 @@ import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.gui.table.filters.Condition;
 import io.deephaven.util.QueryConstants;
+import org.jetbrains.annotations.NotNull;
 
 public class DoubleRangeFilter extends AbstractRangeFilter {
+
+    public static DoubleRangeFilter lt(String columnName, double x) {
+        return new DoubleRangeFilter(columnName, x, QueryConstants.NULL_DOUBLE, true, false);
+    }
+
+    public static DoubleRangeFilter leq(String columnName, double x) {
+        return new DoubleRangeFilter(columnName, x, QueryConstants.NULL_DOUBLE, true, true);
+    }
+
+    public static DoubleRangeFilter gt(String columnName, double x) {
+        return new DoubleRangeFilter(columnName, x, Double.NaN, false, true);
+    }
+
+    public static DoubleRangeFilter geq(String columnName, double x) {
+        return new DoubleRangeFilter(columnName, x, Double.NaN, true, true);
+    }
 
     private final double upper;
     private final double lower;
@@ -29,8 +45,7 @@ public class DoubleRangeFilter extends AbstractRangeFilter {
 
     public DoubleRangeFilter(String columnName, double val1, double val2, boolean lowerInclusive, boolean upperInclusive) {
         super(columnName, lowerInclusive, upperInclusive);
-
-        if(val1 > val2) {
+        if (DoubleComparisons.gt(val1, val2)) {
             upper = val1;
             lower = val2;
         } else {
@@ -44,20 +59,20 @@ public class DoubleRangeFilter extends AbstractRangeFilter {
         final double parsed = Double.parseDouble(val);
         final double offset = Math.pow(10, -precision);
         final boolean positiveOrZero = parsed >= 0;
-
-        return new DoubleRangeFilter(columnName, (double)parsed, (double)(positiveOrZero ? parsed + offset : parsed - offset), positiveOrZero, !positiveOrZero);
+        return new DoubleRangeFilter(columnName, (double) parsed,
+                (double) (positiveOrZero ? parsed + offset : parsed - offset), positiveOrZero, !positiveOrZero);
     }
 
     static WhereFilter makeDoubleRangeFilter(String columnName, Condition condition, String value) {
         switch (condition) {
             case LESS_THAN:
-                return new DoubleRangeFilter(columnName, Double.parseDouble(value), QueryConstants.NULL_DOUBLE, true, false);
+                return lt(columnName, Double.parseDouble(value));
             case LESS_THAN_OR_EQUAL:
-                return new DoubleRangeFilter(columnName, Double.parseDouble(value), QueryConstants.NULL_DOUBLE, true, true);
+                return leq(columnName, Double.parseDouble(value));
             case GREATER_THAN:
-                return new DoubleRangeFilter(columnName, Double.parseDouble(value), Double.NaN, false, true);
+                return gt(columnName, Double.parseDouble(value));
             case GREATER_THAN_OR_EQUAL:
-                return new DoubleRangeFilter(columnName, Double.parseDouble(value), Double.NaN, true, true);
+                return geq(columnName, Double.parseDouble(value));
             default:
                 throw new IllegalArgumentException("RangeConditionFilter does not support condition " + condition);
         }
@@ -71,7 +86,8 @@ public class DoubleRangeFilter extends AbstractRangeFilter {
 
         final ColumnDefinition def = tableDefinition.getColumn(columnName);
         if (def == null) {
-            throw new RuntimeException("Column \"" + columnName + "\" doesn't exist in this table, available columns: " + tableDefinition.getColumnNames());
+            throw new RuntimeException("Column \"" + columnName + "\" doesn't exist in this table, available columns: "
+                    + tableDefinition.getColumnNames());
         }
         chunkFilter = DoubleRangeComparator.makeDoubleFilter(lower, upper, lowerInclusive, upperInclusive);
     }
@@ -91,33 +107,42 @@ public class DoubleRangeFilter extends AbstractRangeFilter {
                 (upperInclusive ? "]" : ")") + ")";
     }
 
+    @NotNull
     @Override
-    WritableRowSet binarySearch(RowSet selection, ColumnSource columnSource, boolean usePrev, boolean reverse) {
+    WritableRowSet binarySearch(
+            @NotNull final RowSet selection,
+            @NotNull final ColumnSource<?> columnSource,
+            final boolean usePrev,
+            final boolean reverse) {
         if (selection.isEmpty()) {
             return selection.copy();
         }
 
-        //noinspection unchecked
-        final ColumnSource<Double> doubleColumnSource = (ColumnSource<Double>)columnSource;
+        // noinspection unchecked
+        final ColumnSource<Double> doubleColumnSource = (ColumnSource<Double>) columnSource;
 
         final double startValue = reverse ? upper : lower;
         final double endValue = reverse ? lower : upper;
         final boolean startInclusive = reverse ? upperInclusive : lowerInclusive;
         final boolean endInclusive = reverse ? lowerInclusive : upperInclusive;
-        final int compareSign = reverse ? - 1 : 1;
+        final int compareSign = reverse ? -1 : 1;
 
-        long lowerBoundMin = bound(selection, usePrev, doubleColumnSource, 0, selection.size(), startValue, startInclusive, compareSign, false);
-        long upperBoundMin = bound(selection, usePrev, doubleColumnSource, lowerBoundMin, selection.size(), endValue, endInclusive, compareSign, true);
+        long lowerBoundMin = bound(selection, usePrev, doubleColumnSource, 0, selection.size(), startValue,
+                startInclusive, compareSign, false);
+        long upperBoundMin = bound(selection, usePrev, doubleColumnSource, lowerBoundMin, selection.size(), endValue,
+                endInclusive, compareSign, true);
 
         return selection.subSetByPositionRange(lowerBoundMin, upperBoundMin);
     }
 
-    private static long bound(RowSet selection, boolean usePrev, ColumnSource<Double> doubleColumnSource, long minPosition, long maxPosition, double targetValue, boolean inclusive, int compareSign, boolean end) {
+    private static long bound(RowSet selection, boolean usePrev, ColumnSource<Double> doubleColumnSource,
+            long minPosition, long maxPosition, double targetValue, boolean inclusive, int compareSign, boolean end) {
         while (minPosition < maxPosition) {
             final long midPos = (minPosition + maxPosition) / 2;
             final long midIdx = selection.get(midPos);
 
-            final double compareValue = usePrev ? doubleColumnSource.getPrevDouble(midIdx) : doubleColumnSource.getDouble(midIdx);
+            final double compareValue =
+                    usePrev ? doubleColumnSource.getPrevDouble(midIdx) : doubleColumnSource.getDouble(midIdx);
             final int compareResult = compareSign * DoubleComparisons.compare(compareValue, targetValue);
 
             if (compareResult < 0) {

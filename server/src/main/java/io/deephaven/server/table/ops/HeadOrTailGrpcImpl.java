@@ -1,15 +1,15 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.table.ops;
 
 import com.google.rpc.Code;
 import io.deephaven.auth.codegen.impl.TableServiceContextualAuthWiring;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.table.Table;
-import io.deephaven.extensions.barrage.util.GrpcUtil;
 import io.deephaven.proto.backplane.grpc.BatchTableRequest;
 import io.deephaven.proto.backplane.grpc.HeadOrTailRequest;
+import io.deephaven.proto.util.Exceptions;
 import io.deephaven.server.session.SessionState;
 import io.grpc.StatusRuntimeException;
 
@@ -38,7 +38,8 @@ public abstract class HeadOrTailGrpcImpl extends GrpcTableOperation<HeadOrTailRe
     public void validateRequest(final HeadOrTailRequest request) throws StatusRuntimeException {
         final long nRows = request.getNumRows();
         if (nRows < 0) {
-            throw GrpcUtil.statusRuntimeException(Code.INVALID_ARGUMENT, "numRows must be >= 0 (found: " + nRows + ")");
+            throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
+                    "numRows must be >= 0 (found: " + nRows + ")");
         }
     }
 
@@ -46,7 +47,8 @@ public abstract class HeadOrTailGrpcImpl extends GrpcTableOperation<HeadOrTailRe
     public Table create(final HeadOrTailRequest request,
             final List<SessionState.ExportObject<Table>> sourceTables) {
         Assert.eq(sourceTables.size(), "sourceTables.size()", 1);
-        return realTableOperation.apply(sourceTables.get(0).get(), request.getNumRows());
+        final Table source = sourceTables.get(0).get();
+        return realTableOperation.apply(source, request.getNumRows());
     }
 
     @Singleton

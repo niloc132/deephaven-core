@@ -1,12 +1,17 @@
 #
-# Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
+# Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 #
 
 """ This module provides support for replaying historical data. """
 
+from typing import Union
 import jpy
 
-from deephaven import dtypes, DHError
+import datetime
+import numpy as np
+import pandas as pd
+
+from deephaven import dtypes, DHError, time
 from deephaven._wrapper import JObjectWrapper
 from deephaven.table import Table
 
@@ -22,16 +27,21 @@ class TableReplayer(JObjectWrapper):
 
     j_object_type = _JReplayer
 
-    def __init__(self, start_time: dtypes.DateTime, end_time: dtypes.DateTime):
+    def __init__(self, start_time: Union[dtypes.Instant, int, str, datetime.datetime, np.datetime64, pd.Timestamp],
+                 end_time: Union[dtypes.Instant, int, str, datetime.datetime, np.datetime64, pd.Timestamp]):
         """Initializes the replayer.
 
         Args:
-             start_time (DateTime): replay start time
-             end_time (DateTime): replay end time
+             start_time (Union[dtypes.Instant, int, str, datetime.datetime, np.datetime64, pd.Timestamp]):
+                replay start time.  Integer values are nanoseconds since the Epoch.
+             end_time (Union[dtypes.Instant, int, str, datetime.datetime, np.datetime64, pd.Timestamp]):
+                replay end time.  Integer values are nanoseconds since the Epoch.
 
         Raises:
             DHError
         """
+        start_time = time.to_j_instant(start_time)
+        end_time = time.to_j_instant(end_time)
         self.start_time = start_time
         self.end_time = end_time
         try:

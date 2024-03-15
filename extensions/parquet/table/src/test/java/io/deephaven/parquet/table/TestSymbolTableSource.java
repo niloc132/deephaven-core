@@ -1,14 +1,15 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.parquet.table;
 
 import io.deephaven.base.FileUtils;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.sources.regioned.SymbolTableSource;
+import io.deephaven.engine.testutil.junit4.EngineCleanup;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.util.file.TrackedFileHandleFactory;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,10 @@ import static io.deephaven.engine.testutil.TstUtils.assertTableEquals;
  * Unit tests for Parquet symbol tables
  */
 public class TestSymbolTableSource {
+
+    @Rule
+    public final EngineCleanup framework = new EngineCleanup();
+
     private File dataDirectory;
 
     @Before

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.api.Selectable;
@@ -51,8 +51,9 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
         this.deferredFilters = deferredFilters == null ? WhereFilter.ZERO_LENGTH_SELECT_FILTER_ARRAY : deferredFilters;
         for (final WhereFilter sf : this.deferredFilters) {
             sf.init(parentDefinition);
-            if (sf instanceof LivenessReferent) {
+            if (sf instanceof LivenessReferent && sf.isRefreshing()) {
                 manage((LivenessReferent) sf);
+                setRefreshing(true);
             }
         }
 
@@ -61,7 +62,10 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
         final boolean haveView = this.deferredViewColumns.length > 0;
         final boolean haveFilter = this.deferredFilters.length > 0;
 
-        manage(tableReference);
+        if (tableReference.isRefreshing()) {
+            manage(tableReference);
+            setRefreshing(true);
+        }
 
         if (haveDrop && haveFilter) {
             throw new IllegalStateException("Why do we have a drop and a filter all at the same time?");
@@ -72,17 +76,17 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
     }
 
     @Override
-    public Table where(Collection<? extends Filter> filters) {
-        WhereFilter[] whereFilters = WhereFilter.from(filters);
-        for (WhereFilter filter : whereFilters) {
-            filter.init(definition);
+    public Table where(Filter filter) {
+        final WhereFilter[] whereFilters = WhereFilter.fromInternal(filter);
+        for (WhereFilter f : whereFilters) {
+            f.init(definition);
         }
         return getResultTableWithWhere(whereFilters);
     }
 
     private Table getResultTableWithWhere(WhereFilter... whereFilters) {
         if (getCoalesced() != null) {
-            return coalesce().where(whereFilters);
+            return coalesce().where(Filter.and(whereFilters));
         }
 
         final WhereFilter[] allFilters = Stream.concat(Arrays.stream(deferredFilters), Arrays.stream(whereFilters))
@@ -93,7 +97,7 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
             tableAndRemainingFilters = tableReference.getWithWhere();
             Table result = tableAndRemainingFilters.table;
             result = applyDeferredViews(result);
-            result = result.where(tableAndRemainingFilters.remainingFilters);
+            result = result.where(Filter.and(tableAndRemainingFilters.remainingFilters));
             copyAttributes((BaseTable<?>) result, CopyAttributeOperation.Coalesce);
             setCoalesced(result);
             return result;
@@ -107,12 +111,13 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
             localResult = ((DeferredViewTable) localResult)
                     .getResultTableWithWhere(tableAndRemainingFilters.remainingFilters);
         } else {
-            localResult = localResult.where(WhereFilter.copyFrom(tableAndRemainingFilters.remainingFilters));
+            localResult =
+                    localResult.where(Filter.and(WhereFilter.copyFrom(tableAndRemainingFilters.remainingFilters)));
         }
 
         localResult = applyDeferredViews(localResult);
         if (preAndPostFilters.postViewFilters.length > 0) {
-            localResult = localResult.where(preAndPostFilters.postViewFilters);
+            localResult = localResult.where(Filter.and(preAndPostFilters.postViewFilters));
         }
         if (whereFilters.length == 0) {
             copyAttributes((BaseTable<?>) localResult, CopyAttributeOperation.Coalesce);
@@ -129,7 +134,7 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
             result = result.dropColumns(deferredDropColumns);
         }
         if (deferredViewColumns.length > 0) {
-            result = result.view(SelectColumn.copyFrom(deferredViewColumns));
+            result = result.view(List.of(SelectColumn.copyFrom(deferredViewColumns)));
         }
         return result;
     }
@@ -229,8 +234,8 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
             TableReference.TableAndRemainingFilters tarf =
                     tableReference.getWithWhere(preAndPostFilters.preViewFilters);
             result = tarf.table;
-            result = result.where(tarf.remainingFilters);
-            result = result.where(preAndPostFilters.postViewFilters);
+            result = result.where(Filter.and(tarf.remainingFilters));
+            result = result.where(Filter.and(preAndPostFilters.postViewFilters));
         } else {
             result = tableReference.get();
             result = applyDeferredViews(result);
@@ -268,7 +273,6 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
     protected DeferredViewTable copy() {
         final DeferredViewTable result = new DeferredViewTable(definition, description, new SimpleTableReference(this),
                 null, null, null);
-        result.setRefreshing(isRefreshing());
         LiveAttributeMap.copyAttributes(this, result, ak -> true);
         return result;
     }
@@ -280,19 +284,15 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
         for (int cdi = 0; cdi < newView.length; ++cdi) {
             newView[cdi] = new SourceColumn(cDefs.get(cdi).getName());
         }
-        DeferredViewTable deferredViewTable = new DeferredViewTable(newDefinition, description + "-redefined",
+        return new DeferredViewTable(newDefinition, description + "-redefined",
                 new SimpleTableReference(this), null, newView, null);
-        deferredViewTable.setRefreshing(isRefreshing());
-        return deferredViewTable;
     }
 
     @Override
     protected Table redefine(TableDefinition newDefinitionExternal, TableDefinition newDefinitionInternal,
-            SelectColumn[] viewColumns, Map<String, Set<String>> columnDependency) {
-        DeferredViewTable deferredViewTable = new DeferredViewTable(newDefinitionExternal, description + "-redefined",
+            SelectColumn[] viewColumns) {
+        return new DeferredViewTable(newDefinitionExternal, description + "-redefined",
                 new SimpleTableReference(this), null, viewColumns, null);
-        deferredViewTable.setRefreshing(isRefreshing());
-        return deferredViewTable;
     }
 
     /**
@@ -300,10 +300,22 @@ public class DeferredViewTable extends RedefinableTable<DeferredViewTable> {
      */
     public static abstract class TableReference extends LivenessArtifact implements SimpleReference<Table> {
 
+        private final boolean isRefreshing;
+
         TableReference(Table t) {
-            if (t.isRefreshing()) {
+            isRefreshing = t.isRefreshing();
+            if (isRefreshing) {
                 manage(t);
             }
+        }
+
+        /**
+         * Is the node updating?
+         *
+         * @return true if the node is updating; false otherwise.
+         */
+        public final boolean isRefreshing() {
+            return isRefreshing;
         }
 
         /**

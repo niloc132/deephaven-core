@@ -1,8 +1,9 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.uri;
 
+import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.client.impl.*;
 import io.deephaven.client.impl.TableHandle.TableHandleException;
 import io.deephaven.configuration.Configuration;
@@ -31,6 +32,8 @@ import javax.inject.Singleton;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
@@ -68,23 +71,24 @@ public final class BarrageTableResolver implements UriResolver {
     }
 
     private final BarrageSessionFactoryBuilder builder;
-
     private final ScheduledExecutorService executor;
-
     private final BufferAllocator allocator;
-
     private final SSLConfig sslConfig;
-
+    private final ClientChannelFactory clientChannelFactory;
     private final Map<DeephavenTarget, BarrageSession> sessions;
 
     @Inject
     public BarrageTableResolver(
-            BarrageSessionFactoryBuilder builder, ScheduledExecutorService executor, BufferAllocator allocator,
-            @Named("client.sslConfig") SSLConfig sslConfig) {
+            BarrageSessionFactoryBuilder builder,
+            ScheduledExecutorService executor,
+            BufferAllocator allocator,
+            @Named("client.sslConfig") SSLConfig sslConfig,
+            ClientChannelFactory clientChannelFactory) {
         this.builder = Objects.requireNonNull(builder);
         this.executor = Objects.requireNonNull(executor);
         this.allocator = Objects.requireNonNull(allocator);
         this.sslConfig = Objects.requireNonNull(sslConfig);
+        this.clientChannelFactory = Objects.requireNonNull(clientChannelFactory);
         this.sessions = new ConcurrentHashMap<>();
     }
 
@@ -103,9 +107,11 @@ public final class BarrageTableResolver implements UriResolver {
     @Override
     public Table resolve(URI uri) throws InterruptedException {
         try {
-            return subscribe(RemoteUri.of(uri));
+            return subscribe(RemoteUri.of(uri)).get();
         } catch (TableHandleException e) {
             throw e.asUnchecked();
+        } catch (ExecutionException e) {
+            throw new UncheckedDeephavenException(e);
         }
     }
 
@@ -115,7 +121,7 @@ public final class BarrageTableResolver implements UriResolver {
      * @param remoteUri the remote URI
      * @return the subscribed table
      */
-    public Table subscribe(RemoteUri remoteUri) throws InterruptedException, TableHandleException {
+    public Future<Table> subscribe(RemoteUri remoteUri) throws InterruptedException, TableHandleException {
         final DeephavenTarget target = remoteUri.target();
         final TableSpec table = RemoteResolver.of(remoteUri);
         return subscribe(target, table, SUB_OPTIONS);
@@ -128,7 +134,8 @@ public final class BarrageTableResolver implements UriResolver {
      * @param table the table spec
      * @return the subscribed table
      */
-    public Table subscribe(String targetUri, TableSpec table) throws TableHandleException, InterruptedException {
+    public Future<Table> subscribe(String targetUri, TableSpec table)
+            throws TableHandleException, InterruptedException {
         return subscribe(DeephavenTarget.of(URI.create(targetUri)), table, SUB_OPTIONS);
     }
 
@@ -140,7 +147,7 @@ public final class BarrageTableResolver implements UriResolver {
      * @param options the options
      * @return the subscribed table
      */
-    public Table subscribe(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options)
+    public Future<Table> subscribe(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options)
             throws TableHandleException, InterruptedException {
         final BarrageSession session = session(target);
         final BarrageSubscription sub = session.subscribe(table, options);
@@ -156,7 +163,7 @@ public final class BarrageTableResolver implements UriResolver {
      * @param columns the columns to include in the subscription
      * @return the subscribed table
      */
-    public Table subscribe(String targetUri, TableSpec table, RowSet viewport, BitSet columns)
+    public Future<Table> subscribe(String targetUri, TableSpec table, RowSet viewport, BitSet columns)
             throws TableHandleException, InterruptedException {
         return subscribe(DeephavenTarget.of(URI.create(targetUri)), table, SUB_OPTIONS, viewport, columns, false);
     }
@@ -168,10 +175,12 @@ public final class BarrageTableResolver implements UriResolver {
      * @param table the table spec
      * @param viewport the position-space viewport to use for the subscription
      * @param columns the columns to include in the subscription
-     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link #size()} rather than {@code 0}
+     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link Table#size()} rather than
+     *        {@code 0}
      * @return the subscribed table
      */
-    public Table subscribe(String targetUri, TableSpec table, RowSet viewport, BitSet columns, boolean reverseViewport)
+    public Future<Table> subscribe(String targetUri, TableSpec table, RowSet viewport, BitSet columns,
+            boolean reverseViewport)
             throws TableHandleException, InterruptedException {
         return subscribe(DeephavenTarget.of(URI.create(targetUri)), table, SUB_OPTIONS, viewport, columns,
                 reverseViewport);
@@ -185,10 +194,12 @@ public final class BarrageTableResolver implements UriResolver {
      * @param options the options
      * @param viewport the position-space viewport to use for the subscription
      * @param columns the columns to include in the subscription
-     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link #size()} rather than {@code 0}
+     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link Table#size()} rather than
+     *        {@code 0}
      * @return the subscribed table
      */
-    public Table subscribe(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options, RowSet viewport,
+    public Future<Table> subscribe(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options,
+            RowSet viewport,
             BitSet columns, boolean reverseViewport)
             throws TableHandleException, InterruptedException {
         final BarrageSession session = session(target);
@@ -207,7 +218,7 @@ public final class BarrageTableResolver implements UriResolver {
      * @param remoteUri the remote URI
      * @return the table to snapshot
      */
-    public Table snapshot(RemoteUri remoteUri) throws InterruptedException, TableHandleException {
+    public Future<Table> snapshot(RemoteUri remoteUri) throws InterruptedException, TableHandleException {
         final DeephavenTarget target = remoteUri.target();
         final TableSpec table = RemoteResolver.of(remoteUri);
         return snapshot(target, table, SUB_OPTIONS);
@@ -220,7 +231,7 @@ public final class BarrageTableResolver implements UriResolver {
      * @param table the table spec
      * @return the table to snapshot
      */
-    public Table snapshot(String targetUri, TableSpec table) throws TableHandleException, InterruptedException {
+    public Future<Table> snapshot(String targetUri, TableSpec table) throws TableHandleException, InterruptedException {
         return snapshot(DeephavenTarget.of(URI.create(targetUri)), table, SUB_OPTIONS);
     }
 
@@ -232,12 +243,10 @@ public final class BarrageTableResolver implements UriResolver {
      * @param options the options
      * @return the table to snapshot
      */
-    public Table snapshot(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options)
+    public Future<Table> snapshot(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options)
             throws TableHandleException, InterruptedException {
         final BarrageSession session = session(target);
-        try (final BarrageSubscription sub = session.subscribe(table, options)) {
-            return sub.snapshotEntireTable();
-        }
+        return session.subscribe(table, options).snapshotEntireTable();
     }
 
     /**
@@ -249,7 +258,7 @@ public final class BarrageTableResolver implements UriResolver {
      * @param columns the columns to include in the snapshot
      * @return the table to snapshot
      */
-    public Table snapshot(String targetUri, TableSpec table, RowSet viewport, BitSet columns)
+    public Future<Table> snapshot(String targetUri, TableSpec table, RowSet viewport, BitSet columns)
             throws TableHandleException, InterruptedException {
         return snapshot(DeephavenTarget.of(URI.create(targetUri)), table, SUB_OPTIONS, viewport, columns, false);
     }
@@ -261,10 +270,12 @@ public final class BarrageTableResolver implements UriResolver {
      * @param table the table spec
      * @param viewport the position-space viewport to use for the snapshot
      * @param columns the columns to include in the snapshot
-     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link #size()} rather than {@code 0}
+     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link Table#size()} rather than
+     *        {@code 0}
      * @return the table to snapshot
      */
-    public Table snapshot(String targetUri, TableSpec table, RowSet viewport, BitSet columns, boolean reverseViewport)
+    public Future<Table> snapshot(String targetUri, TableSpec table, RowSet viewport, BitSet columns,
+            boolean reverseViewport)
             throws TableHandleException, InterruptedException {
         return snapshot(DeephavenTarget.of(URI.create(targetUri)), table, SUB_OPTIONS, viewport, columns,
                 reverseViewport);
@@ -278,16 +289,16 @@ public final class BarrageTableResolver implements UriResolver {
      * @param options the options
      * @param viewport the position-space viewport to use for the snapshot
      * @param columns the columns to include in the snapshot
-     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link #size()} rather than {@code 0}
+     * @param reverseViewport Whether to treat {@code viewport} as offsets from {@link Table#size()} rather than
+     *        {@code 0}
      * @return the table to snapshot
      */
-    public Table snapshot(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options, RowSet viewport,
+    public Future<Table> snapshot(DeephavenTarget target, TableSpec table, BarrageSubscriptionOptions options,
+            RowSet viewport,
             BitSet columns, boolean reverseViewport)
             throws TableHandleException, InterruptedException {
         final BarrageSession session = session(target);
-        try (final BarrageSubscription sub = session.subscribe(table, options)) {
-            return sub.snapshotPartialTable(viewport, columns, reverseViewport);
-        }
+        return session.subscribe(table, options).snapshotPartialTable(viewport, columns, reverseViewport);
     }
 
     private BarrageSession session(DeephavenTarget target) {
@@ -304,10 +315,11 @@ public final class BarrageTableResolver implements UriResolver {
     }
 
     private BarrageSession newSession(ClientConfig config) {
-        return newSession(ChannelHelper.channel(config));
+        return newSession(clientChannelFactory.create(config));
     }
 
     private BarrageSession newSession(ManagedChannel channel) {
+        // TODO(deephaven-core#3421): DH URI / BarrageTableResolver authentication support
         return builder
                 .allocator(allocator)
                 .managedChannel(channel)

@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.datasets.categoryerrorbar;
 
 import io.deephaven.plot.AxesImpl;
@@ -144,4 +144,23 @@ public class CategoryErrorBarDataSeriesPartitionedTable extends AbstractTableBas
         return valueCol;
     }
 
+    public TableHandle getTableHandle() {
+        return tableHandle;
+    }
+
+    public String getCategoryColumn() {
+        return categoryCol;
+    }
+
+    public String getValueColumn() {
+        return valueCol;
+    }
+
+    public String getErrorBarLowColumn() {
+        return errorBarLowCol;
+    }
+
+    public String getErrorBarHighColumn() {
+        return errorBarHighCol;
+    }
 }

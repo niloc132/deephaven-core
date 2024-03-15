@@ -1,12 +1,11 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.util;
 
 import io.deephaven.chunk.attributes.Values;
 import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.impl.TableUpdateImpl;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.table.impl.*;
 import io.deephaven.chunk.util.hashing.ChunkEquals;
 import io.deephaven.chunk.*;
@@ -46,7 +45,7 @@ public class TickSuppressor {
             return input;
         }
 
-        UpdateGraphProcessor.DEFAULT.checkInitiateTableOperation();
+        input.getUpdateGraph().checkInitiateSerialTableOperation();
 
         final QueryTable resultTable =
                 new QueryTable(input.getDefinition(), input.getRowSet(), input.getColumnSourceMap());
@@ -94,7 +93,7 @@ public class TickSuppressor {
             return input;
         }
 
-        UpdateGraphProcessor.DEFAULT.checkInitiateTableOperation();
+        input.getUpdateGraph().checkInitiateSerialTableOperation();
 
         final QueryTable coalesced = (QueryTable) input.coalesce();
 
@@ -132,7 +131,7 @@ public class TickSuppressor {
                             return;
                         }
 
-                        final int columnCount = resultTable.getColumnSourceMap().size();
+                        final int columnCount = resultTable.numColumns();
                         final int chunkSize = (int) Math.min(1 << 16, downstream.modified().size());
 
                         final ChunkSource.GetContext[] getContextArray = new ChunkSource.GetContext[columnCount];

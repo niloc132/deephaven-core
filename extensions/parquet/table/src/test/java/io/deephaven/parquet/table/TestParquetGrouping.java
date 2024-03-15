@@ -1,37 +1,22 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.parquet.table;
 
 import io.deephaven.base.FileUtils;
-import io.deephaven.engine.context.TestExecutionContext;
 import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
+import io.deephaven.engine.testutil.testcase.RefreshingTableTestCase;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.engine.rowset.RowSetFactory;
-import io.deephaven.util.SafeCloseable;
-import junit.framework.TestCase;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
 
-public class TestParquetGrouping extends TestCase {
-    private SafeCloseable executionContext;
-
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        executionContext = TestExecutionContext.createForUnitTests().open();
-    }
-
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
-        executionContext.close();
-    }
+public class TestParquetGrouping extends RefreshingTableTestCase {
 
     public void testOverflow() throws IOException {
         // TODO: Figure out why this is called testOverflow

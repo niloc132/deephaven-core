@@ -1,17 +1,20 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources;
 
 import io.deephaven.base.verify.Assert;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.*;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.*;
 import io.deephaven.engine.table.impl.TableUpdateImpl;
 import io.deephaven.engine.table.impl.partitioned.TableTransformationColumn;
+import io.deephaven.engine.table.iterators.ChunkedObjectColumnIterator;
 import io.deephaven.engine.table.iterators.ObjectColumnIterator;
 import io.deephaven.engine.updategraph.UpdateCommitter;
 import io.deephaven.engine.table.impl.*;
+import io.deephaven.util.MultiException;
 import io.deephaven.util.SafeCloseable;
 import io.deephaven.util.datastructures.linked.IntrusiveDoublyLinkedNode;
 import io.deephaven.util.datastructures.linked.IntrusiveDoublyLinkedQueue;
@@ -59,16 +62,17 @@ public class UnionSourceManager {
     private final MergedListener mergedListener;
     private final ConstituentChangesListenerRecorder constituentChangesListener;
     private final UpdateCommitter<UnionSourceManager> updateCommitter;
+    private final ExecutionContext executionContext;
 
     public UnionSourceManager(@NotNull final PartitionedTable partitionedTable) {
         constituentChangesPermitted = partitionedTable.constituentChangesPermitted();
         columnNames = partitionedTable.constituentDefinition().getColumnNamesArray();
 
-        final Table coalescedPartitions = partitionedTable.table().coalesce().select(
+        final Table coalescedPartitions = partitionedTable.table().coalesce().select(List.of(
                 new TableTransformationColumn(
                         partitionedTable.constituentColumnName(),
                         null,
-                        Table::coalesce));
+                        Table::coalesce)));
         constituentRows = coalescedPartitions.getRowSet();
         constituentTables = coalescedPartitions.getColumnSource(partitionedTable.constituentColumnName());
 
@@ -78,10 +82,9 @@ public class UnionSourceManager {
         // noinspection resource
         resultRows = RowSetFactory.empty().toTracking();
         unionRedirection = new UnionRedirection(initialNumSlots, refreshing);
-        // noinspection unchecked
         resultColumnSources = partitionedTable.constituentDefinition().getColumnStream()
                 .map(cd -> new UnionColumnSource<>(cd.getDataType(), cd.getComponentType(), this, unionRedirection,
-                        new TableSourceLookup(cd.getName())))
+                        new TableSourceLookup<>(cd.getName())))
                 .toArray(UnionColumnSource[]::new);
         resultTable = new QueryTable(resultRows, getColumnSources());
         modifiedColumnSet = resultTable.getModifiedColumnSetForUpdates();
@@ -96,12 +99,18 @@ public class UnionSourceManager {
             coalescedPartitions.addUpdateListener(constituentChangesListener);
             listenerRecorders.offer(constituentChangesListener);
 
-            updateCommitter = new UpdateCommitter<>(this, usm -> usm.unionRedirection.copyCurrToPrev());
+            updateCommitter = new UpdateCommitter<>(this, partitionedTable.table().getUpdateGraph(),
+                    usm -> usm.unionRedirection.copyCurrToPrev());
+
+            executionContext = ExecutionContext.newBuilder()
+                    .markSystemic()
+                    .build();
         } else {
             listenerRecorders = null;
             mergedListener = null;
             constituentChangesListener = null;
             updateCommitter = null;
+            executionContext = null;
         }
 
         try (final Stream<Table> initialConstituents = currConstituents()) {
@@ -200,12 +209,28 @@ public class UnionSourceManager {
     private final class ConstituentListenerRecorder extends LinkedListenerRecorder {
 
         private final ModifiedColumnSet.Transformer modifiedColumnsTransformer;
+        private Throwable error;
 
         ConstituentListenerRecorder(@NotNull final Table constituent) {
             super("PartitionedTable.merge() Constituent", constituent, mergedListener);
             modifiedColumnsTransformer =
                     ((QueryTable) constituent).newModifiedColumnSetTransformer(resultTable, columnNames);
             setMergedListener(mergedListener);
+        }
+
+        @Override
+        protected void onFailureInternal(@NotNull final Throwable originalException,
+                @Nullable final Entry sourceEntry) {
+            // We will just record the error here for now. If the table was removed, then we don't actually care about
+            // it but if the error is real, and the table is not removed, it will be propagated by processExisting()
+            this.setNotificationStep(getUpdateGraph().clock().currentStep());
+            this.error = originalException;
+            mergedListener.notifyChanges();
+        }
+
+        @Override
+        public boolean recordedVariablesAreValid() {
+            return error == null && super.recordedVariablesAreValid();
         }
 
         @Override
@@ -226,8 +251,12 @@ public class UnionSourceManager {
         protected void process() {
             final TableUpdate constituentChanges = getAndCheckConstituentChanges();
             final TableUpdate downstream;
-            try (final ChangeProcessingContext context = new ChangeProcessingContext(constituentChanges)) {
+            try (final SafeCloseable ignored = executionContext.open();
+                    final ChangeProcessingContext context = new ChangeProcessingContext(constituentChanges)) {
                 downstream = context.processChanges();
+            } catch (Throwable ex) {
+                propagateError(false, ex, entry);
+                return;
             }
             result.notifyListeners(downstream);
         }
@@ -364,7 +393,7 @@ public class UnionSourceManager {
             // @formatter:on
         }
 
-        private TableUpdate processChanges() {
+        private TableUpdate processChanges() throws Throwable {
             final int currConstituentCount = constituentRows.intSize();
             final int prevConstituentCount = constituentRows.intSizePrev();
             unionRedirection.updateCurrSize(currConstituentCount);
@@ -376,6 +405,8 @@ public class UnionSourceManager {
             advanceAdded();
             advanceModified();
             advanceListener();
+
+            List<ConstituentTableException> constituentExceptions = null;
 
             while (nextCurrentSlot < currConstituentCount || nextPreviousSlot < prevConstituentCount) {
                 // Removed constituent processing
@@ -401,7 +432,11 @@ public class UnionSourceManager {
                         processRemove(nextModifiedPreviousValue);
                         processAdd(nextCurrentValue);
                     } else {
-                        processExisting(nextCurrentValue);
+                        try {
+                            processExisting(nextCurrentValue);
+                        } catch (ConstituentTableException ex) {
+                            constituentExceptions = collectConstituentException(constituentExceptions, ex);
+                        }
                     }
                     advanceCurrent();
                     advanceModified();
@@ -410,11 +445,20 @@ public class UnionSourceManager {
                 }
                 // Existing constituent processing
                 else {
-                    processExisting(nextCurrentValue);
+                    try {
+                        processExisting(nextCurrentValue);
+                    } catch (ConstituentTableException ex) {
+                        constituentExceptions = collectConstituentException(constituentExceptions, ex);
+                    }
                     advanceCurrent();
                     ++nextCurrentSlot;
                     ++nextPreviousSlot;
                 }
+            }
+
+            if (constituentExceptions != null) {
+                throw MultiException.maybeWrapInMultiException("Constituent tables reported failures",
+                        constituentExceptions);
             }
 
             Assert.eq(nextCurrentKey, "nextCurrentKey", NULL_ROW_KEY, "NULL_ROW_KEY");
@@ -439,6 +483,17 @@ public class UnionSourceManager {
                     downstreamModified,
                     downstreamShiftBuilder.build(),
                     modifiedColumnSet);
+        }
+
+        private List<ConstituentTableException> collectConstituentException(
+                @Nullable List<ConstituentTableException> exceptions,
+                @NotNull final ConstituentTableException exception) {
+            if (exceptions == null) {
+                exceptions = new ArrayList<>();
+            }
+
+            exceptions.add(exception);
+            return exceptions;
         }
 
         private void processRemove(@NotNull final Table removedConstituent) {
@@ -490,6 +545,15 @@ public class UnionSourceManager {
             if (constituent.isRefreshing()) {
                 assert nextListener != null;
                 Assert.eq(nextListener.getParent(), "listener parent", constituent, "existing constituent");
+
+                // Make sure we propagate any actual error on to the listeners, and advance the listener so we can
+                // continue to process the rest of the tables
+                if (nextListener.error != null) {
+                    final String referentDescription = nextListener.getParent().getDescription();
+                    advanceListener();
+                    throw new ConstituentTableException(referentDescription, nextListener.error);
+                }
+
                 changes = nextListener.getUpdate();
                 mcsTransformer = nextListener.modifiedColumnsTransformer;
                 advanceListener();
@@ -499,10 +563,12 @@ public class UnionSourceManager {
             }
 
             if (changes == null || changes.empty()) {
+                // Constituent is either static or did not change this cycle
                 if (slotAllocationChanged) {
                     currFirstRowKeys[nextCurrentSlot + 1] = checkOverflow(nextSlotPrevFirstRowKey + shiftDelta);
-                    resultRows.insertWithShift(currFirstRowKey, constituent.getRowSet());
-                    if (shiftDelta != 0) {
+                    // Don't bother shifting or re-inserting if the constituent is empty
+                    if (constituent.size() > 0) {
+                        resultRows.insertWithShift(currFirstRowKey, constituent.getRowSet());
                         downstreamShiftBuilder.shiftRange(prevFirstRowKey, prevLastRowKey, shiftDelta);
                     }
                 }
@@ -529,7 +595,9 @@ public class UnionSourceManager {
                 nextSlotCurrFirstRowKey = nextSlotPrevFirstRowKey;
             }
 
-            final boolean needToProcessShifts = changes.shifted().nonempty() && constituent.getRowSet().isNonempty();
+            // Ignore shifts if the constituent was empty or became empty
+            final boolean needToProcessShifts = changes.shifted().nonempty()
+                    && constituent.getRowSet().sizePrev() != changes.removed().size();
 
             if (slotAllocationChanged) {
                 resultRows.insertWithShift(currFirstRowKey, constituent.getRowSet());
@@ -555,7 +623,9 @@ public class UnionSourceManager {
                     resultRows.removeRange(prevFirstRowKey, prevLastRowKey);
                     resultRows.insertWithShift(currFirstRowKey, constituent.getRowSet());
                 }
-            } else if (shiftDelta != 0) {
+            } else if (shiftDelta != 0 && constituent.getRowSet().sizePrev() != changes.removed().size()) {
+                // Note that changes.removed() must be a subset of the constituent's previous row set.
+                // If constituent is removing all of its previous rows, then we do not need to propagate a shift.
                 Assert.assertion(slotAllocationChanged, "slotAllocationChanged");
                 downstreamShiftBuilder.shiftRange(prevFirstRowKey, prevLastRowKey, shiftDelta);
             }
@@ -610,7 +680,7 @@ public class UnionSourceManager {
      * @return The iterator
      */
     private ObjectColumnIterator<Table> currConstituentIter(@NotNull final RowSequence rows) {
-        return new ObjectColumnIterator<>(constituentTables, rows);
+        return new ChunkedObjectColumnIterator<>(constituentTables, rows);
     }
 
     /**
@@ -620,7 +690,7 @@ public class UnionSourceManager {
      * @return The iterator
      */
     private ObjectColumnIterator<Table> prevConstituentIter(@NotNull final RowSequence rows) {
-        return new ObjectColumnIterator<>(constituentTables.getPrevSource(), rows);
+        return new ChunkedObjectColumnIterator<>(constituentTables.getPrevSource(), rows);
     }
 
     /**

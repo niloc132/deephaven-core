@@ -1,12 +1,11 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select.python;
 
 import io.deephaven.engine.table.impl.select.ConditionFilter.FilterKernel;
 import io.deephaven.engine.table.impl.select.ConditionFilter.FilterKernel.Context;
 import io.deephaven.engine.table.impl.select.formula.FormulaKernel;
-import io.deephaven.engine.util.PyCallableWrapper;
 import org.jpy.PyObject;
 
 import java.util.Arrays;

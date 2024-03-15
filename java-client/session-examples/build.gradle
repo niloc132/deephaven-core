@@ -35,8 +35,7 @@ def createApplication = { String name, String mainClass ->
     }
 }
 
-applicationDistribution.into('bin') {
-    from(createApplication('hammer-sessions', 'io.deephaven.client.examples.HammerSessions'))
+application.applicationDistribution.into('bin') {
     from(createApplication('publish-tables', 'io.deephaven.client.examples.PublishTables'))
     from(createApplication('write-qsts', 'io.deephaven.client.examples.WriteExampleQsts'))
     from(createApplication('table-manager', 'io.deephaven.client.examples.TableManagerExample'))
@@ -45,6 +44,11 @@ applicationDistribution.into('bin') {
     from(createApplication('subscribe-fields', 'io.deephaven.client.examples.SubscribeToFields'))
     from(createApplication('connect-check', 'io.deephaven.client.examples.ConnectCheck'))
     from(createApplication('fetch-object', 'io.deephaven.client.examples.FetchObject'))
+    from(createApplication('subscribe-to-logs', 'io.deephaven.client.examples.SubscribeToLogs'))
+    from(createApplication('publish', 'io.deephaven.client.examples.Publish'))
+    from(createApplication('message-stream-send-receive', 'io.deephaven.client.examples.MessageStreamSendReceive'))
+    from(createApplication('filter-table', 'io.deephaven.client.examples.FilterTable'))
+
     fileMode = 0755
 }
 

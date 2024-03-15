@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.testutil.generator;
 
 import io.deephaven.base.verify.Assert;
@@ -20,7 +23,7 @@ public class BigIntegerGenerator extends AbstractGenerator<BigInteger> {
 
     public BigIntegerGenerator(double nullFraction) {
         this(BigInteger.valueOf(Long.MIN_VALUE).multiply(BigInteger.valueOf(2)),
-                BigInteger.valueOf(Long.MAX_VALUE).multiply(BigInteger.valueOf(2)), 0);
+                BigInteger.valueOf(Long.MAX_VALUE).multiply(BigInteger.valueOf(2)), nullFraction);
     }
 
     public BigIntegerGenerator(BigInteger from, BigInteger to) {

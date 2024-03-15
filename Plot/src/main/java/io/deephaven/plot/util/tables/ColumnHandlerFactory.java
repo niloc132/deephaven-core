@@ -1,17 +1,20 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.util.tables;
 
+import io.deephaven.engine.table.impl.DataAccessHelpers;
 import io.deephaven.plot.errors.PlotInfo;
 import io.deephaven.plot.errors.PlotUnsupportedOperationException;
 import io.deephaven.plot.util.ArgumentValidations;
 import io.deephaven.engine.table.DataColumn;
 import io.deephaven.engine.table.Table;
-import io.deephaven.time.DateTime;
 import io.deephaven.gui.color.Paint;
+import io.deephaven.time.DateTimeUtils;
 
 import java.io.Serializable;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Date;
 
 import static io.deephaven.util.QueryConstants.*;
@@ -116,7 +119,7 @@ public class ColumnHandlerFactory implements Serializable {
 
         protected DataColumn getDataColumn() {
             if (dataColumn == null) {
-                dataColumn = table.getColumn(columnName);
+                dataColumn = DataAccessHelpers.getColumn(table, columnName);
             }
 
             return dataColumn;
@@ -167,7 +170,7 @@ public class ColumnHandlerFactory implements Serializable {
 
         protected DataColumn getDataColumn() {
             if (dataColumn == null) {
-                dataColumn = tableHandle.getTable().getColumn(columnName);
+                dataColumn = DataAccessHelpers.getColumn(tableHandle.getTable(), columnName);
             }
 
             return dataColumn;
@@ -384,7 +387,7 @@ public class ColumnHandlerFactory implements Serializable {
                 }
 
             };
-        } else if (type.equals(DateTime.class)) {
+        } else if (type.equals(Instant.class)) {
             return new ColumnHandlerHandle(tableHandle, columnName, type, plotInfo) {
                 @Override
                 public TypeClassification typeClassification() {
@@ -393,8 +396,22 @@ public class ColumnHandlerFactory implements Serializable {
 
                 @Override
                 public double getDouble(int i) {
-                    final DateTime value = (DateTime) getDataColumn().get(i);
-                    return value == null ? Double.NaN : value.getNanos();
+                    final Instant value = (Instant) getDataColumn().get(i);
+                    return value == null ? Double.NaN : DateTimeUtils.epochNanos(value);
+                }
+
+            };
+        } else if (type.equals(ZonedDateTime.class)) {
+            return new ColumnHandlerHandle(tableHandle, columnName, type, plotInfo) {
+                @Override
+                public TypeClassification typeClassification() {
+                    return TypeClassification.TIME;
+                }
+
+                @Override
+                public double getDouble(int i) {
+                    final ZonedDateTime value = (ZonedDateTime) getDataColumn().get(i);
+                    return value == null ? Double.NaN : DateTimeUtils.epochNanos(value);
                 }
 
             };
@@ -601,7 +618,7 @@ public class ColumnHandlerFactory implements Serializable {
                 }
 
             };
-        } else if (type.equals(DateTime.class)) {
+        } else if (type.equals(Instant.class)) {
             return new ColumnHandlerTable(table, columnName, type, plotInfo) {
                 @Override
                 public TypeClassification typeClassification() {
@@ -610,8 +627,22 @@ public class ColumnHandlerFactory implements Serializable {
 
                 @Override
                 public double getDouble(int i) {
-                    final DateTime value = (DateTime) getDataColumn().get(i);
-                    return value == null ? Double.NaN : value.getNanos();
+                    final Instant value = (Instant) getDataColumn().get(i);
+                    return value == null ? Double.NaN : DateTimeUtils.epochNanos(value);
+                }
+
+            };
+        } else if (type.equals(ZonedDateTime.class)) {
+            return new ColumnHandlerTable(table, columnName, type, plotInfo) {
+                @Override
+                public TypeClassification typeClassification() {
+                    return TypeClassification.TIME;
+                }
+
+                @Override
+                public double getDouble(int i) {
+                    final ZonedDateTime value = (ZonedDateTime) getDataColumn().get(i);
+                    return value == null ? Double.NaN : DateTimeUtils.epochNanos(value);
                 }
 
             };

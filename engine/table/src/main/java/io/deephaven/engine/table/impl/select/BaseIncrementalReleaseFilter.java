@@ -1,17 +1,18 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.select;
 
 import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.rowset.WritableRowSet;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.engine.updategraph.UpdateGraphProcessor;
 import io.deephaven.engine.rowset.RowSet;
-import io.deephaven.time.DateTimeUtils;
+import io.deephaven.engine.updategraph.NotificationQueue;
+import io.deephaven.engine.updategraph.UpdateGraph;
 import io.deephaven.util.QueryConstants;
 import io.deephaven.util.annotations.ScriptApi;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
@@ -22,7 +23,10 @@ import java.util.List;
  * The use case is for benchmarks that want to replay a table in order to better understand incremental processing
  * capacity.
  */
-public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessArtifactImpl implements Runnable {
+public abstract class BaseIncrementalReleaseFilter
+        extends WhereFilterLivenessArtifactImpl
+        implements Runnable, NotificationQueue.Dependency {
+
     private final long initialSize;
     private long releasedSize;
     private long expectedSize;
@@ -30,13 +34,13 @@ public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessAr
     private RecomputeListener listener;
     private boolean releaseMoreEntries = false;
 
-    transient private boolean addedToUpdateGraphProcessor = false;
+    transient private boolean addedToUpdateGraph = false;
 
     private transient volatile long firstReleaseNanos = QueryConstants.NULL_LONG;
     private transient volatile long releaseAllNanos = QueryConstants.NULL_LONG;
 
     /**
-     * Should we release entries during the UpdateGraphProcessor cycle?
+     * Should we release entries during the PeriodicUpdateGraph cycle?
      */
     private transient volatile boolean started;
     private transient volatile boolean initialized = false;
@@ -68,18 +72,23 @@ public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessAr
         if (!started) {
             return;
         }
-        addToUpdateGraphProcessor();
+        addToUpdateGraph();
     }
 
-    private void addToUpdateGraphProcessor() {
-        if (!addedToUpdateGraphProcessor) {
-            UpdateGraphProcessor.DEFAULT.addSource(this);
-            addedToUpdateGraphProcessor = true;
+    private void addToUpdateGraph() {
+        if (!addedToUpdateGraph) {
+            updateGraph.addSource(this);
+            addedToUpdateGraph = true;
         }
     }
 
+    @NotNull
     @Override
-    public WritableRowSet filter(RowSet selection, RowSet fullSet, Table table, boolean usePrev) {
+    public WritableRowSet filter(
+            @NotNull final RowSet selection,
+            @NotNull final RowSet fullSet,
+            @NotNull final Table table,
+            final boolean usePrev) {
         if (usePrev) {
             Assert.eqZero(releasedSize, "releasedSize");
             Assert.eq(fullSet.size(), "fullSet.size()", selection.size(), "selection.size()");
@@ -95,7 +104,7 @@ public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessAr
         if (fullSet.size() <= releasedSize) {
             onReleaseAll();
             releasedSize = fullSet.size();
-            UpdateGraphProcessor.DEFAULT.removeSource(this);
+            updateGraph.removeSource(this);
             listener = null;
         }
 
@@ -118,14 +127,14 @@ public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessAr
      */
     @ScriptApi
     public void waitForCompletion() throws InterruptedException {
-        if (UpdateGraphProcessor.DEFAULT.isRefreshThread()) {
+        if (updateGraph.currentThreadProcessesUpdates()) {
             throw new IllegalStateException(
-                    "Can not wait for completion while on UpdateGraphProcessor refresh thread, updates would block.");
+                    "Can not wait for completion while on PeriodicUpdateGraph refresh thread, updates would block.");
         }
         if (releaseAllNanos != QueryConstants.NULL_LONG) {
             return;
         }
-        UpdateGraphProcessor.DEFAULT.exclusiveLock().doLocked(() -> {
+        updateGraph.exclusiveLock().doLocked(() -> {
             while (releaseAllNanos == QueryConstants.NULL_LONG) {
                 // this only works because we will never actually filter out a row from the result; in the general
                 // WhereFilter case, the result table may not update. We could await on the source table, but
@@ -139,15 +148,15 @@ public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessAr
      */
     @ScriptApi
     public void waitForCompletion(long timeoutMillis) throws InterruptedException {
-        if (UpdateGraphProcessor.DEFAULT.isRefreshThread()) {
+        if (updateGraph.currentThreadProcessesUpdates()) {
             throw new IllegalStateException(
-                    "Can not wait for completion while on UpdateGraphProcessor refresh thread, updates would block.");
+                    "Can not wait for completion while on PeriodicUpdateGraph refresh thread, updates would block.");
         }
         if (releaseAllNanos != QueryConstants.NULL_LONG) {
             return;
         }
         final long end = System.currentTimeMillis() + timeoutMillis;
-        UpdateGraphProcessor.DEFAULT.exclusiveLock().doLocked(() -> {
+        updateGraph.exclusiveLock().doLocked(() -> {
             while (releaseAllNanos == QueryConstants.NULL_LONG) {
                 // this only works because we will never actually filter out a row from the result; in the general
                 // WhereFilter case, the result table may not update. We could await on the source table, but
@@ -179,8 +188,18 @@ public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessAr
     public void start() {
         started = true;
         if (initialized) {
-            addToUpdateGraphProcessor();
+            addToUpdateGraph();
         }
+    }
+
+    @Override
+    public boolean satisfied(long step) {
+        return updateGraph.satisfied(step);
+    }
+
+    @Override
+    public UpdateGraph getUpdateGraph() {
+        return updateGraph;
     }
 
     public long getInitialSize() {
@@ -235,6 +254,11 @@ public abstract class BaseIncrementalReleaseFilter extends WhereFilterLivenessAr
     @Override
     protected void destroy() {
         super.destroy();
-        UpdateGraphProcessor.DEFAULT.removeSource(this);
+        updateGraph.removeSource(this);
+    }
+
+    @Override
+    public boolean permitParallelization() {
+        return false;
     }
 }

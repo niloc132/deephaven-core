@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.client.impl;
 
 import java.util.Objects;
@@ -22,7 +22,7 @@ public final class FieldInfo {
     }
 
     public TicketId ticket() {
-        return new TicketId(fieldInfo.getTypedTicket().getTicket());
+        return TicketId.from(fieldInfo.getTypedTicket().getTicket());
     }
 
     public String name() {

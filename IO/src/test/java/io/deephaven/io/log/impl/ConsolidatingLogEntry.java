@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.io.log.impl;
 
 import io.deephaven.base.text.TimestampBuffer;
@@ -83,15 +83,14 @@ public class ConsolidatingLogEntry extends LogOutputStringImpl implements LogEnt
     }
 
     @Override // from LogEntry
-    public LogEntry end() {
+    public void end() {
         throw Assert.statementNeverExecuted();
     }
 
     @Override // from LogEntry
-    public LogEntry endl() {
+    public void endl() {
         m_monitor.endl(builder.toString());
         builder.setLength(0);
-        return this;
     }
 
     // ################################################################

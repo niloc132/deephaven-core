@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.qst.array;
 
 import io.deephaven.qst.type.DoubleType;
+import io.deephaven.util.QueryConstants;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -61,19 +62,29 @@ public final class DoubleArray extends PrimitiveArrayBase<Double> {
     }
 
     @Override
+    public Double value(int index) {
+        double value = values[index];
+        return value == QueryConstants.NULL_DOUBLE ? null : value;
+    }
+
+    @Override
+    public boolean isNull(int index) {
+        return values[index] == QueryConstants.NULL_DOUBLE;
+    }
+
+    @Override
     public final int size() {
         return values().length;
     }
 
     @Override
     public final DoubleType componentType() {
-        return DoubleType.instance();
+        return DoubleType.of();
     }
 
     @Override
-    public <V extends PrimitiveArray.Visitor> V walk(V visitor) {
-        visitor.visit(this);
-        return visitor;
+    public final <R> R walk(PrimitiveArray.Visitor<R> visitor) {
+        return visitor.visit(this);
     }
 
     @Override

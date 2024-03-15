@@ -1,28 +1,41 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.server.jetty;
 
+import io.deephaven.server.browserstreaming.BrowserStreamInterceptor;
 import io.deephaven.server.runner.GrpcServer;
 import io.deephaven.ssl.config.CiphersIntermediate;
 import io.deephaven.ssl.config.ProtocolsIntermediate;
 import io.deephaven.ssl.config.SSLConfig;
 import io.deephaven.ssl.config.TrustJdk;
 import io.deephaven.ssl.config.impl.KickstartUtils;
+import io.grpc.InternalStatus;
+import io.grpc.internal.GrpcUtil;
+import io.grpc.servlet.jakarta.web.GrpcWebFilter;
 import io.grpc.servlet.web.websocket.GrpcWebsocket;
 import io.grpc.servlet.web.websocket.MultiplexedWebSocketServerStream;
 import io.grpc.servlet.web.websocket.WebSocketServerStream;
-import io.grpc.servlet.jakarta.web.GrpcWebFilter;
 import jakarta.servlet.DispatcherType;
 import jakarta.websocket.Endpoint;
 import jakarta.websocket.server.ServerEndpointConfig;
 import nl.altindag.ssl.SSLFactory;
-import nl.altindag.ssl.util.JettySslUtils;
+import nl.altindag.ssl.jetty.util.JettySslUtils;
+import org.apache.arrow.flight.auth.AuthConstants;
+import org.apache.arrow.flight.auth2.Auth2Constants;
 import org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory;
+import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http2.HTTP2Connection;
+import org.eclipse.jetty.http2.HTTP2Session;
 import org.eclipse.jetty.http2.parser.RateControl;
 import org.eclipse.jetty.http2.server.HTTP2CServerConnectionFactory;
+import org.eclipse.jetty.http2.server.HTTP2ServerConnection;
 import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
+import org.eclipse.jetty.io.Connection;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.server.ForwardedRequestCustomizer;
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
@@ -30,9 +43,12 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.HandlerCollection;
+import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.eclipse.jetty.util.MultiException;
 import org.eclipse.jetty.util.component.Graceful;
 import org.eclipse.jetty.util.resource.Resource;
@@ -43,13 +59,16 @@ import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServlet
 import org.eclipse.jetty.websocket.jakarta.server.internal.JakartaWebSocketServerContainer;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -59,7 +78,9 @@ import static io.grpc.servlet.web.websocket.MultiplexedWebSocketServerStream.GRP
 import static io.grpc.servlet.web.websocket.WebSocketServerStream.GRPC_WEBSOCKETS_PROTOCOL;
 import static org.eclipse.jetty.servlet.ServletContextHandler.NO_SESSIONS;
 
+@Singleton
 public class JettyBackedGrpcServer implements GrpcServer {
+    private static final String JS_PLUGINS_PATH_SPEC = "/" + JsPlugins.JS_PLUGINS + "/*";
 
     private final Server jetty;
     private final boolean websocketsEnabled;
@@ -67,7 +88,8 @@ public class JettyBackedGrpcServer implements GrpcServer {
     @Inject
     public JettyBackedGrpcServer(
             final JettyConfig config,
-            final GrpcFilter filter) {
+            final GrpcFilter filter,
+            final JsPlugins jsPlugins) {
         jetty = new Server();
         jetty.addConnector(createConnector(jetty, config));
 
@@ -83,11 +105,12 @@ public class JettyBackedGrpcServer implements GrpcServer {
         }
         context.setInitParameter(DefaultServlet.CONTEXT_INIT + "dirAllowed", "false");
 
-        // For the Web UI, cache everything in the static folder
-        // https://create-react-app.dev/docs/production-build/#static-file-caching
-        context.addFilter(NoCacheFilter.class, "/ide/*", EnumSet.noneOf(DispatcherType.class));
+        // Cache all of the appropriate assets folders
+        for (String appRoot : List.of("/ide/", "/iframe/table/", "/iframe/chart/", "/iframe/widget/")) {
+            context.addFilter(NoCacheFilter.class, appRoot + "*", EnumSet.noneOf(DispatcherType.class));
+            context.addFilter(CacheFilter.class, appRoot + "assets/*", EnumSet.noneOf(DispatcherType.class));
+        }
         context.addFilter(NoCacheFilter.class, "/jsapi/*", EnumSet.noneOf(DispatcherType.class));
-        context.addFilter(CacheFilter.class, "/ide/assets/*", EnumSet.noneOf(DispatcherType.class));
         context.addFilter(DropIfModifiedSinceHeader.class, "/*", EnumSet.noneOf(DispatcherType.class));
 
         context.setSecurityHandler(new ConstraintSecurityHandler());
@@ -95,11 +118,67 @@ public class JettyBackedGrpcServer implements GrpcServer {
         // Add an extra filter to redirect from / to /ide/
         context.addFilter(HomeFilter.class, "/", EnumSet.noneOf(DispatcherType.class));
 
+        // If requested, permit CORS requests
+        FilterHolder holder = new FilterHolder(CrossOriginFilter.class);
+
+        // Permit all origins
+        holder.setInitParameter(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
+
+        // Only support POST - technically gRPC can use GET, but we don't use any of those methods
+        holder.setInitParameter(CrossOriginFilter.ALLOWED_METHODS_PARAM, "POST");
+
+        // Required request headers for gRPC, gRPC-web, flight, and deephaven
+        holder.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, String.join(",",
+                // Required for CORS itself to work
+                HttpHeader.ORIGIN.asString(),
+                CrossOriginFilter.ACCESS_CONTROL_ALLOW_ORIGIN_HEADER,
+
+                // Required for gRPC
+                GrpcUtil.CONTENT_TYPE_KEY.name(),
+                GrpcUtil.TIMEOUT_KEY.name(),
+
+                // Optional for gRPC
+                GrpcUtil.MESSAGE_ENCODING_KEY.name(),
+                GrpcUtil.MESSAGE_ACCEPT_ENCODING_KEY.name(),
+                GrpcUtil.CONTENT_ENCODING_KEY.name(),
+                GrpcUtil.CONTENT_ACCEPT_ENCODING_KEY.name(),
+
+                // Required for gRPC-web
+                "x-grpc-web",
+                // Optional for gRPC-web
+                "x-user-agent",
+
+                // Required for Flight auth 1/2
+                AuthConstants.TOKEN_NAME,
+                Auth2Constants.AUTHORIZATION_HEADER,
+
+                // Required for DH gRPC browser bidi stream support
+                BrowserStreamInterceptor.TICKET_HEADER_NAME,
+                BrowserStreamInterceptor.SEQUENCE_HEADER_NAME,
+                BrowserStreamInterceptor.HALF_CLOSE_HEADER_NAME));
+
+        // Response headers that the browser will need to be able to decode
+        holder.setInitParameter(CrossOriginFilter.EXPOSED_HEADERS_PARAM, String.join(",",
+                Auth2Constants.AUTHORIZATION_HEADER,
+                GrpcUtil.CONTENT_TYPE_KEY.name(),
+                InternalStatus.CODE_KEY.name(),
+                InternalStatus.MESSAGE_KEY.name(),
+                // Not used (yet?), see io.grpc.protobuf.StatusProto
+                "grpc-status-details-bin"));
+
+        // Add the filter on all requests
+        context.addFilter(holder, "/*", EnumSet.noneOf(DispatcherType.class));
+
         // Handle grpc-web connections, translate to vanilla grpc
         context.addFilter(new FilterHolder(new GrpcWebFilter()), "/*", EnumSet.noneOf(DispatcherType.class));
 
         // Wire up the provided grpc filter
         context.addFilter(new FilterHolder(filter), "/*", EnumSet.noneOf(DispatcherType.class));
+
+        // Wire up /js-plugins/*
+        // TODO(deephaven-core#4620): Add js-plugins version-aware caching
+        context.addFilter(NoCacheFilter.class, JS_PLUGINS_PATH_SPEC, EnumSet.noneOf(DispatcherType.class));
+        context.addServlet(servletHolder("js-plugins", jsPlugins.filesystem()), JS_PLUGINS_PATH_SPEC);
 
         // Set up websockets for grpc-web - depending on configuration, we can register both in case we encounter a
         // client using "vanilla"
@@ -138,11 +217,26 @@ public class JettyBackedGrpcServer implements GrpcServer {
 
         // Note: handler order matters due to pathSpec order
         HandlerCollection handlers = new HandlerCollection();
-        // Set up /js-plugins/*
-        JsPlugins.maybeAdd(handlers::addHandler);
+
         // Set up /*
         handlers.addHandler(context);
-        jetty.setHandler(handlers);
+
+        final Handler handler;
+        if (config.httpCompressionOrDefault()) {
+            final GzipHandler gzipHandler = new GzipHandler();
+            // The default of 32 bytes seems a bit small.
+            gzipHandler.setMinGzipSize(1024);
+            // The GzipHandler documentation says GET is the default, but the constructor shows both GET and POST.
+            // This should ensure our gRPC messages don't get compressed for now, but we may need to be more explicit in
+            // the future as gRPC can technically operate over GET.
+            gzipHandler.setIncludedMethods(HttpMethod.GET.asString());
+            // Otherwise, the other defaults seem reasonable.
+            gzipHandler.setHandler(handlers);
+            handler = gzipHandler;
+        } else {
+            handler = handlers;
+        }
+        jetty.setHandler(handler);
     }
 
     @Override
@@ -224,14 +318,14 @@ public class JettyBackedGrpcServer implements GrpcServer {
     private static ServerConnector createConnector(Server server, JettyConfig config) {
         // https://www.eclipse.org/jetty/documentation/jetty-11/programming-guide/index.html#pg-server-http-connector-protocol-http2-tls
         final HttpConfiguration httpConfig = new HttpConfiguration();
+        httpConfig.addCustomizer(new ForwardedRequestCustomizer());
         final HttpConnectionFactory http11 = config.http1OrDefault() ? new HttpConnectionFactory(httpConfig) : null;
         final ServerConnector serverConnector;
         if (config.ssl().isPresent()) {
-            // Consider allowing configuration of sniHostCheck
-            final boolean sniHostCheck = true;
-            httpConfig.addCustomizer(new SecureRequestCustomizer(sniHostCheck));
+            httpConfig.addCustomizer(new SecureRequestCustomizer(config.sniHostCheck()));
             final HTTP2ServerConnectionFactory h2 = new HTTP2ServerConnectionFactory(httpConfig);
             h2.setRateControlFactory(new RateControl.Factory() {});
+
             final ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
             alpn.setDefaultProtocol(http11 != null ? http11.getProtocol() : h2.getProtocol());
             // The Jetty server is getting intermediate setup by default if none are configured. This is most similar to
@@ -263,6 +357,34 @@ public class JettyBackedGrpcServer implements GrpcServer {
         // Give connections extra time to shutdown, since we have an explicit server shutdown
         serverConnector.setShutdownIdleTimeout(serverConnector.getIdleTimeout());
 
+        // Override the h2 stream timeout with a specified value
+        serverConnector.addEventListener(new Connection.Listener() {
+            @Override
+            public void onOpened(Connection connection) {
+                if (connection instanceof HTTP2ServerConnection) {
+                    HTTP2Session session = (HTTP2Session) ((HTTP2Connection) connection).getSession();
+                    session.setStreamIdleTimeout(config.http2StreamIdleTimeoutOrDefault());
+                }
+            }
+
+            @Override
+            public void onClosed(Connection connection) {
+
+            }
+        });
+
         return serverConnector;
+    }
+
+    private static ServletHolder servletHolder(String name, URI filesystemUri) {
+        final ServletHolder jsPlugins = new ServletHolder(name, DefaultServlet.class);
+        // Note, the URI needs explicitly be parseable as a directory URL ending in "!/", a requirement of the jetty
+        // resource creation implementation, see
+        // org.eclipse.jetty.util.resource.Resource.newResource(java.lang.String, boolean)
+        jsPlugins.setInitParameter("resourceBase", filesystemUri.toString());
+        jsPlugins.setInitParameter("pathInfoOnly", "true");
+        jsPlugins.setInitParameter("dirAllowed", "false");
+        jsPlugins.setAsyncSupported(true);
+        return jsPlugins;
     }
 }

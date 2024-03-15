@@ -1,12 +1,13 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.modelfarm.util;
 
 import io.deephaven.base.verify.Require;
 import io.deephaven.engine.table.Table;
 import io.deephaven.vector.*;
-import io.deephaven.time.DateTime;
+
+import java.time.Instant;
 
 /**
  * Utilities for building model farms.
@@ -53,9 +54,9 @@ public class ModelFarmUtils {
      * @param o table cell value.
      * @return date time array.
      */
-    public static DateTime[] arrayDateTime(final Object o) {
+    public static Instant[] arrayInstant(final Object o) {
         // noinspection unchecked
-        return o == null ? null : ((ObjectVector<DateTime>) o).toArray();
+        return o == null ? null : ((ObjectVector<Instant>) o).toArray();
     }
 
     /**

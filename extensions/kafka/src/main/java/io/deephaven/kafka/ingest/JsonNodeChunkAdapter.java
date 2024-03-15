@@ -1,13 +1,13 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.kafka.ingest;
 
 import io.deephaven.UncheckedDeephavenException;
 import io.deephaven.engine.table.TableDefinition;
-import io.deephaven.time.DateTime;
 import io.deephaven.chunk.ChunkType;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.function.IntFunction;
 
@@ -54,8 +54,8 @@ public class JsonNodeChunkAdapter extends MultiFieldChunkAdapter {
             case Int:
                 return new JsonNodeIntFieldCopier(fieldName);
             case Long:
-                if (dataType == DateTime.class) {
-                    return new JsonNodeDateTimeFieldCopier(fieldName);
+                if (dataType == Instant.class) {
+                    return new JsonNodeInstantFieldCopier(fieldName);
                 }
                 return new JsonNodeLongFieldCopier(fieldName);
             case Float:

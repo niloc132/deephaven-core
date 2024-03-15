@@ -1,11 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
-/*
- * ---------------------------------------------------------------------------------------------------------------------
- * AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY - for any changes edit CharTestSource and regenerate
- * ---------------------------------------------------------------------------------------------------------------------
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
+// ****** AUTO-GENERATED CLASS - DO NOT EDIT MANUALLY
+// ****** Edit CharTestSource and run "./gradlew replicateSourceAndChunkTests" to regenerate
+//
+// @formatter:off
 package io.deephaven.engine.testutil.sources;
 
 import io.deephaven.base.verify.Assert;
@@ -14,12 +13,12 @@ import io.deephaven.chunk.Chunk;
 import io.deephaven.chunk.ChunkType;
 import io.deephaven.chunk.ObjectChunk;
 import io.deephaven.chunk.attributes.Values;
+import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.RowSetBuilderRandom;
 import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.impl.AbstractColumnSource;
 import io.deephaven.engine.table.impl.MutableColumnSourceGetDefaults;
-import io.deephaven.engine.updategraph.LogicalClock;
 import io.deephaven.engine.updategraph.TerminalNotification;
 import io.deephaven.engine.updategraph.UpdateCommitter;
 import io.deephaven.util.QueryConstants;
@@ -39,12 +38,13 @@ import java.util.function.LongConsumer;
  */
 public class DoubleTestSource extends AbstractColumnSource<Double>
         implements MutableColumnSourceGetDefaults.ForDouble, TestColumnSource<Double> {
-    private long lastAdditionTime = LogicalClock.DEFAULT.currentStep();
+
+    private long lastAdditionTime;
     protected final Long2DoubleOpenHashMap data = new Long2DoubleOpenHashMap();
     protected Long2DoubleOpenHashMap prevData;
 
     private final UpdateCommitter<DoubleTestSource> prevFlusher =
-            new UpdateCommitter<>(this, DoubleTestSource::flushPrevious);
+            new UpdateCommitter<>(this, updateGraph, DoubleTestSource::flushPrevious);
 
     // region empty constructor
     public DoubleTestSource() {
@@ -55,6 +55,7 @@ public class DoubleTestSource extends AbstractColumnSource<Double>
     // region chunk constructor
     public DoubleTestSource(RowSet rowSet, Chunk<Values> data) {
         super(double.class);
+        lastAdditionTime = updateGraph.clock().currentStep();
         add(rowSet, data);
         setDefaultReturnValue(this.data);
         this.prevData = this.data;
@@ -113,7 +114,7 @@ public class DoubleTestSource extends AbstractColumnSource<Double>
     // endregion chunk add
 
     private void maybeInitializePrevForStep() {
-        long currentStep = LogicalClock.DEFAULT.currentStep();
+        long currentStep = updateGraph.clock().currentStep();
         if (currentStep == lastAdditionTime) {
             return;
         }

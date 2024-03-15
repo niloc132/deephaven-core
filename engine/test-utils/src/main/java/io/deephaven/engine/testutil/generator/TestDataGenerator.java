@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.testutil.generator;
 
 import io.deephaven.chunk.Chunk;
@@ -14,7 +17,7 @@ import java.util.Random;
  * create the column.
  *
  * There are two type parameters. T is the type of our column, U is the type of values we generate. Often these are
- * identical, but for DateTimes we can generate longs (U) and have present the DBDateTime to the user (T).
+ * identical, but for DateTimes we can generate longs (U) and have present the DateTime to the user (T).
  *
  * @param <T> the outward facing type of the column source
  * @param <U> the type of values that will be generated

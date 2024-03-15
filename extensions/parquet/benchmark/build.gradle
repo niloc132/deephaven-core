@@ -27,22 +27,6 @@ dependencies {
     testRuntimeOnly project(path: ':test-configs')
 }
 
-spotless {
-    java {
-        targetExclude(
-                '**/Boolean*Benchmark.java',
-                '**/Byte*Benchmark.java',
-                '**/Char*Benchmark.java',
-                '**/Short*Benchmark.java',
-                '**/Int*Benchmark.java',
-                '**/Long*Benchmark.java',
-                '**/Float*Benchmark.java',
-                '**/Double*Benchmark.java',
-                '**/Object*Benchmark.java',
-        )
-    }
-}
-
 task jmhRun(type: JavaExec)  {
     new File("$rootDir/tmp/workspace").mkdirs()
     new File("$rootDir/tmp/logs").mkdirs()
@@ -50,7 +34,7 @@ task jmhRun(type: JavaExec)  {
 
     classpath = sourceSets.test.runtimeClasspath
 
-    main = 'io.deephaven.benchmarking.runner.BenchmarkRunner'
+    mainClass.set 'io.deephaven.benchmarking.runner.BenchmarkRunner'
 
     // arguments to pass to the application
     jvmArgs '-DConfiguration.rootFile=dh-tests.prop',
@@ -58,7 +42,6 @@ task jmhRun(type: JavaExec)  {
             '-Dconfiguration.quiet=true',
             '-Djava.awt.headless=true',
             '-DQueryTable.memoizeResults=false',
-            '-DUpdateGraphProcessor.checkTableOperations=false',
             '-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=9500'
 }
 
@@ -69,7 +52,7 @@ def createJmhTask = {
 
         task.workingDir "$rootDir/tmp/workspace"
         task.classpath = sourceSets.test.runtimeClasspath
-        task.main = 'io.deephaven.benchmarking.runner.BenchmarkRunner'
+        task.mainClass.set 'io.deephaven.benchmarking.runner.BenchmarkRunner'
 
         // arguments to pass to the application
         def jvmArgs = [ '-DConfiguration.rootFile=dh-tests.prop',
@@ -77,7 +60,6 @@ def createJmhTask = {
                 '-Dconfiguration.quiet=true',
                 '-Djava.awt.headless=true',
                 '-DQueryTable.memoizeResults=false',
-                '-DUpdateGraphProcessor.checkTableOperations=false',
                 "-Xmx$heapSize"
                 //'-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=9501'
         ]

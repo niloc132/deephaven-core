@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.table.impl.sources.ring;
 
 import io.deephaven.chunk.Chunk;
@@ -17,9 +17,9 @@ import io.deephaven.engine.table.TableUpdate;
 import io.deephaven.engine.table.impl.AbstractColumnSource;
 import io.deephaven.engine.table.impl.TableUpdateImpl;
 import io.deephaven.engine.table.impl.sources.InMemoryColumnSource;
-import io.deephaven.time.DateTime;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -86,9 +86,9 @@ final class RingColumnSource<T>
         } else if (dataType == boolean.class || dataType == Boolean.class) {
             throw new UnsupportedOperationException(
                     "No Boolean chunk source for RingColumnSource - use byte and reinterpret");
-        } else if (dataType == DateTime.class) {
+        } else if (dataType == Instant.class) {
             throw new UnsupportedOperationException(
-                    "No DateTime chunk source for RingColumnSource - use long and reinterpret");
+                    "No Instant chunk source for RingColumnSource - use long and reinterpret");
         } else {
             if (componentType != null) {
                 return ofObject(dataType, componentType, capacity);

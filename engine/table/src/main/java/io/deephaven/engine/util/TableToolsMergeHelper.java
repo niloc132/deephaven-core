@@ -1,6 +1,6 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.engine.util;
 
 import io.deephaven.base.verify.Assert;
@@ -86,9 +86,6 @@ public class TableToolsMergeHelper {
             if (table == null) {
                 return;
             }
-            if (table instanceof UncoalescedTable) {
-                table = table.coalesce();
-            }
 
             if (canBreakOutUnionedTable(table)) {
                 tableList.addAll(getComponentTables(table));
@@ -118,15 +115,15 @@ public class TableToolsMergeHelper {
         if (!table.hasAttribute(Table.MERGED_TABLE_ATTRIBUTE)) {
             return false;
         }
-        Map<String, ColumnSource<?>> columnSourceMap = queryTable.getColumnSourceMap();
-        if (columnSourceMap.isEmpty()) {
+        final Collection<? extends ColumnSource<?>> columnSources = queryTable.getColumnSources();
+        if (columnSources.isEmpty()) {
             return false;
         }
-        if (!columnSourceMap.values().stream().allMatch(cs -> cs instanceof UnionColumnSource)) {
+        if (!columnSources.stream().allMatch(cs -> cs instanceof UnionColumnSource)) {
             return false;
         }
 
-        final UnionColumnSource<?> columnSource = (UnionColumnSource<?>) columnSourceMap.values().iterator().next();
+        final UnionColumnSource<?> columnSource = (UnionColumnSource<?>) columnSources.iterator().next();
         return columnSource.getUnionSourceManager().isUsingComponentsSafe();
     }
 }

@@ -1,11 +1,11 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.extensions.barrage.chunk;
 
 import com.google.common.io.LittleEndianDataOutputStream;
-import gnu.trove.iterator.TLongIterator;
 import io.deephaven.UncheckedDeephavenException;
+import io.deephaven.base.verify.Assert;
 import io.deephaven.chunk.*;
 import io.deephaven.chunk.attributes.ChunkPositions;
 import io.deephaven.chunk.attributes.Values;
@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.PrimitiveIterator;
 
 public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamGenerator<ObjectChunk<T, Values>> {
     private static final String DEBUG_NAME = "ObjectChunkInputStream Serialization";
@@ -54,7 +55,7 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
             offsets = WritableLongChunk.makeWritableChunk(size);
             byteChunks = new ArrayList<>();
 
-            // create an initial chunk for data storage.  it might not be needed, but eliminates testing on every
+            // create an initial chunk for data storage. it might not be needed, but eliminates testing on every
             // write operation and the costs for creating and disposing from the pool are minimal
             byteChunks.add(activeChunk = WritableByteChunk.makeWritableChunk(BYTE_CHUNK_SIZE));
         }
@@ -66,11 +67,11 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
         /**
          * Writes the specified byte to the underlying {@code ByteChunk}.
          *
-         * @param   b   the byte to be written.
+         * @param b the byte to be written.
          */
         public synchronized void write(int b) throws IOException {
             // do the write
-            activeChunk.set(activeChunkByteCount++, (byte)b);
+            activeChunk.set(activeChunkByteCount++, (byte) b);
 
             // increment the offset
             writtenTotalByteCount += 1;
@@ -83,15 +84,14 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
         }
 
         /**
-         * Writes {@code len} bytes from the specified byte array
-         * starting at offset {@code off} to the underlying {@code ByteChunk}.
+         * Writes {@code len} bytes from the specified byte array starting at offset {@code off} to the underlying
+         * {@code ByteChunk}.
          *
-         * @param   b     the data.
-         * @param   off   the start offset in the data.
-         * @param   len   the number of bytes to write.
-         * @throws  IndexOutOfBoundsException if {@code off} is negative,
-         * {@code len} is negative, or {@code len} is greater than
-         * {@code b.length - off}
+         * @param b the data.
+         * @param off the start offset in the data.
+         * @param len the number of bytes to write.
+         * @throws IndexOutOfBoundsException if {@code off} is negative, {@code len} is negative, or {@code len} is
+         *         greater than {@code b.length - off}
          */
         public synchronized void write(@NotNull byte[] b, int off, int len) throws IOException {
             int remaining = len;
@@ -146,8 +146,8 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
 
             long startBytePos = offsets.get(sPos);
             while (remainingBytes > 0) {
-                final int chunkIdx = (int)(startBytePos / BYTE_CHUNK_SIZE);
-                final int byteIdx = (int)(startBytePos % BYTE_CHUNK_SIZE);
+                final int chunkIdx = (int) (startBytePos / BYTE_CHUNK_SIZE);
+                final int byteIdx = (int) (startBytePos % BYTE_CHUNK_SIZE);
 
                 final ByteChunk<?> chunk = byteChunks.get(chunkIdx);
 
@@ -190,8 +190,8 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
     }
 
     VarBinaryChunkInputStreamGenerator(final ObjectChunk<T, Values> chunk,
-                                       final long rowOffset,
-                                       final Appender<T> appendItem) {
+            final long rowOffset,
+            final Appender<T> appendItem) {
         super(chunk, 0, rowOffset);
         this.appendItem = appendItem;
     }
@@ -226,8 +226,8 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
     }
 
     @Override
-    public DrainableColumn getInputStream(final StreamReaderOptions options, final @Nullable RowSet subset)
-                throws IOException {
+    public DrainableColumn getInputStream(final StreamReaderOptions options, @Nullable final RowSet subset)
+            throws IOException {
         computePayload();
         return new ObjectChunkInputStream(options, subset);
     }
@@ -306,7 +306,7 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
                         totalCachedSize.add((e - s + 1) * Integer.BYTES);
 
                         // account for payload
-                        totalCachedSize.add(byteStorage.getPayloadSize((int)s, (int)e));
+                        totalCachedSize.add(byteStorage.getPayloadSize((int) s, (int) e));
                     });
                 }
 
@@ -398,15 +398,15 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
     static <T> WritableObjectChunk<T, Values> extractChunkFromInputStream(
             final DataInput is,
             final Iterator<FieldNodeInfo> fieldNodeIter,
-            final TLongIterator bufferInfoIter,
+            final PrimitiveIterator.OfLong bufferInfoIter,
             final Mapper<T> mapper,
             final WritableChunk<Values> outChunk,
             final int outOffset,
             final int totalRows) throws IOException {
         final FieldNodeInfo nodeInfo = fieldNodeIter.next();
-        final long validityBuffer = bufferInfoIter.next();
-        final long offsetsBuffer = bufferInfoIter.next();
-        final long payloadBuffer = bufferInfoIter.next();
+        final long validityBuffer = bufferInfoIter.nextLong();
+        final long offsetsBuffer = bufferInfoIter.nextLong();
+        final long payloadBuffer = bufferInfoIter.nextLong();
 
         final int numElements = nodeInfo.numElements;
         final WritableObjectChunk<T, Values> chunk;
@@ -424,7 +424,7 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
 
         final int numValidityWords = (numElements + 63) / 64;
         try (final WritableLongChunk<Values> isValid = WritableLongChunk.makeWritableChunk(numValidityWords);
-             final WritableIntChunk<Values> offsets = WritableIntChunk.makeWritableChunk(numElements + 1)) {
+                final WritableIntChunk<Values> offsets = WritableIntChunk.makeWritableChunk(numElements + 1)) {
             // Read validity buffer:
             int jj = 0;
             for (; jj < Math.min(numValidityWords, validityBuffer / 8); ++jj) {
@@ -472,12 +472,14 @@ public class VarBinaryChunkInputStreamGenerator<T> extends BaseChunkInputStreamG
                         }
                         final int offset = offsets.get(ei);
                         final int length = offsets.get(ei + 1) - offset;
+                        Assert.geq(length, "length", 0);
                         if (offset + length > serializedData.length) {
                             throw new IllegalStateException("not enough data was serialized to parse this element: " +
                                     "elementIndex=" + ei + " offset=" + offset + " length=" + length +
                                     " serializedLen=" + serializedData.length);
                         }
-                        chunk.set(outOffset + ei++, mapper.constructFrom(serializedData, offset, length));                        validityWord >>= 1;
+                        chunk.set(outOffset + ei++, mapper.constructFrom(serializedData, offset, length));
+                        validityWord >>= 1;
                         bitsLeftInThisWord--;
                     } else {
                         final int skips = Math.min(Long.numberOfTrailingZeros(validityWord), bitsLeftInThisWord);

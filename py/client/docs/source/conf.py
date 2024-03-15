@@ -21,7 +21,7 @@ copyright = '2021, Deephaven Data Labs'
 author = 'Deephaven Data Labs'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+#release = '0.0.1'
 
 # -- General configuration ---------------------------------------------------
 
@@ -68,6 +68,7 @@ html_theme_options = {
 add_module_names = False
 # if we allow sphinx to generate type hints for signatures (default), it would make the generated doc cluttered and hard to read
 autodoc_typehints = 'none'
+autoclass_content = 'both'
 
 #########################################################################################################################################################################
 

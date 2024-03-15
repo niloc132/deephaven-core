@@ -1,9 +1,10 @@
-/**
- * Copyright (c) 2016-2022 Deephaven Data Labs and Patent Pending
- */
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.plot.util;
 
 import io.deephaven.base.verify.Require;
+import io.deephaven.gen.GenUtils;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -20,6 +21,7 @@ import java.util.stream.IntStream;
 public class GenerateAxesPlotMethods {
 
     private static final Logger log = Logger.getLogger(GenerateAxesPlotMethods.class.toString());
+    private static final String GRADLE_TASK = ":Generators:generateAxesPlotMethods";
 
     private static final String PLOT_INFO_ID = "new PlotInfo(this, seriesName)";
 
@@ -171,7 +173,7 @@ public class GenerateAxesPlotMethods {
             }
         });
 
-        types.put("DateTime", new Type() {
+        types.put("Instant", new Type() {
             @Override
             public String getGenericSignature(int index) {
                 return null;
@@ -179,12 +181,12 @@ public class GenerateAxesPlotMethods {
 
             @Override
             public String getVariableType(int index) {
-                return "DateTime[]";
+                return "Instant[]";
             }
 
             @Override
             public String getIndexableDataCode(String variableName) {
-                return "new IndexableNumericDataArrayDateTime(" + variableName + ", " + PLOT_INFO_ID + ")";
+                return "new IndexableNumericDataArrayInstant(" + variableName + ", " + PLOT_INFO_ID + ")";
             }
 
             @Override
@@ -568,7 +570,7 @@ public class GenerateAxesPlotMethods {
 
     private static final String[] timeTypes = {
             "Date",
-            "DateTime"
+            "Instant"
     };
 
     private static final String[] numberTypes = {
@@ -602,7 +604,10 @@ public class GenerateAxesPlotMethods {
         final String header3 =
                 headerSpace + headerComment + " AND THEN RUN GeneratePlottingConvenience " + headerComment;
 
-        StringBuilder code = new StringBuilder(header + "\n" + header2 + "\n" + header3 + "\n\n\n");
+        StringBuilder code = new StringBuilder().append(header).append("\n")
+                .append(header2).append("\n")
+                .append(header3).append("\n// @formatter:off\n\n\n");
+
 
         code.append(
                 codeFunction(isInterface, new String[] {"x", "y"}, new String[][] {numberTimeTypes, numberTimeTypes},
@@ -863,17 +868,14 @@ public class GenerateAxesPlotMethods {
 
         if (assertNoChange) {
             String oldCode = new String(Files.readAllBytes(Paths.get(file)));
-            if (!newcode.equals(oldCode)) {
-                throw new RuntimeException(
-                        "Change in generated code.  Run GenerateAxesPlotMethods or \"./gradlew :Generators:generateAxesPlotMethods\" to regenerate\n");
-            }
+            GenUtils.assertGeneratedCodeSame(GenerateAxesPlotMethods.class, GRADLE_TASK, oldCode, newcode);
         } else {
 
             PrintWriter out = new PrintWriter(file);
             out.print(newcode);
             out.close();
 
-            log.warning(file + " written");
+            log.info(file + " written");
         }
     }
 
@@ -892,7 +894,7 @@ public class GenerateAxesPlotMethods {
         }
 
         log.setLevel(Level.WARNING);
-        log.warning("Running GenerateAxesPlotMethods assertNoChange=" + assertNoChange);
+        log.info("Running GenerateAxesPlotMethods assertNoChange=" + assertNoChange);
 
         final String fileIface = devroot + "/Plot/src/main/java/io/deephaven/plot/Axes.java";
         final String fileImpl = devroot + "/Plot/src/main/java/io/deephaven/plot/AxesImpl.java";

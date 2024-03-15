@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+//
 package io.deephaven.app;
 
 import com.sun.management.GcInfo;
@@ -9,9 +12,9 @@ import io.deephaven.engine.table.ColumnDefinition;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.sources.ArrayBackedColumnSource;
+import io.deephaven.stream.StreamChunkUtils;
 import io.deephaven.stream.StreamConsumer;
 import io.deephaven.stream.StreamPublisher;
-import io.deephaven.stream.StreamToTableAdapter;
 import io.deephaven.util.QueryConstants;
 import org.jetbrains.annotations.NotNull;
 
@@ -77,8 +80,7 @@ final class GcPoolsPublisher implements StreamPublisher {
 
     GcPoolsPublisher() {
         chunkSize = INITIAL_CHUNK_SIZE;
-        // noinspection unchecked
-        chunks = StreamToTableAdapter.makeChunksForDefinition(DEFINITION, chunkSize);
+        chunks = StreamChunkUtils.makeChunksForDefinition(DEFINITION, chunkSize);
         isFirst = true;
     }
 
@@ -140,19 +142,20 @@ final class GcPoolsPublisher implements StreamPublisher {
             consumer.accept(chunks);
         }
         chunkSize = Math.max(chunkSize, poolSize);
-        // noinspection unchecked
-        chunks = StreamToTableAdapter.makeChunksForDefinition(DEFINITION, chunkSize);
+        chunks = StreamChunkUtils.makeChunksForDefinition(DEFINITION, chunkSize);
     }
 
     private void flushInternal() {
         consumer.accept(chunks);
-        // noinspection unchecked
-        chunks = StreamToTableAdapter.makeChunksForDefinition(DEFINITION, chunkSize);
+        chunks = StreamChunkUtils.makeChunksForDefinition(DEFINITION, chunkSize);
     }
 
     public void acceptFailure(Throwable e) {
         consumer.acceptFailure(e);
     }
+
+    @Override
+    public void shutdown() {}
 
     private static boolean equals(MemoryUsage before, MemoryUsage after) {
         return before.getUsed() == after.getUsed()
