@@ -22,11 +22,11 @@ public class MutableLong {
         this.value = value;
     }
 
-    public long longValue() {
+    public long get() {
         return value;
     }
 
-    public void setValue(long value) {
+    public void set(long value) {
         this.value = value;
     }
 
@@ -40,7 +40,7 @@ public class MutableLong {
     }
 
     public long getAndAdd(long addend) {
-        long old = longValue();
+        long old = get();
         value += addend;
         return old;
     }
