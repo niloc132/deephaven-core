@@ -70,7 +70,7 @@ public class BarrageMessage implements SafeCloseable {
     private static final AtomicIntegerFieldUpdater<BarrageMessage> REFERENCE_COUNT_UPDATER =
             AtomicIntegerFieldUpdater.newUpdater(BarrageMessage.class, "refCount");
 
-    public BarrageMessage clone() {
+    public BarrageMessage cloneMessage() {
         REFERENCE_COUNT_UPDATER.incrementAndGet(this);
         return this;
     }

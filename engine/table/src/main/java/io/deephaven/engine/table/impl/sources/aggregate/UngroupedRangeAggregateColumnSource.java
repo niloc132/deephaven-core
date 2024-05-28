@@ -186,6 +186,7 @@ final class UngroupedRangeAggregateColumnSource<DATA_TYPE>
             }
 
             @Override
+            @SuppressWarnings("MissingSuperCall")
             public void close() {
                 SafeCloseable.closeAll(
                         startPositionsInclusiveGetContext,

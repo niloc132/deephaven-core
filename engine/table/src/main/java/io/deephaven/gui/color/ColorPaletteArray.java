@@ -3,6 +3,7 @@
 //
 package io.deephaven.gui.color;
 
+import com.google.common.base.Ascii;
 import io.deephaven.base.verify.Require;
 
 import java.io.Serializable;
@@ -141,7 +142,7 @@ public class ColorPaletteArray implements ColorPalette, Serializable {
             }
 
             try {
-                return valueOf(name.trim().toUpperCase());
+                return valueOf(Ascii.toUpperCase(name.trim()));
             } catch (IllegalArgumentException e) {
                 throw new UnsupportedOperationException("Color palette " + name + " not found");
             }

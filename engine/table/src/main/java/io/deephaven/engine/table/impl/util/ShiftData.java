@@ -20,7 +20,7 @@ public class ShiftData {
         return addedPos;
     }
 
-    private RowSet addedPos;
+    private final RowSet addedPos;
 
     public ShiftData(RowSet rowSet, RowSet removed, RowSet added) {
         TLongList[] removedKeys = rowSet.findMissing(removed);
@@ -39,7 +39,7 @@ public class ShiftData {
                 removeRange(removedPositions.get(removedIndex), removedCount.get(removedIndex));
                 removedIndex++;
             }
-            int deleteCount = 0;
+            long deleteCount = 0;
             while (removedIndex < removedPositions.size() && removedPositions.get(removedIndex) <= endOffset) {
                 deleteCount += removedCount.get(removedIndex);
                 removedIndex++;
@@ -51,8 +51,9 @@ public class ShiftData {
             removedIndex++;
         }
         if (runningSize > 0) {
-            if (startIndex.get(runningSize - 1) <= (rowSet.size() - added.size() + removed.size() - 1)) {
-                endIndex.set(runningSize - 1, (int) (rowSet.size() - added.size() + removed.size() - 1));
+            long s = rowSet.size() - added.size() + removed.size() - 1;
+            if (startIndex.get(runningSize - 1) <= s) {
+                endIndex.set(runningSize - 1, s);
             } else {
                 runningSize--;
             }

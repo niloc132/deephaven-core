@@ -3,6 +3,8 @@
 //
 package io.deephaven.gui.color;
 
+import com.google.common.base.Ascii;
+
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
@@ -44,7 +46,7 @@ public class Color implements Paint, Serializable {
             this.color = java.awt.Color.decode(color);
         } else {
             try {
-                this.color = Colors.valueOf(color.toUpperCase()).color().javaColor();
+                this.color = Colors.valueOf(Ascii.toUpperCase(color)).color().javaColor();
             } catch (RuntimeException e) {
                 throw new IllegalArgumentException("Invalid color name: " + color);
             }
@@ -976,7 +978,7 @@ public class Color implements Paint, Serializable {
             throw new IllegalArgumentException("Color may not be null");
         }
 
-        return stringToColorMap.get(color.trim().toUpperCase());
+        return stringToColorMap.get(Ascii.toUpperCase(color.trim()));
     }
 
     public static Collection<Color> values() {

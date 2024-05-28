@@ -242,6 +242,7 @@ final class UngroupedAggregateSlicedColumnSource<DATA_TYPE>
             }
 
             @Override
+            @SuppressWarnings("MissingSuperCall")
             public void close() {
                 SafeCloseable.closeAll(
                         startGetContext,

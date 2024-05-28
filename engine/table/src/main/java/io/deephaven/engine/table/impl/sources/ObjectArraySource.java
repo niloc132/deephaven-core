@@ -29,17 +29,14 @@ public class ObjectArraySource<T> extends ArraySourceHelper<T, T[]>
             () -> new Object[BLOCK_SIZE], (item) -> Arrays.fill(item, null));
     transient private T[][] prevBlocks;
     private T[][] blocks;
-    private final boolean isArrayType;
 
     public ObjectArraySource(Class<T> type) {
         super(type);
-        isArrayType = Vector.class.isAssignableFrom(type);
         init();
     }
 
     public ObjectArraySource(Class<T> type, Class<?> componentType) {
         super(type, componentType);
-        isArrayType = Vector.class.isAssignableFrom(type);
         init();
     }
 
@@ -300,7 +297,7 @@ public class ObjectArraySource<T> extends ArraySourceHelper<T, T[]>
 
     @Override
     public void fillPrevChunk(
-            @NotNull final ColumnSource.FillContext context,
+            @NotNull final ChunkSource.FillContext context,
             @NotNull final WritableChunk<? super Values> destination,
             @NotNull final RowSequence rowSequence) {
         if (prevFlusher == null) {

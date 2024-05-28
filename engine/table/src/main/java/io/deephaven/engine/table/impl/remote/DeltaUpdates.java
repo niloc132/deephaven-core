@@ -34,13 +34,13 @@ public class DeltaUpdates implements Serializable, Cloneable {
     public ColumnAdditions[] serializedAdditions;
     public ColumnModifications[] serializedModifications;
 
-    public DeltaUpdates clone() {
-        try {
-            return (DeltaUpdates) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new InternalError(e);
-        }
-    }
+//    public DeltaUpdates clone() {
+//        try {
+//            return (DeltaUpdates) super.clone();
+//        } catch (CloneNotSupportedException e) {
+//            throw new InternalError(e);
+//        }
+//    }
 
     public TableUpdate asUpdate(RowSet modified, ModifiedColumnSet mcs) {
         return new TableUpdateImpl(added, removed, modified, shifted, mcs);

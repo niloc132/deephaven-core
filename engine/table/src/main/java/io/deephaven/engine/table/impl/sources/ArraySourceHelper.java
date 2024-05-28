@@ -44,7 +44,7 @@ abstract class ArraySourceHelper<T, UArray> extends ArrayBackedColumnSource<T>
         super(type, componentType);
     }
 
-    static class FillContext implements ColumnSource.FillContext {
+    static class FillContext implements ChunkSource.FillContext {
         final CopyKernel copyKernel;
 
         FillContext(ChunkType chunkType) {
@@ -78,7 +78,7 @@ abstract class ArraySourceHelper<T, UArray> extends ArrayBackedColumnSource<T>
     }
 
     final void ensureCapacity(final long capacity, UArray[] blocks, UArray[] prevBlocks) {
-        ensureCapacity(capacity, blocks, prevBlocks);
+        ensureCapacity(capacity, blocks, prevBlocks, false);
     }
 
     /**

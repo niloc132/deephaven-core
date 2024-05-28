@@ -1628,7 +1628,7 @@ public class ConstructSnapshot {
 
         final int maxChunkSize = (int) Math.min(size, SNAPSHOT_CHUNK_SIZE);
 
-        try (final ColumnSource.FillContext context = columnSource.makeFillContext(maxChunkSize, sharedContext);
+        try (final ChunkSource.FillContext context = columnSource.makeFillContext(maxChunkSize, sharedContext);
                 final RowSequence.Iterator it = rowSet.getRowSequenceIterator()) {
             int chunkSize = maxChunkSize;
             while (it.hasMore()) {

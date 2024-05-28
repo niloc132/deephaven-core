@@ -24,13 +24,13 @@ public class InitialSnapshot implements Serializable, Cloneable {
     public RowSet rowsIncluded;
     public RowSet viewport;
 
-    public InitialSnapshot clone() {
-        try {
-            return (InitialSnapshot) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new IllegalStateException();
-        }
-    }
+//    public InitialSnapshot clone() {
+//        try {
+//            return (InitialSnapshot) super.clone();
+//        } catch (CloneNotSupportedException e) {
+//            throw new IllegalStateException();
+//        }
+//    }
 
     public InitialSnapshot setType(Object type) {
         this.type = type;

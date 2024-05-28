@@ -2884,7 +2884,7 @@ public final class QueryLanguageParser extends GenericVisitorAdapter<Class<?>, Q
     public Class<?> visit(ClassExpr n, VisitArgs printer) {
         Class<?> type = n.getType().accept(this, printer);
         printer.append(".class");
-        // noinspection ClassGetClass
+        // noinspection ClassGetClass, GetClassOnClass
         return type.getClass();
     }
 

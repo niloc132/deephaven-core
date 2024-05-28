@@ -40,6 +40,7 @@ public final class BigIntegerCumProdOperator extends BaseObjectUpdateByOperator<
 
         @Override
         public void reset() {
+            super.reset();
             curVal = null;
         }
     }

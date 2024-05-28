@@ -38,6 +38,7 @@ public abstract class BaseObjectBinaryOperator<T> extends BaseObjectUpdateByOper
 
         @Override
         public void reset() {
+            super.reset();
             curVal = null;
         }
     }

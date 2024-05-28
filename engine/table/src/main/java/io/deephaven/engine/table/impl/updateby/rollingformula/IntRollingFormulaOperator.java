@@ -151,6 +151,7 @@ public class IntRollingFormulaOperator extends BaseRollingFormulaOperator {
 
         @Override
         public void reset() {
+            super.reset();
             intWindowValues.clear();
         }
     }

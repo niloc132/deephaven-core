@@ -74,13 +74,12 @@ public final class RedirectionLayer extends SelectAndViewAnalyzer {
                     public void onAllRequiredColumnsCompleted() {
                         // we only have a base layer underneath us, so we do not care about the bitSet; it is always
                         // empty
-                        doApplyUpdate(upstream, toClear, helper, onCompletion);
+                        doApplyUpdate(upstream, onCompletion);
                     }
                 });
     }
 
-    private void doApplyUpdate(TableUpdate upstream, RowSet toClear, UpdateHelper helper,
-            SelectLayerCompletionHandler onCompletion) {
+    private void doApplyUpdate(TableUpdate upstream, SelectLayerCompletionHandler onCompletion) {
         // we need to remove the removed values from our row redirection, and add them to our free RowSet; so that
         // updating tables will not consume more space over the course of a day for abandoned rows
         final RowSetBuilderRandom innerToFreeBuilder = RowSetFactory.builderRandom();

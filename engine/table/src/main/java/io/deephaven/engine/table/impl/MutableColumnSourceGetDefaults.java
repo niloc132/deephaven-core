@@ -346,6 +346,7 @@ public final class MutableColumnSourceGetDefaults {
     public interface LongBacked<DATA_TYPE>
             extends ColumnSourceGetDefaults.LongBacked<DATA_TYPE>, MutableColumnSource<DATA_TYPE> {
 
+        @Override
         default Boolean getPrevBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }

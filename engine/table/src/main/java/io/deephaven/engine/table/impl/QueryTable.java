@@ -3780,6 +3780,7 @@ public class QueryTable extends BaseTable<QueryTable> {
         return applyInternal(function);
     }
 
+    @Override
     public Table wouldMatch(WouldMatchPair... matchers) {
         final UpdateGraph updateGraph = getUpdateGraph();
         try (final SafeCloseable ignored = ExecutionContext.getContext().withUpdateGraph(updateGraph).open()) {

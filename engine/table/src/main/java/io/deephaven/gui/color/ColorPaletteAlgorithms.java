@@ -3,6 +3,8 @@
 //
 package io.deephaven.gui.color;
 
+import com.google.common.base.Ascii;
+
 import java.util.Arrays;
 import java.util.Random;
 import java.util.function.UnaryOperator;
@@ -98,7 +100,7 @@ public enum ColorPaletteAlgorithms implements ColorPaletteAlgorithm {
         }
 
         try {
-            return valueOf(name.trim().toUpperCase());
+            return valueOf(Ascii.toUpperCase(name.trim()));
         } catch (IllegalArgumentException e) {
             throw new UnsupportedOperationException("Color palette algorithm " + name + " not found");
         }

@@ -74,6 +74,7 @@ final class RollupNodeKeySource implements DefaultChunkSource.WithPrev<Values> {
         fillChunkInternal(context, destination, rowSequence, false);
     }
 
+    @Override
     public void fillPrevChunk(
             @NotNull final ChunkSource.FillContext context,
             @NotNull final WritableChunk<? super Values> destination,

@@ -239,7 +239,7 @@ public abstract class BarrageTable extends QueryTable implements BarrageMessage.
         }
 
         synchronized (pendingUpdatesLock) {
-            pendingUpdates.add(update.clone());
+            pendingUpdates.add(update.cloneMessage());
         }
 
         if (!isRefreshing()) {
@@ -527,7 +527,7 @@ public abstract class BarrageTable extends QueryTable implements BarrageMessage.
             msg.close();
             processedStep.remove(0);
         }
-        processedData.add(snapshotOrDelta.clone());
+        processedData.add(snapshotOrDelta.cloneMessage());
         processedStep.add(getUpdateGraph().clock().currentStep());
     }
 

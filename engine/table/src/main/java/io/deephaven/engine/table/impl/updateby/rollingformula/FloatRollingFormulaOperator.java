@@ -151,6 +151,7 @@ public class FloatRollingFormulaOperator extends BaseRollingFormulaOperator {
 
         @Override
         public void reset() {
+            super.reset();
             floatWindowValues.clear();
         }
     }

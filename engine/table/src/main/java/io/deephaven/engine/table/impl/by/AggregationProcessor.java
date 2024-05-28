@@ -3,6 +3,7 @@
 //
 package io.deephaven.engine.table.impl.by;
 
+import com.google.common.base.Ascii;
 import io.deephaven.api.ColumnName;
 import io.deephaven.api.Pair;
 import io.deephaven.api.SortColumn;
@@ -812,6 +813,7 @@ public class AggregationProcessor implements AggregationContextFactory {
             addBasicOperators((t, n) -> makeSumOperator(t, n, false));
         }
 
+        @Override
         public void visit(@NotNull final AggSpecTDigest tDigest) {
             addBasicOperators((t, n) -> new TDigestPercentileOperator(t,
                     tDigest.compression().orElse(TDigestPercentileOperator.COMPRESSION_DEFAULT), n,
@@ -910,12 +912,6 @@ public class AggregationProcessor implements AggregationContextFactory {
 
     private static void rollupUnsupported(@NotNull final String operationName) {
         throw new UnsupportedOperationException(String.format("Agg%s is not supported for rollup()", operationName));
-    }
-
-    private static void rollupUnsupported(@NotNull final String operationName, final int ticket) {
-        throw new UnsupportedOperationException(String.format(
-                "Agg%s is not supported for rollup(), see https://github.com/deephaven/deephaven-core/issues/%d",
-                operationName, ticket));
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -1792,7 +1788,7 @@ public class AggregationProcessor implements AggregationContextFactory {
 
         private static IntegralType lookup(@NotNull final Class<?> numberClass) {
             try {
-                return valueOf(numberClass.getSimpleName().toUpperCase());
+                return valueOf(Ascii.toUpperCase(numberClass.getSimpleName()));
             } catch (IllegalArgumentException e) {
                 return null;
             }
@@ -1838,7 +1834,7 @@ public class AggregationProcessor implements AggregationContextFactory {
 
         private static FloatingPointType lookup(@NotNull final Class<?> numberClass) {
             try {
-                return valueOf(numberClass.getSimpleName().toUpperCase());
+                return valueOf(Ascii.toUpperCase(numberClass.getSimpleName()));
             } catch (IllegalArgumentException e) {
                 return null;
             }

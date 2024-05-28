@@ -1273,7 +1273,7 @@ abstract class HierarchicalTableImpl<IFACE_TYPE extends HierarchicalTable<IFACE_
                                 // We're at the start of a contracted range; we need to consume the contracted range
                                 // and expand the first row after if there is one.
                                 final long lastContractedPositionInRange = contractedRowPositionsIter.currentRangeEnd();
-                                final long rangeSize = lastContractedPositionInRange - nextContractedPosition + 1;
+                                final int rangeSize = Math.toIntExact(lastContractedPositionInRange - nextContractedPosition + 1);
                                 cdi += rangeSize;
                                 nextChildDirective = cdi < numChildDirectives ? childDirectives.get(cdi) : null;
                                 if (rowsToVisit.size() > lastContractedPositionInRange + 1) {

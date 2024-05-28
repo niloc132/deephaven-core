@@ -44,6 +44,7 @@ public final class BigDecimalCumProdOperator extends BaseObjectUpdateByOperator<
 
         @Override
         public void reset() {
+            super.reset();
             curVal = null;
         }
     }

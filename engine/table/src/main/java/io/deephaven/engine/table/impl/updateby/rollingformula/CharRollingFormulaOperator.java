@@ -147,6 +147,7 @@ public class CharRollingFormulaOperator extends BaseRollingFormulaOperator {
 
         @Override
         public void reset() {
+            super.reset();
             charWindowValues.clear();
         }
     }

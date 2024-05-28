@@ -113,6 +113,7 @@ public interface WritableRowRedirection extends RowRedirection, ChunkSink<RowKey
      * @param chunkCapacity The maximum number of mappings that will be supplied in one operation
      * @return The {@link ChunkSink.FillFromContext } to use
      */
+    @Override
     default ChunkSink.FillFromContext makeFillFromContext(final int chunkCapacity) {
         return DEFAULT_FILL_FROM_INSTANCE;
     }

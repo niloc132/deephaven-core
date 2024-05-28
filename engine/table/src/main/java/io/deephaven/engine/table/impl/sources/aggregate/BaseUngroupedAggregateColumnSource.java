@@ -274,6 +274,7 @@ abstract class BaseUngroupedAggregateColumnSource<DATA_TYPE, SOURCE_TYPE extends
             }
 
             @Override
+            @SuppressWarnings("MissingSuperCall")
             public void close() {
                 SafeCloseable.closeAll(
                         groupGetContext,

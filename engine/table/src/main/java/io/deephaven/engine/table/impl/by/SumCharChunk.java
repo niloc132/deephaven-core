@@ -63,7 +63,7 @@ public class SumCharChunk {
     static private char abs(char val) {
         if (val == QueryConstants.NULL_CHAR) {
             return val;
-        } else if (val < 0) {
+        } else if (val < 0) {// always false since char is [0,65535]
             return (char) -val;
         } else {
             return val;

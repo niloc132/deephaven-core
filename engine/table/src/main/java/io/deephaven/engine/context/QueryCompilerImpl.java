@@ -742,6 +742,7 @@ public class QueryCompilerImpl implements QueryCompiler, LogOutputAppendable {
             this.resolver = resolver;
         }
 
+        @Override
         public CharSequence getCharContent(boolean ignoreEncodingErrors) {
             return code;
         }

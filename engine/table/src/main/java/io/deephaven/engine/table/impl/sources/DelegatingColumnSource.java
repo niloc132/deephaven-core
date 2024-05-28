@@ -49,6 +49,7 @@ public class DelegatingColumnSource<T, R> extends AbstractColumnSource<T> {
 
     @Override
     @OverridingMethodsMustInvokeSuper
+    @SuppressWarnings({"MissingSuperCall", "MethodDoesntCallSuperMethod"})
     public void releaseCachedResources() {
         delegate.releaseCachedResources();
     }

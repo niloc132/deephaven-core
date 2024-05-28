@@ -344,6 +344,7 @@ public final class ColumnSourceGetDefaults {
      */
     public interface LongBacked<DATA_TYPE> extends ColumnSource<DATA_TYPE> {
 
+        @Override
         default Boolean getBoolean(final long rowKey) {
             throw new UnsupportedOperationException();
         }
