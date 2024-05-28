@@ -126,6 +126,7 @@ public class LongChunkFactory implements ChunkFactory {
 
 
     @NotNull
+    @Override
     public final IntFunction<WritableChunk[]> writableChunkArrayBuilder() {
         return WritableLongChunk[]::new;
     }

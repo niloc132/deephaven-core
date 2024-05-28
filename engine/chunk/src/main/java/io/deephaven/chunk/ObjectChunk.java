@@ -69,6 +69,7 @@ public class ObjectChunk<T, ATTR extends Any> extends ChunkBase<ATTR> {
         this.data = data;
     }
 
+    @Override
     public final ChunkType getChunkType() {
         return ChunkType.Object;
     }

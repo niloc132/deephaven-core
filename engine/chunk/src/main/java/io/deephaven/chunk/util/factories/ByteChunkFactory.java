@@ -126,6 +126,7 @@ public class ByteChunkFactory implements ChunkFactory {
 
 
     @NotNull
+    @Override
     public final IntFunction<WritableChunk[]> writableChunkArrayBuilder() {
         return WritableByteChunk[]::new;
     }

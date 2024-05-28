@@ -126,6 +126,7 @@ public class BooleanChunkFactory implements ChunkFactory {
 
 
     @NotNull
+    @Override
     public final IntFunction<WritableChunk[]> writableChunkArrayBuilder() {
         return WritableBooleanChunk[]::new;
     }

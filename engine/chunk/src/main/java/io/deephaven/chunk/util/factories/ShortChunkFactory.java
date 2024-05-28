@@ -126,6 +126,7 @@ public class ShortChunkFactory implements ChunkFactory {
 
 
     @NotNull
+    @Override
     public final IntFunction<WritableChunk[]> writableChunkArrayBuilder() {
         return WritableShortChunk[]::new;
     }

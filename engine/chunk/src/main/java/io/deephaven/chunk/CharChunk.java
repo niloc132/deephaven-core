@@ -65,6 +65,7 @@ public class CharChunk<ATTR extends Any> extends ChunkBase<ATTR> {
         this.data = data;
     }
 
+    @Override
     public final ChunkType getChunkType() {
         return ChunkType.Char;
     }

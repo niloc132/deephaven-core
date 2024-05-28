@@ -122,6 +122,7 @@ public class CharChunkFactory implements ChunkFactory {
 
 
     @NotNull
+    @Override
     public final IntFunction<WritableChunk[]> writableChunkArrayBuilder() {
         return WritableCharChunk[]::new;
     }
