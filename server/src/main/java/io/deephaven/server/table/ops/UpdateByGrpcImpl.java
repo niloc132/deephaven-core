@@ -42,6 +42,7 @@ public final class UpdateByGrpcImpl extends GrpcTableOperation<UpdateByRequest> 
                 UpdateByRequest::getResultId, UpdateByRequest::getSourceId);
     }
 
+    @Override
     public void validateRequest(final UpdateByRequest request) throws StatusRuntimeException {
         try {
             if (request.getOperationsCount() == 0) {

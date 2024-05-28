@@ -101,11 +101,11 @@ public class BrowserStream<T> implements Closeable {
     }
 
     /** represents the sequence that the listener will process next */
-    private long nextSeq = 0;
+    private int nextSeq = 0;
     /** represents whether or not an item is currently being processed */
     private boolean processingMessage = false;
     /** represents the sequence that the client-stream should be considered closed */
-    private long halfClosedSeq = -1;
+    private int halfClosedSeq = -1;
 
     private final Mode mode;
     private final String logIdentity;

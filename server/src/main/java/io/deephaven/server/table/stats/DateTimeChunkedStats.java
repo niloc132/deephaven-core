@@ -17,6 +17,7 @@ import io.deephaven.time.DateTimeUtils;
 import io.deephaven.util.QueryConstants;
 
 public class DateTimeChunkedStats implements ChunkedStatsKernel {
+    @Override
     public Table processChunks(final RowSet rowSet, final ColumnSource<?> columnSource, boolean usePrev) {
         long count = 0;
 

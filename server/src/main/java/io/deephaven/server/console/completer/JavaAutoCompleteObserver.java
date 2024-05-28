@@ -30,6 +30,7 @@ import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyComplete;
+import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyError;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyOnNext;
 
 /**
@@ -137,6 +138,9 @@ public class JavaAutoCompleteObserver extends SessionCloseableObserver<AutoCompl
                     // Not implemented. Return empty diagnostics
                     response.setDiagnostic(GetPullDiagnosticResponse.getDefaultInstance());
                     break;
+                }
+                default: {
+                    safelyError(responseObserver, Code.INVALID_ARGUMENT, "Unknown operation " + request.getRequestCase());
                 }
             }
 

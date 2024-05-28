@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyComplete;
+import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyError;
 import static io.deephaven.extensions.barrage.util.GrpcUtil.safelyOnNext;
 
 /**
@@ -146,6 +147,9 @@ public class PythonAutoCompleteObserver extends SessionCloseableObserver<AutoCom
                     // TODO (https://github.com/deephaven/deephaven-core/issues/3614): Add user requested diagnostics
                     response.setDiagnostic(GetPullDiagnosticResponse.getDefaultInstance());
                     break;
+                }
+                default: {
+                    safelyError(responseObserver, Code.INVALID_ARGUMENT, "Unknown operation " + request.getRequestCase());
                 }
             }
 

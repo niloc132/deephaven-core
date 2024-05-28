@@ -44,7 +44,6 @@ import java.util.concurrent.ScheduledExecutorService;
 public class FlightServiceGrpcImpl extends FlightServiceGrpc.FlightServiceImplBase {
     private static final Logger log = LoggerFactory.getLogger(FlightServiceGrpcImpl.class);
 
-    private final ScheduledExecutorService executorService;
     private final BarrageStreamGenerator.Factory<BarrageStreamGeneratorImpl.View> streamGeneratorFactory;
     private final SessionService sessionService;
     private final SessionService.ErrorTransformer errorTransformer;

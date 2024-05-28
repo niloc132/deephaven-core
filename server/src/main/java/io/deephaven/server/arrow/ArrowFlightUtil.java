@@ -235,6 +235,7 @@ public class ArrowFlightUtil {
 
         @Override
         public void onCompleted() {
+            //shouldnt be synchronized or call super?
             if (resultExportBuilder == null) {
                 throw Exceptions.statusRuntimeException(Code.INVALID_ARGUMENT,
                         "Result flight descriptor never provided");

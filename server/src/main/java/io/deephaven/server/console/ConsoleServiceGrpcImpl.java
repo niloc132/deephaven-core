@@ -3,6 +3,7 @@
 //
 package io.deephaven.server.console;
 
+import com.google.common.base.Ascii;
 import com.google.common.base.Throwables;
 import com.google.rpc.Code;
 import io.deephaven.base.LockFreeArrayQueue;
@@ -108,7 +109,7 @@ public class ConsoleServiceGrpcImpl extends ConsoleServiceGrpc.ConsoleServiceImp
         // TODO (deephaven-core#3147): for legacy reasons, this method is used prior to authentication
         if (!REMOTE_CONSOLE_DISABLED) {
             responseObserver.onNext(GetConsoleTypesResponse.newBuilder()
-                    .addConsoleTypes(scriptSessionProvider.get().scriptType().toLowerCase())
+                    .addConsoleTypes(Ascii.toLowerCase(scriptSessionProvider.get().scriptType()))
                     .build());
         } else {
             responseObserver.onNext(GetConsoleTypesResponse.getDefaultInstance());

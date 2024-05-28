@@ -38,6 +38,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.Closeable;
 import java.lang.Object;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -344,7 +345,7 @@ public class SessionServiceGrpcImpl extends SessionServiceGrpc.SessionServiceImp
             final byte[] altToken = metadata.get(AuthConstants.TOKEN_KEY);
             if (altToken != null) {
                 try {
-                    session = service.getSessionForToken(UUID.fromString(new String(altToken)));
+                    session = service.getSessionForToken(UUID.fromString(new String(altToken, StandardCharsets.UTF_8)));
                 } catch (IllegalArgumentException ignored) {
                 }
             }

@@ -79,6 +79,7 @@ public class ExportedTableUpdateListener implements StreamObserver<ExportNotific
      *
      * @param notification the export state change notification
      */
+    @Override
     public void onNext(final ExportNotification notification) {
         if (isDestroyed) {
             throw Exceptions.statusRuntimeException(Code.CANCELLED, "client cancelled the stream");

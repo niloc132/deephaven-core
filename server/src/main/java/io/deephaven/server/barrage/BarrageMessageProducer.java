@@ -668,7 +668,7 @@ public class BarrageMessageProducer<MessageView> extends LivenessArtifact
         final int columnIndex;
         final ColumnSource<?> sourceColumn;
         final WritableColumnSource<?> deltaColumn;
-        final ColumnSource.GetContext sourceGetContext;
+        final ChunkSource.GetContext sourceGetContext;
         final ChunkSink.FillFromContext deltaFillContext;
 
         public FillDeltaContext(final int columnIndex,
