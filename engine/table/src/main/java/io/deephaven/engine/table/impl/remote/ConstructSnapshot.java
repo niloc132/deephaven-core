@@ -10,6 +10,7 @@ import io.deephaven.base.verify.Assert;
 import io.deephaven.configuration.Configuration;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.exceptions.SnapshotUnsuccessfulException;
+import io.deephaven.engine.table.ChunkSource;
 import io.deephaven.engine.updategraph.*;
 import io.deephaven.engine.rowset.*;
 import io.deephaven.engine.table.SharedContext;
