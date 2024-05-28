@@ -23,11 +23,11 @@ public class MutableInt {
         this.value = value;
     }
 
-    public int intValue() {
+    public int get() {
         return value;
     }
 
-    public void setValue(int value) {
+    public void set(int value) {
         this.value = value;
     }
 
@@ -41,7 +41,7 @@ public class MutableInt {
     }
 
     public int getAndAdd(int addend) {
-        int old = intValue();
+        int old = get();
         value += addend;
         return old;
     }
