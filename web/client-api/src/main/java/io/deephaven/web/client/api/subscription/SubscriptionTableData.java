@@ -12,10 +12,7 @@ import io.deephaven.web.client.fu.JsSettings;
 import io.deephaven.web.shared.data.*;
 import io.deephaven.web.shared.data.columns.ColumnData;
 import jsinterop.annotations.JsFunction;
-import jsinterop.annotations.JsIgnore;
-import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsProperty;
-import jsinterop.annotations.JsType;
 import jsinterop.base.Any;
 import jsinterop.base.Js;
 import jsinterop.base.JsArrayLike;
@@ -23,12 +20,91 @@ import jsinterop.base.JsArrayLike;
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.PrimitiveIterator;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import static io.deephaven.web.client.api.subscription.ViewportData.NO_ROW_FORMAT_COLUMN;
 
 public class SubscriptionTableData {
+
+    private static final class BulkLoadingTreeMap<K extends Comparable<K>, V> extends TreeMap<K, V> {
+        @Override
+        public void putAll(Map<? extends K, ? extends V> map) {
+            Objects.requireNonNull(map);
+            if (map.isEmpty()) {
+                return;
+            }
+            if (isEmpty()) {
+                Comparator<? super K> comparator = comparator() == null ? Comparator.naturalOrder() : comparator();
+                if (map instanceof SortedMap && ((TreeMap<?, ?>) map).comparator() == comparator) {
+                    Collection<? extends Map.Entry<? extends K, ? extends V>> entries = map.entrySet();
+                    // This case is substantially slower if we iterate the items and insert them. we could do
+                    // far better just by shuffling them first, but even better it so re-order, so we add them
+                    // "top-down".
+                    putAllSorted(entries);
+
+                } else {
+                    // Sort the incoming items to match our comparator and proceed
+                    List<Map.Entry<? extends K, ? extends V>> entries = new ArrayList<>(map.entrySet());
+                    entries.sort(Comparator.comparing(Map.Entry::getKey, comparator));
+                    putAllSorted(entries);
+                }
+            } else {
+                // TODO for a comparatively large collection of items, we could still sort
+                // with the existing items into a big new list, then clear and re-add
+                for (Map.Entry<? extends K, ? extends V> e : map.entrySet()) {
+                    put(e.getKey(), e.getValue());
+                }
+            }
+        }
+
+        private void putAllSorted(Collection<? extends Map.Entry<? extends K, ? extends V>> sortedEntries) {
+            // Compute the tree depth necessary for a fully balanced tree
+            int resultingDepth = (int) Math.ceil(Math.log(sortedEntries.size()) / Math.log(2));
+            int balancedTreeSize = (int) Math.pow(2, resultingDepth) - 1;
+            // How many of the max-depth nodes will be absent
+            int emptyLeafNodes = balancedTreeSize - sortedEntries.size();
+            // Store entries in the order we will insert them by depth - order within those layers
+            // technically doesn't matter
+            // noinspection unchecked
+            List<Map.Entry<? extends K, ? extends V>>[] topDownEntries =
+                    (List<Map.Entry<? extends K, ? extends V>>[]) new List[resultingDepth];
+            for (int i = 0; i < resultingDepth - 1; i++) {
+                topDownEntries[i] = new ArrayList<>((int) Math.pow(2, i));
+            }
+            topDownEntries[resultingDepth - 1] = new ArrayList<>(sortedEntries.size());
+            // Walk the sorted collection and populate the topDownEntries, tracking 1-based index
+            int index = 1;
+            for (Map.Entry<? extends K, ? extends V> entry : sortedEntries) {
+                if (emptyLeafNodes > 0 && index % 2 == 1) {
+                    // Skip this max-depth node, will be empty in the final tree
+                    emptyLeafNodes--;
+                    index++;
+                }
+                int trailingZeros = Integer.numberOfTrailingZeros(index);
+                int depthInTree = resultingDepth - trailingZeros;
+                topDownEntries[depthInTree - 1].add(entry);
+                index++;
+            }
+            // Insert the layers in order
+            for (int i = 0; i < topDownEntries.length; i++) {
+                List<Map.Entry<? extends K, ? extends V>> layer = topDownEntries[i];
+                for (int j = 0; j < layer.size(); j++) {
+                    Map.Entry<? extends K, ? extends V> e = layer.get(j);
+                    put(e.getKey(), e.getValue());
+                }
+            }
+        }
+    }
+
     @JsFunction
     private interface ArrayCopy {
         @SuppressWarnings("unusable-by-js")
@@ -43,7 +119,7 @@ public class SubscriptionTableData {
     private RangeSet index;
 
     // mappings from the index to the position of a row in the data array
-    private TreeMap<Long, Long> redirectedIndexes;
+    private BulkLoadingTreeMap<Long, Long> redirectedIndexes;
 
     // rows in the data columns that no longer contain data and can be reused
     private RangeSet reusableDestinations;
@@ -63,7 +139,7 @@ public class SubscriptionTableData {
         ColumnData[] dataColumns = snapshot.getDataColumns();
         data = new Object[dataColumns.length];
         reusableDestinations = RangeSet.empty();
-        redirectedIndexes = new TreeMap<>();
+        redirectedIndexes = new BulkLoadingTreeMap<>();
         index = snapshot.getIncludedRows();
 
         long includedRowCount = snapshot.getIncludedRows().size();
@@ -87,16 +163,20 @@ public class SubscriptionTableData {
             PrimitiveIterator.OfLong destIter = destination.indexIterator();
             PrimitiveIterator.OfLong indexIter = snapshot.getIncludedRows().indexIterator();
             int j = 0;
-            while (indexIter.hasNext()) {
-                assert destIter.hasNext();
+            Map<Long, Long> redirIndexesToAdd = new LinkedHashMap<>() {};
+            while (destIter.hasNext()) {
                 long dest = destIter.nextLong();
-                long nextIndex = indexIter.nextLong();
-                if (indexUpdated) {
-                    redirectedIndexes.put(nextIndex, dest);
+                if (!indexUpdated) {
+                    assert indexIter.hasNext();
+                    redirIndexesToAdd.put(indexIter.nextLong(), dest);
                 }
                 arrayCopy.copyTo(localCopy, dest, dataColumn.getData(), j++);
             }
-            assert !destIter.hasNext();
+            if (!indexUpdated) {
+                // Directly call this to avoid creating a SortedMap or sorting our already-sorted LinkedHashMap
+                redirectedIndexes.putAllSorted(redirIndexesToAdd.entrySet());
+                assert !indexIter.hasNext();
+            }
             indexUpdated = true;
         }
 
