@@ -119,3 +119,6 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NIGHTLY_FAILURE }}
+      - name: final disk usage
+        if: always()
+        run: df -a
