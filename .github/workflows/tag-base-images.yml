@@ -41,6 +41,9 @@ jobs:
           .github/scripts/gradle-properties.sh >> gradle.properties
           cat gradle.properties
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Login to ghcr.io
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -50,11 +53,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Crane scripts
-        uses: burrunan/gradle-cache-action@v1
-        with:
-          job-id: crane-scripts
-          arguments: createCraneTagScript
-          gradle-version: wrapper
+        run: ./gradlew createCraneTagScript
 
       - name: Tag upstream images
         if: ${{ startsWith(github.ref, 'refs/heads/release/v') }}

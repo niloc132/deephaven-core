@@ -28,12 +28,11 @@ jobs:
           .github/scripts/gradle-properties.sh >> gradle.properties
           cat gradle.properties
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Run gradle
-        uses: burrunan/gradle-cache-action@v1
-        with:
-          job-id: image-compare
-          arguments: --continue pullImage compareImage
-          gradle-version: wrapper
+        run: ./gradlew --continue pullImage compareImage
 
       - name: Notify Slack
         uses: slackapi/slack-github-action@v1.26.0

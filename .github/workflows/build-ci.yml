@@ -46,6 +46,9 @@ jobs:
           .github/scripts/gradle-properties.sh >> gradle.properties
           cat gradle.properties
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Get Semver
         id: semver
         if: ${{ startsWith(github.ref, 'refs/heads/release/v') }}
@@ -97,11 +100,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Dockerfile and context
-        uses: burrunan/gradle-cache-action@v1
-        with:
-          job-id: build-server
-          arguments: --scan outputVersion docker-server-slim:prepareDocker docker-server:prepareDockerAll
-          gradle-version: wrapper
+        run: ./gradlew --scan outputVersion docker-server-slim:prepareDocker docker-server:prepareDockerAll
 
       - name: Get Deephaven Version
         id: deephaven_version
@@ -175,6 +174,9 @@ jobs:
           .github/scripts/gradle-properties.sh >> gradle.properties
           cat gradle.properties
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
@@ -191,11 +193,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Dockerfile and context
-        uses: burrunan/gradle-cache-action@v1
-        with:
-          job-id: build-web
-          arguments: --scan outputVersion docker-web-plugin-packager:prepareDocker
-          gradle-version: wrapper
+        run: ./gradlew --scan outputVersion docker-web-plugin-packager:prepareDocker
 
       - name: Get Deephaven Version
         id: deephaven_version

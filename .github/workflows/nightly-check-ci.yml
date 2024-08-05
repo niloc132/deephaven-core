@@ -72,12 +72,11 @@ jobs:
           .github/scripts/gradle-properties.sh >> gradle.properties
           cat gradle.properties
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Run gradle ${{ matrix.gradle-task }} on java ${{ matrix.test-jvm-version }}
-        uses: burrunan/gradle-cache-action@v1
-        with:
-          job-id: gradle-run
-          arguments: --scan --continue --rerun-tasks ${{ matrix.gradle-task }} -PtestRuntimeVersion=${{ matrix.test-jvm-version }}
-          gradle-version: wrapper
+        run: ./gradlew --scan --continue --rerun-tasks ${{ matrix.gradle-task }} -PtestRuntimeVersion=${{ matrix.test-jvm-version }}
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
