@@ -581,6 +581,11 @@ public class JsTreeTable extends HasLifecycle implements ServerObject {
     }
 
     private void replaceSubscription(RebuildStep step) {
+        if (isClosed()) {
+            throw new IllegalStateException("TreeTable already closed, cannot be used again");
+        }
+        JsLog.warn("applying operation", step.name(), (double) hashCode());
+
         // Perform steps required to remove the existing intermediate tickets.
         // Fall-through between steps is deliberate.
         switch (step) {
@@ -605,6 +610,9 @@ public class JsTreeTable extends HasLifecycle implements ServerObject {
                     stream.then(stream -> {
                         stream.close();
                         return null;
+                    }, ignore -> {
+                        // already closed/errored, ignore
+                        return null;
                     });
                     stream = null;
                 }
@@ -614,6 +622,9 @@ public class JsTreeTable extends HasLifecycle implements ServerObject {
                 if (stream != null) {
                     stream.then(subscription -> {
                         subscription.setViewport(firstRow, lastRow, Js.uncheckedCast(columns), (double) updateInterval);
+                        return null;
+                    }, ignore -> {
+                        // already closed/errored, ignore
                         return null;
                     });
                     return;
@@ -633,6 +644,11 @@ public class JsTreeTable extends HasLifecycle implements ServerObject {
                             view.promise());
                 })
                 .then(results -> {
+                    if (isClosed()) {
+                        // Unlike the check at the top of the method, this can happen if the treetable is closed _after_
+                        // the operation finishes
+                        return Promise.reject("TreeTable already closed, skipping pending subscription");
+                    }
                     BitSet columnsBitset = makeColumnSubscriptionBitset();
                     RangeSet range = RangeSet.ofRange((long) (double) firstRow, (long) (double) lastRow);
 
@@ -924,7 +940,7 @@ public class JsTreeTable extends HasLifecycle implements ServerObject {
         }
         closed = true;
 
-        JsLog.debug("Closing tree table", this);
+        JsLog.warn("Closing tree table", (double) this.hashCode());
 
         connection.unregisterSimpleReconnectable(this);
 
@@ -945,6 +961,9 @@ public class JsTreeTable extends HasLifecycle implements ServerObject {
         if (stream != null) {
             stream.then(stream -> {
                 stream.close();
+                return null;
+            }, fail -> {
+                // ignore, already closed/failed
                 return null;
             });
             stream = null;
