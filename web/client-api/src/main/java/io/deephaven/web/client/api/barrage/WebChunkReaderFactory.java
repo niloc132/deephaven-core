@@ -38,6 +38,7 @@ import io.deephaven.web.client.api.LocalTimeWrapper;
 import io.deephaven.web.client.api.LongWrapper;
 import org.apache.arrow.flatbuf.Date;
 import org.apache.arrow.flatbuf.DateUnit;
+import org.apache.arrow.flatbuf.Field;
 import org.apache.arrow.flatbuf.FloatingPoint;
 import org.apache.arrow.flatbuf.Int;
 import org.apache.arrow.flatbuf.Precision;
@@ -269,15 +270,101 @@ public class WebChunkReaderFactory implements ChunkReader.Factory {
                         typeInfo.componentType(),
                         typeInfo.componentType().getComponentType(),
                         typeInfo.arrowField().children(0));
-                final ChunkType chunkType = ListChunkReader.getChunkTypeFor(componentTypeInfo.type());
-                final ExpansionKernel<?> kernel =
-                        ArrayExpansionKernel.makeExpansionKernel(chunkType, componentTypeInfo.type());
+                final ChunkType chunkType = getChunkTypeFor(componentTypeInfo);
+                final ExpansionKernel<?> kernel = makeExpansionKernel(chunkType, componentTypeInfo);
                 final ChunkReader<?> componentReader = newReader(componentTypeInfo, options);
                 return (ChunkReader<T>) new ListChunkReader<>(ListChunkReader.Mode.DENSE, 0, kernel, componentReader);
             }
             default:
                 throw new IllegalArgumentException("Unsupported type: " + Type.name(typeInfo.arrowField().typeType()));
         }
+    }
+
+    private static ChunkType getChunkTypeFor(BarrageTypeInfo componentTypeInfo) {
+        Field field = componentTypeInfo.arrowField();
+        switch (field.typeType()) {
+            case Type.Int: {
+                Int t = new Int();
+                componentTypeInfo.arrowField().type(t);
+                switch (t.bitWidth()) {
+                    case 8: {
+                        return ChunkType.Byte;
+                    }
+                    case 16: {
+                        if (t.isSigned()) {
+                            return ChunkType.Char;
+                        } else {
+                            return ChunkType.Short;
+                        }
+                    }
+                    case 32: {
+                        return ChunkType.Int;
+                    }
+                    case 64: {
+                        return ChunkType.Long;
+                    }
+                }
+            }
+            case Type.FloatingPoint: {
+                FloatingPoint f = new FloatingPoint();
+                componentTypeInfo.arrowField().type(f);
+                switch (f.precision()) {
+                    case Precision.HALF:
+                    case Precision.SINGLE: {
+                        return ChunkType.Float;
+                    }
+                    case Precision.DOUBLE: {
+                        return ChunkType.Double;
+                    }
+                }
+            }
+            case Type.Bool: {
+                return ChunkType.Byte;
+            }
+            case Type.Date: {
+                Date d = new Date();
+                componentTypeInfo.arrowField().type(d);
+                switch (d.unit()) {
+                    case DateUnit.MILLISECOND: {
+                        return ChunkType.Long;
+                    }
+                    case DateUnit.DAY: {
+                        return ChunkType.Int;
+                    }
+                }
+            }
+            case Type.Time: {
+                Time t = new Time();
+                componentTypeInfo.arrowField().type(t);
+                switch (t.bitWidth()) {
+                    case 32: {
+                        return ChunkType.Int;
+                    }
+                    case 64: {
+                        return ChunkType.Long;
+                    }
+                }
+            }
+            case Type.Timestamp: {
+                return ChunkType.Long;
+            }
+            case Type.Binary:
+            case Type.Utf8:
+            case Type.List: {
+                return ChunkType.Object;
+            }
+        }
+        return ListChunkReader.getChunkTypeFor(componentTypeInfo.type());
+    }
+
+    private static ArrayExpansionKernel<Object> makeExpansionKernel(ChunkType chunkType, BarrageTypeInfo componentTypeInfo) {
+        Class<?> type;
+        if (componentTypeInfo.arrowField().typeType() == Type.Bool) {
+            type = boolean.class;
+        } else {
+            type = componentTypeInfo.type();
+        }
+        return ArrayExpansionKernel.makeExpansionKernel(chunkType, type);
     }
 
     public interface Mapper<T> {
