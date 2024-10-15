@@ -289,8 +289,7 @@ public class HierarchicalTableTestGwt extends AbstractAsyncGwtTestCase {
                     List<String> count = List.of(
                             JsAggregationOperation.COUNT,
                             JsAggregationOperation.COUNT_DISTINCT,
-                            // TODO(deephaven-core#6201) re-enable this line when fixed
-                            // JsAggregationOperation.DISTINCT,
+                            JsAggregationOperation.DISTINCT,
                             JsAggregationOperation.MIN,
                             JsAggregationOperation.MAX,
                             JsAggregationOperation.SUM,
