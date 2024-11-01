@@ -14,13 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gradle-task: ['check', 'testSerial', 'testParallel', 'testOutOfBand']
+        gradle-task: [':go:check', ':py-client:check']
         test-jvm-version: ['11', '17', '21', '23']
     if: ${{ github.repository_owner == 'deephaven' || github.event_name != 'schedule' }}
     runs-on: ubuntu-22.04
-    concurrency:
-      group: ${{ matrix.gradle-task }}-${{ matrix.test-jvm-version }}-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,24 +66,6 @@ jobs:
       - name: Run gradle ${{ matrix.gradle-task }} on java ${{ matrix.test-jvm-version }}
         run: ./gradlew --scan --continue --rerun-tasks ${{ matrix.gradle-task }} -PtestRuntimeVersion=${{ matrix.test-jvm-version }}
 
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: nightly-${{ matrix.gradle-task }}-java${{ matrix.test-jvm-version }}-ci-results
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
-
-      - name: Upload JVM Error Logs
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: nightly-${{ matrix.gradle-task }}-java${{ matrix.test-jvm-version }}-ci-jvm-err
-          path: |
-            **/*_pid*.log
-            **/core.*
-          if-no-files-found: ignore
 
       - name: Publish Test Results
         uses: scacap/action-surefire-report@v1
