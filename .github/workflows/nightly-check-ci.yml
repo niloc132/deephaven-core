@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gradle-task: [':go:check', ':py-client:check']
+        gradle-task: ['a', 'b', 'c', 'd']
         test-jvm-version: ['11', '17', '21', '23']
     if: ${{ github.repository_owner == 'deephaven' || github.event_name != 'schedule' }}
     runs-on: ubuntu-24.04
@@ -64,7 +64,7 @@ jobs:
           cat gradle.properties
 
       - name: Run gradle ${{ matrix.gradle-task }} on java ${{ matrix.test-jvm-version }}
-        run: ./gradlew --scan --continue --rerun-tasks ${{ matrix.gradle-task }} -PtestRuntimeVersion=${{ matrix.test-jvm-version }}
+        run: ./gradlew --scan --continue --rerun-tasks check -PtestRuntimeVersion=${{ matrix.test-jvm-version }}
 
 
       - name: Publish Test Results
