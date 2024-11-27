@@ -43,6 +43,21 @@ jobs:
         run: |
           .github/scripts/gradle-properties.sh >> gradle.properties
           cat gradle.properties
+      - name: Check out Jetty
+        uses: actions/checkout@v4
+        with:
+          repository: 'eclipse/jetty.project'
+          path: 'jetty.project'
+          ref: 'jetty-11.0.24'
+          fetch-depth: '0'
+      - name: Revert vers bump, and build only what we need for our test
+        run: |
+          git config --global user.email "colin@colinalworth.com"
+          git config --global user.name "colin"
+          cd jetty.project
+          git checkout cafd30eceb6
+          #git revert --no-edit 8259eab
+          mvn clean install -Dmaven.test.skip -DskipTests -am -pl org.eclipse.jetty:jetty-alpn-java-server,org.eclipse.jetty:jetty-alpn-server,org.eclipse.jetty:jetty-bom,org.eclipse.jetty.http2:http2-server,org.eclipse.jetty:jetty-servlet,org.eclipse.jetty:jetty-servlets,org.eclipse.jetty:jetty-webapp,org.eclipse.jetty.websocket:websocket-jakarta-server
 
       - name: Check
         run: ./gradlew --scan --continue check
