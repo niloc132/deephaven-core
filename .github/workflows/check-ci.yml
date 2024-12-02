@@ -56,7 +56,7 @@ jobs:
           git config --global user.name "colin"
           cd jetty.project
           git checkout cafd30eceb6
-          git revert --no-edit 92eecc1
+          git revert --no-edit d1a9ca1
           mvn clean install -Dmaven.test.skip -DskipTests -am -pl org.eclipse.jetty:jetty-alpn-java-server,org.eclipse.jetty:jetty-alpn-server,org.eclipse.jetty:jetty-bom,org.eclipse.jetty.http2:http2-server,org.eclipse.jetty:jetty-servlet,org.eclipse.jetty:jetty-servlets,org.eclipse.jetty:jetty-webapp,org.eclipse.jetty.websocket:websocket-jakarta-server
 
       - name: Check
