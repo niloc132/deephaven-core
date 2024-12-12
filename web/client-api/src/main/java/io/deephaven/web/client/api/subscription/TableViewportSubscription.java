@@ -11,7 +11,6 @@ import elemental2.promise.Promise;
 import io.deephaven.barrage.flatbuf.BarrageMessageType;
 import io.deephaven.barrage.flatbuf.BarrageSnapshotRequest;
 import io.deephaven.extensions.barrage.BarrageSnapshotOptions;
-import io.deephaven.extensions.barrage.ColumnConversionMode;
 import io.deephaven.javascript.proto.dhinternal.arrow.flight.protocol.flight_pb.FlightData;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.config_pb.ConfigValue;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.table_pb.FlattenRequest;
@@ -110,7 +109,7 @@ public class TableViewportSubscription extends AbstractTableSubscription {
     }
 
     public TableViewportSubscription(ClientTableState state, WorkerConnection connection, JsTable existingTable) {
-        super(state, connection);
+        super(SubscriptionType.VIEWPORT_SUBSCRIPTION, state, connection);
         this.original = existingTable;
 
         initialState = existingTable.state();
@@ -249,6 +248,7 @@ public class TableViewportSubscription extends AbstractTableSubscription {
 
     public void setInternalViewport(double firstRow, double lastRow, Column[] columns, Double updateIntervalMs,
             Boolean isReverseViewport) {
+        // Until we've created the stream, we just cache the requested viewport
         if (status == Status.STARTING) {
             this.firstRow = firstRow;
             this.lastRow = lastRow;
@@ -282,7 +282,7 @@ public class TableViewportSubscription extends AbstractTableSubscription {
      */
     @JsMethod
     public void close() {
-        if (status == Status.DONE) {
+        if (isClosed()) {
             JsLog.warn("TableViewportSubscription.close called on subscription that's already done.");
         }
         retained = false;
@@ -301,13 +301,11 @@ public class TableViewportSubscription extends AbstractTableSubscription {
 
         reconnectSubscription.remove();
 
-        if (retained || status == Status.DONE) {
+        if (retained || isClosed()) {
             // the JsTable has indicated it is no longer interested in this viewport, but other calling
             // code has retained it, keep it open for now.
             return;
         }
-
-        status = Status.DONE;
 
         super.close();
     }
@@ -339,13 +337,14 @@ public class TableViewportSubscription extends AbstractTableSubscription {
         BarrageSnapshotOptions options = BarrageSnapshotOptions.builder()
                 .batchSize(WebBarrageSubscription.BATCH_SIZE)
                 .maxMessageSize(WebBarrageSubscription.MAX_MESSAGE_SIZE)
-                .columnConversionMode(ColumnConversionMode.Stringify)
                 .useDeephavenNulls(true)
                 .build();
 
-        WebBarrageSubscription snapshot =
-                WebBarrageSubscription.subscribe(state(), (serverViewport1, serverColumns, serverReverseViewport) -> {
-                }, (rowsAdded, rowsRemoved, totalMods, shifted, modifiedColumnSet) -> {
+        WebBarrageSubscription snapshot = WebBarrageSubscription.subscribe(
+                SubscriptionType.SNAPSHOT, state(),
+                (serverViewport1, serverColumns, serverReverseViewport) -> {
+                },
+                (rowsAdded, rowsRemoved, totalMods, shifted, modifiedColumnSet) -> {
                 });
 
         WebBarrageStreamReader reader = new WebBarrageStreamReader();
