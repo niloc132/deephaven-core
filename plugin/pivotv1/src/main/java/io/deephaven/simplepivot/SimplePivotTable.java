@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 //
-package io.deephaven.pivotv1;
+package io.deephaven.simplepivot;
 
 import com.google.common.collect.Sets;
 import io.deephaven.api.agg.spec.AggSpec;
@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * @todo rename to SimplePivotTable
+ *
  */
-public class PivotTable extends LivenessArtifact {
+public class SimplePivotTable extends LivenessArtifact {
     /**
      * Factory instance, which can be bound to a variable for clients to fetch and invoke.
      */
@@ -41,7 +41,7 @@ public class PivotTable extends LivenessArtifact {
     private final List<Runnable> subscribers = new CopyOnWriteArrayList<>();
 
     public static class Factory {
-        public PivotTable create(Table table, List<String> columnColNames, List<String> rowColNames,
+        public SimplePivotTable create(Table table, List<String> columnColNames, List<String> rowColNames,
                 String valueColName, AggSpec aggSpec) {
             // Validate that all column names are present in the table
             HashSet<String> allColumnNames = new HashSet<>(table.getDefinition().getColumnNames());
@@ -61,11 +61,11 @@ public class PivotTable extends LivenessArtifact {
                         "Value column name cannot be in grouping column names: " + valueColName);
             }
 
-            return new PivotTable(table, columnColNames, rowColNames, valueColName, aggSpec);
+            return new SimplePivotTable(table, columnColNames, rowColNames, valueColName, aggSpec);
         }
     }
 
-    public PivotTable(Table table, List<String> columnColNames, List<String> rowColNames, String valueColName,
+    public SimplePivotTable(Table table, List<String> columnColNames, List<String> rowColNames, String valueColName,
             AggSpec aggSpec) {
         this.columnColNames = columnColNames;
         this.rowColNames = rowColNames;
@@ -148,7 +148,8 @@ public class PivotTable extends LivenessArtifact {
 
 
     private synchronized void replaceMultiJoinedTable(List<Table> tableToJoin) {
-        Table replacement = MultiJoinFactory.of(rowColNames.toArray(String[]::new), tableToJoin.toArray(Table[]::new)).table();
+        Table replacement =
+                MultiJoinFactory.of(rowColNames.toArray(String[]::new), tableToJoin.toArray(Table[]::new)).table();
 
         // If replacement is refreshing, manage the result and add to our recorder listener list
         if (replacement.isRefreshing()) {
@@ -185,7 +186,8 @@ public class PivotTable extends LivenessArtifact {
 
         // Create a column name from the key in the partitioned table
         List<Table> tables = new ArrayList<>(partitionedTable.table().intSize());
-        ColumnSource<Table> tableColumnSource = partitionedTable.table().getColumnSource(partitionedTable.constituentColumnName(), Table.class);
+        ColumnSource<Table> tableColumnSource =
+                partitionedTable.table().getColumnSource(partitionedTable.constituentColumnName(), Table.class);
         // Build an array of all row columns that we will multijoin on - the last slot is empty for
         // the value column
         String[] cols = new String[rowColNames.size() + 1];
@@ -213,7 +215,8 @@ public class PivotTable extends LivenessArtifact {
         return partitionedTable.table().view(partitionedTable.keyColumnNames().toArray(String[]::new));
     }
 
-    public void subscribe(Runnable callback) {
+    public synchronized void subscribe(Runnable callback) {
         subscribers.add(callback);
+        callback.run();
     }
 }

@@ -8,7 +8,7 @@ from deephaven.jcompat import j_array_list
 from deephaven._wrapper import JObjectWrapper
 from deephaven.table import Table
 
-_JPivotTable = jpy.get_type("io.deephaven.pivotv1.PivotTable")
+_JPivotTable = jpy.get_type("io.deephaven.simplepivot.SimplePivotTable")
 
 
 class Pivot(JObjectWrapper):

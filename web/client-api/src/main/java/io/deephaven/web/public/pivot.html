@@ -14,18 +14,16 @@
     import dh from './dh-core.js'
     const {CoreClient, Table, Widget} = dh;
     var connection;
-    // var schema;
     (async () => {
         var client = new CoreClient('http://localhost:10000');
         await client.login({type:CoreClient.LOGIN_TYPE_ANONYMOUS});
         connection = await client.getAsIdeConnection();
 
-        // Ask the server for the object named "ticking_pivot" which is represented by the plugin type "pivotv1.PivotTable"
-        var pivotWidget = await connection.getObject({name:"ticking_pivot", type:"pivotv1.PivotTable"});
+        // Ask the server for the object named "ticking_pivot"
+        var pivotWidget = await connection.getObject({name:"ticking_pivot", type:"simplepivot.SimplePivotTable"});
 
         // The dh.Widget instance has some events we can subscribe to, and has the initial state from the server
         var keyTable = pivotWidget.exportedObjects[0];
-        // schema = JSON.parse(pivotWidget.getDataAsString());
 
         loadKeys(await keyTable.fetch());
         pivotWidget.addEventListener(Widget.EVENT_MESSAGE, async e => {
@@ -33,10 +31,9 @@
         });
     })();
 
-    // import {TreeGrid} from "./treegrid.js";
-
     var pivotElt = document.getElementById('pivot');
-    var PAGE_SIZE = 2000;
+    var PAGE_SIZE = 20;
+    var COLUMN_COUNT = 10;
 
     function loadKeys(keyTable) {
         var subscription = keyTable.subscribe(keyTable.columns);
@@ -100,20 +97,6 @@
     }
     function load() {
         table.setViewport(currentOffset, currentOffset + PAGE_SIZE - 1);
-    }
-    /**
-     * Replaces the existing rollup with a new one, and subscribes to the viewport to see changes as they happen.
-     * This function must preserve any tree state when replacing the rollup instance, like sorts/filters, row
-     * expansions, etc.
-     *
-     * @param rollup the dh.TreeTable instance to display
-     */
-    function show(rollup) {
-        var tableElt = new TreeGrid(rollup).element;
-        while (pivotElt.hasChildNodes()) {
-            pivotElt.removeChild(pivot.firstChild);
-        }
-        pivotElt.appendChild(tableElt);
     }
 </script>
 </body>

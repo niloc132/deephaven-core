@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 //
-package io.deephaven.pivotv1;
+package io.deephaven.simplepivot;
 
 import com.google.auto.service.AutoService;
 import io.deephaven.plugin.type.ObjectCommunicationException;
@@ -11,7 +11,7 @@ import io.deephaven.plugin.type.ObjectTypeBase;
 import java.nio.ByteBuffer;
 
 @AutoService(ObjectType.class)
-public class PivotTableFactoryTypePlugin extends ObjectTypeBase {
+public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
     @Override
     public MessageStream compatibleClientConnection(Object object, MessageStream connection)
             throws ObjectCommunicationException {
@@ -33,11 +33,11 @@ public class PivotTableFactoryTypePlugin extends ObjectTypeBase {
 
     @Override
     public String name() {
-        return "pivotv1.PivotTable.Factory";
+        return "simplePivot.SimplePivotTable.Factory";
     }
 
     @Override
     public boolean isType(Object object) {
-        return object == PivotTable.Factory.class;
+        return object == SimplePivotTable.Factory.class;
     }
 }

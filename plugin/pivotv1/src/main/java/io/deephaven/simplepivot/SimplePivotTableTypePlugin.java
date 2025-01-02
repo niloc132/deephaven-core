@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
 //
-package io.deephaven.pivotv1;
+package io.deephaven.simplepivot;
 
 import com.google.auto.service.AutoService;
 import io.deephaven.plugin.type.ObjectCommunicationException;
@@ -15,11 +15,14 @@ import java.nio.ByteBuffer;
  * added.
  */
 @AutoService(ObjectType.class)
-public class PivotTableTypePlugin extends ObjectTypeBase {
+public class SimplePivotTableTypePlugin extends ObjectTypeBase {
     @Override
     public MessageStream compatibleClientConnection(Object object, MessageStream connection)
             throws ObjectCommunicationException {
-        PivotTable pivotTable = (PivotTable) object;
+        SimplePivotTable pivotTable = (SimplePivotTable) object;
+
+        // Send column keys on startup, will "tick-tock" with the table, client has to figure it out
+        connection.onData(ByteBuffer.allocate(0), pivotTable.getColumnKeys());
         // Subscribe to updates
         pivotTable.subscribe(() -> {
             // Send current multijoined table
@@ -28,10 +31,9 @@ public class PivotTableTypePlugin extends ObjectTypeBase {
             } catch (ObjectCommunicationException e) {
                 // Disconnect
                 // TODO
+                e.printStackTrace();
             }
         });
-        // Send column keys on startup, will "tick-tock" with the table, client has to figure it out
-        connection.onData(ByteBuffer.allocate(0), pivotTable.getColumnKeys());
 
         return new MessageStream() {
             @Override
@@ -49,11 +51,11 @@ public class PivotTableTypePlugin extends ObjectTypeBase {
 
     @Override
     public String name() {
-        return "pivotv1.PivotTable";
+        return "simplepivot.SimplePivotTable";
     }
 
     @Override
     public boolean isType(Object object) {
-        return object instanceof PivotTable;
+        return object instanceof SimplePivotTable;
     }
 }
