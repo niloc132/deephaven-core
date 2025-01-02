@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Pivot example page</title>
+    <link href="basic.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="pivot"></div>
+<script type="module">
+    // We start by assuming that some server code has run to create the ticking table, and build the pivot object
+    // around it, so that this file doesn't turn into a polyglot mess.
+
+    import dh from './dh-core.js'
+    const {CoreClient, Table, Widget} = dh;
+    var connection;
+    // var schema;
+    (async () => {
+        var client = new CoreClient('http://localhost:10000');
+        await client.login({type:CoreClient.LOGIN_TYPE_ANONYMOUS});
+        connection = await client.getAsIdeConnection();
+
+        // Ask the server for the object named "ticking_pivot" which is represented by the plugin type "pivotv1.PivotTable"
+        var pivotWidget = await connection.getObject({name:"ticking_pivot", type:"pivotv1.PivotTable"});
+
+        // The dh.Widget instance has some events we can subscribe to, and has the initial state from the server
+        var keyTable = pivotWidget.exportedObjects[0];
+        // schema = JSON.parse(pivotWidget.getDataAsString());
+
+        loadKeys(await keyTable.fetch());
+        pivotWidget.addEventListener(Widget.EVENT_MESSAGE, async e => {
+            showChangedPivotSchema(await e.detail.exportedObjects[0].fetch());
+        });
+    })();
+
+    // import {TreeGrid} from "./treegrid.js";
+
+    var pivotElt = document.getElementById('pivot');
+    var PAGE_SIZE = 2000;
+
+    function loadKeys(keyTable) {
+        var subscription = keyTable.subscribe(keyTable.columns);
+        subscription.addEventListener(Table.EVENT_UPDATED, e => {
+            console.log(e.detail);
+        });
+    }
+    var table;
+    var oldTableHandlerCleanup;
+    var currentOffset;
+    function showChangedPivotSchema(pivot) {
+
+        // correctly disconnect from the old table, if any
+        oldTableHandlerCleanup && oldTableHandlerCleanup();
+        table && table.close();
+        table = pivot;
+        currentOffset = 0;
+        //build a simple table in the dom after removing the old one
+        while (pivotElt.hasChildNodes()) {
+            pivotElt.removeChild(pivotElt.lastChild);
+        }
+        var header = document.createElement('thead');
+        var headerRow = document.createElement('tr');
+        // TODO replace this with lookups on the key table
+        table.columns.forEach(columnDef => {
+            // build a very simple header
+            var td = document.createElement('td');
+            td.innerText = columnDef.name;
+            headerRow.appendChild(td);
+        });
+        header.appendChild(headerRow);
+        pivotElt.appendChild(header);
+
+        // listen for items to be added, populate the table body
+        oldTableHandlerCleanup = table.addEventListener(Table.EVENT_UPDATED, function handleTableUpdate(event) {
+            console.log("update event received, time to redraw data");
+            // rebuild the current tbody from scratch
+            var tbody = pivotElt.querySelector('tbody');
+            tbody && pivotElt.removeChild(tbody);
+            tbody = document.createElement('tbody');
+
+            var viewportData = event.detail;
+            var rows = viewportData.rows;
+            for (var i = 0; i < rows.length; i++) {
+                var tr = document.createElement('tr');
+                for (var j = 0; j < table.columns.length; j++) {
+                    var td = document.createElement('td');
+                    td.textContent = rows[i].get(table.columns[j]);
+                    var format = rows[i].getFormat(table.columns[j]);
+                    td.style.backgroundColor = format.backgroundColor;
+                    td.style.color = format.color;
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+            pivotElt.appendChild(tbody);
+        });
+
+        // load the very first page
+        load();
+    }
+    function load() {
+        table.setViewport(currentOffset, currentOffset + PAGE_SIZE - 1);
+    }
+    /**
+     * Replaces the existing rollup with a new one, and subscribes to the viewport to see changes as they happen.
+     * This function must preserve any tree state when replacing the rollup instance, like sorts/filters, row
+     * expansions, etc.
+     *
+     * @param rollup the dh.TreeTable instance to display
+     */
+    function show(rollup) {
+        var tableElt = new TreeGrid(rollup).element;
+        while (pivotElt.hasChildNodes()) {
+            pivotElt.removeChild(pivot.firstChild);
+        }
+        pivotElt.appendChild(tableElt);
+    }
+</script>
+</body>
+</html>

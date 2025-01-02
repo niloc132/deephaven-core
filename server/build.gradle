@@ -86,6 +86,7 @@ dependencies {
     runtimeOnly project(':plugin-figure')
     runtimeOnly project(':plugin-partitionedtable')
     runtimeOnly project(':plugin-hierarchicaltable')
+    runtimeOnly project(':plugin-pivotv1')
     implementation project(':plugin-gc-app')
 
     api platform(libs.grpc.bom)
