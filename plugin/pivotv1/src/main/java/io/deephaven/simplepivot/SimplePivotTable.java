@@ -7,14 +7,12 @@ import com.google.common.collect.Sets;
 import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessArtifact;
-import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.MultiJoinFactory;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.ListenerRecorder;
 import io.deephaven.engine.table.impl.MergedListener;
-import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.util.TableTools;
 
 import java.util.ArrayList;
@@ -33,7 +31,6 @@ public class SimplePivotTable extends LivenessArtifact {
     private static final String PIVOT_COL_PREFIX = "PIVOT_C_";
 
     private final PartitionedTable partitionedTable;
-    private final List<String> columnColNames;
     private final List<String> rowColNames;
     private final String valueColName;
     private final MergedListener mergedListener;
@@ -70,7 +67,6 @@ public class SimplePivotTable extends LivenessArtifact {
 
     public SimplePivotTable(Table table, List<String> columnColNames, List<String> rowColNames, String valueColName,
             AggSpec aggSpec) {
-        this.columnColNames = columnColNames;
         this.rowColNames = rowColNames;
         this.valueColName = valueColName;
 
@@ -104,16 +100,6 @@ public class SimplePivotTable extends LivenessArtifact {
                                 || partitionedTableListenerRecorder.getModified().isNonempty()) {
                             // Any removal or modification means we must rebuild the multijoin. We presently use
                             // row key for column names, so shifts also force a rebuild
-                            if (partitionedTableListenerRecorder.getShifted().nonempty()) {
-                                System.out.println("shifted: " + partitionedTableListenerRecorder.getShifted().nonempty() + ", " + partitionedTableListenerRecorder.getShifted().size() + ", " + partitionedTableListenerRecorder.getShifted());
-                            }
-                            if (partitionedTableListenerRecorder.getRemoved().isNonempty()) {
-                                System.out.println("removed: " + partitionedTableListenerRecorder.getRemoved());
-                            }
-                            if (partitionedTableListenerRecorder.getModified().isNonempty()) {
-                                System.out.println("modified: " + partitionedTableListenerRecorder.getModified());
-                            }
-                            System.out.println("starting full rebuild");
                             multiJoin();
                         } else if (partitionedTableListenerRecorder.getAdded().isNonempty()) {
                             ColumnSource<Table> newTablesSource = partitionedTable.table()
