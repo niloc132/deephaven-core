@@ -41,7 +41,6 @@ public class SimplePivotTable extends LivenessArtifact {
 
     private final String valueColName;
     private final MergedListener mergedListener;
-    private final AtomicInteger nextColumnId = new AtomicInteger(0);
 
     private Table multiJoined;
     private final List<ListenerRecorder> recorders = new ArrayList<>();
@@ -90,7 +89,7 @@ public class SimplePivotTable extends LivenessArtifact {
 
         ExecutionContext context = ExecutionContext.getContext();
         StandaloneQueryScope localScope = new StandaloneQueryScope();
-        localScope.putParam("nextColumnId", nextColumnId);
+        localScope.putParam("nextColumnId", new AtomicInteger(0));
         constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update("__PIVOT_COLUMN=nextColumnId.getAndIncrement()"));
         pivotIdColumn = constituentTable.getColumnSource("__PIVOT_COLUMN", int.class);
         constituentColumn = constituentTable.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
