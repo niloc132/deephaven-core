@@ -5,7 +5,9 @@ package io.deephaven.simplepivot;
 
 import com.google.common.collect.Sets;
 import io.deephaven.api.agg.spec.AggSpec;
+import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.context.ExecutionContext;
+import io.deephaven.engine.context.StandaloneQueryScope;
 import io.deephaven.engine.liveness.LivenessArtifact;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.MultiJoinFactory;
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *
@@ -30,10 +33,15 @@ public class SimplePivotTable extends LivenessArtifact {
     public static final Factory FACTORY = new Factory();
     private static final String PIVOT_COL_PREFIX = "PIVOT_C_";
 
-    private final PartitionedTable partitionedTable;
     private final List<String> rowColNames;
+    private final PartitionedTable partitionedTable;
+    private final Table constituentTable;
+    private final ColumnSource<Integer> pivotIdColumn;
+    private final ColumnSource<Table> constituentColumn;
+
     private final String valueColName;
     private final MergedListener mergedListener;
+    private final AtomicInteger nextColumnId = new AtomicInteger(0);
 
     private Table multiJoined;
     private final List<ListenerRecorder> recorders = new ArrayList<>();
@@ -79,7 +87,13 @@ public class SimplePivotTable extends LivenessArtifact {
         }
         Table agg = table.aggAllBy(aggSpec, byColumns);
         partitionedTable = agg.partitionBy(columnColNames.toArray(String[]::new));
+
         ExecutionContext context = ExecutionContext.getContext();
+        StandaloneQueryScope localScope = new StandaloneQueryScope();
+        localScope.putParam("nextColumnId", nextColumnId);
+        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update("__PIVOT_COLUMN=nextColumnId.getAndIncrement()"));
+        pivotIdColumn = constituentTable.getColumnSource("__PIVOT_COLUMN", int.class);
+        constituentColumn = constituentTable.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
 
         // Initial join on current data - if not refreshing, this is the only time it will run
         multiJoin();
@@ -89,26 +103,20 @@ public class SimplePivotTable extends LivenessArtifact {
 
             // Listen to changes in the table, to see if we need to recreate columns
             ListenerRecorder partitionedTableListenerRecorder =
-                    new ListenerRecorder("pivot table listener", partitionedTable.table(), null);
+                    new ListenerRecorder("pivot table listener", constituentTable, null);
             recorders.add(partitionedTableListenerRecorder);
             mergedListener = new MergedListener(recorders, List.of(), "pivot table listener", null) {
                 @Override
                 protected void process() {
                     context.apply(() -> {
-                        if (partitionedTableListenerRecorder.getShifted().nonempty()
-                                || partitionedTableListenerRecorder.getRemoved().isNonempty()
-                                || partitionedTableListenerRecorder.getModified().isNonempty()) {
-                            // Any removal or modification means we must rebuild the multijoin. We presently use
-                            // row key for column names, so shifts also force a rebuild
+                        if (partitionedTableListenerRecorder.getRemoved().isNonempty() || partitionedTableListenerRecorder.getModified().isNonempty()) {
+                            // Any removal/modify must be rebuilt from scratch - shifts should keep the same table
                             multiJoin();
                         } else if (partitionedTableListenerRecorder.getAdded().isNonempty()) {
-                            ColumnSource<Table> newTablesSource = partitionedTable.table()
-                                    .getColumnSource(partitionedTable.constituentColumnName(), Table.class);
+
                             List<Table> tables = new ArrayList<>();
-                            if (multiJoined != null) {
-                                // If the table hasn't ticked yet
-                                tables.add(multiJoined);
-                            }
+                            Assert.neqNull(multiJoined, "multiJoined");
+                            tables.add(multiJoined);
 
                             // Build an array of all row columns that we will multijoin on - the last slot is empty for
                             // the value column
@@ -120,14 +128,14 @@ public class SimplePivotTable extends LivenessArtifact {
                             // Collect the tables, rename the value column, drop non-row columns
                             // TODO chunk this
                             partitionedTableListenerRecorder.getAdded().forAllRowKeys(rowKey -> {
-                                Table newTable = newTablesSource.get(rowKey);
-                                cols[cols.length - 1] = PIVOT_COL_PREFIX + rowKey + '=' + valueColName;
+                                Table newTable = constituentColumn.get(rowKey);
+                                int pivot = pivotIdColumn.get(rowKey);
+                                cols[cols.length - 1] = PIVOT_COL_PREFIX + pivot + '=' + valueColName;
                                 tables.add(newTable.view(cols));
                             });
                             replaceMultiJoinedTable(tables);
                         }
                     });
-
                 }
 
                 @Override
@@ -138,7 +146,7 @@ public class SimplePivotTable extends LivenessArtifact {
                 }
             };
             partitionedTableListenerRecorder.setMergedListener(mergedListener);
-            partitionedTable.table().addUpdateListener(partitionedTableListenerRecorder);
+            constituentTable.addUpdateListener(partitionedTableListenerRecorder);
         } else {
             mergedListener = null;
         }
@@ -182,14 +190,12 @@ public class SimplePivotTable extends LivenessArtifact {
 
     private void multiJoin() {
         // confirm we can safely read data
-        if (partitionedTable.table().isRefreshing()) {
-            partitionedTable.table().getUpdateGraph().checkInitiateSerialTableOperation();
+        if (constituentTable.isRefreshing()) {
+            constituentTable.getUpdateGraph().checkInitiateSerialTableOperation();
         }
 
         // Create a column name from the key in the partitioned table
-        List<Table> tables = new ArrayList<>(partitionedTable.table().intSize());
-        ColumnSource<Table> tableColumnSource =
-                partitionedTable.table().getColumnSource(partitionedTable.constituentColumnName(), Table.class);
+        List<Table> tables = new ArrayList<>(constituentTable.intSize());
         // Build an array of all row columns that we will multijoin on - the last slot is empty for
         // the value column
         String[] cols = new String[rowColNames.size() + 1];
@@ -198,9 +204,11 @@ public class SimplePivotTable extends LivenessArtifact {
         }
 
         // For each constituent table, rename the value column to include its key name
-        partitionedTable.table().getRowSet().forAllRowKeys(key -> {
-            cols[cols.length - 1] = PIVOT_COL_PREFIX + key + '=' + valueColName;
-            tables.add(tableColumnSource.get(key).view(cols));
+        constituentTable.getRowSet().forAllRowKeys(key -> {
+            int pivot = pivotIdColumn.get(key);
+
+            cols[cols.length - 1] = PIVOT_COL_PREFIX + pivot + '=' + valueColName;
+            tables.add(constituentColumn.get(key).view(cols));
         });
 
         // Multi-join each of the renamed tables
@@ -213,7 +221,7 @@ public class SimplePivotTable extends LivenessArtifact {
 
     public Table getColumnKeys() {
         // TODO sort this by keys? or let the client do it? we need order to be stable
-        return partitionedTable.table().view(partitionedTable.keyColumnNames().toArray(String[]::new));
+        return constituentTable.view(partitionedTable.keyColumnNames().toArray(String[]::new));
     }
 
     public synchronized void subscribe(Runnable callback) {

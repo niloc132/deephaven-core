@@ -22,14 +22,17 @@
         // Ask the server for the object named "ticking_pivot"
         var pivotWidget = await connection.getObject({name:"ticking_pivot", type:"simplepivot.SimplePivotTable"});
 
-        // Immediately add a listener for each pivot schema change, so we get the first update
-        pivotWidget.addEventListener(Widget.EVENT_MESSAGE, async e => {
-            showChangedPivotSchema(await e.detail.exportedObjects[0].fetch());
-        });
-
         // The initial state is our keys to use for column headers
-        var keyTable = pivotWidget.exportedObjects[0];
-        loadKeys(await keyTable.fetch());
+        var loaded = pivotWidget.exportedObjects[0].fetch().then(loadKeys);
+
+        // Add a listener for each pivot schema change, so we get the first update, with the table to render.
+        // Note that there is no await between this line and the pivotWidget being returned, or we would miss the first update
+        pivotWidget.addEventListener(Widget.EVENT_MESSAGE, async e => {
+            // Get the object, and make sure the keytable is fetched and usable
+            var tableToRenderPromise = e.detail.exportedObjects[0].fetch();
+            var tableToRender = await Promise.all([loaded, tableToRenderPromise]).then(a => a[1]);
+            showChangedPivotSchema(tableToRender);
+        });
 
     })();
 
@@ -40,21 +43,24 @@
     var columns;
 
     function loadKeys(keyTable) {
-        columns = keyTable.columns.map(c => c.name);
-        var subscription = keyTable.subscribe(keyTable.columns);
-        subscription.addEventListener(Table.EVENT_UPDATED, e => {
-            var data = e.detail;
-            var rowIter = data.fullIndex.iterator();
-            while (rowIter.hasNext()) {
-                var rowKey = rowIter.next().value;
-                var value = [];
-                for (const c of keyTable.columns) {
-                    value.push(data.getData(rowKey, c));
-                }
+        return new Promise((resolve, reject) => {
+            columns = keyTable.columns.map(c => c.name);
+            var subscription = keyTable.subscribe(keyTable.columns);
+            subscription.addEventListener(Table.EVENT_UPDATED, e => {
+                var data = e.detail;
+                var rowIter = data.fullIndex.iterator();
+                while (rowIter.hasNext()) {
+                    var rowKey = rowIter.next().value;
+                    var value = [];
+                    for (const c of keyTable.columns) {
+                        value.push(data.getData(rowKey, c));
+                    }
 
-                columnMap.set("PIVOT_C_" + rowKey, value.join(","));
-            }
-            console.log(columnMap);
+                    columnMap.set("PIVOT_C_" + rowKey, value.join(","));
+                }
+                console.log(columnMap);
+                resolve();
+            });
         });
     }
     var table;
