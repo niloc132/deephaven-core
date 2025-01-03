@@ -7,12 +7,15 @@ import com.google.common.collect.Sets;
 import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.liveness.LivenessArtifact;
+import io.deephaven.engine.rowset.RowSetFactory;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.MultiJoinFactory;
 import io.deephaven.engine.table.PartitionedTable;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.ListenerRecorder;
 import io.deephaven.engine.table.impl.MergedListener;
+import io.deephaven.engine.table.impl.QueryTable;
+import io.deephaven.engine.util.TableTools;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -82,6 +85,9 @@ public class SimplePivotTable extends LivenessArtifact {
         partitionedTable = agg.partitionBy(columnColNames.toArray(String[]::new));
         ExecutionContext context = ExecutionContext.getContext();
 
+        // Initial join on current data - if not refreshing, this is the only time it will run
+        multiJoin();
+
         if (table.isRefreshing()) {
             manage(partitionedTable);
 
@@ -93,19 +99,28 @@ public class SimplePivotTable extends LivenessArtifact {
                 @Override
                 protected void process() {
                     context.apply(() -> {
-                        if (!partitionedTableListenerRecorder.getShifted().empty()
+                        if (partitionedTableListenerRecorder.getShifted().nonempty()
                                 || partitionedTableListenerRecorder.getRemoved().isNonempty()
                                 || partitionedTableListenerRecorder.getModified().isNonempty()) {
-                            // May need to remove columns - just recreate from scratch.
-
-                            // Ask ryan, but I'm pretty sure this can never happen for a partitioned table...
+                            // Any removal or modification means we must rebuild the multijoin. We presently use
+                            // row key for column names, so shifts also force a rebuild
+                            if (partitionedTableListenerRecorder.getShifted().nonempty()) {
+                                System.out.println("shifted: " + partitionedTableListenerRecorder.getShifted().nonempty() + ", " + partitionedTableListenerRecorder.getShifted().size() + ", " + partitionedTableListenerRecorder.getShifted());
+                            }
+                            if (partitionedTableListenerRecorder.getRemoved().isNonempty()) {
+                                System.out.println("removed: " + partitionedTableListenerRecorder.getRemoved());
+                            }
+                            if (partitionedTableListenerRecorder.getModified().isNonempty()) {
+                                System.out.println("modified: " + partitionedTableListenerRecorder.getModified());
+                            }
+                            System.out.println("starting full rebuild");
                             multiJoin();
                         } else if (partitionedTableListenerRecorder.getAdded().isNonempty()) {
                             ColumnSource<Table> newTablesSource = partitionedTable.table()
                                     .getColumnSource(partitionedTable.constituentColumnName(), Table.class);
                             List<Table> tables = new ArrayList<>();
-                            int[] i = {0};
                             if (multiJoined != null) {
+                                // If the table hasn't ticked yet
                                 tables.add(multiJoined);
                             }
 
@@ -140,16 +155,13 @@ public class SimplePivotTable extends LivenessArtifact {
             partitionedTable.table().addUpdateListener(partitionedTableListenerRecorder);
         } else {
             mergedListener = null;
-
-            // Generate columns once, data can't change
-            multiJoin();
         }
     }
 
 
-    private synchronized void replaceMultiJoinedTable(List<Table> tableToJoin) {
-        Table replacement =
-                MultiJoinFactory.of(rowColNames.toArray(String[]::new), tableToJoin.toArray(Table[]::new)).table();
+    private synchronized void replaceMultiJoinedTable(List<Table> tablesToJoin) {
+        Table replacement = tablesToJoin.isEmpty() ? emptyTable() :
+                MultiJoinFactory.of(rowColNames.toArray(String[]::new), tablesToJoin.toArray(Table[]::new)).table();
 
         // If replacement is refreshing, manage the result and add to our recorder listener list
         if (replacement.isRefreshing()) {
@@ -178,6 +190,10 @@ public class SimplePivotTable extends LivenessArtifact {
         }
     }
 
+    private Table emptyTable() {
+        return TableTools.newTable(partitionedTable.constituentDefinition()).view(rowColNames.toArray(String[]::new));
+    }
+
     private void multiJoin() {
         // confirm we can safely read data
         if (partitionedTable.table().isRefreshing()) {
@@ -200,7 +216,6 @@ public class SimplePivotTable extends LivenessArtifact {
             cols[cols.length - 1] = PIVOT_COL_PREFIX + key + '=' + valueColName;
             tables.add(tableColumnSource.get(key).view(cols));
         });
-
 
         // Multi-join each of the renamed tables
         replaceMultiJoinedTable(tables);

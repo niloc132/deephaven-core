@@ -22,13 +22,15 @@
         // Ask the server for the object named "ticking_pivot"
         var pivotWidget = await connection.getObject({name:"ticking_pivot", type:"simplepivot.SimplePivotTable"});
 
-        // The dh.Widget instance has some events we can subscribe to, and has the initial state from the server
-        var keyTable = pivotWidget.exportedObjects[0];
-
-        loadKeys(await keyTable.fetch());
+        // Immediately add a listener for each pivot schema change, so we get the first update
         pivotWidget.addEventListener(Widget.EVENT_MESSAGE, async e => {
             showChangedPivotSchema(await e.detail.exportedObjects[0].fetch());
         });
+
+        // The initial state is our keys to use for column headers
+        var keyTable = pivotWidget.exportedObjects[0];
+        loadKeys(await keyTable.fetch());
+
     })();
 
     var pivotElt = document.getElementById('pivot');
