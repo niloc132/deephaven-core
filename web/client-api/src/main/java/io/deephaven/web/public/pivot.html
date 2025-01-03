@@ -34,11 +34,25 @@
     var pivotElt = document.getElementById('pivot');
     var PAGE_SIZE = 20;
     var COLUMN_COUNT = 10;
+    var columnMap = new Map();
+    var columns;
 
     function loadKeys(keyTable) {
+        columns = keyTable.columns.map(c => c.name);
         var subscription = keyTable.subscribe(keyTable.columns);
         subscription.addEventListener(Table.EVENT_UPDATED, e => {
-            console.log(e.detail);
+            var data = e.detail;
+            var rowIter = data.fullIndex.iterator();
+            while (rowIter.hasNext()) {
+                var rowKey = rowIter.next().value;
+                var value = [];
+                for (const c of keyTable.columns) {
+                    value.push(data.getData(rowKey, c));
+                }
+
+                columnMap.set("PIVOT_C_" + rowKey, value.join(","));
+            }
+            console.log(columnMap);
         });
     }
     var table;
@@ -57,11 +71,15 @@
         }
         var header = document.createElement('thead');
         var headerRow = document.createElement('tr');
-        // TODO replace this with lookups on the key table
         table.columns.forEach(columnDef => {
-            // build a very simple header
+            // build a very simple header from premade value headers
             var td = document.createElement('td');
-            td.innerText = columnDef.name;
+            if (columnDef.name.startsWith("PIVOT_C_")) {
+                td.innerText = columnMap.get(columnDef.name);
+            } else {
+                td.innerText = columnDef.name;
+            }
+
             headerRow.appendChild(td);
         });
         header.appendChild(headerRow);
