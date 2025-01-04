@@ -40,11 +40,11 @@
     var PAGE_SIZE = 20;
     var COLUMN_COUNT = 10;
     var columnMap = new Map();
-    var columns;
 
     function loadKeys(keyTable) {
         return new Promise((resolve, reject) => {
-            columns = keyTable.columns.map(c => c.name);
+            var pivotIdColumn = keyTable.findColumn('__PIVOT_COLUMN')
+            var columns = keyTable.columns.filter(c => c.name !== '__PIVOT_COLUMN');
             var subscription = keyTable.subscribe(keyTable.columns);
             subscription.addEventListener(Table.EVENT_UPDATED, e => {
                 var data = e.detail;
@@ -52,11 +52,11 @@
                 while (rowIter.hasNext()) {
                     var rowKey = rowIter.next().value;
                     var value = [];
-                    for (const c of keyTable.columns) {
+                    for (const c of columns) {
                         value.push(data.getData(rowKey, c));
                     }
 
-                    columnMap.set("PIVOT_C_" + rowKey, value.join(","));
+                    columnMap.set("PIVOT_C_" + data.getData(rowKey, pivotIdColumn), value.join(","));
                 }
                 console.log(columnMap);
                 resolve();

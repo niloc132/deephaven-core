@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 /**
  *
@@ -84,13 +85,13 @@ public class SimplePivotTable extends LivenessArtifact {
         if (table.getDefinition().getColumnNames().size() != allColumns.size()) {
             table = table.view(allColumns.toArray(String[]::new));
         }
-        Table agg = table.aggAllBy(aggSpec, byColumns);
+        Table agg = table.sort(rowColNames.toArray(String[]::new)).aggAllBy(aggSpec, byColumns);
         partitionedTable = agg.partitionBy(columnColNames.toArray(String[]::new));
 
         ExecutionContext context = ExecutionContext.getContext();
         StandaloneQueryScope localScope = new StandaloneQueryScope();
         localScope.putParam("nextColumnId", new AtomicInteger(0));
-        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update("__PIVOT_COLUMN=nextColumnId.getAndIncrement()"));
+        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update("__PIVOT_COLUMN=nextColumnId.getAndIncrement()")).sort(columnColNames.toArray(String[]::new));
         pivotIdColumn = constituentTable.getColumnSource("__PIVOT_COLUMN", int.class);
         constituentColumn = constituentTable.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
 
@@ -220,7 +221,7 @@ public class SimplePivotTable extends LivenessArtifact {
 
     public Table getColumnKeys() {
         // TODO sort this by keys? or let the client do it? we need order to be stable
-        return constituentTable.view(partitionedTable.keyColumnNames().toArray(String[]::new));
+        return constituentTable.view(Stream.concat(Stream.of("__PIVOT_COLUMN"), partitionedTable.keyColumnNames().stream()).toArray(String[]::new));
     }
 
     public synchronized void subscribe(Runnable callback) {
