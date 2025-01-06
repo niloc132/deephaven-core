@@ -299,8 +299,8 @@ project(':plugin-partitionedtable').projectDir = file('plugin/partitionedtable')
 include(':plugin-hierarchicaltable')
 project(':plugin-hierarchicaltable').projectDir = file('plugin/hierarchicaltable')
 
-include(':plugin-pivotv1')
-project(':plugin-pivotv1').projectDir = file('plugin/pivotv1')
+include(':plugin-simplepivot')
+project(':plugin-simplepivot').projectDir = file('plugin/simplepivot')
 
 include(':plugin-gc-app')
 project(':plugin-gc-app').projectDir = file('plugin/gc-app')
