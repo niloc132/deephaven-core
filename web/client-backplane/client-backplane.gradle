@@ -44,9 +44,9 @@ def regenerateGwtBindings = Docker.registerDockerTask(project, 'regenerateGwtBin
         from(project(':proto:raw-js-openapi').tasks.getByName('webpackSources')) {
             into 'project/src'
             include '**/*.d.ts'
-            eachFile { f ->
-                f.path = f.path.replaceFirst('typings/', 'dhinternal/arrow/flight/flatbuf/')
-            }
+//            eachFile { f ->
+//                f.path = f.path.replaceFirst('typings/', 'dhinternal/arrow/flight/flatbuf/')
+//            }
         }
     }
     imageName = 'deephaven/jsinterop-generate-grpc-bindings:local-build'
@@ -79,12 +79,8 @@ def regenerateGwtBindings = Docker.registerDockerTask(project, 'regenerateGwtBin
                       cp node_modules/@types/google-protobuf/index.d.ts src/dhinternal/jspb/; \\
                       mkdir src/dhinternal/grpcWeb; \\
                       cp -r node_modules/@improbable-eng/grpc-web/dist/typings/* src/dhinternal/grpcWeb/; \\
-                      mkdir src/dhinternal/flatbuffers; \\
-                      cp node_modules/@types/flatbuffers/index.d.ts src/dhinternal/flatbuffers; \\
                       mkdir src/dhinternal/browserHeaders; \\
                       cp node_modules/browser-headers/dist/typings/* src/dhinternal/browserHeaders; \\
-                      mkdir -p src/dhinternal/io/deephaven/barrage/flatbuf; \\
-                      cp node_modules/@deephaven/barrage/dist/typings/generated/* src/dhinternal/io/deephaven/barrage/flatbuf/;'''
 //                      echo "$(cd node_modules/apache-arrow/; find . -name '*.d.ts' | grep -v node_modules)" | while read line; do mkdir -p src/dhinternal/arrow/$(dirname $line); cp node_modules/apache-arrow/$line src/dhinternal/arrow/$line; done'''
 
         // Copy in our own .d.ts, this is later because we expect more frequent local .proto changes

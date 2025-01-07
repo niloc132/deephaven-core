@@ -9,7 +9,7 @@ node node_modules/.bin/tsickle --externs=externs.js -- --build
 sed -i '5,10d' externs.js
 
 # prepend missing consts, to be used after we rewrite $s into .s
-consts='browserHeaders grpcWeb.transports.http grpcWeb.transports grpcWeb io.deephaven.proto io.deephaven.barrage.flatbuf flatbuffers io.deephaven.barrage io.deephaven io arrow.flight.protocol arrow.flight.flatbuf arrow.flight arrow'
+consts='browserHeaders grpcWeb.transports.http grpcWeb.transports grpcWeb io.deephaven_core.proto io.deephaven_core io arrow.flight.protocol arrow.flight arrow'
 for n in $consts
 do
   sed -i "5i/** @const */ dhinternal.$n = {};" externs.js
@@ -49,9 +49,6 @@ sed -i 's/grpcWeb.grpc.Metadata/dhinternal.browserHeaders.BrowserHeaders/g' exte
 
 sed -i 's/dhinternal.browserHeaders.BrowserHeaders.BrowserHeaders/dhinternal.browserHeaders.BrowserHeaders/g' externs.js
 
-sed -i 's/^flatbuffers./dhinternal.flatbuffers./g' externs.js
-sed -i 's/{flatbuffers./{dhinternal.flatbuffers./g' externs.js
-sed -i 's/{!flatbuffers./{!dhinternal.flatbuffers./g' externs.js
 
 # This next step will fail, but it will generate nearly-correct java
 bazel build //:openapi || true
