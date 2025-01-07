@@ -59,12 +59,12 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
             int tableLocation = firstTableLocation;
             MAIN_SEARCH: while (true) {
                 byte rowState = stateSource.getUnsafe(tableLocation);
-                if (rowState == ENTRY_EMPTY_STATE) {
+                if (isStateEmpty(rowState)) {
                     final int firstAlternateTableLocation = hashToTableLocationAlternate(hash);
                     int alternateTableLocation = firstAlternateTableLocation;
                     while (alternateTableLocation < rehashPointer) {
                         rowState = alternateStateSource.getUnsafe(alternateTableLocation);
-                        if (rowState == ENTRY_EMPTY_STATE) {
+                        if (isStateEmpty(rowState)) {
                             break;
                         } else if (eq(alternateKeySource0.getUnsafe(alternateTableLocation), k0)) {
                             final long cookie = getCookieAlternate(alternateTableLocation);
@@ -72,7 +72,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
                             if (sequentialBuilders != null) {
                                 addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                             } else {
-                                addAlternateLeftIndex(alternateTableLocation, rowKeyChunk.get(chunkPosition), rowState);
+                                addAlternateLeftKey(alternateTableLocation, rowKeyChunk.get(chunkPosition), rowState);
                             }
                             break MAIN_SEARCH;
                         } else {
@@ -88,7 +88,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
                         addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                         stateSource.set(tableLocation, (byte)(ENTRY_RIGHT_IS_EMPTY | ENTRY_LEFT_IS_EMPTY));
                     } else {
-                        addLeftIndex(tableLocation, rowKeyChunk.get(chunkPosition), (byte) 0);
+                        addLeftKey(tableLocation, rowKeyChunk.get(chunkPosition), (byte) 0);
                     }
                     break;
                 } else if (eq(mainKeySource0.getUnsafe(tableLocation), k0)) {
@@ -98,7 +98,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
                     if (sequentialBuilders != null) {
                         addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                     } else {
-                        addLeftIndex(tableLocation, rowKeyChunk.get(chunkPosition), rowState);
+                        addLeftKey(tableLocation, rowKeyChunk.get(chunkPosition), rowState);
                     }
                     break;
                 } else {
@@ -121,12 +121,12 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
             int tableLocation = firstTableLocation;
             MAIN_SEARCH: while (true) {
                 byte rowState = stateSource.getUnsafe(tableLocation);
-                if (rowState == ENTRY_EMPTY_STATE) {
+                if (isStateEmpty(rowState)) {
                     final int firstAlternateTableLocation = hashToTableLocationAlternate(hash);
                     int alternateTableLocation = firstAlternateTableLocation;
                     while (alternateTableLocation < rehashPointer) {
                         rowState = alternateStateSource.getUnsafe(alternateTableLocation);
-                        if (rowState == ENTRY_EMPTY_STATE) {
+                        if (isStateEmpty(rowState)) {
                             break;
                         } else if (eq(alternateKeySource0.getUnsafe(alternateTableLocation), k0)) {
                             final long cookie = getCookieAlternate(alternateTableLocation);
@@ -134,7 +134,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
                             if (sequentialBuilders != null) {
                                 addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                             } else {
-                                addAlternateRightIndex(alternateTableLocation, rowKeyChunk.get(chunkPosition), rowState);
+                                addAlternateRightKey(alternateTableLocation, rowKeyChunk.get(chunkPosition), rowState);
                             }
                             break MAIN_SEARCH;
                         } else {
@@ -150,7 +150,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
                         addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                         stateSource.set(tableLocation, (byte)(ENTRY_RIGHT_IS_EMPTY | ENTRY_LEFT_IS_EMPTY));
                     } else {
-                        addRightIndex(tableLocation, rowKeyChunk.get(chunkPosition), (byte) 0);
+                        addRightKey(tableLocation, rowKeyChunk.get(chunkPosition), (byte) 0);
                     }
                     break;
                 } else if (eq(mainKeySource0.getUnsafe(tableLocation), k0)) {
@@ -159,7 +159,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
                     if (sequentialBuilders != null) {
                         addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                     } else {
-                        addRightIndex(tableLocation, rowKeyChunk.get(chunkPosition), rowState);
+                        addRightKey(tableLocation, rowKeyChunk.get(chunkPosition), rowState);
                     }
                     break;
                 } else {
@@ -182,14 +182,14 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
             boolean found = false;
             int tableLocation = firstTableLocation;
             byte rowState;
-            while ((rowState = stateSource.getUnsafe(tableLocation)) != ENTRY_EMPTY_STATE) {
+            while (!isStateEmpty(rowState = stateSource.getUnsafe(tableLocation))) {
                 if (eq(mainKeySource0.getUnsafe(tableLocation), k0)) {
                     if (sequentialBuilders != null) {
                         final long cookie = getCookieMain(tableLocation);
                         hashSlots.set(cookie, tableLocation | mainInsertMask);
                         addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                     } else {
-                        addRightIndex(tableLocation, rowKeyChunk.get(chunkPosition), rowState);
+                        addRightKey(tableLocation, rowKeyChunk.get(chunkPosition), rowState);
                     }
                     found = true;
                     break;
@@ -201,14 +201,14 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
                 final int firstAlternateTableLocation = hashToTableLocationAlternate(hash);
                 if (firstAlternateTableLocation < rehashPointer) {
                     int alternateTableLocation = firstAlternateTableLocation;
-                    while ((rowState = alternateStateSource.getUnsafe(alternateTableLocation)) != ENTRY_EMPTY_STATE) {
+                    while (!isStateEmpty(rowState = alternateStateSource.getUnsafe(alternateTableLocation))) {
                         if (eq(alternateKeySource0.getUnsafe(alternateTableLocation), k0)) {
                             if (sequentialBuilders != null) {
                                 final long cookie = getCookieAlternate(alternateTableLocation);
                                 hashSlots.set(cookie, alternateTableLocation | alternateInsertMask);
                                 addToSequentialBuilder(cookie, sequentialBuilders, rowKeyChunk.get(chunkPosition));
                             } else {
-                                addAlternateRightIndex(alternateTableLocation, rowKeyChunk.get(chunkPosition), rowState);
+                                addAlternateRightKey(alternateTableLocation, rowKeyChunk.get(chunkPosition), rowState);
                             }
                             break;
                         }
@@ -225,15 +225,19 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
         return hash;
     }
 
+    private static boolean isStateEmpty(byte state) {
+        return state == ENTRY_EMPTY_STATE;
+    }
+
     private boolean migrateOneLocation(int locationToMigrate) {
         final byte currentStateValue = alternateStateSource.getUnsafe(locationToMigrate);
-        if (currentStateValue == ENTRY_EMPTY_STATE) {
+        if (isStateEmpty(currentStateValue)) {
             return false;
         }
         final Object k0 = alternateKeySource0.getUnsafe(locationToMigrate);
         final int hash = hash(k0);
         int destinationTableLocation = hashToTableLocation(hash);
-        while (stateSource.getUnsafe(destinationTableLocation) != ENTRY_EMPTY_STATE) {
+        while (!isStateEmpty(stateSource.getUnsafe(destinationTableLocation))) {
             destinationTableLocation = nextTableLocation(destinationTableLocation);
         }
         mainKeySource0.set(destinationTableLocation, k0);
@@ -261,8 +265,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
     }
 
     @Override
-    protected void newAlternate() {
-        super.newAlternate();
+    protected void adviseNewAlternate() {
         this.mainKeySource0 = (ImmutableObjectArraySource)super.mainKeySources[0];
         this.alternateKeySource0 = (ImmutableObjectArraySource)super.alternateKeySources[0];
     }
@@ -276,7 +279,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
     @Override
     protected void migrateFront() {
         int location = 0;
-        while (migrateOneLocation(location++));
+        while (migrateOneLocation(location++) && location < alternateTableSize);
     }
 
     @Override
@@ -300,7 +303,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
         mainCookieSource.setArray(destModifiedCookie);
         for (int sourceBucket = 0; sourceBucket < oldSize; ++sourceBucket) {
             final byte currentStateValue = originalStateArray[sourceBucket];
-            if (currentStateValue == ENTRY_EMPTY_STATE) {
+            if (isStateEmpty(currentStateValue)) {
                 continue;
             }
             final Object k0 = originalKeyArray0[sourceBucket];
@@ -308,7 +311,7 @@ final class RightIncrementalAsOfJoinHasherObject extends RightIncrementalAsOfJoi
             final int firstDestinationTableLocation = hashToTableLocation(hash);
             int destinationTableLocation = firstDestinationTableLocation;
             while (true) {
-                if (destState[destinationTableLocation] == ENTRY_EMPTY_STATE) {
+                if (isStateEmpty(destState[destinationTableLocation])) {
                     destKeyArray0[destinationTableLocation] = k0;
                     destState[destinationTableLocation] = originalStateArray[sourceBucket];
                     destLeftSource[destinationTableLocation] = oldLeftSource[sourceBucket];

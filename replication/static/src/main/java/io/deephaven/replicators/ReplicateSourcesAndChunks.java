@@ -397,8 +397,8 @@ public class ReplicateSourcesAndChunks {
                 "Object value", "T value");
         lines = ReplicationUtils.removeRegion(lines, "UnboxedSetter");
         lines = ReplicationUtils.replaceRegion(lines, "Constructor", Arrays.asList(
-                "    public ObjectSingleValueSource(Class<T> type) {",
-                "        super(type);",
+                "    public ObjectSingleValueSource(Class<T> type, Class<?> componentType) {",
+                "        super(type, componentType);",
                 "        current = null;",
                 "        prev = null;",
                 "    }"));
@@ -1098,7 +1098,7 @@ public class ReplicateSourcesAndChunks {
                 "                   data[segment][destOffset + jj] = converter.applyAsLong(chunk.get(offset + jj));",
                 "               }"));
         permuted = replaceRegion(permuted, "conditionalCopy", Arrays.asList(
-                "                final int chunkOffset = destOffset.intValue();",
+                "                final int chunkOffset = destOffset.get();",
                 "                long[] baseInput = (long[]) getBlock(blockNo);",
                 "                long[] overInput = (long[]) getPrevBlock(blockNo);",
                 "",

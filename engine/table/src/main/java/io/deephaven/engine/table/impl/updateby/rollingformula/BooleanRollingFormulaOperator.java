@@ -16,6 +16,7 @@ import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeys;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.MatchPair;
+import io.deephaven.engine.table.impl.QueryCompilerRequestProcessor;
 import io.deephaven.engine.table.impl.select.FormulaColumn;
 import io.deephaven.engine.table.impl.sources.SingleValueColumnSource;
 import io.deephaven.engine.table.impl.updateby.UpdateByOperator;
@@ -40,7 +41,6 @@ public class BooleanRollingFormulaOperator extends BaseRollingFormulaOperator {
     private static final int BUFFER_INITIAL_CAPACITY = 128;
 
     protected class Context extends BaseRollingFormulaOperator.Context {
-        private final ColumnSource<?> formulaOutputSource;
         private final IntConsumer outputSetter;
 
         private ByteChunk<? extends Values> influencerValuesChunk;
@@ -63,11 +63,12 @@ public class BooleanRollingFormulaOperator extends BaseRollingFormulaOperator {
             final SingleValueColumnSource<ObjectVector<?>> formulaInputSource =
                     (SingleValueColumnSource<ObjectVector<?>>) SingleValueColumnSource
                             .getSingleValueColumnSource(inputVectorType);
-            formulaInputSource.set(new ObjectRingBufferVectorWrapper(windowValues, inputVectorType));
+            // noinspection rawtypes
+            formulaInputSource.set(new ObjectRingBufferVectorWrapper(windowValues, inputComponentType));
             formulaCopy.initInputs(RowSetFactory.flat(1).toTracking(),
                     Collections.singletonMap(PARAM_COLUMN_NAME, formulaInputSource));
 
-            formulaOutputSource = formulaCopy.getDataView();
+            final ColumnSource<?> formulaOutputSource = formulaCopy.getDataView();
             outputSetter = getChunkSetter(outputValues, formulaOutputSource);
         }
 
@@ -160,9 +161,10 @@ public class BooleanRollingFormulaOperator extends BaseRollingFormulaOperator {
             @NotNull final String formula,
             @NotNull final String paramToken,
             @NotNull final Map<Class<?>, FormulaColumn> formulaColumnMap,
-            @NotNull final TableDefinition tableDef) {
+            @NotNull final TableDefinition tableDef,
+            @NotNull final QueryCompilerRequestProcessor compilationProcessor) {
         super(pair, affectingColumns, timestampColumnName, reverseWindowScaleUnits, forwardWindowScaleUnits, formula,
-                paramToken, formulaColumnMap, tableDef);
+                paramToken, formulaColumnMap, tableDef, compilationProcessor);
     }
 
     protected BooleanRollingFormulaOperator(
@@ -171,11 +173,22 @@ public class BooleanRollingFormulaOperator extends BaseRollingFormulaOperator {
             @Nullable final String timestampColumnName,
             final long reverseWindowScaleUnits,
             final long forwardWindowScaleUnits,
+            final Class<?> columnType,
+            final Class<?> componentType,
             final Class<?> vectorType,
             @NotNull final Map<Class<?>, FormulaColumn> formulaColumnMap,
             @NotNull final TableDefinition tableDef) {
-        super(pair, affectingColumns, timestampColumnName, reverseWindowScaleUnits, forwardWindowScaleUnits, vectorType,
-                formulaColumnMap, tableDef);
+        super(
+                pair,
+                affectingColumns,
+                timestampColumnName,
+                reverseWindowScaleUnits,
+                forwardWindowScaleUnits,
+                columnType,
+                componentType,
+                vectorType,
+                formulaColumnMap,
+                tableDef);
     }
 
     @Override
@@ -185,6 +198,8 @@ public class BooleanRollingFormulaOperator extends BaseRollingFormulaOperator {
                 timestampColumnName,
                 reverseWindowScaleUnits,
                 forwardWindowScaleUnits,
+                inputColumnType,
+                inputComponentType,
                 inputVectorType,
                 formulaColumnMap,
                 tableDef);

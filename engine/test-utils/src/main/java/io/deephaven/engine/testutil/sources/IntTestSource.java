@@ -13,7 +13,6 @@ import io.deephaven.chunk.Chunk;
 import io.deephaven.chunk.ChunkType;
 import io.deephaven.chunk.ObjectChunk;
 import io.deephaven.chunk.attributes.Values;
-import io.deephaven.engine.context.ExecutionContext;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.RowSetBuilderRandom;
 import io.deephaven.engine.rowset.RowSetFactory;
@@ -21,10 +20,10 @@ import io.deephaven.engine.table.impl.AbstractColumnSource;
 import io.deephaven.engine.table.impl.MutableColumnSourceGetDefaults;
 import io.deephaven.engine.updategraph.TerminalNotification;
 import io.deephaven.engine.updategraph.UpdateCommitter;
+import io.deephaven.util.mutable.MutableInt;
 import io.deephaven.util.QueryConstants;
 import io.deephaven.util.type.TypeUtils;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.function.LongConsumer;
 
@@ -77,8 +76,6 @@ public class IntTestSource extends AbstractColumnSource<Integer>
     // region chunk add
     @Override
     public synchronized void add(final RowSet rowSet, Chunk<Values> vs) {
-        setGroupToRange(null);
-
         if (rowSet.size() != vs.size()) {
             throw new IllegalArgumentException("Index=" + rowSet + ", data size=" + vs.size());
         }
@@ -92,7 +89,7 @@ public class IntTestSource extends AbstractColumnSource<Integer>
 
                 @Override
                 public void accept(final long v) {
-                    data.put(v, vcs.get(ii.intValue()));
+                    data.put(v, vcs.get(ii.get()));
                     ii.increment();
                 }
             });
@@ -103,7 +100,7 @@ public class IntTestSource extends AbstractColumnSource<Integer>
 
                 @Override
                 public void accept(final long v) {
-                    data.put(v, TypeUtils.unbox(vcs.get(ii.intValue())));
+                    data.put(v, TypeUtils.unbox(vcs.get(ii.get())));
                     ii.increment();
                 }
             });
@@ -126,8 +123,6 @@ public class IntTestSource extends AbstractColumnSource<Integer>
 
     @Override
     public synchronized void remove(RowSet rowSet) {
-        setGroupToRange(null);
-
         maybeInitializePrevForStep();
         rowSet.forAllRowKeys(data::remove);
     }
@@ -135,7 +130,6 @@ public class IntTestSource extends AbstractColumnSource<Integer>
     @Override
     public synchronized void shift(long startKeyInclusive, long endKeyInclusive, long shiftDelta) {
         maybeInitializePrevForStep();
-        setGroupToRange(null);
 
         // Note: moving to the right, we need to start with rightmost data first.
         final long dir = shiftDelta > 0 ? -1 : 1;

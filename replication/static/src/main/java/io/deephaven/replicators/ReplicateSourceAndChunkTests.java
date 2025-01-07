@@ -248,8 +248,6 @@ public class ReplicateSourceAndChunkTests {
         }
         lines = replaceRegion(lines, "chunk add", Arrays.asList(
                 "    public synchronized void add(final RowSet rowSet, Chunk<Values> vs) {\n" +
-                        "        setGroupToRange(null);\n" +
-                        "\n" +
                         "        if (rowSet.size() != vs.size()) {\n" +
                         "            throw new IllegalArgumentException(\"rowSet=\" + rowSet + \", data size=\" + vs.size());\n"
                         +
@@ -265,7 +263,7 @@ public class ReplicateSourceAndChunkTests {
                         ? "                // the unit test framework will ask us to add things, we need to conveniently ignore it\n"
                         : "") +
                         (isImmutable ? "                if (!data.containsKey(v)) {\n" : "") +
-                        (isImmutable ? "    " : "") + "                data.put(v, vcs.get(ii.intValue()));",
+                        (isImmutable ? "    " : "") + "                data.put(v, vcs.get(ii.get()));",
                 (isImmutable ? "                }\n" : "") +
                         "                ii.increment();",
                 "            }",

@@ -7,17 +7,32 @@ import com.google.gwt.user.client.Timer;
 import com.vertispan.tsdefs.annotations.TsTypeRef;
 import elemental2.core.JsArray;
 import elemental2.core.JsSet;
-import elemental2.dom.CustomEventInit;
 import elemental2.promise.Promise;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.ticket_pb.Ticket;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.*;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.console_pb.changedocumentrequest.TextDocumentContentChangeEvent;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.AutoCompleteRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.AutoCompleteResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.BindTableToVariableRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.ChangeDocumentRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.CloseDocumentRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.CompletionContext;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.DocumentRange;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.ExecuteCommandRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.ExecuteCommandResponse;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.GetCompletionItemsRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.GetHoverRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.GetSignatureHelpRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.OpenDocumentRequest;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.Position;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.TextDocumentItem;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.VersionedTextDocumentIdentifier;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.ticket_pb.Ticket;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.changedocumentrequest.TextDocumentContentChangeEvent;
 import io.deephaven.web.client.api.*;
 import io.deephaven.web.client.api.barrage.stream.BiDiStream;
 import io.deephaven.web.client.api.console.JsCommandResult;
 import io.deephaven.web.client.api.console.JsVariableChanges;
 import io.deephaven.web.client.api.console.JsVariableDescriptor;
 import io.deephaven.web.client.api.console.JsVariableType;
+import io.deephaven.web.client.api.event.HasEventHandling;
 import io.deephaven.web.client.api.tree.JsTreeTable;
 import io.deephaven.web.client.api.widget.plot.JsFigure;
 import io.deephaven.web.client.fu.CancellablePromise;
@@ -104,9 +119,7 @@ public class IdeSession extends HasEventHandling {
     public Promise<JsTable> getTable(String name, @JsOptional Boolean applyPreviewColumns) {
         return connection.getVariableDefinition(name, JsVariableType.TABLE).then(varDef -> {
             final Promise<JsTable> table = connection.getTable(varDef, applyPreviewColumns);
-            final CustomEventInit event = CustomEventInit.create();
-            event.setDetail(table);
-            fireEvent(EVENT_TABLE_OPENED, event);
+            fireEvent(EVENT_TABLE_OPENED, table);
             return table;
         });
     }
@@ -138,15 +151,18 @@ public class IdeSession extends HasEventHandling {
                 .then(connection::getHierarchicalTable);
     }
 
+    public Promise<JsPartitionedTable> getPartitionedTable(String name) {
+        return connection.getVariableDefinition(name, JsVariableType.PARTITIONEDTABLE)
+                .then(connection::getPartitionedTable);
+    }
+
     public Promise<?> getObject(@TsTypeRef(JsVariableDescriptor.class) JsPropertyMap<Object> definitionObject) {
         return connection.getJsObject(definitionObject);
     }
 
     public Promise<JsTable> newTable(String[] columnNames, String[] types, String[][] data, String userTimeZone) {
         return connection.newTable(columnNames, types, data, userTimeZone, this).then(table -> {
-            final CustomEventInit event = CustomEventInit.create();
-            event.setDetail(table);
-            fireEvent(EVENT_TABLE_OPENED, event);
+            fireEvent(EVENT_TABLE_OPENED, table);
 
             return Promise.resolve(table);
         });
@@ -160,9 +176,7 @@ public class IdeSession extends HasEventHandling {
      */
     public Promise<JsTable> mergeTables(JsTable[] tables) {
         return connection.mergeTables(tables, this).then(table -> {
-            final CustomEventInit event = CustomEventInit.create();
-            event.setDetail(table);
-            fireEvent(EVENT_TABLE_OPENED, event);
+            fireEvent(EVENT_TABLE_OPENED, table);
 
             return Promise.resolve(table);
         });
@@ -218,9 +232,7 @@ public class IdeSession extends HasEventHandling {
                 });
 
         CommandInfo commandInfo = new CommandInfo(code, result);
-        final CustomEventInit event = CustomEventInit.create();
-        event.setDetail(commandInfo);
-        fireEvent(IdeSession.EVENT_COMMANDSTARTED, event);
+        fireEvent(IdeSession.EVENT_COMMANDSTARTED, commandInfo);
 
         return result;
     }
@@ -246,9 +258,7 @@ public class IdeSession extends HasEventHandling {
         });
         currentStream.onStatus(status -> {
             if (!status.isOk()) {
-                CustomEventInit init = CustomEventInit.create();
-                init.setDetail(status.getDetails());
-                fireEvent(EVENT_REQUEST_FAILED, init);
+                fireEvent(EVENT_REQUEST_FAILED, status.getDetails());
                 pendingAutocompleteCalls.values().forEach(p -> {
                     p.fail("Connection error" + status.getDetails());
                 });
@@ -365,7 +375,7 @@ public class IdeSession extends HasEventHandling {
                 .timeout(JsTable.MAX_BATCH_TIME)
                 .asPromise()
                 .then(res -> Promise.resolve(
-                        res.getCompletionItems().getItemsList().map((item, index, arr) -> LspTranslate.toJs(item))),
+                        res.getCompletionItems().getItemsList().map((item, index) -> LspTranslate.toJs(item))),
                         fail -> {
                             // noinspection unchecked, rawtypes
                             return (Promise<JsArray<io.deephaven.web.shared.ide.lsp.CompletionItem>>) (Promise) Promise
@@ -393,7 +403,7 @@ public class IdeSession extends HasEventHandling {
                 .timeout(JsTable.MAX_BATCH_TIME)
                 .asPromise()
                 .then(res -> Promise.resolve(
-                        res.getSignatures().getSignaturesList().map((item, index, arr) -> LspTranslate.toJs(item))),
+                        res.getSignatures().getSignaturesList().map((item, index) -> LspTranslate.toJs(item))),
                         fail -> {
                             // noinspection unchecked, rawtypes
                             return (Promise<JsArray<io.deephaven.web.shared.ide.lsp.SignatureInformation>>) (Promise) Promise

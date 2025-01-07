@@ -4,7 +4,6 @@
 package io.deephaven.engine.table.impl;
 
 import io.deephaven.base.verify.Assert;
-import io.deephaven.datastructures.util.CollectionUtil;
 import io.deephaven.engine.liveness.LivenessReferent;
 import io.deephaven.engine.rowset.RowSet;
 import io.deephaven.engine.rowset.WritableRowSet;
@@ -91,11 +90,11 @@ class WhereListener extends MergedListener {
                 && (QueryTable.FORCE_PARALLEL_WHERE || getUpdateGraph().parallelismFactor() > 1);
         this.filterColumns = hasColumnArray ? null
                 : sourceTable.newModifiedColumnSet(
-                        filterColumnNames.toArray(CollectionUtil.ZERO_LENGTH_STRING_ARRAY));
+                        filterColumnNames.toArray(String[]::new));
     }
 
     @NotNull
-    private static List<NotificationQueue.Dependency> extractDependencies(@NotNull final WhereFilter[] filters) {
+    static List<NotificationQueue.Dependency> extractDependencies(@NotNull final WhereFilter[] filters) {
         return Stream.concat(
                 Stream.of(filters)
                         .filter(f -> f instanceof NotificationQueue.Dependency)

@@ -6,12 +6,13 @@ package io.deephaven.engine.testutil.locations;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.QueryTable;
+import io.deephaven.engine.table.impl.TableUpdateMode;
 import io.deephaven.engine.table.impl.locations.TableLocation;
 import io.deephaven.engine.table.impl.locations.TableLocationKey;
 import io.deephaven.engine.table.impl.locations.impl.AbstractTableLocationProvider;
 import io.deephaven.engine.table.impl.locations.impl.StandaloneTableKey;
 import io.deephaven.engine.updategraph.UpdateSourceRegistrar;
-import org.apache.commons.lang3.mutable.MutableInt;
+import io.deephaven.util.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -31,8 +32,10 @@ public final class TableBackedTableLocationProvider extends AbstractTableLocatio
     public TableBackedTableLocationProvider(
             @NotNull final UpdateSourceRegistrar registrar,
             final boolean supportsSubscriptions,
+            final TableUpdateMode updateMode,
+            final TableUpdateMode locationUpdateMode,
             @NotNull final Table... tables) {
-        super(StandaloneTableKey.getInstance(), supportsSubscriptions);
+        super(StandaloneTableKey.getInstance(), supportsSubscriptions, updateMode, locationUpdateMode);
         this.registrar = registrar;
         processPending(Arrays.stream(tables));
     }
@@ -43,7 +46,7 @@ public final class TableBackedTableLocationProvider extends AbstractTableLocatio
                         .withAttributes(Map.of(LOCATION_ID_ATTR, nextId.getAndIncrement())))
                 .peek(table -> Assert.assertion(table.isAppendOnly(), "table is append only"))
                 .map(TableBackedTableLocationKey::new)
-                .forEach(this::handleTableLocationKey);
+                .forEach(this::handleTableLocationKeyAdded);
     }
 
     public synchronized void addPending(@NotNull final Table toAdd) {

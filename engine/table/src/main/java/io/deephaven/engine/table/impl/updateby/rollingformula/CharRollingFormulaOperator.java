@@ -16,6 +16,7 @@ import io.deephaven.engine.rowset.chunkattributes.OrderedRowKeys;
 import io.deephaven.engine.table.ColumnSource;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.MatchPair;
+import io.deephaven.engine.table.impl.QueryCompilerRequestProcessor;
 import io.deephaven.engine.table.impl.select.FormulaColumn;
 import io.deephaven.engine.table.impl.sources.ReinterpretUtils;
 import io.deephaven.engine.table.impl.sources.SingleValueColumnSource;
@@ -43,7 +44,6 @@ public class CharRollingFormulaOperator extends BaseRollingFormulaOperator {
     // endregion extra-fields
 
     protected class Context extends BaseRollingFormulaOperator.Context {
-        private final ColumnSource<?> formulaOutputSource;
         private final IntConsumer outputSetter;
 
         private CharChunk<? extends Values> influencerValuesChunk;
@@ -66,7 +66,8 @@ public class CharRollingFormulaOperator extends BaseRollingFormulaOperator {
             formulaCopy.initInputs(RowSetFactory.flat(1).toTracking(),
                     Collections.singletonMap(PARAM_COLUMN_NAME, formulaInputSource));
 
-            formulaOutputSource = ReinterpretUtils.maybeConvertToPrimitive(formulaCopy.getDataView());
+            final ColumnSource<?> formulaOutputSource =
+                    ReinterpretUtils.maybeConvertToPrimitive(formulaCopy.getDataView());
             outputSetter = getChunkSetter(outputValues, formulaOutputSource);
         }
 
@@ -159,12 +160,22 @@ public class CharRollingFormulaOperator extends BaseRollingFormulaOperator {
             @NotNull final String formula,
             @NotNull final String paramToken,
             @NotNull final Map<Class<?>, FormulaColumn> formulaColumnMap,
-            @NotNull final TableDefinition tableDef
+            @NotNull final TableDefinition tableDef,
+            @NotNull final QueryCompilerRequestProcessor compilationProcessor
     // region extra-constructor-args
     // endregion extra-constructor-args
     ) {
-        super(pair, affectingColumns, timestampColumnName, reverseWindowScaleUnits, forwardWindowScaleUnits, formula,
-                paramToken, formulaColumnMap, tableDef);
+        super(
+                pair,
+                affectingColumns,
+                timestampColumnName,
+                reverseWindowScaleUnits,
+                forwardWindowScaleUnits,
+                formula,
+                paramToken,
+                formulaColumnMap,
+                tableDef,
+                compilationProcessor);
         // region constructor
         // endregion constructor
     }
@@ -175,14 +186,25 @@ public class CharRollingFormulaOperator extends BaseRollingFormulaOperator {
             @Nullable final String timestampColumnName,
             final long reverseWindowScaleUnits,
             final long forwardWindowScaleUnits,
+            final Class<?> columnType,
+            final Class<?> componentType,
             final Class<?> vectorType,
             @NotNull final Map<Class<?>, FormulaColumn> formulaColumnMap,
             @NotNull final TableDefinition tableDef
     // region extra-constructor-args
     // endregion extra-constructor-args
     ) {
-        super(pair, affectingColumns, timestampColumnName, reverseWindowScaleUnits, forwardWindowScaleUnits, vectorType,
-                formulaColumnMap, tableDef);
+        super(
+                pair,
+                affectingColumns,
+                timestampColumnName,
+                reverseWindowScaleUnits,
+                forwardWindowScaleUnits,
+                columnType,
+                componentType,
+                vectorType,
+                formulaColumnMap,
+                tableDef);
         // region constructor
         // endregion constructor
     }
@@ -194,6 +216,8 @@ public class CharRollingFormulaOperator extends BaseRollingFormulaOperator {
                 timestampColumnName,
                 reverseWindowScaleUnits,
                 forwardWindowScaleUnits,
+                inputColumnType,
+                inputComponentType,
                 inputVectorType,
                 formulaColumnMap,
                 tableDef

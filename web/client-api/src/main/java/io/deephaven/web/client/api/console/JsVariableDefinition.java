@@ -6,7 +6,7 @@ package io.deephaven.web.client.api.console;
 import com.vertispan.tsdefs.annotations.TsInterface;
 import com.vertispan.tsdefs.annotations.TsName;
 import com.vertispan.tsdefs.annotations.TsTypeRef;
-import io.deephaven.javascript.proto.dhinternal.io.deephaven.proto.application_pb.FieldInfo;
+import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.application_pb.FieldInfo;
 import jsinterop.annotations.JsProperty;
 
 /**
@@ -29,7 +29,8 @@ public class JsVariableDefinition {
 
     public JsVariableDefinition(String type, String title, String id, String description) {
         // base64('s/' + str) starts with 'cy8' or 'cy9'
-        if (!id.startsWith("cy")) {
+        // base64('a/' + str) starts with 'YS8' or 'YS9'
+        if (!id.startsWith("cy") && !id.startsWith("YS")) {
             throw new IllegalArgumentException("Cannot create a VariableDefinition from a non-scope ticket");
         }
         this.type = type;

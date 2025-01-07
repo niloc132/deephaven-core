@@ -20,8 +20,8 @@ import io.deephaven.engine.table.impl.AbstractColumnSource;
 import io.deephaven.engine.table.impl.ImmutableColumnSourceGetDefaults;
 import io.deephaven.util.QueryConstants;
 import io.deephaven.util.type.TypeUtils;
+import io.deephaven.util.mutable.MutableInt;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.function.LongConsumer;
 
@@ -64,8 +64,6 @@ public class ImmutableIntTestSource extends AbstractColumnSource<Integer>
 
     // region chunk add
     public synchronized void add(final RowSet rowSet, Chunk<Values> vs) {
-        setGroupToRange(null);
-
         if (rowSet.size() != vs.size()) {
             throw new IllegalArgumentException("Index=" + rowSet + ", data size=" + vs.size());
         }
@@ -79,7 +77,7 @@ public class ImmutableIntTestSource extends AbstractColumnSource<Integer>
                 public void accept(final long v) {
                     // the unit test framework will ask us to add things, we need to conveniently ignore it
                     if (!data.containsKey(v)) {
-                        data.put(v, vcs.get(ii.intValue()));
+                        data.put(v, vcs.get(ii.get()));
                     }
                     ii.increment();
                 }
@@ -93,7 +91,7 @@ public class ImmutableIntTestSource extends AbstractColumnSource<Integer>
                 public void accept(final long v) {
                     // the unit test framework will ask us to add things, we need to conveniently ignore it
                     if (!data.containsKey(v)) {
-                        data.put(v, TypeUtils.unbox(vcs.get(ii.intValue())));
+                        data.put(v, TypeUtils.unbox(vcs.get(ii.get())));
                     }
                     ii.increment();
                 }

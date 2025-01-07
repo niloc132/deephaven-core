@@ -44,6 +44,7 @@ import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.OverridingMethodsMustInvokeSuper;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -923,6 +924,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
             return parent.satisfied(step);
         }
 
+        @OverridingMethodsMustInvokeSuper
         @Override
         protected void destroy() {
             super.destroy();
@@ -964,14 +966,9 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
 
         @Override
         public void onUpdate(final TableUpdate upstream) {
-            final TableUpdate downstream;
-            if (!canReuseModifiedColumnSet) {
-                final TableUpdateImpl upstreamCopy = TableUpdateImpl.copy(upstream);
-                upstreamCopy.modifiedColumnSet = ModifiedColumnSet.ALL;
-                downstream = upstreamCopy;
-            } else {
-                downstream = upstream.acquire();
-            }
+            final TableUpdate downstream = canReuseModifiedColumnSet
+                    ? upstream.acquire()
+                    : TableUpdateImpl.copy(upstream, ModifiedColumnSet.ALL);
             dependent.notifyListeners(downstream);
         }
 
@@ -985,6 +982,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
             return parent.satisfied(step);
         }
 
+        @OverridingMethodsMustInvokeSuper
         @Override
         protected void destroy() {
             super.destroy();
@@ -1326,6 +1324,7 @@ public abstract class BaseTable<IMPL_TYPE extends BaseTable<IMPL_TYPE>> extends 
     // Reference Counting
     // ------------------------------------------------------------------------------------------------------------------
 
+    @OverridingMethodsMustInvokeSuper
     @Override
     protected void destroy() {
         super.destroy();
