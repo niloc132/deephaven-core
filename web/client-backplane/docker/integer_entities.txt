@@ -3,16 +3,6 @@ io.deephaven.javascript.proto.dhinternal.jspb.arith.Int64.lo
 io.deephaven.javascript.proto.dhinternal.jspb.arith.Int64.constructor.hi
 io.deephaven.javascript.proto.dhinternal.jspb.arith.Int64.constructor.lo
 
-io.deephaven.javascript.proto.dhinternal.flatbuffers.Long.create.low
-io.deephaven.javascript.proto.dhinternal.flatbuffers.Long.create.high
-io.deephaven.javascript.proto.dhinternal.flatbuffers.Long.high
-io.deephaven.javascript.proto.dhinternal.flatbuffers.Long.low
-io.deephaven.javascript.proto.dhinternal.flatbuffers.Long.constructor.low
-io.deephaven.javascript.proto.dhinternal.flatbuffers.Long.constructor.high
-
-io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageRecordBatch.nodesLength
-io.deephaven.javascript.proto.dhinternal.io.deephaven.barrage.flatbuf.barrage_generated.io.deephaven.barrage.flatbuf.BarrageRecordBatch.buffersLength
-
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.table_pb.TableReference.getBatchOffset
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.table_pb.TableReference.setBatchOffset.value
 
@@ -90,14 +80,10 @@ io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.Figu
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.FigureDescriptor.setCols.value
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.FigureDescriptor.setRows.value
 
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.getTableMapId
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.setTableMapId.value
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.getPartitionedTableId
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.setPartitionedTableId.value
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SeriesDescriptor.getPlotStyle
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SeriesDescriptor.setPlotStyle.value
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.MultiSeriesSourceDescriptor.getTableMapId
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.MultiSeriesSourceDescriptor.setTableMapId.value
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.MultiSeriesSourceDescriptor.getPartitionedTableId
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.MultiSeriesSourceDescriptor.setPartitionedTableId.value
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.MultiSeriesDescriptor.getPlotStyle
@@ -116,8 +102,6 @@ io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figu
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.AxisDescriptor.setPosition.value
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.getTableId
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.setTableId.value
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.getTableMapId
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.setTableMapId.value
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.getType
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.figuredescriptor.SourceDescriptor.setType.value
 
@@ -242,13 +226,3 @@ io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.Sign
 
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.table_pb.RunChartDownsampleRequest.getPixelCount
 io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.table_pb.RunChartDownsampleRequest.setPixelCount.value
-
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileKindMap.getFILE
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileKindMap.setFILE.FILE
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileKindMap.getDIRECTORY
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileKindMap.setDIRECTORY.DIRECTORY
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileKindMap.getUNKNOWN
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileKindMap.setUNKNOWN.UNKNOWN
-
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileInfo.getKind
-io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.notebook_pb.FileInfo.setKind.value
