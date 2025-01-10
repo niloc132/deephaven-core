@@ -17,7 +17,6 @@ import io.deephaven.engine.table.impl.ListenerRecorder;
 import io.deephaven.engine.table.impl.MergedListener;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.util.type.ArrayTypeUtils;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -40,6 +39,7 @@ public class SimplePivotTable extends LivenessArtifact {
     public static final String TOTALS_COLUMN = "__TOTALS_COLUMN";
 
     private final List<String> rowColNames;
+    private final List<String> columnColNames;
     private final Table totalsRow;
 
     private final Table totalsCol;
@@ -91,7 +91,8 @@ public class SimplePivotTable extends LivenessArtifact {
 
     public SimplePivotTable(Table table, List<String> columnColNames, List<String> rowColNames, String valueColName,
             AggSpec aggSpec, boolean includeTotals) {
-        this.rowColNames = rowColNames;
+        this.rowColNames = List.copyOf(rowColNames);
+        this.columnColNames = List.copyOf(columnColNames);
         this.valueColName = valueColName;
 
         List<String> byColumns = new ArrayList<>(columnColNames);
@@ -316,5 +317,13 @@ public class SimplePivotTable extends LivenessArtifact {
                 subscribers.remove(callback);
             }
         };
+    }
+
+    public List<String> getRowColNames() {
+        return rowColNames;
+    }
+
+    public List<String> getColumnColNames() {
+        return columnColNames;
     }
 }

@@ -9,6 +9,10 @@ dependencies {
 
     implementation project(':extensions-barrage')
 
+    implementation platform(libs.jackson.bom)
+    implementation libs.jackson.annotations
+    implementation libs.jackson.databind
+
     compileOnly libs.autoservice
     annotationProcessor libs.autoservice.compiler
 }

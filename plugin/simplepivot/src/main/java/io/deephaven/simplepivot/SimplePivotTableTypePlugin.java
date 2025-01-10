@@ -3,6 +3,8 @@
 //
 package io.deephaven.simplepivot;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.service.AutoService;
 import io.deephaven.engine.table.Table;
 import io.deephaven.plugin.type.ObjectCommunicationException;
@@ -10,6 +12,7 @@ import io.deephaven.plugin.type.ObjectType;
 import io.deephaven.plugin.type.ObjectTypeBase;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * Initial payload includes the table with keys, all later payloads are the pivot itself, repeated for new keys being
@@ -17,6 +20,14 @@ import java.nio.ByteBuffer;
  */
 @AutoService(ObjectType.class)
 public class SimplePivotTableTypePlugin extends ObjectTypeBase {
+    public static class SimplePivotSchema {
+        public List<String> columnColNames;
+        public List<String> rowColNames;
+        public boolean hasTotals;
+    }
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     private Runnable subscription;
 
     @Override
@@ -25,7 +36,18 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
         SimplePivotTable pivotTable = (SimplePivotTable) object;
 
         // Send column keys on startup, will "tick-tock" with the table, client has to figure it out
-        connection.onData(ByteBuffer.allocate(0), pivotTable.getColumnKeys());
+        ByteBuffer schemaPayload = null;
+        try {
+            schemaPayload = ByteBuffer.wrap(objectMapper.writeValueAsBytes(new SimplePivotSchema() {{
+                columnColNames = pivotTable.getColumnColNames();
+                rowColNames = pivotTable.getRowColNames();
+                hasTotals = pivotTable.getTotalsTable() != null;
+            }}));
+        } catch (JsonProcessingException e) {
+            throw new ObjectCommunicationException("Failed to serialize schema", e);
+        }
+        connection.onData(schemaPayload, pivotTable.getColumnKeys());
+
         // Subscribe to updates
         this.subscription = pivotTable.subscribe(() -> {
             // Send current multijoined table

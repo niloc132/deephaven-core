@@ -14,6 +14,7 @@
     import dh from './dh-core.js'
     const {CoreClient, Table, Widget} = dh;
     var connection;
+    var schema;
     (async () => {
         var client = new CoreClient('http://localhost:10000');
         await client.login({type:CoreClient.LOGIN_TYPE_ANONYMOUS});
@@ -21,6 +22,8 @@
 
         // Ask the server for the object named "ticking_pivot"
         var pivotWidget = await connection.getObject({name:"ticking_pivot", type:"simplepivot.SimplePivotTable"});
+
+        schema = JSON.parse(pivotWidget.getDataAsString());
 
         // The initial state is our keys to use for column headers
         var loaded = pivotWidget.exportedObjects[0].fetch().then(loadKeys);
@@ -73,15 +76,18 @@
             });
         });
     }
-    var table;
-    var oldTableHandlerCleanup;
+    var table, totalsTable;
+    var oldTableHandlerCleanup, oldTotalsHandlerCleanup;
     var currentOffset;
     function showChangedPivotSchema(tables) {
 
         // correctly disconnect from the old table, if any
         oldTableHandlerCleanup && oldTableHandlerCleanup();
+        oldTotalsHandlerCleanup && oldTotalsHandlerCleanup();
         table && table.close();
+        totalsTable && totalsTable.close();
         table = tables[0];
+        totalsTable = tables[1];
 
         currentOffset = 0;
         //build a simple table in the dom after removing the old one
@@ -90,47 +96,125 @@
         }
         var header = document.createElement('thead');
         var headerRow = document.createElement('tr');
-        table.columns.forEach(columnDef => {
-            // build a very simple header from premade value headers
+        // First write rows group col names
+        schema.rowColNames.forEach(colName => {
             var td = document.createElement('td');
-            if (columnDef.name.startsWith("PIVOT_C_")) {
-                td.innerText = columnMap.get(columnDef.name);
-            } else {
-                td.innerText = columnDef.name;
-            }
-
+            td.innerText = colName;
             headerRow.appendChild(td);
         });
+        // Then go over the currently known column groups
+        for (let [realColName, value] of columnMap) {
+            var td = document.createElement('td');
+            td.innerText = value;
+            headerRow.appendChild(td);
+        }
+        // Optionally append a totals column
+        if (schema.hasTotals) {
+            var td = document.createElement('td');
+            td.innerText = "Totals";
+            headerRow.appendChild(td);
+        }
+
         header.appendChild(headerRow);
         pivotElt.appendChild(header);
+        var body = document.createElement('tbody');
+        body.className = 'body';
+        pivotElt.appendChild(body);
+        var foot = document.createElement('tbody');
+        foot.className = 'foot';
+        pivotElt.appendChild(foot);
 
         // listen for items to be added, populate the table body
-        oldTableHandlerCleanup = table.addEventListener(Table.EVENT_UPDATED, function handleTableUpdate(event) {
-            console.log("update event received, time to redraw data");
+        oldTableHandlerCleanup = table.addEventListener(Table.EVENT_UPDATED, function (event) {
+            console.log("update event received");
             // rebuild the current tbody from scratch
-            var tbody = pivotElt.querySelector('tbody');
-            tbody && pivotElt.removeChild(tbody);
-            tbody = document.createElement('tbody');
+            while (body.hasChildNodes()) {
+                body.removeChild(body.lastChild);
+            }
 
             var viewportData = event.detail;
             var rows = viewportData.rows;
             for (var i = 0; i < rows.length; i++) {
                 var tr = document.createElement('tr');
-                for (var j = 0; j < table.columns.length; j++) {
+                // Iterate columns in the same order as the header - row groups first
+                schema.rowColNames.forEach(colName => {
+                    var col = table.findColumn(colName);
                     var td = document.createElement('td');
-                    td.textContent = rows[i].get(table.columns[j]);
-                    var format = rows[i].getFormat(table.columns[j]);
+                    td.textContent = rows[i].get(col);
+                    var format = rows[i].getFormat(col);
+                    td.style.backgroundColor = format.backgroundColor;
+                    td.style.color = format.color;
+                    tr.appendChild(td);
+                });
+                // Then go over the currently known column groups
+                for (let [realColName, value] of columnMap) {
+                    var col = table.findColumn(realColName);
+                    var td = document.createElement('td');
+                    td.textContent = rows[i].get(col);
+                    var format = rows[i].getFormat(col);
                     td.style.backgroundColor = format.backgroundColor;
                     td.style.color = format.color;
                     tr.appendChild(td);
                 }
-                tbody.appendChild(tr);
+                // Last, optionally append a totals column
+                if (schema.hasTotals) {
+                    var td = document.createElement('td');
+                    var totalsCol = totalsTable.findColumn('__TOTALS_COLUMN');
+                    td.textContent = rows[i].get(totalsCol);
+                    var format = rows[i].getFormat(totalsCol);
+                    td.style.backgroundColor = format.backgroundColor;
+                    td.style.color = format.color;
+                    td.style.weight = 'bold';
+                    tr.appendChild(td);
+                }
+                body.appendChild(tr);
             }
-            pivotElt.appendChild(tbody);
         });
 
-        // load the very first page
+        oldTotalsHandlerCleanup = totalsTable.addEventListener(Table.EVENT_UPDATED, function (event) {
+            console.log('totals table update received');
+            // rebuild the current tbody from scratch
+            while (foot.hasChildNodes()) {
+                foot.removeChild(foot.lastChild);
+            }
+            var viewportData = event.detail;
+            var row = viewportData.rows[0];
+
+            var tr = document.createElement('tr');
+
+            // Iterate through the row groups, write an empty placeholder
+            schema.rowColNames.forEach(colName => {
+                tr.appendChild(document.createElement('td'));
+            });
+            // Next, the column groups, which have a total value in the row
+            for (let [realColName, value] of columnMap) {
+                var col = totalsTable.findColumn(realColName);
+                var td = document.createElement('td');
+                td.textContent = row.get(col);
+                var format = row.getFormat(col);
+                td.style.backgroundColor = format.backgroundColor;
+                td.style.color = format.color;
+                td.style.weight = 'bold';
+                tr.appendChild(td);
+            }
+            // Last, append the cell with the total value of the whole table
+            var totalsCol = totalsTable.findColumn('__TOTALS_COLUMN');
+            var td = document.createElement('td');
+            td.textContent = row.get(totalsCol);
+            var format = row.getFormat(totalsCol);
+            td.style.backgroundColor = format.backgroundColor;
+            td.style.color = format.color;
+            td.style.weight = 'bold';
+            tr.appendChild(td);
+
+            foot.appendChild(tr);
+        });
+
+        // Subscribe to data - could be selective about columns to subscribe to:
+        // Load the very first page - could implement paging here
         load();
+        // Only one row in totals, subscribe to it
+        totalsTable.setViewport(0, 0);
     }
     function load() {
         table.setViewport(currentOffset, currentOffset + PAGE_SIZE - 1);
