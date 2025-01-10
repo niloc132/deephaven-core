@@ -17,6 +17,7 @@ import io.deephaven.engine.table.impl.ListenerRecorder;
 import io.deephaven.engine.table.impl.MergedListener;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.util.type.ArrayTypeUtils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,7 +40,7 @@ public class SimplePivotTable extends LivenessArtifact {
     public static final String TOTALS_COLUMN = "__TOTALS_COLUMN";
 
     private final List<String> rowColNames;
-    private final        PartitionedTable totalsRow;
+    private final Table totalsRow;
 
     private final Table totalsCol;
     private final Table totalsCell;
@@ -103,8 +104,17 @@ public class SimplePivotTable extends LivenessArtifact {
         Table agg = table.sort(rowColNames.toArray(String[]::new)).aggAllBy(aggSpec, byColumns);
         partitionedTable = agg.partitionBy(columnColNames.toArray(String[]::new));
 
+        ExecutionContext context = ExecutionContext.getContext();
+        StandaloneQueryScope localScope = new StandaloneQueryScope();
+        localScope.putParam("rowColNames", rowColNames);
+        localScope.putParam("aggSpec", aggSpec);
+        localScope.putParam("nextColumnId", new AtomicInteger(0));
+        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()")).sort(columnColNames.toArray(String[]::new));
+        pivotIdColumn = constituentTable.getColumnSource(PIVOT_COLUMN, int.class);
+        constituentColumn = constituentTable.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
+
         if (includeTotals) {
-            totalsRow = partitionedTable.transform(t -> t.dropColumns(rowColNames).aggAllBy(aggSpec));
+            totalsRow = context.withQueryScope(localScope).apply(() -> constituentTable.update(partitionedTable.constituentColumnName() + " = "+partitionedTable.constituentColumnName()+".dropColumns(rowColNames).aggAllBy(aggSpec)"));
 
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
             rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
@@ -116,13 +126,6 @@ public class SimplePivotTable extends LivenessArtifact {
             totalsCol = null;
             totalsCell = null;
         }
-
-        ExecutionContext context = ExecutionContext.getContext();
-        StandaloneQueryScope localScope = new StandaloneQueryScope();
-        localScope.putParam("nextColumnId", new AtomicInteger(0));
-        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()")).sort(columnColNames.toArray(String[]::new));
-        pivotIdColumn = constituentTable.getColumnSource(PIVOT_COLUMN, int.class);
-        constituentColumn = constituentTable.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
 
         if (table.isRefreshing()) {
             manage(partitionedTable);
@@ -168,14 +171,14 @@ public class SimplePivotTable extends LivenessArtifact {
                 @Override
                 protected boolean canExecute(long step) {
                     synchronized (recorders) {
-                        System.out.println(recorders);
+//                        System.out.println(recorders);
                         return recorders.stream().allMatch(lr -> lr.satisfied(step));
                     }
                 }
             };
             partitionedTableListenerRecorder.setMergedListener(mergedListener);
             if (includeTotals) {
-                for (Table t : List.of(totalsRow.table(), totalsCell, totalsCol)) {
+                for (Table t : List.of(totalsRow, totalsCell, totalsCol)) {
                     manage(t);
                     ListenerRecorder r = new ListenerRecorder("pivot(totals) table listener recorder", t, null);
                     r.setMergedListener(mergedListener);
@@ -199,10 +202,16 @@ public class SimplePivotTable extends LivenessArtifact {
 
         if (totalsRow != null) {
             Table totalsReplacement;
-            if (totalsRow.constituents().length == 0) {
+            if (totalsRow.isEmpty()) {
                 totalsReplacement = totalsCell;
             } else {
-                totalsReplacement = MultiJoinFactory.of(ArrayTypeUtils.EMPTY_STRING_ARRAY, totalsRow.constituents()).table().join(totalsCell);
+                List<Table> totalsRowsToJoin = new ArrayList<>(totalsRow.intSize() + 1);
+                totalsRow.getRowSet().forAllRowKeys(key -> {
+                    int pivot = pivotIdColumn.get(key);
+                    totalsRowsToJoin.add(constituentColumn.get(key).view(PIVOT_COL_PREFIX + pivot + '=' + valueColName));
+                });
+                totalsRowsToJoin.add(totalsCell);
+                totalsReplacement = MultiJoinFactory.of(ArrayTypeUtils.EMPTY_STRING_ARRAY, totalsRowsToJoin.toArray(Table[]::new)).table();
             }
 
             if (totalsReplacement.isRefreshing()) {
