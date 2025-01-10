@@ -21,7 +21,7 @@ class Pivot(JObjectWrapper):
         return self.j_pivot_table
 
 
-def create_pivot(table: Table, col_column_names: list[str], row_column_names: list[str], value_col_name: str, agg: Aggregation) -> Pivot:
+def create_pivot(table: Table, col_column_names: list[str], row_column_names: list[str], value_col_name: str, agg: Aggregation, includeTotals:bool) -> Pivot:
     """
     Creates a new pivot table widget from the given table and the specified parameters.
     :param table:
@@ -29,9 +29,10 @@ def create_pivot(table: Table, col_column_names: list[str], row_column_names: li
     :param row_column_names:
     :param value_col_name:
     :param agg:
+    :param includeTotals:
     :return:
     """
-    return Pivot(j_pivot_table=_JPivotTable.FACTORY.create(table.j_table, j_array_list(col_column_names), j_array_list(row_column_names), value_col_name, agg.j_agg_spec))
+    return Pivot(j_pivot_table=_JPivotTable.FACTORY.create(table.j_table, j_array_list(col_column_names), j_array_list(row_column_names), value_col_name, agg.j_agg_spec, includeTotals))
 
 
 """

@@ -29,8 +29,18 @@
         // Note that there is no await between this line and the pivotWidget being returned, or we would miss the first update
         pivotWidget.addEventListener(Widget.EVENT_MESSAGE, async e => {
             // Get the object, and make sure the keytable is fetched and usable
-            var tableToRenderPromise = e.detail.exportedObjects[0].fetch();
-            var tableToRender = await Promise.all([loaded, tableToRenderPromise]).then(a => a[1]);
+            var tables = e.detail.exportedObjects;
+            var tableToRenderPromise = tables[0].fetch();
+            var totalsPromise;
+            if (tables.length == 2) {
+                totalsPromise = tables[1].fetch();
+            } else {
+                totalsPromise = Promise.resolve(null);
+            }
+            // Wait for all three promises to have resolved, then render the table. Note that after
+            // the first load, the keytable will remain loaded, we'll only wait for the main table,
+            // and optionally the totals table.
+            var tableToRender = await Promise.all([loaded, tableToRenderPromise, totalsPromise]).then(a => [a[1], a[2]]);
             showChangedPivotSchema(tableToRender);
         });
 
@@ -66,12 +76,13 @@
     var table;
     var oldTableHandlerCleanup;
     var currentOffset;
-    function showChangedPivotSchema(pivot) {
+    function showChangedPivotSchema(tables) {
 
         // correctly disconnect from the old table, if any
         oldTableHandlerCleanup && oldTableHandlerCleanup();
         table && table.close();
-        table = pivot;
+        table = tables[0];
+
         currentOffset = 0;
         //build a simple table in the dom after removing the old one
         while (pivotElt.hasChildNodes()) {

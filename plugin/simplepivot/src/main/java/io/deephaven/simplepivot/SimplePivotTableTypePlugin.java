@@ -4,6 +4,7 @@
 package io.deephaven.simplepivot;
 
 import com.google.auto.service.AutoService;
+import io.deephaven.engine.table.Table;
 import io.deephaven.plugin.type.ObjectCommunicationException;
 import io.deephaven.plugin.type.ObjectType;
 import io.deephaven.plugin.type.ObjectTypeBase;
@@ -27,7 +28,13 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
         pivotTable.subscribe(() -> {
             // Send current multijoined table
             try {
-                connection.onData(ByteBuffer.allocate(0), pivotTable.getTable());
+                // Safe to access both tables within a callback
+                Table totalsTable = pivotTable.getTotalsTable();
+                if (totalsTable == null) {
+                    connection.onData(ByteBuffer.allocate(0), pivotTable.getTable());
+                } else {
+                    connection.onData(ByteBuffer.allocate(0), pivotTable.getTable(), totalsTable);
+                }
             } catch (ObjectCommunicationException e) {
                 // Disconnect
                 // TODO

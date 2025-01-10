@@ -16,10 +16,12 @@ import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.impl.ListenerRecorder;
 import io.deephaven.engine.table.impl.MergedListener;
 import io.deephaven.engine.util.TableTools;
+import io.deephaven.util.type.ArrayTypeUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -32,9 +34,15 @@ public class SimplePivotTable extends LivenessArtifact {
      * Factory instance, which can be bound to a variable for clients to fetch and invoke.
      */
     public static final Factory FACTORY = new Factory();
-    private static final String PIVOT_COL_PREFIX = "PIVOT_C_";
+    public static final String PIVOT_COL_PREFIX = "PIVOT_C_";
+    public static final String PIVOT_COLUMN = "__PIVOT_COLUMN";
+    public static final String TOTALS_COLUMN = "__TOTALS_COLUMN";
 
     private final List<String> rowColNames;
+    private final        PartitionedTable totalsRow;
+
+    private final Table totalsCol;
+    private final Table totalsCell;
     private final PartitionedTable partitionedTable;
     private final Table constituentTable;
     private final ColumnSource<Integer> pivotIdColumn;
@@ -44,15 +52,22 @@ public class SimplePivotTable extends LivenessArtifact {
     private final MergedListener mergedListener;
 
     private Table multiJoined;
+    private Table multiJoinedTotals;
     private final List<ListenerRecorder> recorders = new ArrayList<>();
 
     private final List<Runnable> subscribers = new CopyOnWriteArrayList<>();
 
+    /**
+     * Factory for creating a SimplePivotTable.
+     * <p>
+     * Having a separate factory type and an instance of that factory lets us provide an instance of the factory
+     * that clients can interact with through a plugin.
+     */
     public static class Factory {
         public SimplePivotTable create(Table table, List<String> columnColNames, List<String> rowColNames,
-                String valueColName, AggSpec aggSpec) {
+                String valueColName, AggSpec aggSpec, boolean includeTotals) {
             // Validate that all column names are present in the table
-            HashSet<String> allColumnNames = new HashSet<>(table.getDefinition().getColumnNames());
+            Set<String> allColumnNames = table.getDefinition().getColumnNameMap().keySet();
             if (!allColumnNames.containsAll(columnColNames)) {
                 throw new IllegalArgumentException("Column names not found in table: "
                         + Sets.difference(new HashSet<>(columnColNames), allColumnNames));
@@ -69,12 +84,12 @@ public class SimplePivotTable extends LivenessArtifact {
                         "Value column name cannot be in grouping column names: " + valueColName);
             }
 
-            return new SimplePivotTable(table, columnColNames, rowColNames, valueColName, aggSpec);
+            return new SimplePivotTable(table, columnColNames, rowColNames, valueColName, aggSpec, includeTotals);
         }
     }
 
     public SimplePivotTable(Table table, List<String> columnColNames, List<String> rowColNames, String valueColName,
-            AggSpec aggSpec) {
+            AggSpec aggSpec, boolean includeTotals) {
         this.rowColNames = rowColNames;
         this.valueColName = valueColName;
 
@@ -88,22 +103,33 @@ public class SimplePivotTable extends LivenessArtifact {
         Table agg = table.sort(rowColNames.toArray(String[]::new)).aggAllBy(aggSpec, byColumns);
         partitionedTable = agg.partitionBy(columnColNames.toArray(String[]::new));
 
+        if (includeTotals) {
+            totalsRow = partitionedTable.transform(t -> t.dropColumns(rowColNames).aggAllBy(aggSpec));
+
+            List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
+            rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
+            totalsCol = agg.view(rowColNamesWithTotal.toArray(String[]::new)).aggAllBy(aggSpec, rowColNames.toArray(String[]::new));
+            totalsCell = table.view(TOTALS_COLUMN + "=" + valueColName).aggAllBy(aggSpec);
+        } else {
+            totalsRow = null;
+
+            totalsCol = null;
+            totalsCell = null;
+        }
+
         ExecutionContext context = ExecutionContext.getContext();
         StandaloneQueryScope localScope = new StandaloneQueryScope();
         localScope.putParam("nextColumnId", new AtomicInteger(0));
-        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update("__PIVOT_COLUMN=nextColumnId.getAndIncrement()")).sort(columnColNames.toArray(String[]::new));
-        pivotIdColumn = constituentTable.getColumnSource("__PIVOT_COLUMN", int.class);
+        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()")).sort(columnColNames.toArray(String[]::new));
+        pivotIdColumn = constituentTable.getColumnSource(PIVOT_COLUMN, int.class);
         constituentColumn = constituentTable.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
-
-        // Initial join on current data - if not refreshing, this is the only time it will run
-        multiJoin();
 
         if (table.isRefreshing()) {
             manage(partitionedTable);
 
             // Listen to changes in the table, to see if we need to recreate columns
             ListenerRecorder partitionedTableListenerRecorder =
-                    new ListenerRecorder("pivot table listener", constituentTable, null);
+                    new ListenerRecorder("pivot(constituentTable) table listener recorder", constituentTable, null);
             recorders.add(partitionedTableListenerRecorder);
             mergedListener = new MergedListener(recorders, List.of(), "pivot table listener", null) {
                 @Override
@@ -130,6 +156,7 @@ public class SimplePivotTable extends LivenessArtifact {
                             partitionedTableListenerRecorder.getAdded().forAllRowKeys(rowKey -> {
                                 Table newTable = constituentColumn.get(rowKey);
                                 int pivot = pivotIdColumn.get(rowKey);
+                                // Rewrite this value each pass through this loop
                                 cols[cols.length - 1] = PIVOT_COL_PREFIX + pivot + '=' + valueColName;
                                 tables.add(newTable.view(cols));
                             });
@@ -141,15 +168,28 @@ public class SimplePivotTable extends LivenessArtifact {
                 @Override
                 protected boolean canExecute(long step) {
                     synchronized (recorders) {
+                        System.out.println(recorders);
                         return recorders.stream().allMatch(lr -> lr.satisfied(step));
                     }
                 }
             };
             partitionedTableListenerRecorder.setMergedListener(mergedListener);
+            if (includeTotals) {
+                for (Table t : List.of(totalsRow.table(), totalsCell, totalsCol)) {
+                    manage(t);
+                    ListenerRecorder r = new ListenerRecorder("pivot(totals) table listener recorder", t, null);
+                    r.setMergedListener(mergedListener);
+                    t.addUpdateListener(r);
+                    recorders.add(r);
+                }
+            }
             constituentTable.addUpdateListener(partitionedTableListenerRecorder);
         } else {
             mergedListener = null;
         }
+
+        // Initial join on current data - if not refreshing, this is the only time it will run
+        multiJoin();
     }
 
 
@@ -157,19 +197,46 @@ public class SimplePivotTable extends LivenessArtifact {
         Table replacement = tablesToJoin.isEmpty() ? emptyTable() :
                 MultiJoinFactory.of(rowColNames.toArray(String[]::new), tablesToJoin.toArray(Table[]::new)).table();
 
+        if (totalsRow != null) {
+            Table totalsReplacement;
+            if (totalsRow.constituents().length == 0) {
+                totalsReplacement = totalsCell;
+            } else {
+                totalsReplacement = MultiJoinFactory.of(ArrayTypeUtils.EMPTY_STRING_ARRAY, totalsRow.constituents()).table().join(totalsCell);
+            }
+
+            if (totalsReplacement.isRefreshing()) {
+                manage(totalsReplacement);
+
+                if (multiJoinedTotals != null) {
+                    assert multiJoinedTotals.isRefreshing();
+                    unmanage(multiJoinedTotals);
+                }
+            }
+            multiJoinedTotals = totalsReplacement;
+        }
+
         // If replacement is refreshing, manage the result and add to our recorder listener list
         if (replacement.isRefreshing()) {
             manage(replacement);
 
             synchronized (recorders) {
                 ListenerRecorder multiJoinedTableListener =
-                        new ListenerRecorder("pivot table listener", replacement, null);
+                        new ListenerRecorder("pivot(multijoined) table listener recorder", replacement, null);
                 multiJoinedTableListener.setMergedListener(mergedListener);
                 replacement.addUpdateListener(multiJoinedTableListener);
-                if (recorders.size() > 1) {
-                    recorders.set(1, multiJoinedTableListener);
+                if (totalsCol == null) {
+                    if (recorders.size() > 1) {
+                        recorders.set(1, multiJoinedTableListener);
+                    } else {
+                        recorders.add(multiJoinedTableListener);
+                    }
                 } else {
-                    recorders.add(multiJoinedTableListener);
+                    if (recorders.size() > 4) {
+                        recorders.set(4, multiJoinedTableListener);
+                    } else {
+                        recorders.add(multiJoinedTableListener);
+                    }
                 }
             }
         }
@@ -177,7 +244,7 @@ public class SimplePivotTable extends LivenessArtifact {
         if (multiJoined != null && multiJoined.isRefreshing()) {
             unmanage(multiJoined);
         }
-        multiJoined = replacement;
+        this.multiJoined = replacement;
 
         for (Runnable subscriber : subscribers) {
             subscriber.run();
@@ -211,6 +278,11 @@ public class SimplePivotTable extends LivenessArtifact {
             tables.add(constituentColumn.get(key).view(cols));
         });
 
+        // Attach the totals column, if any
+        if (totalsCol != null) {
+            tables.add(totalsCol);
+        }
+
         // Multi-join each of the renamed tables
         replaceMultiJoinedTable(tables);
     }
@@ -219,9 +291,12 @@ public class SimplePivotTable extends LivenessArtifact {
         return multiJoined;
     }
 
+    public Table getTotalsTable() {
+        return multiJoinedTotals;
+    }
+
     public Table getColumnKeys() {
-        // TODO sort this by keys? or let the client do it? we need order to be stable
-        return constituentTable.view(Stream.concat(Stream.of("__PIVOT_COLUMN"), partitionedTable.keyColumnNames().stream()).toArray(String[]::new));
+        return constituentTable.view(Stream.concat(Stream.of(PIVOT_COLUMN), partitionedTable.keyColumnNames().stream()).toArray(String[]::new));
     }
 
     public synchronized void subscribe(Runnable callback) {
