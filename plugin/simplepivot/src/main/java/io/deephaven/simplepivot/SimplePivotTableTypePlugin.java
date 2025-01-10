@@ -17,6 +17,8 @@ import java.nio.ByteBuffer;
  */
 @AutoService(ObjectType.class)
 public class SimplePivotTableTypePlugin extends ObjectTypeBase {
+    private Runnable subscription;
+
     @Override
     public MessageStream compatibleClientConnection(Object object, MessageStream connection)
             throws ObjectCommunicationException {
@@ -25,7 +27,7 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
         // Send column keys on startup, will "tick-tock" with the table, client has to figure it out
         connection.onData(ByteBuffer.allocate(0), pivotTable.getColumnKeys());
         // Subscribe to updates
-        pivotTable.subscribe(() -> {
+        this.subscription = pivotTable.subscribe(() -> {
             // Send current multijoined table
             try {
                 // Safe to access both tables within a callback
@@ -36,22 +38,21 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
                     connection.onData(ByteBuffer.allocate(0), pivotTable.getTable(), totalsTable);
                 }
             } catch (ObjectCommunicationException e) {
-                // Disconnect
-                // TODO
                 e.printStackTrace();
+                subscription.run();
             }
         });
 
         return new MessageStream() {
             @Override
             public void onData(ByteBuffer payload, Object... references) throws ObjectCommunicationException {
-                // client sends no messages
+                // client sends no messages at this time
             }
 
             @Override
             public void onClose() {
                 // shut down our subscription
-                // TODO
+                subscription.run();
             }
         };
     }

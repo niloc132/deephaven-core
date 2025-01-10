@@ -308,8 +308,13 @@ public class SimplePivotTable extends LivenessArtifact {
         return constituentTable.view(Stream.concat(Stream.of(PIVOT_COLUMN), partitionedTable.keyColumnNames().stream()).toArray(String[]::new));
     }
 
-    public synchronized void subscribe(Runnable callback) {
+    public synchronized Runnable subscribe(Runnable callback) {
         subscribers.add(callback);
         callback.run();
+        return () -> {
+            synchronized (this) {
+                subscribers.remove(callback);
+            }
+        };
     }
 }
