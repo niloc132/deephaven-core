@@ -48,6 +48,7 @@ public class SimplePivotTable extends LivenessArtifact {
     private final Table constituentTable;
     private final ColumnSource<Integer> pivotIdColumn;
     private final ColumnSource<Table> constituentColumn;
+    private final ColumnSource<Table> totalsConstituentColumn;
 
     private final String valueColName;
     private final MergedListener mergedListener;
@@ -116,13 +117,14 @@ public class SimplePivotTable extends LivenessArtifact {
 
         if (includeTotals) {
             totalsRow = context.withQueryScope(localScope).apply(() -> constituentTable.update(partitionedTable.constituentColumnName() + " = "+partitionedTable.constituentColumnName()+".dropColumns(rowColNames).aggAllBy(aggSpec)"));
-
+            totalsConstituentColumn = totalsRow.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
             rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
-            totalsCol = agg.view(rowColNamesWithTotal.toArray(String[]::new)).aggAllBy(aggSpec, rowColNames.toArray(String[]::new));
+            totalsCol = agg.view(rowColNamesWithTotal.toArray(String[]::new)).aggAllBy(aggSpec, rowColNames);
             totalsCell = table.view(TOTALS_COLUMN + "=" + valueColName).aggAllBy(aggSpec);
         } else {
             totalsRow = null;
+            totalsConstituentColumn = null;
 
             totalsCol = null;
             totalsCell = null;
@@ -209,7 +211,7 @@ public class SimplePivotTable extends LivenessArtifact {
                 List<Table> totalsRowsToJoin = new ArrayList<>(totalsRow.intSize() + 1);
                 totalsRow.getRowSet().forAllRowKeys(key -> {
                     int pivot = pivotIdColumn.get(key);
-                    totalsRowsToJoin.add(constituentColumn.get(key).view(PIVOT_COL_PREFIX + pivot + '=' + valueColName));
+                    totalsRowsToJoin.add(totalsConstituentColumn.get(key).view(PIVOT_COL_PREFIX + pivot + '=' + valueColName));
                 });
                 totalsRowsToJoin.add(totalsCell);
                 totalsReplacement = MultiJoinFactory.of(ArrayTypeUtils.EMPTY_STRING_ARRAY, totalsRowsToJoin.toArray(Table[]::new)).table();
