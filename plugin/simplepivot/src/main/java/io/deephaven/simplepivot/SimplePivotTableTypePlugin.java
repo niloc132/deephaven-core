@@ -38,11 +38,13 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
         // Send column keys on startup, will "tick-tock" with the table, client has to figure it out
         ByteBuffer schemaPayload = null;
         try {
-            schemaPayload = ByteBuffer.wrap(objectMapper.writeValueAsBytes(new SimplePivotSchema() {{
-                columnColNames = pivotTable.getColumnColNames();
-                rowColNames = pivotTable.getRowColNames();
-                hasTotals = pivotTable.getTotalsTable() != null;
-            }}));
+            schemaPayload = ByteBuffer.wrap(objectMapper.writeValueAsBytes(new SimplePivotSchema() {
+                {
+                    columnColNames = pivotTable.getColumnColNames();
+                    rowColNames = pivotTable.getRowColNames();
+                    hasTotals = pivotTable.getTotalsTable() != null;
+                }
+            }));
         } catch (JsonProcessingException e) {
             throw new ObjectCommunicationException("Failed to serialize schema", e);
         }

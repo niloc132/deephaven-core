@@ -159,12 +159,12 @@
                 // Last, optionally append a totals column
                 if (schema.hasTotals) {
                     var td = document.createElement('td');
-                    var totalsCol = totalsTable.findColumn('__TOTALS_COLUMN');
+                    var totalsCol = table.findColumn('__TOTALS_COLUMN');
                     td.textContent = rows[i].get(totalsCol);
                     var format = rows[i].getFormat(totalsCol);
                     td.style.backgroundColor = format.backgroundColor;
                     td.style.color = format.color;
-                    td.style.weight = 'bold';
+                    td.style.fontWeight = 'bold';
                     tr.appendChild(td);
                 }
                 body.appendChild(tr);

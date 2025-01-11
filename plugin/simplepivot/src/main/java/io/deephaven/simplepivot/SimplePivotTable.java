@@ -62,8 +62,8 @@ public class SimplePivotTable extends LivenessArtifact {
     /**
      * Factory for creating a SimplePivotTable.
      * <p>
-     * Having a separate factory type and an instance of that factory lets us provide an instance of the factory
-     * that clients can interact with through a plugin.
+     * Having a separate factory type and an instance of that factory lets us provide an instance of the factory that
+     * clients can interact with through a plugin.
      */
     public static class Factory {
         public SimplePivotTable create(Table table, List<String> columnColNames, List<String> rowColNames,
@@ -111,12 +111,18 @@ public class SimplePivotTable extends LivenessArtifact {
         localScope.putParam("rowColNames", rowColNames);
         localScope.putParam("aggSpec", aggSpec);
         localScope.putParam("nextColumnId", new AtomicInteger(0));
-        constituentTable = context.withQueryScope(localScope).apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()")).sort(columnColNames.toArray(String[]::new));
+        constituentTable = context.withQueryScope(localScope)
+                .apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()"))
+                .sort(columnColNames.toArray(String[]::new));
         pivotIdColumn = constituentTable.getColumnSource(PIVOT_COLUMN, int.class);
         constituentColumn = constituentTable.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
 
         if (includeTotals) {
-            totalsRow = context.withQueryScope(localScope).apply(() -> constituentTable.update(partitionedTable.constituentColumnName() + " = "+partitionedTable.constituentColumnName()+".dropColumns(rowColNames).aggAllBy(aggSpec)"));
+            totalsRow =
+                    context.withQueryScope(localScope)
+                            .apply(() -> constituentTable.update(partitionedTable.constituentColumnName() + " = "
+                                    + partitionedTable.constituentColumnName()
+                                    + ".dropColumns(rowColNames).aggAllBy(aggSpec)"));
             totalsConstituentColumn = totalsRow.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
             rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
@@ -141,7 +147,8 @@ public class SimplePivotTable extends LivenessArtifact {
                 @Override
                 protected void process() {
                     context.apply(() -> {
-                        if (partitionedTableListenerRecorder.getRemoved().isNonempty() || partitionedTableListenerRecorder.getModified().isNonempty()) {
+                        if (partitionedTableListenerRecorder.getRemoved().isNonempty()
+                                || partitionedTableListenerRecorder.getModified().isNonempty()) {
                             // Any removal/modify must be rebuilt from scratch - shifts should keep the same table
                             multiJoin();
                         } else if (partitionedTableListenerRecorder.getAdded().isNonempty()) {
@@ -174,7 +181,6 @@ public class SimplePivotTable extends LivenessArtifact {
                 @Override
                 protected boolean canExecute(long step) {
                     synchronized (recorders) {
-//                        System.out.println(recorders);
                         return recorders.stream().allMatch(lr -> lr.satisfied(step));
                     }
                 }
@@ -198,10 +204,9 @@ public class SimplePivotTable extends LivenessArtifact {
         multiJoin();
     }
 
-
     private synchronized void replaceMultiJoinedTable(List<Table> tablesToJoin) {
-        Table replacement = tablesToJoin.isEmpty() ? emptyTable() :
-                MultiJoinFactory.of(rowColNames.toArray(String[]::new), tablesToJoin.toArray(Table[]::new)).table();
+        Table replacement = tablesToJoin.isEmpty() ? emptyTable()
+                : MultiJoinFactory.of(rowColNames.toArray(String[]::new), tablesToJoin.toArray(Table[]::new)).table();
 
         if (totalsRow != null) {
             Table totalsReplacement;
@@ -211,10 +216,12 @@ public class SimplePivotTable extends LivenessArtifact {
                 List<Table> totalsRowsToJoin = new ArrayList<>(totalsRow.intSize() + 1);
                 totalsRow.getRowSet().forAllRowKeys(key -> {
                     int pivot = pivotIdColumn.get(key);
-                    totalsRowsToJoin.add(totalsConstituentColumn.get(key).view(PIVOT_COL_PREFIX + pivot + '=' + valueColName));
+                    totalsRowsToJoin
+                            .add(totalsConstituentColumn.get(key).view(PIVOT_COL_PREFIX + pivot + '=' + valueColName));
                 });
                 totalsRowsToJoin.add(totalsCell);
-                totalsReplacement = MultiJoinFactory.of(ArrayTypeUtils.EMPTY_STRING_ARRAY, totalsRowsToJoin.toArray(Table[]::new)).table();
+                totalsReplacement = MultiJoinFactory
+                        .of(ArrayTypeUtils.EMPTY_STRING_ARRAY, totalsRowsToJoin.toArray(Table[]::new)).table();
             }
 
             if (totalsReplacement.isRefreshing()) {
@@ -308,7 +315,8 @@ public class SimplePivotTable extends LivenessArtifact {
     }
 
     public Table getColumnKeys() {
-        return constituentTable.view(Stream.concat(Stream.of(PIVOT_COLUMN), partitionedTable.keyColumnNames().stream()).toArray(String[]::new));
+        return constituentTable.view(Stream.concat(Stream.of(PIVOT_COLUMN), partitionedTable.keyColumnNames().stream())
+                .toArray(String[]::new));
     }
 
     public synchronized Runnable subscribe(Runnable callback) {
