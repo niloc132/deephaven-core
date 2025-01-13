@@ -29,9 +29,9 @@ import java.util.stream.Stream;
 /**
  * Follow-up:
  * <ul>
- *     <li>Change totals to use a single Table-of-Tables, with one col for totals and another for tables</li>
- *     <li>Sort row keys, somehow that broke</li>
- *     <li>Stop using recorders, just set up dependencies and check if they are satisfied in the listener</li>
+ * <li>Change totals to use a single Table-of-Tables, with one col for totals and another for tables</li>
+ * <li>Sort row keys, somehow that broke</li>
+ * <li>Stop using recorders, just set up dependencies and check if they are satisfied in the listener</li>
  * </ul>
  */
 public class SimplePivotTable extends LivenessArtifact {
