@@ -88,6 +88,7 @@ remoteTable = time_table("PT1s").update_view(["I=i", "J=(811 * I) % 17", "K=(821
         });
     }
 
+    // Note: There is currently a bug here where a new column might appear, but the header will not display it
     function loadKeys(keyTable) {
         return new Promise((resolve, reject) => {
             var pivotIdColumn = keyTable.findColumn('__PIVOT_COLUMN')
