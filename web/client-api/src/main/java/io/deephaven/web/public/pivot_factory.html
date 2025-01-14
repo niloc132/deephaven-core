@@ -2,27 +2,67 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Pivot example page</title>
+    <title>Pivot Factory example page</title>
     <link href="basic.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
 <div id="pivot"></div>
 <script type="module">
-    // We start by assuming that some server code has run to create the ticking table, and build the pivot object
-    // around it, so that this file doesn't turn into a polyglot mess.
+    // This example assumes that the pivot factory has been added to the scope as "factory".
 
     import dh from './dh-core.js'
     const {CoreClient, Table, Widget} = dh;
     var connection;
-    var schema;
     (async () => {
         var client = new CoreClient('http://localhost:10000');
         await client.login({type:CoreClient.LOGIN_TYPE_ANONYMOUS});
         connection = await client.getAsIdeConnection();
 
-        // Ask the server for the object named "ticking_pivot"
-        var pivotWidget = await connection.getObject({name:"ticking_pivot", type:"simplepivot.SimplePivotTable"});
+        var types = await connection.getConsoleTypes();
 
+        // In the currently running language, create a ticking table with some sample data - one column will grow, the others
+        // will be bounded to avoid getting so much data we can't easily see it in the window.
+        if (types.indexOf("python") !== -1) {
+            var ide = await connection.startSession("python");
+            await ide.runCode(`
+from deephaven import time_table
+remoteTable = time_table("PT1s").update_view(["I=i", "J=(811 * I) % 17", "K=(821 * I) % 19"])
+`);
+        } else if (types.indexOf("groovy") !== -1) {
+            var ide = await connection.startSession("groovy");
+            await ide.runCode('remoteTable = timeTable("PT1s").updateView("I=i", "J=(811 * I) % 17", "K=(821 * I) % 19")');
+        }
+        var remoteTable = await connection.getObject({name:"remoteTable", type:"table"});
+
+        // Fetch the pivot factory object
+        var factory = await connection.getObject({name:"factory", type:"simplepivot.SimplePivotTable.Factory"});
+
+        // Add a listener before we request a pivot be created
+        factory.addEventListener(Widget.EVENT_MESSAGE, async e => {
+            var response = JSON.parse(e.detail.getDataAsString());
+            if (response.error) {
+                console.error(e.error);
+                return;
+            }
+            showPivot(await e.detail.exportedObjects[0].fetch());
+        });
+
+        // Create a pivot widget with the factory, response is sent to the listener above
+        factory.sendMessage(JSON.stringify({
+            rowColNames: ["J"],
+            columnColNames: ["K"],
+            valueColName: "I",
+            aggregation: 'AVG',
+            hasTotals: true
+        }), [remoteTable]);
+    })();
+
+    var pivotElt = document.getElementById('pivot');
+    var PAGE_SIZE = 20;
+    var schema;
+    var columnMap = new Map();
+
+    function showPivot(pivotWidget) {
         schema = JSON.parse(pivotWidget.getDataAsString());
 
         // The initial state is our keys to use for column headers
@@ -46,13 +86,7 @@
             var tableToRender = await Promise.all([loaded, tableToRenderPromise, totalsPromise]).then(a => [a[1], a[2]]);
             showChangedPivotSchema(tableToRender);
         });
-
-    })();
-
-    var pivotElt = document.getElementById('pivot');
-    var PAGE_SIZE = 20;
-    var COLUMN_COUNT = 10;
-    var columnMap = new Map();
+    }
 
     function loadKeys(keyTable) {
         return new Promise((resolve, reject) => {
