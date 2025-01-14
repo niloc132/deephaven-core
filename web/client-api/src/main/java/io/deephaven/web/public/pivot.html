@@ -52,7 +52,7 @@
     var pivotElt = document.getElementById('pivot');
     var PAGE_SIZE = 20;
     var COLUMN_COUNT = 10;
-    var columnMap = new Map();
+    var columnMap = [];
 
     function loadKeys(keyTable) {
         return new Promise((resolve, reject) => {
@@ -60,6 +60,7 @@
             var columns = keyTable.columns.filter(c => c.name !== '__PIVOT_COLUMN');
             var subscription = keyTable.subscribe(keyTable.columns);
             subscription.addEventListener(Table.EVENT_UPDATED, e => {
+                columnMap = [];
                 var data = e.detail;
                 var rowIter = data.fullIndex.iterator();
                 while (rowIter.hasNext()) {
@@ -69,9 +70,8 @@
                         value.push(data.getData(rowKey, c));
                     }
 
-                    columnMap.set("PIVOT_C_" + data.getData(rowKey, pivotIdColumn), value.join(","));
+                    columnMap.push(["PIVOT_C_" + data.getData(rowKey, pivotIdColumn), value.join(",")]);
                 }
-                console.log(columnMap);
                 resolve();
             });
         });

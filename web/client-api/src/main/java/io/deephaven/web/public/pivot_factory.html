@@ -52,15 +52,15 @@ remoteTable = time_table("PT1s").update_view(["I=i", "J=(811 * I) % 17", "K=(821
             rowColNames: ["J"],
             columnColNames: ["K"],
             valueColName: "I",
-            aggregation: 'AVG',
-            hasTotals: true
+            aggregation: 'SUM',
+            hasTotals: false
         }), [remoteTable]);
     })();
 
     var pivotElt = document.getElementById('pivot');
     var PAGE_SIZE = 20;
     var schema;
-    var columnMap = new Map();
+    var columnMap = [];
 
     function showPivot(pivotWidget) {
         schema = JSON.parse(pivotWidget.getDataAsString());
@@ -94,6 +94,7 @@ remoteTable = time_table("PT1s").update_view(["I=i", "J=(811 * I) % 17", "K=(821
             var columns = keyTable.columns.filter(c => c.name !== '__PIVOT_COLUMN');
             var subscription = keyTable.subscribe(keyTable.columns);
             subscription.addEventListener(Table.EVENT_UPDATED, e => {
+                columnMap = [];
                 var data = e.detail;
                 var rowIter = data.fullIndex.iterator();
                 while (rowIter.hasNext()) {
@@ -103,9 +104,8 @@ remoteTable = time_table("PT1s").update_view(["I=i", "J=(811 * I) % 17", "K=(821
                         value.push(data.getData(rowKey, c));
                     }
 
-                    columnMap.set("PIVOT_C_" + data.getData(rowKey, pivotIdColumn), value.join(","));
+                    columnMap.push(["PIVOT_C_" + data.getData(rowKey, pivotIdColumn), value.join(",")]);
                 }
-                console.log(columnMap);
                 resolve();
             });
         });
