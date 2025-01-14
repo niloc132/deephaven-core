@@ -105,15 +105,20 @@ public class SimplePivotTable extends LivenessArtifact {
         byColumns.addAll(rowColNames);
         List<String> allColumns = new ArrayList<>(byColumns);
         allColumns.add(valueColName);
+        // Drop extra columns not in one of the user provided sets
         if (table.getDefinition().getColumnNames().size() != allColumns.size()) {
             table = table.view(allColumns.toArray(String[]::new));
         }
-        Table agg = table.sort(rowColNames.toArray(String[]::new)).aggAllBy(aggSpec, byColumns);
-        partitionedTable = agg.partitionBy(columnColNames.toArray(String[]::new));
+
+        // Partition data into "cells" based on the row and column keys
+        partitionedTable = table.partitionBy(columnColNames.toArray(String[]::new)).transform(t -> {
+            return t.aggAllBy(aggSpec, rowColNames.toArray(String[]::new));
+        });
 
         ExecutionContext context = ExecutionContext.getContext();
         StandaloneQueryScope localScope = new StandaloneQueryScope();
         localScope.putParam("rowColNames", rowColNames);
+        localScope.putParam("columnColNames", columnColNames);
         localScope.putParam("aggSpec", aggSpec);
         localScope.putParam("nextColumnId", new AtomicInteger(0));
         constituentTable = context.withQueryScope(localScope)
@@ -124,14 +129,13 @@ public class SimplePivotTable extends LivenessArtifact {
 
         if (includeTotals) {
             totalsRow =
-                    context.withQueryScope(localScope)
-                            .apply(() -> constituentTable.update(partitionedTable.constituentColumnName() + " = "
-                                    + partitionedTable.constituentColumnName()
-                                    + ".dropColumns(rowColNames).aggAllBy(aggSpec)"));
+                    table.partitionBy(columnColNames.toArray(String[]::new)).transform(t -> {
+                        return t.aggAllBy(aggSpec);
+                    }).table().sort(columnColNames.toArray(String[]::new));
             totalsConstituentColumn = totalsRow.getColumnSource(partitionedTable.constituentColumnName(), Table.class);
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
             rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
-            totalsCol = agg.view(rowColNamesWithTotal.toArray(String[]::new)).aggAllBy(aggSpec, rowColNames);
+            totalsCol = table.view(rowColNamesWithTotal.toArray(String[]::new)).aggAllBy(aggSpec, rowColNames);
             totalsCell = table.view(TOTALS_COLUMN + "=" + valueColName).aggAllBy(aggSpec);
         } else {
             totalsRow = null;
@@ -321,7 +325,7 @@ public class SimplePivotTable extends LivenessArtifact {
     }
 
     public Table getColumnKeys() {
-        return constituentTable.view(Stream.concat(Stream.of(PIVOT_COLUMN), partitionedTable.keyColumnNames().stream())
+        return constituentTable.view(Stream.concat(Stream.of(PIVOT_COLUMN), columnColNames.stream())
                 .toArray(String[]::new));
     }
 
