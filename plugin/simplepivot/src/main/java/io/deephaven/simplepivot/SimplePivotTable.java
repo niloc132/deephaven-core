@@ -32,7 +32,6 @@ import java.util.stream.Stream;
  * Follow-up:
  * <ul>
  * <li>Change totals to use a single Table-of-Tables, with one col for totals and another for tables</li>
- * <li>Sort row keys, somehow that broke</li>
  * </ul>
  */
 public class SimplePivotTable extends LivenessArtifact {
@@ -160,7 +159,8 @@ public class SimplePivotTable extends LivenessArtifact {
                     updateDependencies.add(t);
                 }
             }
-            updateListener = new InstrumentedTableUpdateListenerAdapter("pivot(constituent) table listener", constituentTable, false) {
+            updateListener = new InstrumentedTableUpdateListenerAdapter("pivot(constituent) table listener",
+                    constituentTable, false) {
                 @Override
                 public void onUpdate(TableUpdate upstream) {
                     if (upstream.removed().isNonempty()
@@ -196,7 +196,8 @@ public class SimplePivotTable extends LivenessArtifact {
                 @Override
                 public boolean canExecute(long step) {
                     synchronized (updateDependencies) {
-                        return super.canExecute(step) && updateDependencies.stream().allMatch(dep -> dep.satisfied(step));
+                        return super.canExecute(step)
+                                && updateDependencies.stream().allMatch(dep -> dep.satisfied(step));
                     }
                 }
             };
@@ -211,8 +212,14 @@ public class SimplePivotTable extends LivenessArtifact {
     }
 
     private synchronized void replaceMultiJoinedTable(List<Table> tablesToJoin) {
-        Table replacement = tablesToJoin.isEmpty() ? emptyTable()
-                : MultiJoinFactory.of(rowColNames.toArray(String[]::new), tablesToJoin.toArray(Table[]::new)).table();
+        final Table replacement;
+        if (tablesToJoin.isEmpty()) {
+            replacement = emptyTable();
+        } else {
+            replacement = MultiJoinFactory.of(rowColNames.toArray(String[]::new), tablesToJoin.toArray(Table[]::new))
+                    .table()
+                    .sort(rowColNames.toArray(String[]::new));
+        }
 
         if (totalsRow != null) {
             Table totalsReplacement;

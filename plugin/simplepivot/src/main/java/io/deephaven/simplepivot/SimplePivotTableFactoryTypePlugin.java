@@ -19,28 +19,21 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * ObjectType plugin to enable clients to create PivotTables. Expose the {@link SimplePivotTable#FACTORY} instance to clients
- * (for example as a scope variable), and they will be able to fetch it and send pivot-creating messages to it.
+ * ObjectType plugin to enable clients to create PivotTables. Expose the {@link SimplePivotTable#FACTORY} instance to
+ * clients (for example as a scope variable), and they will be able to fetch it and send pivot-creating messages to it.
  *
- * At this time, the plugin will accept JSON payloads - each request made to the server should contain a JSON payload describing the pivot to be created and a Table instance to apply to.
- * The JSON payload may optionally contain a requestId string - the server will reflect that ID, if present, back in the response payload, allowing for multiple raced requests.
+ * At this time, the plugin will accept JSON payloads - each request made to the server should contain a JSON payload
+ * describing the pivot to be created and a Table instance to apply to. The JSON payload may optionally contain a
+ * requestId string - the server will reflect that ID, if present, back in the response payload, allowing for multiple
+ * raced requests.
  */
 @AutoService(ObjectType.class)
 public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
     public enum PivotAggregation {
-        SUM(AggSpec.sum()),
-        ABS_SUM(AggSpec.absSum()),
-        AVG(AggSpec.avg()),
-        MIN(AggSpec.min()),
-        MAX(AggSpec.max()),
-        MEDIAN(AggSpec.median()),
-        COUNT_DISTINCT(AggSpec.countDistinct()),
-        FIRST(AggSpec.first()),
-        LAST(AggSpec.last()),
-        STDDEV(AggSpec.std()),
-        VAR(AggSpec.var()),
-        T_DIGEST(AggSpec.tDigest()),
-        UNIQUE(AggSpec.unique());
+        SUM(AggSpec.sum()), ABS_SUM(AggSpec.absSum()), AVG(AggSpec.avg()), MIN(AggSpec.min()), MAX(
+                AggSpec.max()), MEDIAN(AggSpec.median()), COUNT_DISTINCT(AggSpec.countDistinct()), FIRST(
+                        AggSpec.first()), LAST(AggSpec.last()), STDDEV(AggSpec.std()), VAR(
+                                AggSpec.var()), T_DIGEST(AggSpec.tDigest()), UNIQUE(AggSpec.unique());
 
         private final AggSpec spec;
 
@@ -79,7 +72,8 @@ public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
             public void onData(ByteBuffer payload, Object... references) throws ObjectCommunicationException {
                 SimplePivotCreationRequest request;
                 try {
-                    request = objectMapper.readValue((InputStream) new ByteBufferInputStream(payload), SimplePivotCreationRequest.class);
+                    request = objectMapper.readValue((InputStream) new ByteBufferInputStream(payload),
+                            SimplePivotCreationRequest.class);
                 } catch (IOException e) {
                     // If we can't read the request, we can't respond in the stream
                     throw new ObjectCommunicationException("Failed to deserialize json request payload", e);
@@ -91,7 +85,8 @@ public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
                     try {
                         connection.onData(ByteBuffer.wrap(objectMapper.writeValueAsBytes(response)));
                     } catch (JsonProcessingException e) {
-                        throw new ObjectCommunicationException("Failed to serialize response while writing an error", e);
+                        throw new ObjectCommunicationException("Failed to serialize response while writing an error",
+                                e);
                     }
                     throw new ObjectCommunicationException("Expected a single table reference");
                 }
@@ -100,17 +95,21 @@ public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
                 try {
                     if (table.isRefreshing()) {
                         simplePivotTable = table.getUpdateGraph().sharedLock().computeLocked(() -> {
-                            return SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames, request.valueColName, request.aggregation.getSpec(), request.hasTotals);
+                            return SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames,
+                                    request.valueColName, request.aggregation.getSpec(), request.hasTotals);
                         });
                     } else {
-                        simplePivotTable = SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames, request.valueColName, request.aggregation.getSpec(), request.hasTotals);
+                        simplePivotTable =
+                                SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames,
+                                        request.valueColName, request.aggregation.getSpec(), request.hasTotals);
                     }
                 } catch (Exception e) {
                     response.error = e.getMessage();
                     try {
                         connection.onData(ByteBuffer.wrap(objectMapper.writeValueAsBytes(response)));
                     } catch (JsonProcessingException e2) {
-                        throw new ObjectCommunicationException("Failed to serialize response while writing an error", e2);
+                        throw new ObjectCommunicationException("Failed to serialize response while writing an error",
+                                e2);
                     }
                     throw new ObjectCommunicationException("Failed to create pivot table", e);
                 }
@@ -118,7 +117,8 @@ public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
                 try {
                     connection.onData(ByteBuffer.wrap(objectMapper.writeValueAsBytes(response)), simplePivotTable);
                 } catch (JsonProcessingException e) {
-                    throw new ObjectCommunicationException("Failed to serialize response while sending a pivot table", e);
+                    throw new ObjectCommunicationException("Failed to serialize response while sending a pivot table",
+                            e);
                 }
             }
 
