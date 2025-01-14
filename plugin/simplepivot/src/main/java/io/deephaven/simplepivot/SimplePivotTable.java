@@ -143,6 +143,7 @@ public class SimplePivotTable extends LivenessArtifact {
 
         if (table.isRefreshing()) {
             manage(partitionedTable);
+            manage(constituentTable);
 
             // Listen to changes in the table, to see if we need to recreate columns
             ListenerRecorder partitionedTableListenerRecorder =
