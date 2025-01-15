@@ -21,11 +21,29 @@ import java.util.List;
 /**
  * ObjectType plugin to enable clients to create PivotTables. Expose the {@link SimplePivotTable#FACTORY} instance to
  * clients (for example as a scope variable), and they will be able to fetch it and send pivot-creating messages to it.
- *
+ * <p>
  * At this time, the plugin will accept JSON payloads - each request made to the server should contain a JSON payload
  * describing the pivot to be created and a Table instance to apply to. The JSON payload may optionally contain a
  * requestId string - the server will reflect that ID, if present, back in the response payload, allowing for multiple
  * raced requests.
+ * <p>
+ * The aggregation type is specified as a string name with no parameters, and may be one of the following:
+ * <ul>
+ * <li>SUM</li>
+ * <li>ABS_SUM</li>
+ * <li>AVG</li>
+ * <li>MIN</li>
+ * <li>MAX</li>
+ * <li>MEDIAN</li>
+ * <li>COUNT_DISTINCT</li>
+ * <li>FIRST</li>
+ * <li>LAST</li>
+ * <li>STDDEV</li>
+ * <li>VAR</li>
+ * <li>T_DIGEST</li>
+ * <li>UNIQUE</li>
+ * </ul>
+ *
  */
 @AutoService(ObjectType.class)
 public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {

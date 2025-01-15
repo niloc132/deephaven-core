@@ -29,10 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 /**
- * Follow-up:
- * <ul>
- * <li>Change totals to use a single Table-of-Tables, with one col for totals and another for tables</li>
- * </ul>
+ * Plugin-backed object represents a pivot table, a single column aggregated by multiple other columns. Clients can
+ * connect to this instance to subscribe to updates in order to display the pivot table's contents in a UI.
  */
 public class SimplePivotTable extends LivenessArtifact {
     /**
