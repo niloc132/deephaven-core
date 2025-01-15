@@ -133,7 +133,7 @@ public class SimplePivotTable extends LivenessArtifact {
             PartitionedTable aggedColumns = partitionedTable.transform(t -> {
                 return t.aggAllBy(aggSpec);
             });
-            totalsRow = aggedColumns.table().sort(columnColNames.toArray(String[]::new));
+            totalsRow = aggedColumns.table();
             totalsConstituentColumn = totalsRow.getColumnSource(aggedColumns.constituentColumnName(), Table.class);
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
             rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
@@ -163,9 +163,8 @@ public class SimplePivotTable extends LivenessArtifact {
                     constituentTable, false) {
                 @Override
                 public void onUpdate(TableUpdate upstream) {
-                    if (upstream.removed().isNonempty()
-                            || upstream.modified().isNonempty() || upstream.shifted().nonempty()) {
-                        // Any removal/modify/shift must be rebuilt from scratch
+                    if (upstream.removed().isNonempty() || upstream.modified().isNonempty()) {
+                        // Any removal/modify must be rebuilt from scratch
                         multiJoin();
                     } else if (upstream.added().isNonempty()) {
 
