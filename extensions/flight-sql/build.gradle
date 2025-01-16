@@ -52,7 +52,7 @@ dependencies {
 
     // ADBC testing needs an actually server instance bound to a port because it can only connect over ADBC URIs like
     // grpc://localhost:10000
-    adbcTestImplementation project(':server-jetty')
+    adbcTestImplementation project(':server-jetty-11')
     adbcTestImplementation libs.adbc.flight.sql
 
     adbcTestImplementation project(':server-test-utils')
