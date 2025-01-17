@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         gradle-task: ['a', 'b', 'c', 'd']
-        test-jvm-version: ['11', '17', '21', '23']
+        test-jvm-version: ['17', '21', '23']
     if: ${{ github.repository_owner == 'deephaven' || github.event_name != 'schedule' }}
     runs-on: ubuntu-24.04
     steps:
