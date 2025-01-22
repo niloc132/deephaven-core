@@ -122,7 +122,7 @@ final class AsyncServletOutputStreamWriter {
                     () -> {
                         transportState.complete();
                         // asyncContext.complete();
-                        logger.fine("call completed");
+                        log.fine("call completed");
                     });
             // Jetty specific fix: When AsyncContext.complete() is called, Jetty sends a RST_STREAM with
             // "cancel" error to the client, while other containers send "no error" in this case. Calling
