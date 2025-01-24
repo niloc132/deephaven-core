@@ -16,7 +16,7 @@ dependencies {
         because 'downstream dagger compile'
     }
 
-    runtimeOnly(project(':web'))
+//    runtimeOnly(project(':web'))
 
     implementation libs.dagger
     annotationProcessor libs.dagger.compiler
