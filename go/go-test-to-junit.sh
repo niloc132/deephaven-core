@@ -7,7 +7,7 @@ set -o xtrace
 XML=${1};
 
 # Start a tcpdump in the background
-tcpdump -C 10 -Z root -i any -w /out/tcpdump.pcap &
+tcpdump -C 10 -Z root -i any -U -w /out/tcpdump.pcap &
 
 # Pause for a moment to let the dump start
 sleep 1
