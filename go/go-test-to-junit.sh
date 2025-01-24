@@ -6,8 +6,8 @@ set -o xtrace
 
 XML=${1};
 
-tcpdump -i any -w /out/tcpdump.pcap &
-go test -vet=all -v ./... 2>&1 | go-junit-report -set-exit-code -iocopy -out "$XML" && ret=$? || ret=$?;
+tcpdump -C 10M -i any -w /out/tcpdump.pcap &
+go test -run TestListFieldsLoop -vet=all -v ./... 2>&1 | go-junit-report -set-exit-code -iocopy -out "$XML" && ret=$? || ret=$?;
 kill %1;
 if [ $ret -eq 0 ] ; then
     echo "Tests passed, deleting pcap"

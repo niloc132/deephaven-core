@@ -285,3 +285,42 @@ gotesttable2 = empty_table(20)
 	err = tbl.Release(ctx)
 	test_tools.CheckError(t, "Release", err)
 }
+
+func TestListFieldsLoop(t *testing.T) {
+	ctx := context.Background()
+	// Set up a specific table to look for
+	client1, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken(), client.WithConsole("python"))
+	test_tools.CheckError(t, "NewClient", err)
+	defer client1.Close()
+
+	err = client1.RunScript(ctx,
+		`
+gotesttable1 = None
+`)
+	test_tools.CheckError(t, "RunScript", err)
+	defer client1.Close()
+
+	// Run for a limited duration, then give up
+	deadline := time.Now().Add(5 * time.Minute)
+	for {
+		// Create a client, loop 10 times to try to get the table list and cause the bug
+		client2, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), test_tools.GetAuthType(), test_tools.GetAuthToken(), client.WithConsole("python"))
+		if err != nil {
+			t.Error("NewClient failed:", err)
+			return
+		}
+		for i := 0; i < 10; i++ {
+			_, err := waitForTable(ctx, client2, []string{"gotesttable1"}, time.Second)
+			if err != nil {
+				t.Error("error when checking for gotesttable1:", err)
+				return
+			}
+		}
+		defer client2.Close()
+		if time.Now().After(deadline) {
+			// give up, pass
+			break
+		}
+	}
+
+}
