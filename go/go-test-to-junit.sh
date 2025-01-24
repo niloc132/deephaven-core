@@ -6,7 +6,7 @@ set -o xtrace
 
 XML=${1};
 
-tcpdump -C 10M -i any -w /out/tcpdump.pcap &
+tcpdump -C 10 -Z root -i any -w /out/tcpdump.pcap &
 go test -run TestListFieldsLoop -vet=all -v ./... 2>&1 | go-junit-report -set-exit-code -iocopy -out "$XML" && ret=$? || ret=$?;
 kill %1;
 if [ $ret -eq 0 ] ; then
