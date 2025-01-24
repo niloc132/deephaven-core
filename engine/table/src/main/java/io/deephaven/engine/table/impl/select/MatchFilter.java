@@ -16,6 +16,8 @@ import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.QueryCompilerRequestProcessor;
 import io.deephaven.engine.table.impl.QueryTable;
+import io.deephaven.engine.table.impl.chunkfilter.ChunkFilter;
+import io.deephaven.engine.table.impl.chunkfilter.ChunkMatchFilterFactory;
 import io.deephaven.engine.table.impl.lang.QueryLanguageFunctionUtils;
 import io.deephaven.engine.table.impl.preview.DisplayWrapper;
 import io.deephaven.engine.table.impl.DependencyStreamProvider;
@@ -42,7 +44,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-public class MatchFilter extends WhereFilterImpl implements DependencyStreamProvider {
+public class MatchFilter extends WhereFilterImpl implements DependencyStreamProvider, ExposesChunkFilter {
 
     private static final long serialVersionUID = 1L;
 
@@ -61,6 +63,7 @@ public class MatchFilter extends WhereFilterImpl implements DependencyStreamProv
 
     @NotNull
     private String columnName;
+    private Class<?> columnType;
     private Object[] values;
     private final String[] strValues;
     private final boolean invertMatch;
@@ -223,6 +226,7 @@ public class MatchFilter extends WhereFilterImpl implements DependencyStreamProv
                 initialized = true;
                 return;
             }
+            columnType = column.getDataType();
             final List<Object> valueList = new ArrayList<>();
             final Map<String, Object> queryScopeVariables =
                     compilationProcessor.getFormulaImports().getQueryScopeVariables();
@@ -306,6 +310,16 @@ public class MatchFilter extends WhereFilterImpl implements DependencyStreamProv
 
         final ColumnSource<?> columnSource = table.getColumnSource(columnName);
         return columnSource.match(!invertMatch, usePrev, caseInsensitive, dataIndex, selection, values);
+    }
+
+    private ChunkFilter chunkFilter;
+
+    @Override
+    public Optional<ChunkFilter> chunkFilter() {
+        if (chunkFilter == null) {
+            chunkFilter = ChunkMatchFilterFactory.getChunkFilter(columnType, caseInsensitive, invertMatch, values);
+        }
+        return Optional.of(chunkFilter);
     }
 
     @Override
