@@ -96,16 +96,16 @@ public class JettyBackedGrpcServer implements GrpcServer {
 
         final ServletContextHandler context =
                 new ServletContextHandler(null, "/", null, null, null, new ErrorPageErrorHandler(), NO_SESSIONS);
-        try {
-            // Build a URL to a known file on the classpath, so Jetty can load resources from that jar to serve as
-            // static content
-            String knownFile = "/ide/index.html";
-            URL ide = JettyBackedGrpcServer.class.getResource(knownFile);
-            Resource jarContents = Resource.newResource(ide.toExternalForm().replace("!" + knownFile, "!/"));
-            context.setBaseResource(ControlledCacheResource.wrap(jarContents));
-        } catch (IOException ioException) {
-            throw new UncheckedIOException(ioException);
-        }
+//        try {
+//            // Build a URL to a known file on the classpath, so Jetty can load resources from that jar to serve as
+//            // static content
+//            String knownFile = "/ide/index.html";
+//            URL ide = JettyBackedGrpcServer.class.getResource(knownFile);
+//            Resource jarContents = Resource.newResource(ide.toExternalForm().replace("!" + knownFile, "!/"));
+//            context.setBaseResource(ControlledCacheResource.wrap(jarContents));
+//        } catch (IOException ioException) {
+//            throw new UncheckedIOException(ioException);
+//        }
         // Register a DefaultServlet to serve our custom resources
         context.addServlet(servletHolder("default", null), "/*");
 
