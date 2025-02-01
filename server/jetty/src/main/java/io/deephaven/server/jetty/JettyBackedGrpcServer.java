@@ -24,16 +24,26 @@ import nl.altindag.ssl.jetty.util.JettySslUtils;
 import org.apache.arrow.flight.auth.AuthConstants;
 import org.apache.arrow.flight.auth2.Auth2Constants;
 import org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory;
+import org.eclipse.jetty.ee10.servlet.DefaultServlet;
+import org.eclipse.jetty.ee10.servlet.ErrorPageErrorHandler;
+import org.eclipse.jetty.ee10.servlet.FilterHolder;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
+import org.eclipse.jetty.ee10.servlet.security.ConstraintSecurityHandler;
+import org.eclipse.jetty.ee10.servlets.CrossOriginFilter;
+import org.eclipse.jetty.ee10.webapp.WebAppContext;
+import org.eclipse.jetty.ee10.websocket.jakarta.common.SessionTracker;
+import org.eclipse.jetty.ee10.websocket.jakarta.server.JakartaWebSocketServerContainer;
+import org.eclipse.jetty.ee10.websocket.jakarta.server.config.JakartaWebSocketServletContainerInitializer;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http2.HTTP2Connection;
 import org.eclipse.jetty.http2.HTTP2Session;
-import org.eclipse.jetty.http2.parser.RateControl;
+import org.eclipse.jetty.http2.RateControl;
 import org.eclipse.jetty.http2.server.HTTP2CServerConnectionFactory;
-import org.eclipse.jetty.http2.server.HTTP2ServerConnection;
 import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
+import org.eclipse.jetty.http2.server.internal.HTTP2ServerConnection;
 import org.eclipse.jetty.io.Connection;
-import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.ForwardedRequestCustomizer;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -42,29 +52,16 @@ import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
-import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.gzip.GzipHandler;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.servlets.CrossOriginFilter;
-import org.eclipse.jetty.util.MultiException;
+import org.eclipse.jetty.util.ExceptionUtil;
 import org.eclipse.jetty.util.component.Graceful;
-import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
-import org.eclipse.jetty.websocket.jakarta.common.SessionTracker;
-import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServletContainerInitializer;
-import org.eclipse.jetty.websocket.jakarta.server.internal.JakartaWebSocketServerContainer;
 import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URI;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -77,7 +74,7 @@ import java.util.function.Supplier;
 
 import static io.grpc.servlet.web.websocket.MultiplexedWebSocketServerStream.GRPC_WEBSOCKETS_MULTIPLEX_PROTOCOL;
 import static io.grpc.servlet.web.websocket.WebSocketServerStream.GRPC_WEBSOCKETS_PROTOCOL;
-import static org.eclipse.jetty.servlet.ServletContextHandler.NO_SESSIONS;
+import static org.eclipse.jetty.ee10.servlet.ServletContextHandler.NO_SESSIONS;
 
 @Singleton
 public class JettyBackedGrpcServer implements GrpcServer {
@@ -95,7 +92,7 @@ public class JettyBackedGrpcServer implements GrpcServer {
         jetty.addConnector(createConnector(jetty, config));
 
         final ServletContextHandler context =
-                new ServletContextHandler(null, "/", null, null, null, new ErrorPageErrorHandler(), NO_SESSIONS);
+                new ServletContextHandler("/", null, null, null, new ErrorPageErrorHandler(), NO_SESSIONS);
 //        try {
 //            // Build a URL to a known file on the classpath, so Jetty can load resources from that jar to serve as
 //            // static content
@@ -219,11 +216,8 @@ public class JettyBackedGrpcServer implements GrpcServer {
             this.websocketsEnabled = false;
         }
 
-        // Note: handler order matters due to pathSpec order
-        HandlerCollection handlers = new HandlerCollection();
-
         // Set up /*
-        handlers.addHandler(context);
+//        handlers.addHandler(context);
 
         final Handler handler;
         if (config.httpCompressionOrDefault()) {
@@ -235,10 +229,10 @@ public class JettyBackedGrpcServer implements GrpcServer {
             // the future as gRPC can technically operate over GET.
             gzipHandler.setIncludedMethods(HttpMethod.GET.asString());
             // Otherwise, the other defaults seem reasonable.
-            gzipHandler.setHandler(handlers);
+            gzipHandler.setHandler(context);
             handler = gzipHandler;
         } else {
-            handler = handlers;
+            handler = context;
         }
         jetty.setHandler(handler);
     }
@@ -279,7 +273,7 @@ public class JettyBackedGrpcServer implements GrpcServer {
     @Override
     public void stopWithTimeout(long timeout, TimeUnit unit) {
         Thread shutdownThread = new Thread(() -> {
-            MultiException exceptions = new MultiException();
+            ExceptionUtil.MultiException exceptions = new ExceptionUtil.MultiException();
             long millis = unit.toMillis(timeout);
 
             // If websockets are enabled, try to spend part of our shutdown timeout budget on waiting for websockets, as
