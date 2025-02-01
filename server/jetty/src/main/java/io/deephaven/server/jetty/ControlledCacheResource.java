@@ -5,12 +5,7 @@ package io.deephaven.server.jetty;
 
 import org.eclipse.jetty.util.resource.Resource;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.time.Instant;
 
@@ -59,7 +54,7 @@ public class ControlledCacheResource extends Resource {
 
     @Override
     public Instant lastModified() {
-        // Always return -1, so that we don't get the build system timestamp. In theory we could return the app startup
+        // Always return -1, so that we don't get the build system timestamp. In theory, we could return the app startup
         // time as well, so that clients that connect don't need to revalidate quite as often, but this could have other
         // side effects such as in load balancing with a short-lived old build against a seconds-older new build.
         return Instant.ofEpochMilli(-1);
@@ -86,6 +81,11 @@ public class ControlledCacheResource extends Resource {
     }
 
     @Override
+    public Resource resolve(String subUriPath) {
+        return wrap(wrapped.resolve(subUriPath));
+    }
+
+    @Override
     public String toString() {
         // Jetty's CachedContentFactory.CachedHttpContent requires that toString return the underlying URL found on
         // disk, or else the mime lookup from content type won't resolve anything.
@@ -104,10 +104,5 @@ public class ControlledCacheResource extends Resource {
         // As with toString, delegating this to the wrapped instance, just in case there is some specific, expected
         // behavior
         return wrapped.equals(obj);
-    }
-
-    @Override
-    public Resource resolve(String s) {
-        return wrap(wrapped.resolve(s));
     }
 }
