@@ -122,7 +122,7 @@ public class SimplePivotTable extends LivenessArtifact {
         }
 
         // Partition data into tables representing each column key
-        PartitionedTable partitionedTable = table.partitionBy(columnColNames.toArray(String[]::new));
+        PartitionedTable partitionedTable = table.partitionBy(true, columnColNames.toArray(String[]::new));
         rowDefinition = partitionedTable.constituentDefinition();
 
         // Aggregate each column by rows, so we have the cell values
