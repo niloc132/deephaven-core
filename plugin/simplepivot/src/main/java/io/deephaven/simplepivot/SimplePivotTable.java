@@ -16,6 +16,7 @@ import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.TableUpdate;
 import io.deephaven.engine.table.impl.InstrumentedTableUpdateListenerAdapter;
+import io.deephaven.engine.table.impl.partitioned.PartitionedTableImpl;
 import io.deephaven.engine.updategraph.NotificationQueue;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.util.type.ArrayTypeUtils;
@@ -50,6 +51,7 @@ public class SimplePivotTable extends LivenessArtifact {
     private final Table constituentTable;
     private final ColumnSource<Integer> pivotIdColumn;
     private final ColumnSource<Table> constituentColumn;
+    private final ColumnSource<Integer> totalsPivotIdColumn;
     private final ColumnSource<Table> totalsConstituentColumn;
 
     private final String valueColName;
@@ -61,6 +63,8 @@ public class SimplePivotTable extends LivenessArtifact {
     private final Set<NotificationQueue.Dependency> updateDependencies = new HashSet<>();
 
     private final List<Runnable> subscribers = new CopyOnWriteArrayList<>();
+
+    private final String pivotDescription;
 
     /**
      * Factory for creating a SimplePivotTable.
@@ -83,7 +87,7 @@ public class SimplePivotTable extends LivenessArtifact {
          * @return a SimplePivotTable instance
          */
         public SimplePivotTable create(Table table, List<String> columnColNames, List<String> rowColNames,
-                String valueColName, AggSpec aggSpec, boolean includeTotals) {
+                String valueColName, AggSpec aggSpec, boolean includeTotals, String pivotDescription) {
             // Validate that all column names are present in the table
             Set<String> allColumnNames = table.getDefinition().getColumnNameMap().keySet();
             if (!allColumnNames.containsAll(columnColNames)) {
@@ -102,15 +106,20 @@ public class SimplePivotTable extends LivenessArtifact {
                         "Value column name cannot be in grouping column names: " + valueColName);
             }
 
-            return new SimplePivotTable(table, columnColNames, rowColNames, valueColName, aggSpec, includeTotals);
+            if (pivotDescription == null) {
+                pivotDescription = aggSpec.description() + " of " + valueColName;
+            }
+
+            return new SimplePivotTable(table, columnColNames, rowColNames, valueColName, aggSpec, includeTotals, pivotDescription);
         }
     }
 
     public SimplePivotTable(Table table, List<String> columnColNames, List<String> rowColNames, String valueColName,
-            AggSpec aggSpec, boolean includeTotals) {
+            AggSpec aggSpec, boolean includeTotals, String pivotDescription) {
         this.rowColNames = List.copyOf(rowColNames);
         this.columnColNames = List.copyOf(columnColNames);
         this.valueColName = valueColName;
+        this.pivotDescription = pivotDescription;
 
         List<String> byColumns = new ArrayList<>(columnColNames);
         byColumns.addAll(rowColNames);
@@ -123,28 +132,42 @@ public class SimplePivotTable extends LivenessArtifact {
 
         // Partition data into tables representing each column key
         PartitionedTable partitionedTable = table.partitionBy(true, columnColNames.toArray(String[]::new));
-        rowDefinition = partitionedTable.constituentDefinition();
-
-        // Aggregate each column by rows, so we have the cell values
-        PartitionedTable aggedCells = partitionedTable.transform(t -> {
-            return t.aggAllBy(aggSpec, rowColNames.toArray(String[]::new));
-        });
-
+        // Attach a column id to each partition
         ExecutionContext context = ExecutionContext.getContext();
         StandaloneQueryScope localScope = new StandaloneQueryScope();
         localScope.putParam("nextColumnId", new AtomicInteger(0));
-        constituentTable = context.withQueryScope(localScope)
-                .apply(() -> aggedCells.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()"))
+        System.out.println(partitionedTable.table().getDefinition());
+        Table withColId = context.withQueryScope(localScope)
+                .apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()"));
+        System.out.println(withColId.getDefinition());
+        PartitionedTable partitionedTableWithColumnId = new PartitionedTableImpl(
+                withColId,
+                partitionedTable.keyColumnNames(),
+                partitionedTable.uniqueKeys(),
+                partitionedTable.constituentColumnName(),
+                partitionedTable.constituentDefinition(),
+                partitionedTable.constituentChangesPermitted(),
+                false
+        );
+        rowDefinition = partitionedTableWithColumnId.constituentDefinition();
+
+        // Aggregate each column by rows, so we have the cell values
+        PartitionedTable aggedCells = partitionedTableWithColumnId.transform(t -> {
+            return t.aggAllBy(aggSpec, rowColNames.toArray(String[]::new));
+        });
+
+        constituentTable = aggedCells.table()
                 .sort(columnColNames.toArray(String[]::new));
         pivotIdColumn = constituentTable.getColumnSource(PIVOT_COLUMN, int.class);
         constituentColumn = constituentTable.getColumnSource(aggedCells.constituentColumnName(), Table.class);
 
         if (includeTotals) {
             // Aggregate each column with no "by" columns, so we have the column totals to render in a row
-            PartitionedTable aggedColumns = partitionedTable.transform(t -> {
+            PartitionedTable aggedColumns = partitionedTableWithColumnId.transform(t -> {
                 return t.aggAllBy(aggSpec);
             });
             totalsRow = aggedColumns.table();
+            totalsPivotIdColumn = totalsRow.getColumnSource(PIVOT_COLUMN, int.class);
             totalsConstituentColumn = totalsRow.getColumnSource(aggedColumns.constituentColumnName(), Table.class);
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
             rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
@@ -155,6 +178,7 @@ public class SimplePivotTable extends LivenessArtifact {
         } else {
             totalsRow = null;
             totalsConstituentColumn = null;
+            totalsPivotIdColumn = null;
 
             totalsCol = null;
             totalsCell = null;
@@ -238,7 +262,7 @@ public class SimplePivotTable extends LivenessArtifact {
             } else {
                 List<Table> totalsRowsToJoin = new ArrayList<>(totalsRow.intSize() + 1);
                 totalsRow.getRowSet().forAllRowKeys(key -> {
-                    int pivot = pivotIdColumn.get(key);
+                    int pivot = totalsPivotIdColumn.get(key);
                     totalsRowsToJoin
                             .add(totalsConstituentColumn.get(key).view(PIVOT_COL_PREFIX + pivot + '=' + valueColName));
                 });
@@ -350,7 +374,7 @@ public class SimplePivotTable extends LivenessArtifact {
         return columnColNames;
     }
 
-    public String getValueColName() {
-        return valueColName;
+    public String getPivotDescription() {
+        return pivotDescription;
     }
 }

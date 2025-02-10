@@ -96,12 +96,14 @@
         }
         var header = document.createElement('thead');
         var headerRow = document.createElement('tr');
-        // First write rows group col names
-        schema.rowColNames.forEach(colName => {
-            var td = document.createElement('td');
-            td.innerText = colName;
-            headerRow.appendChild(td);
-        });
+        // Write the pivot description, pad extra rows for the row groups
+        var descCell = document.createElement('td');
+        descCell.innerText = schema.pivotDescription;
+        headerRow.appendChild(descCell);
+        for (let i = 0; i < schema.rowColNames.length - 1; i++) {
+            headerRow.appendChild(document.createElement('td'));
+        }
+
         // Then go over the currently known column groups
         for (let [realColName, value] of columnMap) {
             var td = document.createElement('td');

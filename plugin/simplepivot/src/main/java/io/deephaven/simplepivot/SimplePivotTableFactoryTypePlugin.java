@@ -114,12 +114,12 @@ public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
                     if (table.isRefreshing()) {
                         simplePivotTable = table.getUpdateGraph().sharedLock().computeLocked(() -> {
                             return SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames,
-                                    request.valueColName, request.aggregation.getSpec(), request.hasTotals);
+                                    request.valueColName, request.aggregation.getSpec(), request.hasTotals, null);
                         });
                     } else {
                         simplePivotTable =
                                 SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames,
-                                        request.valueColName, request.aggregation.getSpec(), request.hasTotals);
+                                        request.valueColName, request.aggregation.getSpec(), request.hasTotals, null);
                     }
                 } catch (Exception e) {
                     response.error = e.getMessage();
