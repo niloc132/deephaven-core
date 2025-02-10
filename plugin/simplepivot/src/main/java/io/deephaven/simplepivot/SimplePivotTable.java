@@ -41,6 +41,8 @@ public class SimplePivotTable extends LivenessArtifact {
     public static final Factory FACTORY = new Factory();
     public static final String PIVOT_COL_PREFIX = "PIVOT_C_";
     public static final String PIVOT_COLUMN = "__PIVOT_COLUMN";
+    public static final String PIVOT_CONSTITUENT_COLUMN = "__PIVOT_CONSTITUENT_COLUMN";
+    public static final String PIVOT_TOTALS_CONSTITUENT_COLUMN = "__PIVOT_TOTALS_CONSTITUENT_COLUMN";
     public static final String TOTALS_COLUMN = "__TOTALS_COLUMN";
 
     private final List<String> rowColNames;
@@ -141,36 +143,28 @@ public class SimplePivotTable extends LivenessArtifact {
         ExecutionContext context = ExecutionContext.getContext();
         StandaloneQueryScope localScope = new StandaloneQueryScope();
         localScope.putParam("nextColumnId", new AtomicInteger(0));
+        localScope.putParam("aggSpec", aggSpec);
+        localScope.putParam("rowColNames", rowColNames.toArray(String[]::new));
         Table withColId = context.withQueryScope(localScope)
                 .apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()"));
-        PartitionedTable partitionedTableWithColumnId = new PartitionedTableImpl(
-                withColId,
-                partitionedTable.keyColumnNames(),
-                partitionedTable.uniqueKeys(),
-                partitionedTable.constituentColumnName(),
-                partitionedTable.constituentDefinition(),
-                partitionedTable.constituentChangesPermitted(),
-                false);
-        rowDefinition = partitionedTableWithColumnId.constituentDefinition();
+        rowDefinition = partitionedTable.constituentDefinition();
 
         // Aggregate each column by rows, so we have the cell values
-        PartitionedTable aggedCells = partitionedTableWithColumnId.transform(t -> {
-            return t.aggAllBy(aggSpec, rowColNames.toArray(String[]::new));
-        });
+        Table aggedCells = context.withQueryScope(localScope)
+                .apply(() -> withColId.update(PIVOT_CONSTITUENT_COLUMN + "=" + partitionedTable.constituentColumnName()
+                        + ".aggAllBy(aggSpec, rowColNames)"));
 
-        constituentTable = aggedCells.table()
-                .sort(columnColNames.toArray(String[]::new));
+        constituentTable = aggedCells.sort(columnColNames.toArray(String[]::new));
         pivotIdColumn = constituentTable.getColumnSource(PIVOT_COLUMN, int.class);
-        constituentColumn = constituentTable.getColumnSource(aggedCells.constituentColumnName(), Table.class);
+        constituentColumn = constituentTable.getColumnSource(PIVOT_CONSTITUENT_COLUMN, Table.class);
 
         if (includeTotals) {
             // Aggregate each column with no "by" columns, so we have the column totals to render in a row
-            PartitionedTable aggedColumns = partitionedTableWithColumnId.transform(t -> {
-                return t.aggAllBy(aggSpec);
-            });
-            totalsRow = aggedColumns.table();
+            totalsRow = context.withQueryScope(localScope)
+                    .apply(() -> withColId.update(PIVOT_TOTALS_CONSTITUENT_COLUMN + "="
+                            + partitionedTable.constituentColumnName() + ".aggAllBy(aggSpec)"));
             totalsPivotIdColumn = totalsRow.getColumnSource(PIVOT_COLUMN, int.class);
-            totalsConstituentColumn = totalsRow.getColumnSource(aggedColumns.constituentColumnName(), Table.class);
+            totalsConstituentColumn = totalsRow.getColumnSource(PIVOT_TOTALS_CONSTITUENT_COLUMN, Table.class);
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
             rowColNamesWithTotal.add(TOTALS_COLUMN + "=" + valueColName);
 
