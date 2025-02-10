@@ -349,4 +349,8 @@ public class SimplePivotTable extends LivenessArtifact {
     public List<String> getColumnColNames() {
         return columnColNames;
     }
+
+    public String getValueColName() {
+        return valueColName;
+    }
 }

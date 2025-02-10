@@ -43,6 +43,7 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
     public static class SimplePivotSchema {
         public List<String> columnColNames;
         public List<String> rowColNames;
+        public String valueColName;
         public boolean hasTotals;
     }
 
@@ -63,6 +64,7 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
                     columnColNames = pivotTable.getColumnColNames();
                     rowColNames = pivotTable.getRowColNames();
                     hasTotals = pivotTable.getTotalsTable() != null;
+                    valueColName = pivotTable.getValueColName();
                 }
             }));
         } catch (JsonProcessingException e) {
