@@ -141,10 +141,8 @@ public class SimplePivotTable extends LivenessArtifact {
         ExecutionContext context = ExecutionContext.getContext();
         StandaloneQueryScope localScope = new StandaloneQueryScope();
         localScope.putParam("nextColumnId", new AtomicInteger(0));
-        System.out.println(partitionedTable.table().getDefinition());
         Table withColId = context.withQueryScope(localScope)
                 .apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()"));
-        System.out.println(withColId.getDefinition());
         PartitionedTable partitionedTableWithColumnId = new PartitionedTableImpl(
                 withColId,
                 partitionedTable.keyColumnNames(),
