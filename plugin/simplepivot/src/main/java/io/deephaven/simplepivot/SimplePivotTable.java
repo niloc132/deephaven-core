@@ -19,6 +19,7 @@ import io.deephaven.engine.table.impl.InstrumentedTableUpdateListenerAdapter;
 import io.deephaven.engine.table.impl.partitioned.PartitionedTableImpl;
 import io.deephaven.engine.updategraph.NotificationQueue;
 import io.deephaven.engine.util.TableTools;
+import io.deephaven.util.annotations.ReferentialIntegrity;
 import io.deephaven.util.type.ArrayTypeUtils;
 
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ public class SimplePivotTable extends LivenessArtifact {
 
     private final String valueColName;
     private final TableDefinition rowDefinition;
+    @ReferentialIntegrity
     private final InstrumentedTableUpdateListenerAdapter updateListener;
 
     private Table multiJoined;
