@@ -74,12 +74,14 @@ public class SimplePivotTable extends LivenessArtifact {
      */
     public static class Factory {
         /**
-         * Creates a SimplePivotTable from the provided table and configuration. Both columnColNames and rowColNames likely
-         * make more sense to contain a single element, but multiple elements are allowed. It is suggested that the cardinality
-         * of the output columns should remain less than around 1000 in order to keep the client subscriptions managable.
+         * Creates a SimplePivotTable from the provided table and configuration. Both columnColNames and rowColNames
+         * likely make more sense to contain a single element, but multiple elements are allowed. It is suggested that
+         * the cardinality of the output columns should remain less than around 1000 in order to keep the client
+         * subscriptions managable.
          *
          * @param table the table to pivot
-         * @param columnColNames specifies the columns to read in the provided table to use as columns in the pivot table
+         * @param columnColNames specifies the columns to read in the provided table to use as columns in the pivot
+         *        table
          * @param rowColNames specifies the columns to read in the provided table to use as columns in the pivot table
          * @param valueColName the column to aggregate for the cells of the pivot table
          * @param aggSpec the aggregation to apply to the value column
@@ -110,7 +112,8 @@ public class SimplePivotTable extends LivenessArtifact {
                 pivotDescription = aggSpec.description() + " of " + valueColName;
             }
 
-            return new SimplePivotTable(table, columnColNames, rowColNames, valueColName, aggSpec, includeTotals, pivotDescription);
+            return new SimplePivotTable(table, columnColNames, rowColNames, valueColName, aggSpec, includeTotals,
+                    pivotDescription);
         }
     }
 
@@ -147,8 +150,7 @@ public class SimplePivotTable extends LivenessArtifact {
                 partitionedTable.constituentColumnName(),
                 partitionedTable.constituentDefinition(),
                 partitionedTable.constituentChangesPermitted(),
-                false
-        );
+                false);
         rowDefinition = partitionedTableWithColumnId.constituentDefinition();
 
         // Aggregate each column by rows, so we have the cell values

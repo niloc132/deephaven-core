@@ -71,6 +71,7 @@ public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
         public String valueColName;
         public PivotAggregation aggregation;
         public boolean hasTotals;
+        public String pivotDescription;
     }
 
     public static class SimplePivotCreationResponse {
@@ -114,12 +115,14 @@ public class SimplePivotTableFactoryTypePlugin extends ObjectTypeBase {
                     if (table.isRefreshing()) {
                         simplePivotTable = table.getUpdateGraph().sharedLock().computeLocked(() -> {
                             return SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames,
-                                    request.valueColName, request.aggregation.getSpec(), request.hasTotals, null);
+                                    request.valueColName, request.aggregation.getSpec(), request.hasTotals,
+                                    request.pivotDescription);
                         });
                     } else {
                         simplePivotTable =
                                 SimplePivotTable.FACTORY.create(table, request.columnColNames, request.rowColNames,
-                                        request.valueColName, request.aggregation.getSpec(), request.hasTotals, null);
+                                        request.valueColName, request.aggregation.getSpec(), request.hasTotals,
+                                        request.pivotDescription);
                     }
                 } catch (Exception e) {
                     response.error = e.getMessage();
