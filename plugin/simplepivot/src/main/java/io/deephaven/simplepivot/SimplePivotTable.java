@@ -145,6 +145,7 @@ public class SimplePivotTable extends LivenessArtifact {
         localScope.putParam("nextColumnId", new AtomicInteger(0));
         localScope.putParam("aggSpec", aggSpec);
         localScope.putParam("rowColNames", rowColNames.toArray(String[]::new));
+        localScope.putParam("valueColName", valueColName);
         Table withColId = context.withQueryScope(localScope)
                 .apply(() -> partitionedTable.table().update(PIVOT_COLUMN + "=nextColumnId.getAndIncrement()"));
         rowDefinition = partitionedTable.constituentDefinition();
@@ -162,7 +163,7 @@ public class SimplePivotTable extends LivenessArtifact {
             // Aggregate each column with no "by" columns, so we have the column totals to render in a row
             totalsRow = context.withQueryScope(localScope)
                     .apply(() -> withColId.update(PIVOT_TOTALS_CONSTITUENT_COLUMN + "="
-                            + partitionedTable.constituentColumnName() + ".aggAllBy(aggSpec)"));
+                            + partitionedTable.constituentColumnName() + ".view(valueColName).aggAllBy(aggSpec)"));
             totalsPivotIdColumn = totalsRow.getColumnSource(PIVOT_COLUMN, int.class);
             totalsConstituentColumn = totalsRow.getColumnSource(PIVOT_TOTALS_CONSTITUENT_COLUMN, Table.class);
             List<String> rowColNamesWithTotal = new ArrayList<>(rowColNames);
