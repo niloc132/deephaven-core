@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.session_pb;
 
@@ -202,7 +202,7 @@ public class HandshakeRequest {
     public static native HandshakeRequest.ToObjectReturnType toObject(
             boolean includeInstance, HandshakeRequest msg);
 
-    public native int getAuthProtocol();
+    public native double getAuthProtocol();
 
     public native HandshakeRequest.GetPayloadUnionType getPayload();
 
@@ -212,7 +212,7 @@ public class HandshakeRequest {
 
     public native Uint8Array serializeBinary();
 
-    public native void setAuthProtocol(int value);
+    public native void setAuthProtocol(double value);
 
     public native void setPayload(HandshakeRequest.SetPayloadValueUnionType value);
 

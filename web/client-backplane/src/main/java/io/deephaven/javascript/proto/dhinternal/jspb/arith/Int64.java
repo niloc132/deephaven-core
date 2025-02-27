@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.javascript.proto.dhinternal.jspb.arith;
 
@@ -11,10 +11,10 @@ import jsinterop.annotations.JsType;
 public class Int64 {
     public static native Int64 fromString(String str);
 
-    public int hi;
-    public int lo;
+    public double hi;
+    public double lo;
 
-    public Int64(int lo, int hi) {}
+    public Int64(double lo, double hi) {}
 
     public native Int64 add(Int64 other);
 

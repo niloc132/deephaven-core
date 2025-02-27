@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb;
 
@@ -68,13 +68,13 @@ public class CompletionContext {
 
     public native String getTriggerCharacter();
 
-    public native int getTriggerKind();
+    public native double getTriggerKind();
 
     public native Uint8Array serializeBinary();
 
     public native void setTriggerCharacter(String value);
 
-    public native void setTriggerKind(int value);
+    public native void setTriggerKind(double value);
 
     public native CompletionContext.ToObjectReturnType0 toObject();
 

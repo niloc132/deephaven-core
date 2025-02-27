@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb;
 
@@ -69,13 +69,13 @@ public class VersionedTextDocumentIdentifier {
 
     public native String getUri();
 
-    public native int getVersion();
+    public native double getVersion();
 
     public native Uint8Array serializeBinary();
 
     public native void setUri(String value);
 
-    public native void setVersion(int value);
+    public native void setVersion(double value);
 
     public native VersionedTextDocumentIdentifier.ToObjectReturnType0 toObject();
 

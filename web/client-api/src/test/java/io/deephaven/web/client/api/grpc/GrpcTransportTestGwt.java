@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.web.client.api.grpc;
 
@@ -16,7 +16,8 @@ import jsinterop.base.JsPropertyMap;
 public class GrpcTransportTestGwt extends AbstractAsyncGwtTestCase {
     @Override
     public String getModuleName() {
-        return "io.deephaven.web.DeephavenIntegrationTest";
+        // This test runs in its own module to avoid risking poisoning other tests with its broken custom transports
+        return "io.deephaven.web.CustomTransportTest";
     }
 
     /**

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.engine.table.impl.select;
 
@@ -15,6 +15,7 @@ import io.deephaven.engine.table.DataIndex;
 import io.deephaven.engine.table.Table;
 import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.QueryCompilerRequestProcessor;
+import io.deephaven.engine.table.impl.QueryTable;
 import io.deephaven.engine.table.impl.chunkfilter.ChunkFilter;
 import io.deephaven.engine.table.impl.chunkfilter.ChunkMatchFilterFactory;
 import io.deephaven.engine.table.impl.lang.QueryLanguageFunctionUtils;
@@ -251,6 +252,10 @@ public class MatchFilter extends WhereFilterImpl implements DependencyStreamProv
     public SafeCloseable beginOperation(@NotNull final Table sourceTable) {
         if (initialDependenciesGathered || dataIndex != null) {
             throw new IllegalStateException("Inputs already initialized, use copy() instead of re-using a WhereFilter");
+        }
+        if (!QueryTable.USE_DATA_INDEX_FOR_WHERE) {
+            return () -> {
+            };
         }
         try (final SafeCloseable ignored = sourceTable.isRefreshing() ? LivenessScopeStack.open() : null) {
             dataIndex = DataIndexer.getDataIndex(sourceTable, columnName);

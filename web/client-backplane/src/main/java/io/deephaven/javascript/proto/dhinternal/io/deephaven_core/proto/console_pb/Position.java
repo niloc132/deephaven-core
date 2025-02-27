@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb;
 
@@ -64,15 +64,15 @@ public class Position {
 
     public static native Position.ToObjectReturnType toObject(boolean includeInstance, Position msg);
 
-    public native int getCharacter();
+    public native double getCharacter();
 
-    public native int getLine();
+    public native double getLine();
 
     public native Uint8Array serializeBinary();
 
-    public native void setCharacter(int value);
+    public native void setCharacter(double value);
 
-    public native void setLine(int value);
+    public native void setLine(double value);
 
     public native Position.ToObjectReturnType0 toObject();
 

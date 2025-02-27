@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2024 Deephaven Data Labs and Patent Pending
+// Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 package io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.console_pb.changedocumentrequest;
 
@@ -166,7 +166,7 @@ public class TextDocumentContentChangeEvent {
 
     public native DocumentRange getRange();
 
-    public native int getRangeLength();
+    public native double getRangeLength();
 
     public native String getText();
 
@@ -178,7 +178,7 @@ public class TextDocumentContentChangeEvent {
 
     public native void setRange(DocumentRange value);
 
-    public native void setRangeLength(int value);
+    public native void setRangeLength(double value);
 
     public native void setText(String value);
 
