@@ -13,6 +13,7 @@ import io.deephaven.plugin.type.ObjectTypeBase;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Plugin type for SimplePivotTable, allowing clients to connect and subscribe to updates, view the data. The initial
@@ -49,8 +50,6 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    private Runnable subscription;
-
     @Override
     public MessageStream compatibleClientConnection(Object object, MessageStream connection)
             throws ObjectCommunicationException {
@@ -73,7 +72,8 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
         connection.onData(schemaPayload, pivotTable.getColumnKeys());
 
         // Subscribe to updates
-        this.subscription = pivotTable.subscribe(() -> {
+        AtomicReference<Runnable> subscription = new AtomicReference<>();
+        subscription.set(pivotTable.subscribe(() -> {
             // Send current multijoined table
             try {
                 // Safe to access both tables within a callback
@@ -84,10 +84,9 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
                     connection.onData(ByteBuffer.allocate(0), pivotTable.getTable(), totalsTable);
                 }
             } catch (ObjectCommunicationException e) {
-                e.printStackTrace();
-                subscription.run();
+                subscription.get().run();
             }
-        });
+        }));
 
         return new MessageStream() {
             @Override
@@ -98,7 +97,7 @@ public class SimplePivotTableTypePlugin extends ObjectTypeBase {
             @Override
             public void onClose() {
                 // shut down our subscription
-                subscription.run();
+                subscription.get().run();
             }
         };
     }
