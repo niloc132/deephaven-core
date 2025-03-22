@@ -6,6 +6,11 @@
   <inherits name="org.apache.arrow.flatbuf.FlightFlatbufFormat"/>
   <inherits name="io.deephaven.barrage.flatbuf.BarrageFlatbufFormat"/>
 
+  <inherits name="io.deephaven.web.grpc.GrpcWeb" />
+<!--  <inherits name="io.deephaven.flightjs.protocol.BrowserFlight" />-->
+<!--  <inherits name="io.deephaven.proto.backplane.grpc.DHC" />-->
+<!--  <inherits name="io.deephaven.proto.backplane.script.grpc.DHC" />-->
+
   <inherits name="io.deephaven.base.Base" />
   <inherits name="io.deephaven.Util" />
   <inherits name="io.deephaven.io.IO" />

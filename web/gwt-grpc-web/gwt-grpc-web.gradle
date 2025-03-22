@@ -13,7 +13,7 @@ dependencies {
     api libs.jsinterop.annotations
     api libs.vertispan.ts.defs.annotations
 
-    implementation project(":proto:proto-backplane-grpc")
+//    implementation project(":proto:proto-backplane-grpc")
 
     implementation libs.gwt.user
     implementation project(':web-shared-beans')

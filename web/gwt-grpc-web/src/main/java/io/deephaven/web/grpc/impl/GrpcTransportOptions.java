@@ -16,8 +16,8 @@ import jsinterop.base.JsPropertyMap;
 /**
  * Options for creating a gRPC stream transport instance.
  */
-@TsInterface
-@JsType(namespace = "dh.grpc")
+//@TsInterface
+//@JsType(namespace = "dh.grpc")
 public class GrpcTransportOptions {
     @JsFunction
     @FunctionalInterface

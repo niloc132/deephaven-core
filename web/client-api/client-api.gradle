@@ -21,6 +21,7 @@ dependencies {
     implementation libs.grpc.stub
     implementation variantOf(libs.grpc.stub) { classifier('sources') }
     implementation project(':web-gwt-grpc-web')
+//    implementation project(':proto:proto-backplane-grpc')
 
     implementation project(':engine-chunk')
     implementation project(':extensions-barrage')

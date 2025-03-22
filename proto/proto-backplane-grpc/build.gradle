@@ -47,6 +47,8 @@ dependencies {
   testImplementation libs.junit4
 }
 
+def protoOutputDir =  layout.buildDirectory.dir('generated/source/proto/main')
+
 TaskProvider<Task> generateProtobuf = Docker.registerDockerTask(project, 'generateProtobuf') {
   copyIn {
     from(project.projectDir) {
@@ -68,7 +70,7 @@ TaskProvider<Task> generateProtobuf = Docker.registerDockerTask(project, 'genera
   containerOutPath = '/generated'
   imageName = Docker.localImageName('proto-backplane-grpc')
   copyOut {
-    into('build/generated/source/proto/main')
+    into(protoOutputDir)
   }
 }
 
@@ -92,11 +94,17 @@ artifacts {
 
 
 compileJava.dependsOn generateProtobuf
+tasks.register('showSources') {
+  doLast {
+    println "Sources: ${sourceSets.main.java.srcDirs}"
+  }
+}
+compileJava.dependsOn showSources
 
 sourceSets {
   main {
     java {
-      srcDir(generateProtobuf).include("**/*.java")
+      srcDir(protoOutputDir.get().dir('java')).include("**/*.java")
     }
     resources {
       srcDir 'src/main/proto'

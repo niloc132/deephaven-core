@@ -12,8 +12,8 @@ import jsinterop.base.JsPropertyMap;
  * gRPC transport implementation.
  *
  */
-@JsType(namespace = "dh.grpc")
-@TsInterface
+//@JsType(namespace = "dh.grpc")
+//@TsInterface
 public interface GrpcTransport {
     /**
      * Starts the stream, sending metadata to the server.

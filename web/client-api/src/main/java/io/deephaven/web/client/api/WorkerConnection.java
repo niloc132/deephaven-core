@@ -57,6 +57,7 @@ import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.table_pb
 import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.table_pb_service.TableServiceClient;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.ticket_pb.Ticket;
 import io.deephaven.javascript.proto.dhinternal.io.deephaven_core.proto.ticket_pb.TypedTicket;
+import io.deephaven.web.grpc.SampleClient;
 import io.deephaven.web.client.api.barrage.WebBarrageUtils;
 import io.deephaven.web.client.api.barrage.def.InitialTableDefinition;
 import io.deephaven.web.client.api.barrage.stream.BiDiStream;
@@ -223,6 +224,8 @@ public class WorkerConnection {
         storageServiceClient = info.createClient(StorageServiceClient::new);
         configServiceClient = info.createClient(ConfigServiceClient::new);
         hierarchicalTableServiceClient = info.createClient(HierarchicalTableServiceClient::new);
+
+        new SampleClient().call();
 
         newSessionReconnect = new ReconnectState(this::connectToWorker);
 
