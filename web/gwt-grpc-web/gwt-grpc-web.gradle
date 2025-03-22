@@ -1,0 +1,29 @@
+plugins {
+    id 'io.deephaven.project.register'
+    id 'java-library'
+}
+
+dependencies {
+    api platform(libs.grpc.bom)
+    api libs.grpc.api
+    api libs.grpc.stub
+
+    api libs.elemental.core
+    api libs.elemental.dom
+    api libs.jsinterop.annotations
+    api libs.vertispan.ts.defs.annotations
+
+    implementation project(":proto:proto-backplane-grpc")
+
+    implementation libs.gwt.user
+    implementation project(':web-shared-beans')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs 'src/main/java'
+            srcDirs 'src/main/resources/io/deephaven/web/super'
+        }
+    }
+}

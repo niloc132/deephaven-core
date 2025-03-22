@@ -18,6 +18,9 @@ configurations {
 dependencies {
     implementation platform(libs.grpc.bom)
     implementation variantOf(libs.grpc.api) { classifier('sources') }
+    implementation libs.grpc.stub
+    implementation variantOf(libs.grpc.stub) { classifier('sources') }
+    implementation project(':web-gwt-grpc-web')
 
     implementation project(':engine-chunk')
     implementation project(':extensions-barrage')
@@ -44,7 +47,8 @@ dependencies {
 
     js project(path: ':proto:raw-js-openapi', configuration: 'js')
 
-    implementation libs.guava
+    implementation libs.guava.gwt
+//    implementation variantOf(libs.guava) {classifier('sources')}
 
     testImplementation libs.junit4
     testImplementation libs.selenium.remote.driver

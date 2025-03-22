@@ -1,3 +1,5 @@
 <module>
-    <source path="" includes="Drainable.java" />
+    <inherits name="com.google.common.base.Base" />
+    <source path="" includes="Drainable.java,ClientCall.java,Metadata.java,Channel.java,MethodDescriptor.java,ServiceDescriptor.java,Attributes.java,Status.java,StatusException.java,StatusRuntimeException.java,ExperimentalApi.java,Deadline.java,CallCredentials.java,SecurityLevel.java,ClientInterceptor.java" />
+    <source path="stub" includes="StreamObserver.java,ClientCallStreamObserver.java,ClientResponseObserver.java,CallStreamObserver.java" />
 </module>
