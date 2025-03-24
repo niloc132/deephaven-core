@@ -38,6 +38,7 @@ String[] webMods = [
         'open-api-lang-tools', // language processing tools that we want to be accessible to many modules
         'open-api-shared-fu', // general purpose tools and dtos for both client and server
         'web-gwt-grpc-web', // emulation for gRPC-web
+        'web-gwt-protobuf', // emulation for gRPC-web
 ]
 
 // Include our modules

@@ -15,12 +15,26 @@ configurations {
     dts
     typescriptDoclet
 }
+configurations.configureEach {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.group == "com.google.protobuf"
+                && details.requested.name == "protobuf-java") {
+            details.useTarget(libs.protobuf.java.lite)
+        }
+        if (details.requested.group == "io.grpc"
+                && details.requested.name == "grpc-protobuf") {
+            details.useTarget(libs.grpc.protobuf.lite)
+        }
+    }
+}
 dependencies {
     implementation platform(libs.grpc.bom)
     implementation variantOf(libs.grpc.api) { classifier('sources') }
     implementation libs.grpc.stub
     implementation variantOf(libs.grpc.stub) { classifier('sources') }
     implementation project(':web-gwt-grpc-web')
+
+    implementation project(':web-gwt-protobuf')
 //    implementation project(':proto:proto-backplane-grpc')
 
     implementation project(':engine-chunk')

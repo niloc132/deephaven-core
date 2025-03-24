@@ -76,7 +76,7 @@ public class GwtGrpcWebChannel extends Channel {
                     responseListener.onHeaders(new Metadata());
                 };
                 options.onChunk = chunk -> {
-                    //TODO parse chunks into messages
+                    //TODO parse chunks into messages/trailers
 //                    methodDescriptor.getResponseMarshaller().parse(new ByteBufferInputStream(...));
                     responseListener.onMessage(null);
                 };

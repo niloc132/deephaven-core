@@ -177,6 +177,7 @@ grpc-bom = { module = "io.grpc:grpc-bom", version.ref = "grpc"}
 grpc-core = { module = "io.grpc:grpc-core" }
 grpc-netty = { module = "io.grpc:grpc-netty" }
 grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
+grpc-protobuf-lite = { module = "io.grpc:grpc-protobuf-lite" }
 grpc-services = { module = "io.grpc:grpc-services" }
 grpc-stub = { module = "io.grpc:grpc-stub" }
 grpc-testing = { module = "io.grpc:grpc-testing" }
@@ -267,6 +268,8 @@ picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+protobuf-java-lite = { module = "com.google.protobuf:protobuf-javalite", version.ref = "protobuf" }
+
 
 randelshofer-fastdoubleparser = { module = "ch.randelshofer:fastdoubleparser", version.ref = "randelshofer" }
 

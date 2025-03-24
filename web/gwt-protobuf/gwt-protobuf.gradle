@@ -1,0 +1,9 @@
+plugins {
+    id 'io.deephaven.project.register'
+    id 'java-library'
+}
+
+dependencies {
+    api libs.protobuf.java.lite
+    api variantOf(libs.protobuf.java.lite) { classifier('sources') }
+}

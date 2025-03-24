@@ -1,0 +1,3 @@
+<module>
+    <source path="" excludes="Android.java,ExtensionRegistryFactory.java"/>
+</module>
