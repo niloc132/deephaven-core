@@ -1024,7 +1024,7 @@ public abstract class GeneratedMessageLite<
         @Override
         protected void copyOnWriteInternal() {
             super.copyOnWriteInternal();
-            if (instance.extensions != FieldSet.emptySet()) {
+            if (instance.extensions != FieldSet.<ExtensionDescriptor>emptySet()) {
 //                instance.extensions = instance.extensions.clone();
                 throw new UnsupportedOperationException("instance.extensions.clone()");
             }
@@ -1034,8 +1034,8 @@ public abstract class GeneratedMessageLite<
             FieldSet<ExtensionDescriptor> extensions = instance.extensions;
             if (extensions.isImmutable()) {
 //                extensions = extensions.clone();
-                throw new UnsupportedOperationException("extensions.clone()");
                 instance.extensions = extensions;
+                throw new UnsupportedOperationException("extensions.clone()");
             }
             return extensions;
         }
@@ -1253,7 +1253,7 @@ public abstract class GeneratedMessageLite<
     }
 
     /** Calls invoke and throws a RuntimeException if it fails. */
-    static Object invokeOrDie(Method method, Object object, Object... params) {
+    @com.google.common.annotations.GwtIncompatible static Object invokeOrDie(Method method, Object object, Object... params) {
         try {
             return method.invoke(object, params);
         } catch (IllegalAccessException e) {

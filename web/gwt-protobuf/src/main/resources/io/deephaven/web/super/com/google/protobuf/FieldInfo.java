@@ -406,7 +406,7 @@ final class FieldInfo implements Comparable<FieldInfo> {
      * For singular or repeated message fields, returns the message type. For other fields, returns
      * {@code null}.
      */
-    public Class<?> getMessageFieldClass() {
+    @com.google.common.annotations.GwtIncompatible public Class<?> getMessageFieldClass() {
         switch (type) {
             case MESSAGE:
             case GROUP:
