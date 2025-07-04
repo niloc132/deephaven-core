@@ -546,6 +546,13 @@ public class Status {
     public StatusRuntimeException asRuntimeException() {
         return new StatusRuntimeException(this);
     }
+    public StatusException asException() {
+        return new StatusException(this);
+    }
+
+    public StatusException asException(@Nullable Metadata trailers) {
+        return new StatusException(this, trailers);
+    }
 
     public StatusRuntimeException asRuntimeException(@Nullable Metadata trailers) {
         return new StatusRuntimeException(this, trailers);

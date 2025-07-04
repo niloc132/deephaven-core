@@ -1,0 +1,7 @@
+<module>
+    <source path="">
+        <include name="Status.java" />
+        <include name="StatusProto.java" />
+        <include name="StatusOrBuilder.java" />
+    </source>
+</module>

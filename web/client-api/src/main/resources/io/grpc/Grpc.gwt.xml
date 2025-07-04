@@ -1,5 +1,46 @@
 <module>
     <inherits name="com.google.common.base.Base" />
-    <source path="" includes="Drainable.java,ClientCall.java,Metadata.java,Channel.java,MethodDescriptor.java,ServiceDescriptor.java,Attributes.java,Status.java,StatusException.java,StatusRuntimeException.java,ExperimentalApi.java,Deadline.java,CallCredentials.java,SecurityLevel.java,ClientInterceptor.java" />
-    <source path="stub" includes="StreamObserver.java,ClientCallStreamObserver.java,ClientResponseObserver.java,CallStreamObserver.java" />
+    <inherits name="com.google.common.io.Io" />
+    <inherits name="com.google.rpc.CommonProtos" />
+    <source path="">
+        <include name="Drainable.java" />
+        <include name="ClientCall.java" />
+        <include name="Metadata.java" />
+        <include name="Channel.java" />
+        <include name="MethodDescriptor.java" />
+        <include name="ServiceDescriptor.java" />
+        <include name="Attributes.java" />
+        <include name="Status.java" />
+        <include name="StatusException.java" />
+        <include name="StatusRuntimeException.java" />
+        <include name="ExperimentalApi.java" />
+        <include name="Deadline.java" />
+        <include name="CallCredentials.java" />
+        <include name="SecurityLevel.java" />
+        <include name="ClientInterceptor.java" />
+        <include name="CallOptions.java" />
+        <include name="BindableService.java" />
+        <include name="ServerServiceDefinition.java" />
+        <include name="ServerMethodDefinition.java" />
+        <include name="ServerCallHandler.java" />
+        <include name="ServerCall.java" />
+        <include name="ClientInterceptors.java" />
+        <include name="ClientStreamTracer.java" />
+        <include name="ForwardingClientCall.java" />
+        <include name="PartialForwardingClientCall.java" />
+        <include name="KnownLength.java" />
+        <include name="PartialForwardingClientCallListener.java" />
+        <include name="StreamTracer.java" />
+    </source>
+    <source path="stub">
+        <include name="StreamObserver.java" />
+        <include name="ClientCallStreamObserver.java" />
+        <include name="ClientResponseObserver.java" />
+        <include name="CallStreamObserver.java" />
+        <include name="AbstractStub.java" />
+        <include name="AbstractAsyncStub.java" />
+        <include name="ServerCallStreamObserver.java" />
+    </source>
+    <source path="protobuf" />
+    <source path="protobuf/lite" />
 </module>

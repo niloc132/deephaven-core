@@ -5,8 +5,9 @@
   <inherits name="com.google.flatbuffers.FlatBuffers"/>
   <inherits name="org.apache.arrow.flatbuf.FlightFlatbufFormat"/>
   <inherits name="io.deephaven.barrage.flatbuf.BarrageFlatbufFormat"/>
+  <inherits name="io.deephaven.proto.backplane.BackplaneProto" />
 
-  <inherits name="com.google.protobuf.Protobuf"/>
+<!--  <inherits name="com.google.protobuf.Protobuf"/>-->
   <inherits name="io.deephaven.web.grpc.GrpcWeb" />
 <!--  <inherits name="io.deephaven.flightjs.protocol.BrowserFlight" />-->
 <!--  <inherits name="io.deephaven.proto.backplane.grpc.DHC" />-->

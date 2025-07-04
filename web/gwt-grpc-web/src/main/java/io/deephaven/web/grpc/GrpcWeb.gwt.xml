@@ -1,4 +1,5 @@
 <module>
     <inherits name="io.grpc.Grpc" />
+    <inherits name="com.google.protobuf.ProtocolBuffers" />
     <source path="" />
 </module>

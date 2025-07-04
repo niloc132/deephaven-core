@@ -1,16 +1,22 @@
 package io.grpc.stub;
 
 import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.ListenableFuture;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
 import io.grpc.ClientCall;
 import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 
 import javax.annotation.Nullable;
+import java.util.Iterator;
 
 /**
  * Simplified implementation of ClientCalls that provides only async calls, the rest are stubs that only throw to be compiled out.
  */
 public final class ClientCalls {
+    static final CallOptions.Key<StubType> STUB_TYPE_OPTION = CallOptions.Key.create("internal-stub-type");
 
     private ClientCalls() {
     }
@@ -217,5 +223,31 @@ public final class ClientCalls {
             }
 
         }
+    }
+
+    public static <ReqT, RespT> RespT blockingUnaryCall(ClientCall<ReqT, RespT> call, ReqT req) {
+        throw new UnsupportedOperationException("blockingUnaryCall");
+    }
+
+    public static <ReqT, RespT> RespT blockingUnaryCall(Channel channel, MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, ReqT req) {
+        throw new UnsupportedOperationException("blockingUnaryCall");
+    }
+
+    public static <ReqT, RespT> Iterator<RespT> blockingServerStreamingCall(ClientCall<ReqT, RespT> call, ReqT req) {
+        throw new UnsupportedOperationException("blockingServerStreamingCall");
+    }
+
+    public static <ReqT, RespT> Iterator<RespT> blockingServerStreamingCall(Channel channel, MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, ReqT req) {
+        throw new UnsupportedOperationException("blockingServerStreamingCall");
+    }
+
+    public static <ReqT, RespT> ListenableFuture<RespT> futureUnaryCall(ClientCall<ReqT, RespT> call, ReqT req) {
+        throw new UnsupportedOperationException("futureUnaryCall");
+    }
+
+    static enum StubType {
+        BLOCKING,
+        FUTURE,
+        ASYNC;
     }
 }
