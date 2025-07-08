@@ -1,4 +1,14 @@
 repositories {
+    mavenLocal() {
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+        content {
+//            includeGroup 'com.vertispan.protobuf'
+            includeGroup 'com.vertispan.grpc'
+        }
+    }
     mavenCentral()
     maven {
         url 'https://jitpack.io'

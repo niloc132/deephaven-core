@@ -3,9 +3,7 @@
 //
 package io.deephaven.web.grpc.impl;
 
-import com.vertispan.tsdefs.annotations.TsInterface;
 import elemental2.core.Uint8Array;
-import jsinterop.annotations.JsType;
 import jsinterop.base.JsPropertyMap;
 
 /**

@@ -28,18 +28,20 @@ configurations {
 //    }
 //}
 dependencies {
-    implementation platform(libs.grpc.bom)
-    implementation variantOf(libs.grpc.api) { classifier('sources') }
-    implementation libs.grpc.stub
-    implementation variantOf(libs.grpc.stub) { classifier('sources') }
-    implementation libs.grpc.protobuf
-    implementation variantOf(libs.grpc.protobuf) { classifier('sources') }
-    implementation libs.grpc.protobuf.lite
-    implementation variantOf(libs.grpc.protobuf.lite) { classifier('sources') }
+//    implementation platform(libs.grpc.bom)
+//    implementation variantOf(libs.grpc.api) { classifier('sources') }
+//    implementation libs.grpc.stub
+//    implementation variantOf(libs.grpc.stub) { classifier('sources') }
+//    implementation libs.grpc.protobuf
+//    implementation variantOf(libs.grpc.protobuf) { classifier('sources') }
+//    implementation libs.grpc.protobuf.lite
+//    implementation variantOf(libs.grpc.protobuf.lite) { classifier('sources') }
     implementation project(':web-gwt-grpc-web')
+    implementation 'com.vertispan.protobuf:protobuf-gwt:3.25.4-1'
+    implementation 'com.vertispan.grpc:grpc-web-gwt:1.63.1-1-SNAPSHOT'
 
-    implementation 'com.google.api.grpc:proto-google-common-protos:2.29.0'
-    implementation 'com.google.api.grpc:proto-google-common-protos:2.29.0:sources'
+//    implementation 'com.google.api.grpc:proto-google-common-protos:2.29.0'
+//    implementation 'com.google.api.grpc:proto-google-common-protos:2.29.0:sources'
 //    implementation variantOf('com.google.api.grpc:proto-google-common-protos:2.29.0') {
 //        classifier('sources')
 //    }

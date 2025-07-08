@@ -97,6 +97,17 @@ class GwtTools {
                         .using(sub.module("org.gwtproject:gwt-user:${gwtVersion}"))
                 sub.substitute(sub.module("com.google.gwt:gwt-dev"))
                         .using(sub.module("org.gwtproject:gwt-dev:${gwtVersion}"))
+
+                sub.substitute(sub.module('com.google.protobuf:protobuf-java'))
+                        .using(sub.module('com.vertispan.protobuf:protobuf-gwt:3.25.4-1'))
+                sub.substitute(sub.module('io.grpc:grpc-api'))
+                        .using(sub.module('com.vertispan.grpc:grpc-web-gwt:1.63.1-1'))
+                sub.substitute(sub.module('io.grpc:grpc-stub'))
+                        .using(sub.module('com.vertispan.grpc:grpc-web-gwt:1.63.1-1'))
+                sub.substitute(sub.module('io.grpc:grpc-protobuf'))
+                        .using(sub.module('com.vertispan.grpc:grpc-web-gwt:1.63.1-1'))
+                sub.substitute(sub.module('io.grpc:grpc-protobuf-stub'))
+                        .using(sub.module('com.vertispan.grpc:grpc-web-gwt:1.63.1-1'))
             }
         }
         if (compile) {

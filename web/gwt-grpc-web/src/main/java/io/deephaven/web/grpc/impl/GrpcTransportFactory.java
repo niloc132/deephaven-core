@@ -3,10 +3,8 @@
 //
 package io.deephaven.web.grpc.impl;
 
-import com.vertispan.tsdefs.annotations.TsInterface;
 import elemental2.core.Uint8Array;
 import jsinterop.annotations.JsProperty;
-import jsinterop.annotations.JsType;
 
 /**
  * Factory for creating gRPC transports.

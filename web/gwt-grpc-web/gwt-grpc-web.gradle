@@ -4,10 +4,6 @@ plugins {
 }
 
 dependencies {
-    api platform(libs.grpc.bom)
-    api libs.grpc.api
-    api libs.grpc.stub
-
     api libs.elemental.core
     api libs.elemental.dom
     api libs.jsinterop.annotations
@@ -17,8 +13,6 @@ dependencies {
 
     implementation libs.gwt.user
     implementation project(':web-shared-beans')
-    api 'com.vertispan.protobuf:protobuf-gwt:3.25.4-1'
-    api 'com.vertispan.grpc:grpc-web-gwt:1.63.1-1-SNAPSHOT'
 }
 
 sourceSets {
