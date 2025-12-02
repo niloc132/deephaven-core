@@ -803,12 +803,10 @@ public class HierarchicalTableTestGwt extends AbstractAsyncGwtTestCase {
         connect(tables)
                 .then(treeTable("static_tree"))
                 .then(treeTable -> {
-                    treeTable.addEventListener(JsTreeTable.EVENT_REQUEST_FAILED, event -> {
-                        fail("Unexpected request failure: " + event.getDetail().toString());
-                    });
+                    delayTestFinish(3500);
                     treeTable.applySort(new Sort[] {});
-                    delayTestFinish(1500);
-                    return null;
+                    return treeTable.nextEvent(JsTreeTable.EVENT_REQUEST_FAILED, 2000.0)
+                            .then(err -> Promise.reject(err.getDetail()), Promise::resolve);
                 })
                 .then(this::finish)
                 .catch_(this::report);
