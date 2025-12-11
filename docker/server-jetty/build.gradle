@@ -28,10 +28,8 @@ configurations {
 }
 
 def serverPath = ':server-jetty-app'
-if (hasProperty('jetty11')) {
-    // If requested, use the Jetty 11 server instead of the default Jetty 12 server within this build
-    serverPath = ':server-jetty-app-11'
-}
+// If requested, use the Jetty 11 server instead of the default Jetty 12 server within this build
+serverPath = ':server-jetty-app-11'
 dependencies {
     serverApplicationDist project(path: serverPath, configuration: 'applicationDist')
 
