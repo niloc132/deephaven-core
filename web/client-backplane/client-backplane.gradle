@@ -50,6 +50,7 @@ def regenerateGwtBindings = Docker.registerDockerTask(project, 'regenerateGwtBin
         }
     }
     imageName = 'deephaven/jsinterop-generate-grpc-bindings:local-build'
+    platform = 'linux/amd64'
     dockerfile {
         // Basing our image on node, so we can easily use node and npm
         from 'docker.io/library/node:18.16.1'
