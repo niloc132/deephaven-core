@@ -349,12 +349,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
      * @throws IllegalStateException if the cache directory does not exist
      */
     private void refreshClassLoader() {
-        // If no cache directory exists, this is an error - we shouldn't be trying to refresh without a cache
-        if (classCacheDirectory == null || !classCacheDirectory.exists()) {
-            throw new IllegalStateException("Cannot refresh classloader: cache directory does not exist");
-        }
-
-        deleteCachedClassFiles(classCacheDirectory);
+        clearClassCache();
 
         // Create fresh classloader - reusing the existing configurations
         GroovyClassLoader scriptClassLoader = new GroovyClassLoader(STATIC_LOADER, scriptConfig);
@@ -365,6 +360,9 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
         // Permanently replace groovyShell with fresh shell
         groovyShell = new DeephavenGroovyShell(scriptClassLoader, groovyShell.getContext(), consoleConfig);
+
+        // Update the classloader with the imports that are currently expected to work?
+
     }
 
     @Override
@@ -388,8 +386,9 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
         // 2. Previous eval had remote sources but current does not - catches edge case where script is run
         // without providing execution context at all, and we need to clear from previous remote source scenario
         if (isDirty || (previousEvalHadRemoteSources && !hasRemoteSources)) {
-            log.debug("Clearing class cache. isDirty: " + isDirty + ", previousEvalHadRemoteSources: "
-                    + previousEvalHadRemoteSources + ", hasRemoteSources: " + hasRemoteSources);
+            log.debug().append("Clearing class cache. isDirty: ").append(isDirty)
+                    .append(", previousEvalHadRemoteSources: ").append(previousEvalHadRemoteSources)
+                    .append(", hasRemoteSources: ").append(hasRemoteSources).endl();
             refreshClassLoader();
         }
 
@@ -776,7 +775,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
 
     /**
      * Recursively delete all .class files from the cache directory to force recompilation. This is necessary because
-     * GroovyClassLoader can reload .class files from disk even after clearCache().
+     * GroovyClassLoader can reload .class files from disk even after {@link GroovyClassLoader#clearCache()}.
      *
      * @param directory the directory to recursively search for .class files
      */
@@ -798,7 +797,7 @@ public class GroovyDeephavenSession extends AbstractScriptSession<GroovySnapshot
                 deleteCachedClassFiles(file);
             } else if (file.getName().endsWith(".class")) {
                 if (!file.delete()) {
-                    log.warn("Failed to delete cached class file: " + file.getAbsolutePath());
+                    log.warn().append("Failed to delete cached class file: ").append(file.getAbsolutePath()).endl();
                 }
             }
         }
