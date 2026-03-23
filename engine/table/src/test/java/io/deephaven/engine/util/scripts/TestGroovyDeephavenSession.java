@@ -13,6 +13,8 @@ import io.deephaven.engine.table.TableDefinition;
 import io.deephaven.engine.table.impl.util.ColumnHolder;
 import io.deephaven.engine.testutil.junit4.EngineCleanup;
 import io.deephaven.engine.util.GroovyDeephavenSession;
+import io.deephaven.engine.util.RemoteFileSourceClassLoader;
+import io.deephaven.engine.util.RemoteFileSourceProvider;
 import io.deephaven.engine.util.ScriptSession;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.function.Numeric;
@@ -28,8 +30,11 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static io.deephaven.engine.testutil.TstUtils.assertTableEquals;
 import static io.deephaven.engine.util.TableTools.booleanCol;
@@ -706,6 +711,47 @@ public class TestGroovyDeephavenSession {
             assertTrue(e.getMessage(), e.getMessage().contains("join"));
             assertTrue(e.getMessage(), e.getMessage().contains("ClassLoader"));
         }
+    }
+
+    @Test
+    public void testRemoteClassLoader() {
+        final RemoteFileSourceClassLoader cl = RemoteFileSourceClassLoader.getInstance();
+        final Map<String, String> sources = new HashMap<>();
+        cl.registerProvider(new RemoteFileSourceProvider() {
+            @Override
+            public boolean canSourceResource(String resourceName) {
+                return sources.containsKey(resourceName);
+            }
+
+            @Override
+            public boolean isActive() {
+                return true;
+            }
+
+            @Override
+            public boolean hasConfiguredResources() {
+                return true;
+            }
+
+            @Override
+            public boolean isDirty() {
+                return true;
+            }
+
+            @Override
+            public CompletableFuture<byte[]> requestResource(String resourceName) {
+                return CompletableFuture.completedFuture(sources.get(resourceName).getBytes());
+            }
+        });
+        sources.put("test/notebook/Model.groovy", "package test.notebook;\n" +
+                "class Model {\n" +
+                "  double x, y;\n" +
+                "}");
+
+        ScriptSession.Changes c = session.evaluateScript("import test.notebook.Model;\n" +
+                "ExecutionContext.getContext().getQueryLibrary().importClass(Model);\n" +
+                "t = emptyTable(1).updateView(\"Y = new Model()\")");
+        c.throwIfError();
     }
 }
 
