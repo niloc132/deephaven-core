@@ -41,7 +41,7 @@ import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecWeighted;
 import io.deephaven.proto.backplane.grpc.AggSpec.TypeCase;
 import io.deephaven.proto.backplane.grpc.NullValue;
 import io.deephaven.proto.util.Exceptions;
-import io.deephaven.server.grpc.GrpcErrorHelper;
+import io.deephaven.engine.validation.ColumnExpressionValidator;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -133,11 +133,25 @@ class AggSpecAdapter {
 
     public static AggSpec adapt(io.deephaven.proto.backplane.grpc.AggSpec spec) {
         return Singleton.INSTANCE.adapters.adapt(spec);
-    }
-
     private static io.deephaven.api.agg.spec.AggSpecApproximatePercentile adapt(
             AggSpecApproximatePercentile percentile) {
         return percentile.hasCompression()
+    /**
+     * Validates any formula expressions contained in the given {@link io.deephaven.proto.backplane.grpc.AggSpec}. If
+     * the spec is of type {@link TypeCase#FORMULA}, the formula string is validated through the provided
+     * {@link ColumnExpressionValidator} to ensure it does not contain disallowed method calls or constructor
+     * invocations.
+     *
+     * @param spec the AggSpec proto message to check
+     * @param validator the expression validator to use
+     */
+    public static void validateFormulas(io.deephaven.proto.backplane.grpc.AggSpec spec,
+            ColumnExpressionValidator validator) {
+        if (spec.getTypeCase() == TypeCase.FORMULA) {
+            validator.validateFormulaExpression(spec.getFormula().getFormula());
+        }
+    }
+
                 ? AggSpec.approximatePercentile(percentile.getPercentile(), percentile.getCompression())
                 : AggSpec.approximatePercentile(percentile.getPercentile());
     }

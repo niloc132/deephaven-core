@@ -53,6 +53,9 @@ public final class AggregateGrpcImpl extends GrpcTableOperation<AggregateRequest
         }
         for (Aggregation aggregation : request.getAggregationsList()) {
             AggregationAdapter.validate(aggregation);
+            if (aggregation.hasColumns()) {
+                AggSpecAdapter.validateFormulas(aggregation.getColumns().getSpec(), expressionValidator);
+            }
         }
     }
 
@@ -91,6 +94,7 @@ public final class AggregateGrpcImpl extends GrpcTableOperation<AggregateRequest
                     final Table formulaPrototype = parentPrototype.groupBy(groupByColumns);
                     expressionValidator.validateColumnExpressions(new SelectColumn[] {sc}, new String[] {selectableRaw},
                             formulaPrototype.getDefinition());
+                    break;
                 case TYPE_NOT_SET:
                     break;
                 default:

@@ -90,7 +90,11 @@ public class PluginModuleTest {
                         TableDefinition sourceTable) {
                     throw new UnsupportedOperationException("Not a real column expression validator");
                 }
-            };
+
+                @Override
+                public void validateFormulaExpression(String formula) {
+                    throw new UnsupportedOperationException("Not a real column expression validator");
+                }
         }
     }
 

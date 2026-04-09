@@ -186,7 +186,16 @@ public class MethodNameColumnExpressionValidator extends VoidVisitorAdapter<Obje
     }
 
     @Override
-    public void visit(final MethodCallExpr n, final Object arg) {
+    public void validateFormulaExpression(final String formula) {
+        final TimeLiteralReplacedExpression timeConversionResult;
+        try {
+            timeConversionResult = TimeLiteralReplacedExpression.convertExpression(formula);
+        } catch (final Exception e) {
+            throw new IllegalStateException("Error occurred while compiling formula for validation", e);
+        }
+        validateInvocations(timeConversionResult.getConvertedFormula());
+    }
+
         // verify that this is a call on a supported instance, or is one of the supported static methods
         if (n.getScope().isEmpty()) {
             if (!allowedStaticMethods.contains(n.getNameAsString())) {

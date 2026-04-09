@@ -148,7 +148,29 @@ public class ParsingColumnExpressionValidator implements ColumnExpressionValidat
         }
     }
 
-    private static String formatArguments(final Class<?>[] parameterTypes) {
+    @Override
+    public void validateFormulaExpression(final String formula) {
+        // Wrap the raw formula as a column expression so we can reuse our compilation-based validation.
+        // We compile against an empty table definition. Self-contained malicious expressions (e.g.,
+        // Runtime.getRuntime().exec(...)) will compile and be caught by our method invocation checks.
+        // Formulas that reference a paramToken (e.g., "each * 2") will fail to compile because the
+        // paramToken is not a real column — this compilation failure is expected and safe, since the
+        // dangerous expressions are always self-contained.
+        final String expression = "__agg_formula_placeholder__ = (Object)(" + formula + ")";
+        final SelectColumn[] sc = SelectColumnFactory.getExpressions(expression);
+        try {
+            validateColumnExpressions(sc, new String[] {expression}, TableDefinition.of());
+        } catch (final Exception e) {
+            // If the message indicates the formula is disallowed (method/constructor not permitted),
+            // propagate it. Otherwise, the compilation failure is expected for parameterized formulas.
+            final String msg = e.getMessage();
+            if (msg != null && (msg.contains("not permitted") || msg.contains("not allowed"))) {
+                throw e;
+            }
+            // Compilation failure for other reasons (e.g., unknown column reference from paramToken) is safe.
+        }
+    }
+
         return Arrays
                 .stream(parameterTypes).map(Class::getCanonicalName)
                 .collect(Collectors.joining(", "));

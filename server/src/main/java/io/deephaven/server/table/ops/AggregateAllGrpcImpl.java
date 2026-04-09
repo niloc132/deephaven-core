@@ -6,8 +6,8 @@ package io.deephaven.server.table.ops;
 import io.deephaven.api.agg.spec.AggSpec;
 import io.deephaven.auth.codegen.impl.TableServiceContextualAuthWiring;
 import io.deephaven.base.verify.Assert;
+import io.deephaven.engine.validation.ColumnExpressionValidator;
 import io.deephaven.engine.table.Table;
-import io.deephaven.proto.backplane.grpc.AggSpec.TypeCase;
 import io.deephaven.proto.backplane.grpc.AggregateAllRequest;
 import io.deephaven.proto.backplane.grpc.BatchTableRequest;
 import io.deephaven.server.grpc.Common;
@@ -21,14 +21,17 @@ import java.util.List;
 
 @Singleton
 public final class AggregateAllGrpcImpl extends GrpcTableOperation<AggregateAllRequest> {
+    private final ColumnExpressionValidator expressionValidator;
 
     @Inject
-    public AggregateAllGrpcImpl(final TableServiceContextualAuthWiring authWiring) {
+    public AggregateAllGrpcImpl(final TableServiceContextualAuthWiring authWiring,
+            final ColumnExpressionValidator expressionValidator) {
         super(
                 authWiring::checkPermissionAggregateAll,
                 BatchTableRequest.Operation::getAggregateAll,
                 AggregateAllRequest::getResultId,
                 AggregateAllRequest::getSourceId);
+        this.expressionValidator = expressionValidator;
     }
 
     @Override
@@ -38,6 +41,7 @@ public final class AggregateAllGrpcImpl extends GrpcTableOperation<AggregateAllR
         GrpcErrorHelper.checkHasNoUnknownFields(request);
         Common.validate(request.getSourceId());
         AggSpecAdapter.validate(request.getSpec());
+        AggSpecAdapter.validateFormulas(request.getSpec(), expressionValidator);
     }
 
     @Override

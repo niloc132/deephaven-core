@@ -520,7 +520,11 @@ public class TestColumnExpressionValidator {
                 validatedFilters.addAll(conditionFilters);
                 wrapped.getValue().validateConditionFilters(conditionFilters, definition);
             }
-        };
+
+            @Override
+            public void validateFormulaExpression(final String formula) {
+                throw new UnsupportedOperationException();
+            }
 
         wrapped.setValue(goodValidator);
         final FilterTableGrpcImpl filterTableGrpc =

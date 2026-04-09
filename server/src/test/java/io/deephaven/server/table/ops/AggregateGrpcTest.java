@@ -8,7 +8,7 @@ import com.google.protobuf.UnknownFieldSet.Field;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.proto.backplane.grpc.AggSpec;
 import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecCountDistinct;
-import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecSum;
+import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecFormula;
 import io.deephaven.proto.backplane.grpc.AggregateRequest;
 import io.deephaven.proto.backplane.grpc.Aggregation;
 import io.deephaven.proto.backplane.grpc.Aggregation.AggregationColumns;
@@ -262,5 +262,49 @@ public class AggregateGrpcTest extends GrpcTableOperationTestBase<AggregateReque
                 .build();
         assertError(request, Code.INVALID_ARGUMENT,
                 "io.deephaven.proto.backplane.grpc.AggregateRequest has unknown field(s)");
-    }
 }
+
+
+    @Test
+    public void aggregationColumnsFormulaDisallowedMethodRejected() {
+        final TableReference ref = ref(TableTools.emptyTable(100).view("Key=ii % 2", "I=ii"));
+        final AggregateRequest request = AggregateRequest.newBuilder()
+                .setResultId(ExportTicketHelper.wrapExportIdInTicket(1))
+                .setSourceId(ref)
+                .addAggregations(Aggregation.newBuilder()
+                        .setColumns(AggregationColumns.newBuilder()
+                                .setSpec(AggSpec.newBuilder()
+                                        .setFormula(AggSpecFormula.newBuilder()
+                                                .setFormula("Runtime.getRuntime().exec(\"touch /tmp/pwned\")")
+                                                .setParamToken("each")
+                                                .build())
+                                        .build())
+                                .addMatchPairs("I")
+                                .build())
+                        .build())
+                .addGroupByColumns("Key")
+                .build();
+        assertError(request, Code.INVALID_ARGUMENT, "not permitted");
+    }
+
+    @Test
+    public void aggregationColumnsFormulaNewObjectRejected() {
+        final TableReference ref = ref(TableTools.emptyTable(100).view("Key=ii % 2", "I=ii"));
+        final AggregateRequest request = AggregateRequest.newBuilder()
+                .setResultId(ExportTicketHelper.wrapExportIdInTicket(1))
+                .setSourceId(ref)
+                .addAggregations(Aggregation.newBuilder()
+                        .setColumns(AggregationColumns.newBuilder()
+                                .setSpec(AggSpec.newBuilder()
+                                        .setFormula(AggSpecFormula.newBuilder()
+                                                .setFormula("new java.io.File(\"/etc/passwd\").exists()")
+                                                .setParamToken("each")
+                                                .build())
+                                        .build())
+                                .addMatchPairs("I")
+                                .build())
+                        .build())
+                .addGroupByColumns("Key")
+                .build();
+        assertError(request, Code.INVALID_ARGUMENT, "not permitted");
+    }

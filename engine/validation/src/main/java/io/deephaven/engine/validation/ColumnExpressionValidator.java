@@ -18,7 +18,16 @@ public interface ColumnExpressionValidator {
 
     void validateConditionFilters(List<ConditionFilter> conditionFilters, TableDefinition definition);
 
-    default void validateWhereFilters(List<WhereFilter> whereFilter, TableDefinition definition) {
+    /**
+     * Validates a raw formula expression string (not in {@code Column=Expression} format) for disallowed method calls
+     * and constructor invocations. This is used for parameterized formulas (e.g., {@code AggSpecFormula}) where the
+     * formula is an expression fragment that gets substituted at runtime.
+     *
+     * @param formula the formula expression string to validate
+     * @throws IllegalStateException if the formula contains disallowed method calls or constructor invocations
+     */
+    void validateFormulaExpression(final String formula);
+
         validateConditionFilters(extractConditionFilters(whereFilter), definition);
     }
 

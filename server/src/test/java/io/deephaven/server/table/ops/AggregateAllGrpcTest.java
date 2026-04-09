@@ -7,7 +7,7 @@ import com.google.protobuf.UnknownFieldSet;
 import com.google.protobuf.UnknownFieldSet.Field;
 import io.deephaven.engine.util.TableTools;
 import io.deephaven.proto.backplane.grpc.AggSpec;
-import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecNonUniqueSentinel;
+import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecFormula;
 import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecSum;
 import io.deephaven.proto.backplane.grpc.AggSpec.AggSpecUnique;
 import io.deephaven.proto.backplane.grpc.AggregateAllRequest;
@@ -141,5 +141,37 @@ public class AggregateAllGrpcTest extends GrpcTableOperationTestBase<AggregateAl
         assertThat(response.getSuccess()).isTrue();
         assertThat(response.getIsStatic()).isTrue();
         assertThat(response.getSize()).isEqualTo(1);
-    }
 }
+
+
+    @Test
+    public void formulaDisallowedMethodRejected() {
+        final TableReference ref = ref(TableTools.emptyTable(100).view("Key=ii % 2", "I=ii"));
+        final AggregateAllRequest request = AggregateAllRequest.newBuilder()
+                .setResultId(ExportTicketHelper.wrapExportIdInTicket(1))
+                .setSourceId(ref)
+                .setSpec(AggSpec.newBuilder()
+                        .setFormula(AggSpecFormula.newBuilder()
+                                .setFormula("Runtime.getRuntime().exec(\"touch /tmp/pwned\")")
+                                .setParamToken("each")
+                                .build())
+                        .build())
+                .build();
+        assertError(request, Code.INVALID_ARGUMENT, "not permitted");
+    }
+
+    @Test
+    public void formulaNewObjectRejected() {
+        final TableReference ref = ref(TableTools.emptyTable(100).view("Key=ii % 2", "I=ii"));
+        final AggregateAllRequest request = AggregateAllRequest.newBuilder()
+                .setResultId(ExportTicketHelper.wrapExportIdInTicket(1))
+                .setSourceId(ref)
+                .setSpec(AggSpec.newBuilder()
+                        .setFormula(AggSpecFormula.newBuilder()
+                                .setFormula("new java.io.File(\"/etc/passwd\").exists()")
+                                .setParamToken("each")
+                                .build())
+                        .build())
+                .build();
+        assertError(request, Code.INVALID_ARGUMENT, "not permitted");
+    }
