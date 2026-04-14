@@ -224,13 +224,13 @@ public class InputTableColumnInfo {
 
     public native void clearRestrictionsList();
 
-    public native double getKind();
+    public native int getKind();
 
     public native JsArray<Object> getRestrictionsList();
 
     public native Uint8Array serializeBinary();
 
-    public native void setKind(double value);
+    public native void setKind(int value);
 
     public native void setRestrictionsList(JsArray<Object> value);
 

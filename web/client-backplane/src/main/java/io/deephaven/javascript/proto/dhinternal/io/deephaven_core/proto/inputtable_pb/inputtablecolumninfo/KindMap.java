@@ -21,20 +21,20 @@ public interface KindMap {
     }
 
     @JsProperty(name = "KIND_KEY")
-    double getKIND_KEY();
+    int getKIND_KEY();
 
     @JsProperty(name = "KIND_UNKNOWN")
-    double getKIND_UNKNOWN();
+    int getKIND_UNKNOWN();
 
     @JsProperty(name = "KIND_VALUE")
-    double getKIND_VALUE();
+    int getKIND_VALUE();
 
     @JsProperty(name = "KIND_KEY")
-    void setKIND_KEY(double KIND_KEY);
+    void setKIND_KEY(int KIND_KEY);
 
     @JsProperty(name = "KIND_UNKNOWN")
-    void setKIND_UNKNOWN(double KIND_UNKNOWN);
+    void setKIND_UNKNOWN(int KIND_UNKNOWN);
 
     @JsProperty(name = "KIND_VALUE")
-    void setKIND_VALUE(double KIND_VALUE);
+    void setKIND_VALUE(int KIND_VALUE);
 }
