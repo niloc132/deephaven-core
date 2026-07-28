@@ -13,4 +13,21 @@ repositories {
             includeGroup 'org.apache.kafka'
         }
     }
+
+    maven {
+        url = 'https://nexus.repo.tuxcare.com/repository/els_java/'
+        credentials {
+            // Read creds from env vars, where github actions have them set
+            // TUXCARE_USERNAME, TUXCARE_PASSWORD
+            username = System.getenv("TUXCARE_USERNAME")
+            password = System.getenv("TUXCARE_PASSWORD")
+        }
+        authentication { basic(BasicAuthentication) }
+        // only include the group we need, to avoid pulling in other deps from this repo
+        content {
+            includeGroup 'org.eclipse.jetty'
+            includeGroup 'org.eclipse.jetty.websocket'
+            includeGroup 'org.eclipse.jetty.http2'
+        }
+    }
 }
