@@ -1868,10 +1868,10 @@ public class SessionStateTest {
 
     /**
      * Transitions {@code export} directly to CANCELLED via the package-private {@code setState} (see its
-     * {@code @VisibleForTesting}), bypassing the exportMap monitor that {@code ExportObject#cancel()} now takes on
-     * this branch. This mirrors what {@code ExportObject#doExport} does when it finds its export already cancelled:
-     * transition under the export's own monitor only, with no dependency on the exportMap lock a concurrent cascade
-     * may be holding.
+     * {@code @VisibleForTesting}), bypassing the exportMap monitor that {@code ExportObject#cancel()} now takes on this
+     * branch. This mirrors what {@code ExportObject#doExport} does when it finds its export already cancelled:
+     * transition under the export's own monitor only, with no dependency on the exportMap lock a concurrent cascade may
+     * be holding.
      */
     private static void cancelWithoutExportMapLock(final SessionState.ExportObject<?> export) {
         export.setState(CANCELLED);

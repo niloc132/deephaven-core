@@ -31,7 +31,6 @@ import org.jetbrains.annotations.VisibleForTesting;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
@@ -482,6 +481,8 @@ public class SessionService {
                 outstandingCookies.poll();
 
                 if (next.session.isExpired()) {
+                    // onExpired() reports its own failures as fatal and never throws back to us; every caller of
+                    // onExpired() shares that same contract, so there is nothing to isolate here.
                     next.session.onExpired();
                 }
             } while (true);
