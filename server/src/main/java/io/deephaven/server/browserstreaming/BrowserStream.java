@@ -7,6 +7,7 @@ import com.google.rpc.Code;
 import io.deephaven.base.RAPriQueue;
 import io.deephaven.base.verify.Assert;
 import io.deephaven.extensions.barrage.util.GrpcUtil;
+import io.deephaven.proto.backplane.grpc.ExportNotification;
 import io.deephaven.proto.util.Exceptions;
 import io.deephaven.server.session.SessionState;
 import io.deephaven.server.util.GrpcServiceOverrideBuilder;
@@ -165,12 +166,18 @@ public class BrowserStream<T> implements Closeable {
             // no onError needed here: if this export is later cancelled by the session expiring, close() (registered
             // just above) already notifies the marshaller
             exportBuilder.submit(() -> this);
+            if (export.getState() == ExportNotification.State.RELEASED) {
+                // The ticket was already released, so submit() was reported only to an error handler we do not have,
+                // and nothing can ever reach this stream by ticket. Fail the open now, as for a taken ticket below.
+                throw Exceptions.statusRuntimeException(Code.FAILED_PRECONDITION,
+                        "rpcTicket has already been released");
+            }
         } catch (final RuntimeException err) {
-            // The ticket is already taken, so this stream can never be reached; undo the registration above and let
-            // the underlying call know now instead of leaving it to hang. Until here `export` refers to whoever owns
-            // the ticket, but this instance never escapes construction, so nothing can act on it - except close() if
-            // the session expires in between, and by then the session has already cancelled every export (hence the
-            // guard: the marshaller has been notified, and cancelling a terminal export is a no-op).
+            // The ticket is already taken or released, so this stream can never be reached; undo the registration
+            // above and let the underlying call know now instead of leaving it to hang. Until here `export` refers to
+            // whoever owns the ticket, but this instance never escapes construction, so nothing can act on it - except
+            // close() if the session expires in between, and by then the session has already cancelled every export
+            // (hence the guard: the marshaller has been notified, and cancelling a terminal export is a no-op).
             if (this.session.removeOnCloseCallback(this)) {
                 marshaller.onError(err);
             }

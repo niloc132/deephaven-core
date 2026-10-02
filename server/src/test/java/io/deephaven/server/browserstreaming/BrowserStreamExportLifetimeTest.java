@@ -378,6 +378,37 @@ public class BrowserStreamExportLifetimeTest {
     }
 
     @Test
+    public void testOpenWithAnAlreadyReleasedTicketEndsTheStream() {
+        final int rpcTicketId = 12;
+        final Ticket rpcTicket = ExportTicketHelper.wrapExportIdInTicket(rpcTicketId);
+        // a stream that ran to completion on this ticket, which released it
+        final RecordingDelegate first = new RecordingDelegate();
+        final GrpcServiceOverrideBuilder.BrowserStreamMethod<String, String, Object> firstMethod =
+                new GrpcServiceOverrideBuilder.BrowserStreamMethod<>(log, BrowserStream.Mode.IN_ORDER, first,
+                        sessionService);
+        inStreamContext(new StreamData(rpcTicket, 0, false),
+                () -> firstMethod.invokeOpen("first", new NoopObserver<>()));
+        inStreamContext(new StreamData(rpcTicket, 1, true), () -> firstMethod.invokeNext("last", new NoopObserver<>()));
+        runPendingWork();
+        Assert.eqTrue(first.completed, "first.completed");
+        Assert.eq(session.getExportIfExists(rpcTicketId).getState(), "released ticket state",
+                ExportNotification.State.RELEASED);
+
+        // the client (mistakenly) reuses the released ticket; the open must fail rather than hang until the session
+        // ends, since no later message can ever reach a stream that was never exported
+        final RecordingDelegate delegate = new RecordingDelegate();
+        final GrpcServiceOverrideBuilder.BrowserStreamMethod<String, String, Object> method =
+                new GrpcServiceOverrideBuilder.BrowserStreamMethod<>(log, BrowserStream.Mode.IN_ORDER, delegate,
+                        sessionService);
+        final StatusRuntimeException expected = assertThrows(StatusRuntimeException.class,
+                () -> inStreamContext(new StreamData(rpcTicket, 0, false),
+                        () -> method.invokeOpen("first", new NoopObserver<>())));
+        Assert.eq(expected.getStatus().getCode(), "expected.getStatus().getCode()", Status.Code.FAILED_PRECONDITION);
+        Assert.neqNull(delegate.error, "delegate.error");
+        Assert.eqTrue(delegate.error instanceof StatusRuntimeException, "delegate.error instanceof SRE");
+    }
+
+    @Test
     public void testCancelDuringDeliveryDropsQueuedMessages() {
         final RecordingDelegate delegate = new RecordingDelegate();
         final GrpcServiceOverrideBuilder.BrowserStreamMethod<String, String, Object> method =
